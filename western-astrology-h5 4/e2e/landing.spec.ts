@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { ui, type Language } from "../src/lib/reading";
-import { generationCopy, lifeCopy, type LifeInput, type LifeReport } from "../src/lib/lifeReport";
+import { careerCopy, generationCopy, lifeCopy, type LifeInput, type LifeReport } from "../src/lib/lifeReport";
 import { bangkokProvince, place, readyPreviewFixture, reportFixture } from "../tests/fixtures/lifeReport";
 
 // Synthetic fixtures test presentation and transport without consuming paid generation.
@@ -82,6 +82,46 @@ test("new reports default to the current year without a year field and retain bi
   await generate(page, "th");
   expect(api.received[0].profile.language).toBe("th");
   expect(api.received[0].year).toBe(currentYear);
+});
+
+test("a selected question survives language changes and opens its answer in the life report", async ({ page }) => {
+  const api = await routes(page);
+  const answer = "先核对新岗位的职责和书面条件，再比较留任与换岗。";
+  await page.route(/\/api\/life-reports(?:\?.*)?$/, route => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const input = route.request().postDataJSON() as LifeInput;
+    api.received.push(input);
+    const report = reportFixture(input);
+    report.preview!.career_answer = { ...report.preview!.summary, text: answer };
+    api.replaceReport(report);
+    return route.fulfill({ json: report });
+  });
+  await start(page);
+  await page.getByRole("button", { name: careerCopy.zh.situations.offer.question }).click();
+  await page.locator('[data-lang="th"]').click();
+  await expect(page.getByRole("button", { name: careerCopy.th.situations.offer.question })).toHaveAttribute("aria-pressed", "true");
+  await page.locator('[data-lang="zh"]').click();
+  const day = await page.evaluate(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date()));
+  await generate(page);
+  expect(api.received[0].career_question).toEqual({ stage: "offer", start: day });
+  expect(api.received[0].career).toBeUndefined();
+  await expect(page.getByRole("heading", { name: careerCopy.zh.situations.offer.question, exact: true })).toBeVisible();
+  await expect(page.getByText(answer, { exact: true })).toBeVisible();
+  await expect(page.getByTestId("life-catalog").locator("button")).toHaveCount(8);
+});
+
+test("a typed question replaces the selected question and is preserved as report text", async ({ page }) => {
+  const api = await routes(page);
+  await start(page);
+  const preset = page.getByRole("button", { name: careerCopy.zh.situations.considering.question });
+  await preset.click();
+  await expect(preset).toHaveAttribute("aria-pressed", "true");
+  const question = '怎么和家人商量独处时间？ <script>alert(1)</script>';
+  await page.getByRole("textbox", { name: careerCopy.zh.customQuestion, exact: true }).fill(question);
+  await generate(page);
+  expect(api.received[0].user_question).toBe(question);
+  expect(api.received[0].career_question).toBeUndefined();
+  await expect(page.getByRole("heading", { name: question, exact: true })).toBeVisible();
 });
 
 test("cancelled and superseded requests cannot display an outdated report", async ({ page }) => {

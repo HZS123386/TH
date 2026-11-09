@@ -222,7 +222,8 @@ test("cancelling free content generation keeps birth fields and prevents late na
   await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
   await polling;
   await page.keyboard.press("Escape"); release();
-  await expect(page.getByTestId("report-generation")).toHaveCount(0);
+  await expect(page.getByTestId("report-generation")).not.toBeVisible();
+  expect(await page.getByTestId("report-generation").locator("video").evaluate((video: HTMLVideoElement) => video.paused)).toBe(true);
   await expect(page.locator("#birth-date")).toHaveValue("1995-08-17");
   await expect(page).not.toHaveURL(/report\.html/);
 });

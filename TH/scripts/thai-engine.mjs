@@ -153,31 +153,52 @@ export function calculateCurrentTransits(profile, offset, now) {
 
 // Daily Bangkok-noon samples of classical longitudes, relative to the actual
 // natal ascendant. Counts describe sampling, never event probabilities.
+function transitSample(date, ascendant, keys) {
+  const chart = calculateThaiHoroscope({
+    ...civil(date, '12:00'),
+    location: { province: 'กรุงเทพมหานคร' },
+  });
+  return keys.map((key) => {
+    const sign = chart.points[key].sign;
+    return { key, sign, house: ((sign - ascendant + 12) % 12) + 1 };
+  });
+}
+
 export function calculateAnnual(year, ascendant) {
   const keys = ['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu', 'uranus'];
   return Array.from({ length: 12 }, (_, index) => {
     const days = new Date(Date.UTC(year, index + 1, 0)).getUTCDate();
     const states = Object.fromEntries(keys.map((key) => [key, []]));
     for (let day = 1; day <= days; day++) {
-      const chart = calculateThaiHoroscope({
-        ...civil(
-          `${year}-${String(index + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-          '12:00',
-        ),
-        location: { province: 'กรุงเทพมหานคร' },
-      });
-      for (const key of keys) {
-        const sign = chart.points[key].sign;
+      const date = `${year}-${String(index + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      for (const { key, sign, house } of transitSample(date, ascendant, keys)) {
         const prior = states[key].find((state) => state.sign === sign);
         if (prior) prior.samples++;
-        else states[key].push({ sign, house: ((sign - ascendant + 12) % 12) + 1, samples: 1 });
+        else states[key].push({ sign, house, samples: 1 });
       }
     }
     return { year, month: index + 1, days, sampling: 'daily-noon-Asia/Bangkok', states };
   });
 }
+
+function calculateCareerWindow(start, ascendant) {
+  const date = new Date(`${start}T00:00:00Z`);
+  const keys = ['mercury', 'jupiter', 'saturn'];
+  const windows = Object.fromEntries(keys.map((key) => [key, []]));
+  for (let day = 0; day < 30; day++, date.setUTCDate(date.getUTCDate() + 1)) {
+    const sampleDate = date.toISOString().slice(0, 10);
+    for (const { key, sign, house } of transitSample(sampleDate, ascendant, keys)) {
+      const prior = windows[key].at(-1);
+      if (prior?.sign === sign) prior.end = sampleDate;
+      else windows[key].push({ key, sign, house, start: sampleDate, end: sampleDate });
+    }
+  }
+  return windows;
+}
+
 export function dispatch(request) {
   if (request.operation === 'annual') return calculateAnnual(request.year, request.ascendant);
+  if (request.operation === 'career-window') return calculateCareerWindow(request.start, request.ascendant);
   if (request.operation === 'fortune') {
     const natal =
       request.profile.birth_time && request.birth_window.length === 1

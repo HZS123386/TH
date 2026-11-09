@@ -1,6 +1,9 @@
 import { api, ApiError, ui, type Language, type Place, type Reading, type ReadingInput, type ReadingItem } from "./reading";
 
-export type LifeInput = Omit<ReadingInput, "reading">;
+export type CareerStage = "unspecified" | "considering" | "searching" | "offer";
+export type CareerFocus = "decision" | "stay" | "move" | "next";
+type CareerQuestion = { stage: CareerStage; start: string; focus?: CareerFocus | null };
+export type LifeInput = Omit<ReadingInput, "reading"> & { career?: CareerQuestion; career_question?: CareerQuestion; user_question?: string };
 export type LifeState = "not_started" | "pending" | "generating" | "ready" | "limited" | "unavailable" | "unconfigured";
 export type Feedback = "close" | "partly" | "different";
 export interface LifeEvidence { id: string; title: string; detail: string }
@@ -19,6 +22,7 @@ export interface LifeReport {
   version: string;
   title: string;
   input: LifeInput;
+  reference_period?: { start: string; end: string };
   created_at: string;
   location: Partial<Place> & { nameEnglish: string; timeZone: string };
   method: { name: string; house_system: string; version: string };
@@ -32,7 +36,7 @@ export interface LifeReport {
   generation_progress?: { percent: number; sections: { key: "work" | "money" | "relationships" | "annual" | "plan"; percent: number }[] };
   preview_generation_progress?: { percent: number; sections: { key: "preview_summary" | "preview_strength" | "preview_decisions" | "preview_relationships"; percent: number }[] };
   catalog: { key: Reading; title: string; questions: string[]; houses: number[]; ready: boolean }[];
-  preview: { summary: LifeSummary; traits: (LifePoint & { key: "strength" | "decisions" | "relationships" })[] } | null;
+  preview: { summary: LifeSummary; traits: (LifePoint & { key: "strength" | "decisions" | "relationships" })[]; career_answer?: LifeSummary } | null;
   chapters: LifeChapter[];
   plan: { phases: { key: "observe" | "adjust" | "review"; title: string; text: string; actions: (LifePoint & { chapter: Reading; index: number })[] }[] } | null;
 }
@@ -75,8 +79,94 @@ export const lifeCopy = {
     plan: "ข้อเสนอแนะโดยรวม", viewAction: "กลับไปดูหัวข้อที่เกี่ยวข้อง", navigation: "สารบัญรายงาน", save: "บันทึกฉบับเต็ม (เว็บ)", savePreview: "บันทึกคำอ่านฟรี (เว็บ)", exportPdf: "บันทึกเป็น PDF", pdfPreparing: "กำลังสร้าง PDF…", pdfSaved: "บันทึก PDF ไปยังตำแหน่งที่เลือกแล้ว", pdfDownloaded: "ส่ง PDF ให้เบราว์เซอร์บันทึกแล้ว ตำแหน่งขึ้นอยู่กับการตั้งค่าดาวน์โหลดของเบราว์เซอร์หรือระบบ", pdfError: "ยังบันทึก PDF ไม่สำเร็จ โปรดลองใหม่",
     history: "รายงานของฉัน", historyHint: "รายงานที่สร้างในอุปกรณ์นี้จะอยู่ที่นี่", emptyHistory: "ยังไม่มีรายงานที่บันทึกไว้", close: "ปิด", open: "อ่านต่อ", historyError: "ยังโหลดรายการรายงานไม่ได้ โปรดลองใหม่", previewVersion: "คำอ่านเบื้องต้น", fullVersion: "เปิดอ่านแล้ว", loading: "กำลังเปิดรายงาน…", printHint: "ก่อนเปิดฉบับเต็มจะบันทึกเฉพาะส่วนฟรี เมื่อสร้างและเปิดฉบับเต็มแล้วจึงรวมเนื้อหาทั้งหมด", chapterCount: "รายงานแปดส่วน", source: "ข้อมูลประกอบคำอ่าน", sourceVersion: "รุ่นการคำนวณและรายงาน", done: "รายงานฉบับเต็มจัดทำเสร็จแล้ว", resume: "ส่วนที่เสร็จแล้วจะอยู่ในรายการรายงานของอุปกรณ์นี้",
   },
-} as const;
-export type LifeLabels = typeof lifeCopy[Language];
+};
+export type LifeLabels = typeof lifeCopy[Language] & { careerQuestionTitle?: string };
+
+export const careerCopy = {
+  zh: {
+    chooseQuestion: "事业问题（可选）",
+    customQuestion: "此刻你最想知道的事情",
+    writeQuestion: "写我的问题",
+    browseQuestions: "选题",
+    questionSelected: "已选",
+    questionPurpose: "选一道或自己写，免费报告会先回答",
+    questionHint: "上下滑动换题，点一下选中，再点一次取消。",
+    situations: {
+      unspecified: { label: "留还是走", question: "我该换工作吗？", details: {
+        decision: "怎么判断还有没有转机？", stay: "留下来，什么值得争取？",
+        move: "怎么防止换了工作还踩坑？", next: "今天先问什么，才能看清去留？",
+      } },
+      considering: { label: "想辞职", question: "还没下家，我该辞职吗？", details: {
+        decision: "没下家，今天能提离职吗？", stay: "暂时留下，怎么少耗一点？",
+        move: "下家还没影，先从哪找？", next: "真想走，今天先准备什么？",
+      } },
+      searching: { label: "等结果", question: "面试没回音，我该跟进吗？", details: {
+        decision: "过了回复日，今天要催吗？", stay: "要等结果再跟现公司谈吗？",
+        move: "面试没回音，要继续投吗？", next: "跟进消息怎么发？",
+      } },
+      offer: { label: "待答复", question: "这份 Offer，我该接吗？", details: {
+        decision: "新工作能解决我想走的原因吗？", stay: "留下的条件，怎么确认会兑现？",
+        move: "答复前，哪些条件一定要问清？", next: "到答复前还没问清，怎么办？",
+      } },
+    },
+    generate: "免费看这条行运", shortTitle: "留任与换岗对照", subtitle: "结合这段事业行运，先看眼下怎么做。",
+    takeaway: "先看这段时间的倾向",
+    offerTitle: "把两条路放进未来 30 天一起看", offerText: "继续看留任和换岗各自值得留意的时间，以及什么时候可以重新比较。",
+    benefits: ["留任的观察时段", "换岗的观察时段", "行运依据", "下一次比较的节点"],
+    unlock: "解锁未来 30 天留任与换岗对照", once: "本次事业解读 · 单次解锁",
+    catalogHint: "先免费读两条路，再展开未来 30 天的对照。", chapterCount: "留任与换岗", feedback: "这条解读回应了你的问题吗？",
+    previewHint: "正在计算近期行运，整理留下和换走两条路…", fullHint: "正在展开未来 30 天的留任与换岗对照…",
+  },
+  th: {
+    chooseQuestion: "คำถามเรื่องงาน (ข้ามได้)",
+    customQuestion: "ตอนนี้คุณอยากรู้เรื่องอะไรที่สุด",
+    writeQuestion: "พิมพ์คำถาม",
+    browseQuestions: "เลือกคำถาม",
+    questionSelected: "เลือกแล้ว",
+    questionPurpose: "เลือกสักข้อหรือพิมพ์เอง รายงานฟรีจะตอบก่อน",
+    questionHint: "เลื่อนขึ้นลงเพื่อเปลี่ยนคำถาม แตะเพื่อเลือกหรือแตะซ้ำเพื่อยกเลิก",
+    situations: {
+      unspecified: { label: "อยู่หรือไป", question: "ควรย้ายงานไหม?", details: {
+        decision: "ดูยังไงว่างานเดิมจะดีขึ้น?", stay: "ถ้าอยู่ต่อ ควรขอปรับอะไร?",
+        move: "ย้ายงานยังไงให้ไม่เจอปัญหาเดิม?", next: "วันนี้ควรถามอะไรเพื่อตัดสินใจ?",
+      } },
+      considering: { label: "ลาออก", question: "ยังไม่มีงานใหม่ ควรลาออกไหม?", details: {
+        decision: "ยังไม่มีงานใหม่ ลาออกวันนี้ดีไหม?", stay: "อยู่ต่อยังไงให้เหนื่อยน้อยลง?",
+        move: "ยังไม่มีที่ใหม่ เริ่มหาจากไหน?", next: "ถ้าอยากออก วันนี้เตรียมอะไร?",
+      } },
+      searching: { label: "รอผล", question: "สัมภาษณ์แล้วเงียบ ควรทักไปถามไหม?", details: {
+        decision: "เลยวันนัดแล้ว วันนี้ควรทักไหม?", stay: "ควรรอผลก่อนคุยกับที่เดิมไหม?",
+        move: "ยังไม่ตอบ ควรสมัครที่อื่นต่อไหม?", next: "เขียนข้อความตามผลยังไง?",
+      } },
+      offer: { label: "รอตอบ", question: "ควรรับข้อเสนองานนี้ไหม?", details: {
+        decision: "งานใหม่จะแก้ปัญหาเดิมได้ไหม?", stay: "จะรู้ได้ยังไงว่าที่เดิมทำตามที่ตกลง?",
+        move: "ก่อนตอบรับ ต้องถามอะไรให้ชัด?", next: "ถึงกำหนดตอบแต่ข้อมูลยังไม่ครบ ทำยังไง?",
+      } },
+    },
+    generate: "อ่านดวงงานฟรี", shortTitle: "เปรียบเทียบอยู่ต่อกับเปลี่ยนงาน", subtitle: "ดูดาวจรด้านการงาน แล้วเลือกสิ่งที่ทำได้ตอนนี้",
+    takeaway: "แนวโน้มช่วงนี้",
+    offerTitle: "ดูทั้งสองทางใน 30 วันข้างหน้า", offerText: "อ่านต่อว่าช่วงไหนควรสังเกตหากอยู่ต่อหรือเปลี่ยนงาน และเมื่อไรควรกลับมาเทียบอีกครั้ง",
+    benefits: ["ช่วงที่ควรสังเกตหากอยู่ต่อ", "ช่วงที่ควรสังเกตหากเปลี่ยนงาน", "ข้อมูลดาวที่ใช้ตีความ", "จุดทบทวนทางเลือก"],
+    unlock: "เปิดอ่านเปรียบเทียบการงาน 30 วัน", once: "คำอ่านการงานครั้งนี้ · เปิดอ่านครั้งเดียว",
+    catalogHint: "อ่านสองทางเลือกเบื้องต้นฟรี แล้วเปิดดูจังหวะ 30 วันฉบับเต็ม", chapterCount: "อยู่ต่อหรือเปลี่ยนงาน", feedback: "คำอ่านนี้ตอบเรื่องที่คุณอยากรู้ไหม?",
+    previewHint: "กำลังคำนวณดาวจรช่วงนี้ แล้วเปรียบเทียบการอยู่ต่อกับเปลี่ยนงาน…", fullHint: "กำลังจัดทำคำอ่านเปรียบเทียบการงาน 30 วัน…",
+  },
+};
+
+export function lifeLabels(report: LifeReport): LifeLabels {
+  const language = report.input.profile.language;
+  const labels = lifeCopy[language];
+  const question = report.input.career_question;
+  if (question) {
+    const situation = careerCopy[language].situations[question.stage];
+    return { ...labels, careerQuestionTitle: question.focus ? situation.details[question.focus] : situation.question };
+  }
+  const input = report.input.career;
+  if (!input) return labels;
+  const career = careerCopy[language];
+  const title = input.focus ? career.situations[input.stage].details[input.focus] : report.title;
+  return { ...labels, ...career, title, unlock: `${report.price.display} ${career.unlock}` };
+}
 
 let reportKey: string | undefined;
 export function getReportKey(language: Language = "zh"): string {
@@ -108,9 +198,11 @@ export async function lifeApi<T>(path: string, language: Language, signal: Abort
 }
 export function lifeSignature(input: LifeInput): string {
   const p = input.profile;
-  return JSON.stringify([p.birth_date, p.birth_time, p.birthplace, p.timezone, p.language, p.country_code, p.location_id, p.latitude, p.longitude, input.year]);
+  const question = input.career_question;
+  return JSON.stringify([p.birth_date, p.birth_time, p.birthplace, p.timezone, p.language, p.country_code, p.location_id, p.latitude, p.longitude, input.year, input.career?.stage, input.career?.start, input.career?.focus, question?.stage, question?.start, question?.focus, input.user_question]);
 }
 const fullProgressKeys = ["work", "money", "relationships", "annual", "plan"];
+const careerProgressKeys = ["work"];
 const previewProgressKeys = ["preview_summary", "preview_strength", "preview_decisions", "preview_relationships"];
 function isContentProgress(value: unknown, keys: string[]): boolean {
   if (!value || typeof value !== "object") return false;
@@ -124,11 +216,11 @@ export function isLifeReport(value: unknown): value is LifeReport {
   if (!value || typeof value !== "object") return false;
   const report = value as LifeReport;
   return typeof report.id === "string" && !!report.input?.profile && ["zh", "th"].includes(report.input.profile.language)
-    && Array.isArray(report.catalog) && report.catalog.length === 5 && Array.isArray(report.chapters)
+    && Array.isArray(report.catalog) && report.catalog.length === (report.input.career ? 1 : 5) && Array.isArray(report.chapters)
     && (!report.preview || Array.isArray(report.preview.traits) && report.preview.traits.length === 3)
     && ["preview", "full"].includes(report.access) && Number.isInteger(report.progress?.completed)
     && Number.isInteger(report.progress?.total) && report.progress.total > 0 && report.progress.completed >= 0 && report.progress.completed <= report.progress.total
-    && (!report.generation_progress || isContentProgress(report.generation_progress, fullProgressKeys))
+    && (!report.generation_progress || isContentProgress(report.generation_progress, report.input.career ? careerProgressKeys : fullProgressKeys))
     && (!report.preview_generation_progress || isContentProgress(report.preview_generation_progress, previewProgressKeys));
 }
 
@@ -155,7 +247,7 @@ export function reportGenerationProgress(report: LifeReport): GenerationProgress
   const preview = report.preview !== null && report.preview_state === "ready";
   const ready = preview && report.full_state === "ready" && completed === total;
   const detailed = report.generation_progress;
-  if (detailed && !isContentProgress(detailed, fullProgressKeys)) throw new Error(ui[report.input.profile.language].badResult);
+  if (detailed && !isContentProgress(detailed, report.input.career ? careerProgressKeys : fullProgressKeys)) throw new Error(ui[report.input.profile.language].badResult);
   const percent = ready ? 100 : Math.min(99, detailed?.percent ?? Math.floor(completed / total * 100));
   return {
     percent, completed: percent, total: 100, sections: detailed?.sections,

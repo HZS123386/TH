@@ -35,6 +35,14 @@ describe("report exports", () => {
   it("keeps an in-progress export as a preview until the whole version is ready", () => {
     expect(reportHtml({ ...result, full_state: "generating" }, lifeCopy.zh)).not.toContain("付费专属分析正文");
   });
+  it("includes the typed question as escaped text in the free summary", () => {
+    const question = '怎么和家人商量？ <script>alert(1)</script>';
+    const input = { ...inputFor(), user_question: question };
+    const html = reportHtml(reportFixture(input, false), lifeCopy.zh);
+    expect(html).toContain("<h3>怎么和家人商量？ &lt;script&gt;alert(1)&lt;/script&gt;</h3>");
+    expect(html).not.toContain("<script>");
+    expect(lifeSignature(input)).not.toBe(lifeSignature({ ...input, user_question: "另一个问题" }));
+  });
   it("keeps the first three sections free and gates paid source data in the shared outline", () => {
     const sections = reportContent({ ...result, access: "preview" });
     expect(sections.map(section => section.title)).toEqual(["基础信息", "报告摘要", "个人特点", "事业发展", "财务方面", "感情与家庭", "近期关注", "总结建议"]);

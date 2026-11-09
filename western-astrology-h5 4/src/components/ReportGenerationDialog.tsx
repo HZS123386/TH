@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Sparkles } from "lucide-react";
-import { generationCopy, lifeCopy, type GenerationProgress } from "../lib/lifeReport";
+import { careerCopy, generationCopy, lifeCopy, type GenerationProgress } from "../lib/lifeReport";
 import type { Language } from "../lib/reading";
 import animationUrl from "../../dist/assets/report-loading-web.mp4?url";
 import posterUrl from "../../dist/assets/report-loading-poster.webp?url";
 
-export function ReportGenerationDialog({ language, progress, error, onCancel, onRetry, onComplete, kind = "full", open = true }: {
+export function ReportGenerationDialog({ language, progress, error, onCancel, onRetry, onComplete, kind = "full", open = true, career = false }: {
   language: Language;
   progress: GenerationProgress;
   error: string;
@@ -15,15 +15,21 @@ export function ReportGenerationDialog({ language, progress, error, onCancel, on
   onComplete?: () => void;
   kind?: "preview" | "full";
   open?: boolean;
+  career?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const video = useRef<HTMLVideoElement>(null);
+  const ambient = useRef<HTMLCanvasElement>(null);
   const [reduced, setReduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [videoUnavailable, setVideoUnavailable] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const [posterReady, setPosterReady] = useState(false);
   const [percent, setPercent] = useState(0);
   const c = generationCopy[language];
+  const decision = careerCopy[language];
+  const careerSections: Partial<Record<keyof typeof c.sections, string>> = { preview_summary: decision.takeaway, preview_strength: decision.benefits[0], preview_decisions: decision.benefits[1],
+    preview_relationships: decision.benefits[3], work: decision.shortTitle };
+  const description = career && progress.phase === "preview" ? decision.previewHint : career && progress.phase === "full" ? decision.fullHint : c[progress.phase];
   useEffect(() => {
     if (!open) { setPercent(0); return; }
     // Reveal confirmed progress one percentage point at a time; never run beyond the API value.
@@ -56,38 +62,67 @@ export function ReportGenerationDialog({ language, progress, error, onCancel, on
     const element = video.current;
     if (!element) return;
     let active = true;
-    if (!open || reduced || videoUnavailable || error || progress.phase === "ready") {
+    // Keep playing while confirmed completion advances the visible progress to 100.
+    if (!open || reduced || videoUnavailable || error) {
       element.pause();
       if (!open && element.readyState >= HTMLMediaElement.HAVE_METADATA) element.currentTime = 0;
     }
     else void element.play().catch(() => { if (active) setVideoUnavailable(true); });
     return () => { active = false; element.pause(); };
-  }, [open, reduced, videoUnavailable, error, progress.phase]);
+  }, [open, reduced, videoUnavailable, error]);
   const fallback = reduced || videoUnavailable || !videoReady;
+  useEffect(() => {
+    if (!open || fallback) return;
+    const source = video.current;
+    const target = ambient.current;
+    const context = target?.getContext("2d");
+    if (!source || !target || !context) return;
+
+    // Reuse the playing video's frames for the blurred backdrop.
+    const draw = () => {
+      if (source.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        context.drawImage(source, 0, 0, target.width, target.height);
+      }
+    };
+    draw();
+    if (!source.requestVideoFrameCallback) {
+      source.addEventListener("timeupdate", draw);
+      return () => source.removeEventListener("timeupdate", draw);
+    }
+    let frame = source.requestVideoFrameCallback(function paint() {
+      draw();
+      frame = source.requestVideoFrameCallback(paint);
+    });
+    return () => source.cancelVideoFrameCallback(frame);
+  }, [open, fallback]);
+
   return createPortal(
     <dialog ref={dialog} className="report-generation-dialog" aria-labelledby="report-loading-title" data-testid="report-generation"
       onCancel={event => { event.preventDefault(); onCancel(); }}>
-      <div className="report-loading relative py-5 text-center" aria-busy={!error && progress.phase !== "ready"}>
-        <div className="report-generation-media relative aspect-[2/1] w-full" aria-hidden="true">
-          <video ref={video} src={reduced ? undefined : animationUrl} className="report-generation-video absolute inset-0 h-full" style={{ opacity: fallback ? 0 : 1 }}
+      <div className="report-generation-art" aria-hidden="true">
+        {!fallback && <canvas ref={ambient} className="report-generation-ambient" width={96} height={48} />}
+        <div className="report-generation-foreground">
+          <video ref={video} src={reduced ? undefined : animationUrl} className="report-generation-video" style={{ opacity: fallback ? 0 : 1 }}
             autoPlay={open && !reduced} muted playsInline loop preload={reduced ? "none" : "auto"}
             onLoadedData={() => setVideoReady(true)} onPlaying={() => setVideoReady(true)} onEmptied={() => setVideoReady(false)}
             onError={() => setVideoUnavailable(true)} />
-          {fallback && <div className={`report-generation-static absolute inset-0 flex h-full items-center justify-center text-gold${open && !reduced && !error && progress.phase !== "ready" ? " motion-safe:animate-report-visual-breathe" : ""}`} data-testid="generation-visual">
-            {!reduced && <img src={posterUrl} className="report-generation-poster absolute inset-0 h-full" alt="" decoding="async" onLoad={() => setPosterReady(true)} />}
+          {fallback && <div className={`report-generation-static absolute inset-0 flex h-full items-center justify-center text-gold${open && !reduced && !error ? " motion-safe:animate-report-visual-breathe" : ""}`} data-testid="generation-visual">
+            {!reduced && <img src={posterUrl} className="report-generation-poster" alt="" decoding="async" onLoad={() => setPosterReady(true)} />}
             {(reduced || !posterReady) && <Sparkles className="relative" size={72} strokeWidth={.8} />}
           </div>}
         </div>
-        <h2 id="report-loading-title" className="m-0 px-4 text-base font-medium leading-7 text-cream">{kind === "preview" ? error ? c.previewFailed : c.previewTitle : error ? c.failed : c.title}</h2>
+      </div>
+      <div className="report-loading relative py-5 text-center" aria-busy={!error && progress.phase !== "ready"}>
+        <h2 id="report-loading-title" className="m-0 px-4 text-base font-medium leading-7 text-cream">{kind === "preview" ? error ? c.previewFailed : c.previewTitle : error ? c.failed : career ? decision.shortTitle : c.title}</h2>
         <div className="report-progress" style={{ "--report-progress-value": `${percent}%` } as CSSProperties}>
           <span className="report-progress-value" aria-hidden="true">{percent}%</span>
           <div className="report-progress-track" role="progressbar" aria-labelledby="report-loading-title" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
             <span className="report-progress-fill" aria-hidden="true" />
           </div>
         </div>
-        <p className="mb-0 mt-4 px-5 text-xs leading-6 text-lavender" role="status">{error || c[progress.phase]}</p>
+        <p className="mb-0 mt-4 px-5 text-xs leading-6 text-lavender" role="status">{error || description}</p>
         {progress.sections && <div className="mx-auto mt-3 grid max-w-xs gap-1.5 px-5 text-[10px] leading-5 text-lavender" data-testid="generation-sections">
-          {progress.sections.map(section => <div key={section.key} className="flex justify-between gap-4"><span>{c.sections[section.key]}</span><span className="tabular-nums text-gold">{Math.floor(section.percent)}%</span></div>)}
+          {progress.sections.map(section => <div key={section.key} className="flex justify-between gap-4"><span>{(career && careerSections[section.key]) || c.sections[section.key]}</span><span className="tabular-nums text-gold">{Math.floor(section.percent)}%</span></div>)}
         </div>}
         <div className="mt-4 flex justify-center gap-3 px-5">
           {error && <button type="button" className="report-secondary" onClick={onRetry}>{lifeCopy[language].retry}</button>}

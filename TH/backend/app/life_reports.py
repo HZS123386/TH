@@ -1,20 +1,21 @@
 """Persisted life-report snapshots and the explicitly requested direct unlock."""
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 import logging
 import secrets
 import time
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import Field, model_validator
 
 from . import thai
 from .bazi_reports import report_progress_context, report_usage_context
-from .life_report_content import CHAPTERS, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, preview_writing_progress, writing_progress
+from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
 from .schemas import Input, ProfileInput, ThaiReadingInput
 from .thai_readings import HOUSES, copy_for, grounding
 
@@ -25,14 +26,34 @@ class ReportLeaseLost(Exception):
     pass
 
 
+class CareerInput(Input):
+    stage: Literal["unspecified", "considering", "searching", "offer"]
+    start: date
+    focus: Literal["decision", "stay", "move", "next"] | None = None
+
+    @model_validator(mode="after")
+    def supported_start(self):
+        if not date(1901, 1, 1) <= self.start <= datetime.now(ZoneInfo("Asia/Bangkok")).date():
+            raise ValueError("career_start_invalid")
+        return self
+
+
 class LifeInput(Input):
     profile: ProfileInput
     year: int = Field(ge=1901, le=2100)
+    career: CareerInput | None = None
+    career_question: CareerInput | None = None
+    user_question: str | None = Field(default=None, min_length=1, max_length=120, pattern=r"^[^\x00-\x1f\x7f]+$")
 
     @model_validator(mode="after")
     def supported_input(self):
         if self.profile.language not in ("zh", "th"):
             raise ValueError("language_invalid")
+        if sum(value is not None for value in (self.career, self.career_question, self.user_question)) > 1:
+            raise ValueError("career_input_conflict")
+        career = self.career_question or self.career
+        if career and career.start.year != self.year:
+            raise ValueError("career_year_mismatch")
         return self
 
 
@@ -67,6 +88,11 @@ def explain(identifier, fact, language):
     elif fact["type"] == "ascendant":
         title = "本命上升" if zh else "ลัคนากำเนิด"
         detail = sign(fact["sign"])
+    elif fact["type"] == "career_window":
+        period = fact["start"] if fact["start"] == fact["end"] else f"{fact['start']} – {fact['end']}"
+        title = f"{period} · {planet(fact['key'])}"
+        detail = (f"{sign(fact['sign'])} · 本命第{fact['house']}宫 · 曼谷当地每日正午取样"
+                  if zh else f"{sign(fact['sign'])} · เรือนกำเนิดที่ {fact['house']} · คำนวณจากเวลาเที่ยงวันกรุงเทพฯ")
     else:
         key, states = next(iter(fact["states"].items()))
         title = f"{fact['year']}年{fact['month']}月 · {planet(key)}" if zh else f"{fact['month']}/{fact['year']} · {planet(key)}"
@@ -146,7 +172,14 @@ class LifeReports:
 
     async def create(self, body, owner, network, *, wait=True):
         profile = body.profile.model_dump(mode="json")
-        fingerprint = hashlib.sha256(encoded([VERSION, body.model_dump(mode="json")]).encode()).hexdigest()
+        snapshot = body.model_dump(mode="json", exclude=None if body.career else {"career"})
+        if body.career_question is None:
+            snapshot.pop("career_question")
+        if body.user_question is None:
+            snapshot.pop("user_question")
+        if body.career and body.career.focus is None:
+            snapshot["career"].pop("focus")
+        fingerprint = hashlib.sha256(encoded([CAREER_VERSION if body.career else VERSION, snapshot]).encode()).hexdigest()
         with self.store.connect() as db:
             existing = db.execute("SELECT id FROM life_reports WHERE owner=? AND fingerprint=?", (owner, fingerprint)).fetchone()
         if existing:
@@ -165,7 +198,7 @@ class LifeReports:
             report_id = secrets.token_hex(16)
             with self.store.connect() as db:
                 db.execute("INSERT OR IGNORE INTO life_reports(id,owner,fingerprint,input,chart,created) VALUES (?,?,?,?,?,?)",
-                           (report_id, owner, fingerprint, encoded(body.model_dump(mode="json")), encoded(chart), time.time()))
+                           (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time()))
                 report_id = db.execute("SELECT id FROM life_reports WHERE owner=? AND fingerprint=?", (owner, fingerprint)).fetchone()["id"]
             row = self.row(report_id, owner)
         task = self.preview_tasks.get(row["id"])
@@ -203,20 +236,44 @@ class LifeReports:
             report_progress_context.reset(progress_token)
             report_usage_context.reset(usage_token)
 
+    async def career_preview(self, question, chart, profile, *, direct_question=False):
+        async with self.calculation_slots:
+            windows = await asyncio.to_thread(thai.career_window, question.start.isoformat(),
+                                              chart["chart"]["points"]["ascendant"]["sign"])
+        content = career_report_content(question.stage, windows, profile.language,
+                                        estimated=not profile.birth_time, focus=question.focus, direct_question=direct_question)
+        return {**content, "windows": windows}
+
     async def write_preview(self, row, body, owner, network, lease):
         chart = json.loads(row["chart"])
+        if body.career:
+            preview = await self.career_preview(body.career, chart, body.profile)
+            # Save calculated windows with the preview so a later unlock uses the same dates.
+            self.update(row["id"], expected_lease=lease, preview=encoded(preview),
+                        preview_state="ready", lease="", lease_until=0)
+            return
         bundle = self.bundle(body, chart, "overview")
-        relation = self.bundle(body, chart, "love")
-        bundle["evidence"].update(relation["evidence"])
-        bundle["topic_evidence"] = list(dict.fromkeys([*bundle["topic_evidence"], *relation["topic_evidence"]]))
+        topics = ("love", "work", "money") if body.user_question else ("love",)
+        for topic in topics:
+            related = self.bundle(body, chart, topic)
+            bundle["evidence"].update(related["evidence"])
+            bundle["topic_evidence"] = list(dict.fromkeys([*bundle["topic_evidence"], *related["topic_evidence"]]))
         bundle["citation_rules"] = {"trait_house_ids": TRAIT_HOUSES,
                                     "summary_house_ids": bundle["topic_evidence"],
                                     "supporting_natal_ids": [key for key, item in bundle["evidence"].items() if item["type"] in ("planet", "ascendant")]}
         bundle.update(stage="preview", reading="life-preview")
+        if body.user_question:
+            bundle["user_question"] = body.user_question
         result = await self.writer.generate(bundle, owner, network)
         values = {"preview_state": result["state"], "lease": "", "lease_until": 0}
         if result.get("story"):
-            values["preview"] = encoded({"story": result["story"], "evidence": bundle["evidence"]})
+            preview = {"story": result["story"], "evidence": bundle["evidence"]}
+            if body.career_question:
+                answer = await self.career_preview(body.career_question, chart, body.profile,
+                                                   direct_question=body.career_question.focus is None)
+                preview["career_answer"] = answer["story"]["summary"]
+                preview["evidence"].update(answer["evidence"])
+            values["preview"] = encoded(preview)
         self.update(row["id"], expected_lease=lease, **values)
 
     def record_progress(self, report_id, lease, updates):
@@ -242,9 +299,16 @@ class LifeReports:
     def public(self, row):
         body = json.loads(row["input"])
         language = body["profile"]["language"]
+        career = body.get("career")
+        labels = CAREER_COPY[language] if career else None
         chart = json.loads(row["chart"])
         records = json.loads(row["chapters"])
         preview = json.loads(row["preview"]) if row["preview"] else None
+        title = "人生报告" if language == "zh" else "รายงานชีวิต"
+        version = VERSION
+        if career:
+            title = preview["story"].get("title", labels["title"]) if preview else labels["title"]
+            version = preview.get("version", "career-decision-1") if preview else CAREER_VERSION
         marks = json.loads(row.get("generation_progress", "{}"))
         preview_sections = [{"key": key, "percent": 100 if preview else min(99, marks.get(key, 0))}
                             for key in ("preview_summary", "preview_strength", "preview_decisions", "preview_relationships")]
@@ -255,33 +319,46 @@ class LifeReports:
             {"key": "annual", "percent": parts["annual"]},
             {"key": "plan", "percent": 100 if row["plan"] else min(99, marks.get("plan", 0))},
         ]
+        completed = sum(key in records for key in ("work", "money", "annual")) + ("love" in records and "family" in records) + bool(row["plan"])
+        chapter_keys = CHAPTERS
+        if career:
+            sections = [{"key": "work", "percent": parts["work"]}]
+            completed = int("work" in records)
+            chapter_keys = ("work",)
+        titles = [labels["chapter"]] if labels else TITLES[language]
+        questions = [list(labels["paid_titles"])] if labels else QUESTIONS[language]
         percent = int(sum(section["percent"] for section in sections) / len(sections))
         percent = min(percent, 100 if row["full_state"] == "ready" else 99)
         result = {
-            "id": row["id"], "version": VERSION, "title": "人生报告" if language == "zh" else "รายงานชีวิต",
+            "id": row["id"], "version": version, "title": title,
             "input": body, "created_at": stamp(row["created"]), "location": chart["location"],
             "method": {"name": "Thai Suriyayatra", "house_system": "whole-sign", "version": thai.ENGINE_VERSION},
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
                               "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
-            "price": {"amount": 30000, "currency": "CNY", "display": "¥300", "mode": "direct"},
+            "price": {"amount": 9900, "currency": "THB", "display": "฿99", "mode": "direct"} if career
+                     else {"amount": 30000, "currency": "CNY", "display": "¥300", "mode": "direct"},
             "preview_state": row["preview_state"], "access": "full" if row["unlocked"] else "preview",
-            "full_state": row["full_state"], "progress": {"completed": sum(key in records for key in ("work", "money", "annual")) + ("love" in records and "family" in records) + bool(row["plan"]), "total": 5},
+            "full_state": row["full_state"], "progress": {"completed": completed, "total": len(sections)},
             "generation_progress": {"percent": percent, "sections": sections},
             "preview_generation_progress": {"percent": int(sum(section["percent"] for section in preview_sections) / 4), "sections": preview_sections},
             "feedback": row["feedback"],
-            "catalog": [{"key": key, "title": TITLES[language][index], "questions": QUESTIONS[language][index],
-                         "houses": list(HOUSES[key]), "ready": key in records} for index, key in enumerate(CHAPTERS)],
+            "catalog": [{"key": key, "title": titles[index], "questions": questions[index],
+                         "houses": list(HOUSES[key]), "ready": key in records} for index, key in enumerate(chapter_keys)],
             "preview": {"summary": public_point(preview["story"]["summary"], preview["evidence"], language),
                         "traits": [public_point(item, preview["evidence"], language) for item in preview["story"]["traits"]]} if preview else None,
             "chapters": [], "plan": None,
         }
+        if career:
+            result["reference_period"] = {"start": career["start"], "end": (date.fromisoformat(career["start"]) + timedelta(days=29)).isoformat()}
+        if preview and "career_answer" in preview:
+            result["preview"]["career_answer"] = public_point(preview["career_answer"], preview["evidence"], language)
         if row["unlocked"]:
-            for index, key in enumerate(CHAPTERS):
+            for index, key in enumerate(chapter_keys):
                 if key not in records:
                     continue
                 record = records[key]
                 story, facts = record["story"], record["evidence"]
-                result["chapters"].append({"key": key, "title": TITLES[language][index],
+                result["chapters"].append({"key": key, "title": titles[index],
                     "summary": public_point(story["summary"], facts, language),
                     **{kind: [public_point(item, facts, language) for item in story[kind]] for kind in ("insights", "watchpoints", "actions")}})
             if row["plan"]:
@@ -333,7 +410,7 @@ class LifeReports:
             cursor = db.execute("UPDATE life_reports SET full_state='generating',lease=?,lease_until=? "
                                 "WHERE id=? AND owner=? AND lease_until<? AND full_state<>'ready'", (lease, time.time() + self.lease_seconds, report_id, owner, time.time()))
         if cursor.rowcount:
-            if self.writer.enabled and not self.writer.reserve_run(owner, network):
+            if not json.loads(row["input"]).get("career") and self.writer.enabled and not self.writer.reserve_run(owner, network):
                 self.update(report_id, expected_lease=lease, full_state="limited", lease="", lease_until=0)
                 return
             task = asyncio.create_task(self.complete(report_id, owner, network, lease))
@@ -346,6 +423,12 @@ class LifeReports:
         try:
             row = self.row(report_id, owner)
             body = LifeInput.model_validate_json(row["input"])
+            if body.career:
+                chapter = career_report_content(body.career.stage, json.loads(row["preview"])["windows"],
+                                                body.profile.language, estimated=not body.profile.birth_time, full=True)
+                self.update(report_id, expected_lease=lease, chapters=encoded({"work": chapter}),
+                            full_state="ready", lease="", lease_until=0)
+                return
             chart, preview = json.loads(row["chart"]), json.loads(row["preview"])["story"]
             # Carry the preview's meaning without leaking its citations into another topic.
             preview_context = {"summary": preview["summary"]["text"],

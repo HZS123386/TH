@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowRight, BookOpen, Check, Download, LoaderCircle, LockKeyhole, Printer, Sparkles } from "lucide-react";
 import { ApiError, reportHtml, ui, type Language } from "../lib/reading";
-import { initialGenerationProgress, isLifeReport, lifeApi, lifeCopy, lifeReportPollInterval, unlockLifeReport, type Feedback, type GenerationProgress, type LifeReport } from "../lib/lifeReport";
-import { reportContent } from "../lib/reportContent";
+import { initialGenerationProgress, isLifeReport, lifeApi, lifeLabels, lifeReportPollInterval, unlockLifeReport, type Feedback, type GenerationProgress, type LifeReport } from "../lib/lifeReport";
+import { reportContent, reportReference } from "../lib/reportContent";
 import { saveReportPdf } from "../lib/reportPdf";
 import { EvidenceDetails } from "./EvidenceDetails";
 import { PaidReportSections } from "./PaidReportSections";
@@ -36,7 +36,9 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
   const mounted = useRef(true);
   const requests = useRef(new Set<AbortController>());
   const language = report.input.profile.language;
-  const c = lifeCopy[language];
+  const c = lifeLabels(report);
+  const career = !!report.input.career;
+  const Basics = career ? "details" : "div";
   const full = report.access === "full";
   const ready = report.full_state === "ready";
   const fullPercent = ready ? 100 : Math.min(99, report.generation_progress?.percent ?? Math.floor(report.progress.completed / report.progress.total * 100));
@@ -170,26 +172,37 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
     <section className="personal-report life-report -mx-2 mt-7 rounded-2xl border border-solid border-gold/35 bg-night text-cream" data-testid="life-report">
       <header id="life-section-basics" tabIndex={-1} className="life-report-cover rounded-t-2xl border-0 border-b border-solid border-gold/20 px-5 pb-6 pt-7">
         <div className="flex items-center justify-between gap-3 text-[10px] text-gold"><span className="tracking-[0.15em]">ASTRO · AI</span><span>{full ? c.fullVersion : c.preview}</span></div>
-        <Sparkles className="mb-3 mt-6 text-gold" size={27} strokeWidth={1.2} aria-hidden="true" />
-        <h2 id="life-report-title" tabIndex={-1} className="text-[30px] font-medium leading-tight tracking-wide">{c.title}</h2>
+        {!career && <Sparkles className="mb-3 mt-6 text-gold" size={27} strokeWidth={1.2} aria-hidden="true" />}
+        <h2 id="life-report-title" tabIndex={-1} className={`text-[30px] font-medium leading-tight tracking-wide ${career ? "mt-5" : ""}`}>{c.title}</h2>
         <p className="mt-3 text-xs leading-6 text-lavender">{c.subtitle}</p>
-        <h3 className="mt-6 text-sm font-semibold text-gold">{sections[0].title}</h3>
+        <Basics className="mt-5">
+        {career
+          ? <summary className="cursor-pointer text-xs text-gold">{sections[0].title} · {reportReference(report, c)}</summary>
+          : <h3 className="text-sm font-semibold text-gold">{sections[0].title}</h3>}
         <dl className="mb-0 mt-3 grid gap-3 border-0 border-t border-solid border-gold/20 pt-4 text-[10px] leading-5">
           <div><dt className="text-gold">{c.name}</dt><dd className="m-0 mt-1 text-cream">{report.input.profile.display_name || c.defaultName}</dd></div>
           <div><dt className="text-gold">{c.birth}</dt><dd className="m-0 mt-1 text-cream">{report.input.profile.birth_date} · {report.input.profile.birth_time || c.timeUnknown}<br />{report.input.profile.birthplace} · {report.input.profile.timezone}</dd></div>
           <div className="flex flex-wrap gap-x-5 gap-y-2"><div><dt className="text-lavender">{c.number}</dt><dd className="m-0 font-mono text-cream">{report.id.slice(0, 12).toUpperCase()}</dd></div><div><dt className="text-lavender">{c.created}</dt><dd className="m-0 text-cream">{new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "th-TH", { dateStyle: "medium", calendar: "gregory" }).format(new Date(report.created_at))}</dd></div></div>
-          <div><dt className="text-lavender">{c.method}</dt><dd className="m-0 text-cream">{c.methodValue} · {report.input.year}</dd></div>
-          <div><dt className="text-lavender">{c.timeRange}</dt><dd className="m-0 text-cream">{report.input.year} · {c.yearReference}</dd></div>
+          <div><dt className="text-lavender">{c.method}</dt><dd className="m-0 text-cream">{c.methodValue}{!career && ` · ${report.input.year}`}</dd></div>
+          <div><dt className="text-lavender">{c.timeRange}</dt><dd className="m-0 text-cream">{reportReference(report, c)}</dd></div>
         </dl>
         {!report.input.profile.birth_time && <p className="mt-4 rounded-lg border border-solid border-gold/25 bg-gold/5 p-3 text-[11px] leading-6 text-lavender" data-testid="report-time-note">{ui[language].timeNote}</p>}
+        </Basics>
       </header>
 
       {!preview && <div className="p-5"><p role="status" className="text-sm leading-7 text-lavender">{c.previewStates[report.preview_state]}</p><button type="button" className="primary mt-4" disabled={previewBusy} onClick={onRetryPreview}>{c.retryPreview}</button></div>}
       {preview && <>
         <div className="px-5 py-6">
           <p className="text-[10px] tracking-widest text-gold">{c.preview}</p>
+          {preview.career_answer && c.careerQuestionTitle && <article className="my-4 rounded-xl border border-solid border-gold/35 bg-gold/5 p-4">
+            <h3 className="m-0 text-base font-semibold text-cream">{c.careerQuestionTitle}</h3>
+            <p className="mb-0 mt-2 text-sm leading-7 text-cream">{preview.career_answer.text}</p>
+            <EvidenceDetails evidence={preview.career_answer.evidence} language={language} />
+          </article>}
           <h3 id="life-section-summary" tabIndex={-1} className="mb-3 mt-2 scroll-mt-6 text-lg font-medium">{sections[1].title}</h3>
-          <p className="text-[18px] leading-[1.9] text-cream">{preview.summary.text}</p>
+          {report.input.user_question && <h4 className="mb-2 mt-0 break-words text-base font-semibold text-gold">{report.input.user_question}</h4>}
+          <p className={`text-[18px] leading-[1.9] text-cream ${career ? "rounded-xl border border-solid border-gold/35 bg-gold/5 p-4" : ""}`}>{preview.summary.text}</p>
+          {career && preview.summary.evidence[0] && <p className="mt-3 text-xs text-gold">{preview.summary.evidence[0].title}</p>}
           <EvidenceDetails evidence={preview.summary.evidence} language={language} />
           <h3 id="life-section-traits" tabIndex={-1} className="mb-5 mt-8 scroll-mt-6 text-base font-semibold text-gold">{sections[2].title}</h3>
           <div className="space-y-6" data-testid="life-free-traits">{preview.traits.map((item, index) => <article key={item.key} className="border-0 border-t border-solid border-gold/20 pt-5">
@@ -209,7 +222,7 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
 
         {!full && <div id="life-unlock-offer" ref={offer} tabIndex={-1} className="life-unlock-offer mx-3 mb-5 rounded-2xl border border-solid border-gold/50 p-5 text-center" data-testid="life-unlock-offer">
           <BookOpen className="mx-auto text-gold" size={27} strokeWidth={1.4} /><h3 className="mb-3 mt-4 text-xl font-medium leading-8 text-cream">{c.offerTitle}</h3><p className="text-xs leading-7 text-lavender">{c.offerText}</p><ul className="my-5 grid list-none grid-cols-2 gap-3 p-0 text-left text-[11px] leading-5 text-cream">{c.benefits.map(text => <li key={text} className="flex items-start gap-2"><Check size={13} className="mt-0.5 shrink-0 text-gold" />{text}</li>)}</ul>
-          <p className="text-[32px] font-semibold text-gold">¥300 <span className="text-[10px] font-normal text-lavender">CNY</span></p><p className="mt-2 text-[10px] leading-5 text-lavender">{c.once}</p>
+          <p className="text-[32px] font-semibold text-gold">{report.price.display} <span className="text-[10px] font-normal text-lavender">{report.price.currency}</span></p><p className="mt-2 text-[10px] leading-5 text-lavender">{c.once}</p>
           <p role="status" className="mt-3 text-xs leading-6 text-gold" data-testid="life-background-status">{ready ? c.backgroundReady : report.full_state === "generating" ? c.backgroundGenerating : c.backgroundRetry}</p>
           <button className="primary" type="button" disabled={opening} onClick={() => void unlock()} data-testid="life-unlock-button">{opening ? <LoaderCircle size={17} className="animate-spin" /> : <LockKeyhole size={17} />}{opening ? c.unlocking : c.unlock}</button><p className="mt-3 text-[10px] leading-5 text-lavender">{c.direct}</p>
         </div>}
@@ -224,7 +237,7 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
       </>}
       {!!error && <div className="mx-5 mb-5"><p role="alert" className="text-xs leading-6 text-[#f2a6af]">{error}</p>{full && <button type="button" className="report-secondary mt-3" disabled={opening} onClick={() => void unlock()}>{c.retry}</button>}</div>}
       {preview && !full && offerSeen && <div className="report-unlock-bar"><button type="button" className="primary" disabled={opening} onClick={() => void unlock()}><LockKeyhole size={17} />{opening ? c.unlocking : c.unlock}<ArrowRight size={16} className="ml-auto shrink-0" /></button></div>}
-      {generation && <ReportGenerationDialog language={language} progress={generation} error={generationError} onCancel={cancelGeneration}
+      {generation && <ReportGenerationDialog career={career} language={language} progress={generation} error={generationError} onCancel={cancelGeneration}
         onRetry={() => void unlock()} onComplete={readyReport ? showFullReport : undefined} />}
     </section>
   );

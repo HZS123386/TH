@@ -1,4 +1,4 @@
-import type { LifePoint, LifeReport, LifeSummary } from "./lifeReport";
+import type { LifeLabels, LifePoint, LifeReport, LifeSummary } from "./lifeReport";
 import type { Reading } from "./reading";
 
 export type ReportSectionKey = "basics" | "summary" | "traits" | "work" | "money" | "relationships" | "recent" | "advice";
@@ -48,6 +48,18 @@ export function reportContent(report: LifeReport): ReportSection[] {
   const language = report.input.profile.language;
   const labels = copy[language];
   const chapters = new Map((report.access === "full" ? report.chapters : []).map(chapter => [chapter.key, chapter]));
+  if (report.input.career) {
+    const work = chapters.get("work");
+    const title = report.catalog[0].title;
+    const sections: ReportSection[] = [
+      { key: "basics", title: labels.sections[0][1], description: labels.sections[0][2], ready: true, paid: false, summaries: [], groups: [] },
+      { key: "summary", title: language === "zh" ? "眼下先怎么做" : "ตอนนี้ควรทำอะไรก่อน", description: language === "zh" ? "近期行运的简要回答" : "คำอ่านดาวจรช่วงนี้", ready: !!report.preview, paid: false, summaries: [], groups: [] },
+      { key: "traits", title: language === "zh" ? "留下、换走与眼下的第一步" : "อยู่ต่อ เปลี่ยนงาน และสิ่งที่เริ่มทำได้ตอนนี้", description: language === "zh" ? "两条路各值得留意什么" : "สิ่งที่ควรใส่ใจในแต่ละทาง", ready: !!report.preview, paid: false, summaries: [], groups: [] },
+      { key: "work", title, description: report.catalog[0].questions.join(" · "), ready: !!work, paid: true,
+        summaries: [], groups: work ? [{ title: language === "zh" ? "日期与具体行动" : "ช่วงเวลาและสิ่งที่ทำได้", entries: work.insights.map(point => ({ point })) }] : [] },
+    ];
+    return sections;
+  }
   const groupFor = (reading: Exclude<Reading, "overview">): ReportGroup[] => {
     const chapter = chapters.get(reading);
     if (!chapter) return [];
@@ -82,4 +94,9 @@ export function reportContent(report: LifeReport): ReportSection[] {
     if (key === "advice") section.ready = report.access === "full" && !!report.plan;
     return section;
   });
+}
+
+export function reportReference(report: LifeReport, labels: LifeLabels): string {
+  const period = report.reference_period;
+  return period ? `${period.start} – ${period.end}` : `${report.input.year} · ${labels.yearReference}`;
 }

@@ -18,7 +18,7 @@ import {
   type Language,
   type Place,
 } from "../lib/reading";
-import { generateLifeReport, initialPreviewProgress, lifeCopy, lifeReportUrl, lifeSignature, type GenerationProgress, type LifeInput, type LifeReport } from "../lib/lifeReport";
+import { careerCopy, generateLifeReport, initialPreviewProgress, lifeCopy, lifeReportUrl, lifeSignature, type GenerationProgress, type LifeInput, type LifeReport } from "../lib/lifeReport";
 import { ReportGenerationDialog } from "./ReportGenerationDialog";
 import { ReportHistory } from "./ReportHistory";
 import { BirthplaceFields } from "./BirthplaceFields";
@@ -33,20 +33,24 @@ const icons = {
   family: House,
 };
 
-export function ThaiReadingExperience({
-  language,
-  onLanguageChange,
-}: {
-  language: Language;
-  onLanguageChange: (language: Language) => void;
-}) {
+const careerQuestionStages = ["unspecified", "considering", "searching", "offer"] as const;
+const questionRotationMs = 3800;
+
+export function ThaiReadingExperience({ language }: { language: Language }) {
   const c = ui[language],
     b = readingCopy(language);
   const life = lifeCopy[language];
+  const decision = careerCopy[language];
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [unknown, setUnknown] = useState(false);
   const [place, setPlace] = useState<Place | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<(typeof careerQuestionStages)[number]>();
+  const [writingQuestion, setWritingQuestion] = useState(false);
+  const [questionText, setQuestionText] = useState("");
+  const questionList = useRef<HTMLDivElement>(null);
+  const rotationDirection = useRef(1);
+  const lastQuestionInteraction = useRef(0);
   const year = new Date().getFullYear();
   const [generation, setGeneration] = useState<GenerationProgress | null>(null);
   const [readyReport, setReadyReport] = useState<LifeReport | null>(null);
@@ -54,8 +58,14 @@ export function ThaiReadingExperience({
   const [error, setError] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [animationPrepared, setAnimationPrepared] = useState(false);
+  const dialogOpen = generation !== null || historyOpen;
   const request = useRef<AbortController | null>(null);
   const timezone = place?.timeZone || "Asia/Bangkok";
+  const customQuestion = writingQuestion ? questionText.trim() : "";
+  const careerQuestion = !writingQuestion && selectedQuestion && {
+    stage: selectedQuestion,
+    start: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date()),
+  };
   const input: LifeInput = {
     profile: {
       display_name: "",
@@ -71,7 +81,9 @@ export function ThaiReadingExperience({
       latitude: null,
       longitude: null,
     },
-    year,
+    year: careerQuestion ? Number(careerQuestion.start.slice(0, 4)) : year,
+    ...(careerQuestion ? { career_question: careerQuestion } : {}),
+    ...(customQuestion ? { user_question: customQuestion } : {}),
   };
   const signature = lifeSignature(input);
   const latest = useRef(signature);
@@ -93,10 +105,58 @@ export function ThaiReadingExperience({
     return () => request.current?.abort();
   }, [signature]);
 
+  useEffect(() => {
+    const list = questionList.current;
+    if (!list || selectedQuestion || writingQuestion || dialogOpen) return;
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const canHover = window.matchMedia("(hover: hover)");
+    let timer: number | undefined;
+    let fades: Animation[] = [];
+    const observer = new IntersectionObserver(([entry]) => {
+      window.clearInterval(timer);
+      if (entry.intersectionRatio < 0.8) return;
+      timer = window.setInterval(() => {
+        const focused = document.activeElement;
+        if (
+          document.hidden || reducedMotion.matches ||
+          (canHover.matches && list.matches(":hover")) ||
+          (focused?.matches(":focus-visible") && list.contains(focused)) ||
+          Date.now() - lastQuestionInteraction.current < questionRotationMs
+        ) return;
+
+        const slides = Array.from(list.children) as HTMLElement[];
+        const visible = slides.findIndex(slide => slide.offsetTop >= list.scrollTop - 1);
+        const index = visible < 0 ? slides.length - 1 : visible;
+        if (index === 0) rotationDirection.current = 1;
+        if (index === slides.length - 1) rotationDirection.current = -1;
+        // Reverse at the ends so the scroll moves only one question at a time.
+        const next = index + rotationDirection.current;
+        const fade = { duration: 360, easing: "ease-out" };
+        fades = [
+          slides[index].animate([{ opacity: 1 }, { opacity: 0.25 }], fade),
+          slides[next].animate([{ opacity: 0.25 }, { opacity: 1 }], fade),
+        ];
+        list.scrollTo({ top: slides[next].offsetTop, behavior: "smooth" });
+      }, questionRotationMs);
+    }, { threshold: 0.8 });
+    observer.observe(list);
+    return () => {
+      observer.disconnect();
+      window.clearInterval(timer);
+      fades.forEach(animation => animation.cancel());
+    };
+  }, [selectedQuestion, writingQuestion, dialogOpen]);
+
+  function markQuestionInteraction() {
+    lastQuestionInteraction.current = Date.now();
+  }
+
   function fail(message: string, field: string) {
     setError(message);
     document.getElementById(field)?.focus();
   }
+
   async function generate(event?: FormEvent) {
     event?.preventDefault();
     if (!today) return fail(c.invalidTimezone, "birth-country");
@@ -199,6 +259,49 @@ export function ThaiReadingExperience({
           </p>
         )}
         <BirthplaceFields language={language} value={place} onChange={setPlace} />
+        <div className="mb-1 mt-4 px-3">
+          <h3 className="m-0 text-xs font-semibold leading-5 text-gold">{decision.customQuestion}</h3>
+          <p id="career-question-purpose" className="m-0 text-[11px] leading-4 text-lavender">{decision.questionPurpose}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {!writingQuestion && (
+            <div ref={questionList} className="career-question-list relative min-w-0 flex-1"
+              tabIndex={0} role="group" aria-label={decision.chooseQuestion} aria-describedby="career-question-purpose career-question-hint"
+              onPointerDown={markQuestionInteraction} onPointerCancel={markQuestionInteraction} onWheel={markQuestionInteraction}>
+              {careerQuestionStages.map(stage => {
+                const situation = decision.situations[stage];
+                const selected = selectedQuestion === stage;
+                return <button key={stage} type="button" aria-pressed={selected}
+                  className="career-question-slide flex w-full items-center gap-2 bg-transparent px-3 py-1 text-left text-xs leading-4 text-cream aria-pressed:text-gold"
+                  onClick={event => {
+                    questionList.current?.scrollTo({ top: event.currentTarget.offsetTop, behavior: "instant" });
+                    setSelectedQuestion(current => current === stage ? undefined : stage);
+                  }}>
+                  <span className="min-w-0 flex-1">
+                    <span className="mr-2 text-[10px] text-gold">{situation.label}</span>
+                    <span className="font-semibold">{situation.question}</span>
+                  </span>
+                  {selected && <span aria-hidden="true" className="shrink-0 text-[10px] text-gold">{decision.questionSelected}</span>}
+                </button>;
+              })}
+            </div>
+          )}
+          <div className={writingQuestion ? "min-w-0 flex-1" : "w-24 shrink-0 pr-3"}>
+            <input type="text" className={writingQuestion ? "career-question-input" : "career-question-input career-question-input-compact"}
+              aria-label={decision.customQuestion}
+              aria-describedby="career-question-purpose"
+              placeholder={writingQuestion ? decision.customQuestion : decision.writeQuestion}
+              maxLength={120} autoComplete="off" value={writingQuestion ? questionText : ""}
+              onFocus={() => {
+                setWritingQuestion(true);
+                setSelectedQuestion(undefined);
+              }}
+              onChange={event => setQuestionText(event.target.value.replace(/[\x00-\x1f\x7f]/g, " "))} />
+          </div>
+          {writingQuestion && <button type="button" className="min-h-11 shrink-0 bg-transparent px-2 text-xs text-gold"
+            onClick={() => setWritingQuestion(false)}>{decision.browseQuestions}</button>}
+        </div>
+        <p id="career-question-hint" className="sr-only">{decision.questionHint}</p>
         <p className="error" id="form-error" role="alert" hidden={!error}>
           {error}
         </p>

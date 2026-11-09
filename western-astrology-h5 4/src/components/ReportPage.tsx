@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, LoaderCircle } from "lucide-react";
-import { generateLifeReport, generationCopy, initialPreviewProgress, isLifeReport, lifeApi, lifeCopy, type GenerationProgress, type LifeReport } from "../lib/lifeReport";
+import { generateLifeReport, generationCopy, initialPreviewProgress, isLifeReport, lifeApi, lifeCopy, lifeLabels, lifeReportUrl, type GenerationProgress, type LifeReport } from "../lib/lifeReport";
 import type { Language } from "../lib/reading";
 import { LifeReportView } from "./LifeReportView";
 import { ReportGenerationDialog } from "./ReportGenerationDialog";
@@ -20,11 +20,12 @@ export function ReportPage() {
   const c = lifeCopy[language], flow = generationCopy[language];
   const landing = new URL("./", document.baseURI);
   landing.searchParams.set("lang", language);
+  if (report?.input.career) landing.searchParams.set("topic", "career");
   landing.hash = "birth-section";
 
   function display(value: LifeReport) {
     setReport(value); setLanguage(value.input.profile.language);
-    document.title = `${value.title} · ASTRO AI`;
+    document.title = `${value.input.career ? lifeLabels(value).title : value.title} · ASTRO AI`;
   }
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   async function load() {
@@ -64,6 +65,15 @@ export function ReportPage() {
     request.current?.abort(); setGeneration(null); setReadyReport(null); setLoading(false);
     if (generationError) window.location.assign(landing.href);
   }
+
+  function completePreview() {
+    if (!readyReport) return;
+    if (readyReport.id !== identifier) {
+      window.location.assign(lifeReportUrl(readyReport));
+      return;
+    }
+    display(readyReport); setGeneration(null); setReadyReport(null);
+  }
   return <div className="phone" data-testid="report-page">
     <header className="topbar">
       <a className="brand" href={landing.href} aria-label="Astro AI"><span className="brand-star" aria-hidden="true">✧</span>ASTRO<span className="brand-dot">·</span>AI</a>
@@ -74,8 +84,10 @@ export function ReportPage() {
       {!!error && <div className="my-10 rounded-xl border border-solid border-gold/30 bg-plum/60 p-5"><p role="alert" className="text-sm leading-7 text-cream">{error}</p><button type="button" className="report-secondary mt-4" onClick={() => void load()}>{flow.retry}</button></div>}
       {report && <LifeReportView key={report.id} initial={report} previewBusy={loading} onRetryPreview={() => void retryPreview()} />}
     </main>
-    <footer>{language === "zh" ? "解读由 AI 生成，仅供娱乐与自我探索" : "คำอ่านสร้างด้วย AI เพื่อความบันเทิงและสำรวจตัวเอง"}</footer>
-    {generation && <ReportGenerationDialog kind="preview" language={language} progress={generation} error={generationError} onCancel={cancelPreview}
-      onRetry={() => void retryPreview()} onComplete={readyReport ? () => { display(readyReport); setGeneration(null); setReadyReport(null); } : undefined} />}
+    <footer>{report?.input.career
+      ? language === "zh" ? "依据泰式排盘与行运规则解读，仅供娱乐与自我探索" : "อ่านจากดวงไทยและหลักดาวจร เพื่อความบันเทิงและสำรวจตัวเอง"
+      : language === "zh" ? "解读由 AI 生成，仅供娱乐与自我探索" : "คำอ่านสร้างด้วย AI เพื่อความบันเทิงและสำรวจตัวเอง"}</footer>
+    {generation && <ReportGenerationDialog kind="preview" career={!!report?.input.career} language={language} progress={generation} error={generationError} onCancel={cancelPreview}
+      onRetry={() => void retryPreview()} onComplete={readyReport ? completePreview : undefined} />}
   </div>;
 }
