@@ -1,0 +1,40 @@
+WANJAI Thai integration notices
+
+thai-astrology 0.3.2, Copyright (c) 2026 Kongesque, MIT.
+Pinned npm gitHead: 445577e7cbc8c09ddc98f2ec016cd3d1e32940fb.
+Source: https://github.com/kongesque/thai-astrology
+Full MIT terms: thai-astrology-MIT.txt in this directory.
+
+ThaiRasiWheel.tsx adapts the geometry, sign orientation and symbol positions
+from scripts/render-readme-chart.cjs at the pinned commit. Adaptations: React
+SVG rendering, responsive square viewBox, WANJAI colors, live account data,
+divisional-chart selector, text fitting and accessibility labels.
+
+Location names, WGS84 coordinates and timezone identifiers are adapted by the
+upstream project from GeoNames: https://www.geonames.org/
+GeoNames data is licensed CC BY 4.0:
+https://creativecommons.org/licenses/by/4.0/
+Upstream data source and modifications:
+https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/SOURCES.md
+WANJAI uses the packaged records, filters the search UI and permits user-supplied
+coordinates; a provincial-seat point does not identify a specific hospital.
+The landing page's birth-province directory adds 34 Chinese provincial-level
+options and 77 Thai provincial-level options in backend/content/birth-regions.json.
+Names and search aliases are adapted from the GeoNames country and alternate-name
+extracts retrieved on 2026-11-08. Chinese/Thai display translations were completed
+editorially. Coordinates represent provincial capitals/seats; the packaged Thai
+seat coordinates are retained. These adapted data remain under CC BY 4.0.
+scripts/build-birth-locations.py additionally indexes the complete CN and TH
+country extracts and localized alternate names for offline city recognition.
+Historical/abandoned settlements are excluded; packaged starter coordinates
+are retained for existing IDs. The generated data/birth-locations.sqlite3
+contains adapted GeoNames data under the same CC BY 4.0 terms.
+
+The RoxyAPI/ai-spiritual-companion repository was evaluated, not copied or
+installed. Its Supabase, pgvector, Next.js and Roxy MCP stack is not included.
+WANJAI's Thai prompts and tool routing are authored in this project.
+
+Validation fixtures under scripts/fixtures/thai are numerical facts attributed
+to the pinned upstream MIT project, USNO and IANA. Four USNO JSON responses
+under reports/thai-evidence were retrieved independently on 2026-11-05 using
+synthetic public dates and coordinates; they contain no user birth records.

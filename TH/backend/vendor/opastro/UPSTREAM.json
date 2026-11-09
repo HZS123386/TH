@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/dakidarts/opastro",
+  "commit": "49276a01831060283f7a991218287e4bc72538e0",
+  "version": "0.1.9",
+  "license": "MIT",
+  "source": "src/horoscope_engine/aggregation.py",
+  "source_sha256": "858dd32347c10cda6dcaa249ba24cb6398b5433cb7e32d033372f8df1434b99d",
+  "symbols": [
+    "BODY_IMPORTANCE",
+    "SECTION_BIAS_BY_BODY",
+    "_cluster_window_days",
+    "_dedupe_period_events",
+    "_event_key",
+    "_event_priority",
+    "_event_rank",
+    "_event_signature",
+    "_section_bias"
+  ],
+  "changes": "Extracted unchanged pure functions/constants; local minimal dataclass models; Thai period sampling/ranking adapter lives outside vendor; no ephemeris or renderer dependency."
+}

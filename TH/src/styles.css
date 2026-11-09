@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --c-accent: 141 58 49;
+    --c-primary: 141 58 49;
+    --c-surface: 243 232 224;
+    --c-canvas: 250 248 244;
+    --c-panel: 255 254 250;
+    --c-ink: 56 56 47;
+    --c-muted: 119 121 105;
+    --c-line: 232 227 215;
+    --c-gold: 167 137 79;
+  }
+  body {
+    @apply m-0 min-h-screen bg-[#e9e6df] font-sans text-ink antialiased;
+    color-scheme: light;
+  }
+  button,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    @apply outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent;
+  }
+  button {
+    @apply transition-colors disabled:cursor-not-allowed disabled:opacity-45;
+  }
+  ::selection {
+    @apply bg-accent/15;
+  }
+}
+@layer components {
+  .jy-card {
+    @apply rounded-[20px] border border-[#e3d8c8] bg-[#fffdf8] p-5;
+  }
+  .jy-primary {
+    @apply inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-primary px-5 py-3 text-center text-[15px] font-medium leading-6 text-[#fff9f1] disabled:opacity-45;
+  }
+  .jy-outline {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#d8c7ac] bg-transparent px-4 py-2.5 text-sm leading-6 text-[#806447];
+  }
+  .jy-icon {
+    @apply inline-flex h-9 w-8 items-center justify-center rounded-xl text-[#867358] hover:bg-[#eae1d1];
+  }
+  .jy-title {
+    @apply text-[23px] font-semibold leading-[1.6] tracking-[-0.3px];
+  }
+  .jy-kicker {
+    @apply text-[11px] leading-6 tracking-wide text-[#9b8058];
+  }
+  .jy-copy {
+    @apply text-sm leading-7 text-[#78674f];
+  }
+  .jy-link {
+    @apply flex min-h-12 w-full items-center justify-between gap-3 border-b border-line py-3 text-left text-sm last:border-0;
+  }
+  .jy-chat {
+    height: calc(100dvh - 142px - env(safe-area-inset-bottom));
+    min-height: 300px;
+  }
+  .jy-composer {
+    @apply flex min-h-[54px] items-center gap-2 rounded-2xl border border-[#ded0ba] bg-panel px-3 py-1;
+  }
+  .jy-chat-input {
+    @apply block h-9 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-base leading-6 shadow-none outline-none;
+  }
+  .jy-chat-input:focus,
+  .jy-chat-input:focus-visible {
+    @apply border-0 shadow-none outline-none ring-0;
+    outline: none;
+  }
+  .jy-app {
+    --c-canvas: 247 244 237;
+    --c-panel: 255 253 248;
+  }
+  .jy-app .btn-primary {
+    @apply min-h-11 rounded-xl;
+  }
+  .jy-app .panel {
+    @apply rounded-[20px] shadow-none;
+  }
+  .jy-app .font-display {
+    @apply leading-relaxed;
+  }
+  .jy-app .field {
+    @apply text-base;
+  }
+  .panel {
+    @apply rounded-2xl border border-line/80 bg-panel/90 shadow-soft;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-accent/30 bg-primary px-5 py-3 text-sm font-medium text-white hover:brightness-95;
+  }
+  .btn-quiet {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface hover:text-accent;
+  }
+  .field {
+    @apply w-full min-w-0 rounded-xl border border-line bg-panel px-3.5 py-3 text-sm text-ink placeholder:text-muted/70 focus:border-accent/70 focus:outline-none focus:ring-2 focus:ring-accent/10 disabled:bg-surface;
+  }
+  .label {
+    @apply mb-2 block text-sm font-medium;
+  }
+}
+.language-dialog::backdrop {
+  background: rgb(91 75 56 / 0.16);
+  backdrop-filter: blur(3px);
+}
+.mobile-tabbar {
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+summary::marker {
+  color: #b7975a;
+}
+.cosmic-hero {
+  background-image:
+    radial-gradient(ellipse at 90% 30%, rgb(119 58 174 / 0.3), transparent 56%),
+    linear-gradient(110deg, #28143f, #1c102f 70%);
+  box-shadow:
+    inset 0 1px 0 rgb(221 188 255 / 0.08),
+    0 12px 60px -40px #ad5af4;
+}
+.celestial-wheel {
+  filter: drop-shadow(0 0 5px rgb(179 108 242 / 0.3));
+}
+/* Scroll only the conversation on desktop; keep the document natural on mobile. */
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #5b3e78 transparent;
+}
+.wheel-column {
+  scrollbar-width: none;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.wheel-column::-webkit-scrollbar {
+  display: none;
+}
+.enter {
+  animation: enter 0.32s ease-out both;
+}
+.star-twinkle {
+  animation: star-twinkle 7s ease-in-out infinite;
+}
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.24;
+  }
+  50% {
+    opacity: 0.78;
+  }
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

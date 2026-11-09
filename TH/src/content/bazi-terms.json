@@ -1,0 +1,209 @@
+{
+  "stems": "甲乙丙丁戊己庚辛壬癸",
+  "branches": "子丑寅卯辰巳午未申酉戌亥",
+  "stemNames": {
+    "zh": ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"],
+    "en": ["Jia", "Yi", "Bing", "Ding", "Wu", "Ji", "Geng", "Xin", "Ren", "Gui"],
+    "vi": ["Giáp", "Ất", "Bính", "Đinh", "Mậu", "Kỷ", "Canh", "Tân", "Nhâm", "Quý"],
+    "th": [
+      "ไม้หยาง",
+      "ไม้หยิน",
+      "ไฟหยาง",
+      "ไฟหยิน",
+      "ดินหยาง",
+      "ดินหยิน",
+      "ทองหยาง",
+      "ทองหยิน",
+      "น้ำหยาง",
+      "น้ำหยิน"
+    ]
+  },
+  "branchNames": {
+    "zh": ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"],
+    "en": ["Zi", "Chou", "Yin", "Mao", "Chen", "Si", "Wu", "Wei", "Shen", "You", "Xu", "Hai"],
+    "vi": ["Tý", "Sửu", "Dần", "Mão", "Thìn", "Tỵ", "Ngọ", "Mùi", "Thân", "Dậu", "Tuất", "Hợi"],
+    "th": [
+      "ชวด",
+      "ฉลู",
+      "ขาล",
+      "เถาะ",
+      "มะโรง",
+      "มะเส็ง",
+      "มะเมีย",
+      "มะแม",
+      "วอก",
+      "ระกา",
+      "จอ",
+      "กุน"
+    ]
+  },
+  "elementNames": {
+    "zh": ["木", "火", "土", "金", "水"],
+    "en": ["Wood", "Fire", "Earth", "Metal", "Water"],
+    "th": ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"],
+    "vi": ["Mộc", "Hỏa", "Thổ", "Kim", "Thủy"]
+  },
+  "godIds": [
+    "friend",
+    "rob-wealth",
+    "eating-god",
+    "hurting-officer",
+    "direct-wealth",
+    "indirect-wealth",
+    "direct-officer",
+    "seven-killings",
+    "direct-resource",
+    "indirect-resource"
+  ],
+  "godNames": {
+    "zh": ["比肩", "劫财", "食神", "伤官", "正财", "偏财", "正官", "七杀", "正印", "偏印"],
+    "en": [
+      "Friend",
+      "Rob Wealth",
+      "Eating God",
+      "Hurting Officer",
+      "Direct Wealth",
+      "Indirect Wealth",
+      "Direct Officer",
+      "Seven Killings",
+      "Direct Resource",
+      "Indirect Resource"
+    ],
+    "vi": [
+      "Tỷ kiên",
+      "Kiếp tài",
+      "Thực thần",
+      "Thương quan",
+      "Chính tài",
+      "Thiên tài",
+      "Chính quan",
+      "Thất sát",
+      "Chính ấn",
+      "Thiên ấn"
+    ],
+    "th": [
+      "เพื่อนร่วมธาตุ",
+      "คู่แข่งร่วมธาตุ",
+      "ผลผลิตอ่อนโยน",
+      "การแสดงออกอิสระ",
+      "ทรัพย์ตรง",
+      "ทรัพย์แฝง",
+      "อำนาจตรง",
+      "อำนาจกดดัน",
+      "ผู้เกื้อหนุนตรง",
+      "ผู้เกื้อหนุนแฝง"
+    ]
+  },
+  "baziFactorNames": {
+    "zh": ["得令", "通根", "同类支持与耗泄"],
+    "en": ["Month command", "Rooting", "Support and expenditure"],
+    "th": ["กำลังจากเดือนเกิด", "รากในกิ่งดิน", "แรงหนุนและแรงใช้กำลัง"],
+    "vi": ["Đắc lệnh", "Thông căn", "Trợ lực và hao tiết"]
+  },
+  "verdicts": {
+    "zh": {
+      "very-weak": "极弱",
+      "weak": "偏弱",
+      "balanced": "平衡",
+      "strong": "偏强",
+      "very-strong": "极强"
+    },
+    "en": {
+      "very-weak": "Very weak",
+      "weak": "Weak",
+      "balanced": "Balanced",
+      "strong": "Strong",
+      "very-strong": "Very strong"
+    },
+    "th": {
+      "very-weak": "อ่อนมาก",
+      "weak": "อ่อน",
+      "balanced": "สมดุล",
+      "strong": "แข็ง",
+      "very-strong": "แข็งมาก"
+    },
+    "vi": {
+      "very-weak": "Rất yếu",
+      "weak": "Yếu",
+      "balanced": "Cân bằng",
+      "strong": "Mạnh",
+      "very-strong": "Rất mạnh"
+    }
+  },
+  "labels": {
+    "zh": [
+      "日主",
+      "规则分数",
+      "偏强",
+      "偏弱",
+      "有利五行",
+      "不利五行",
+      "起运年龄",
+      "干支",
+      "年龄",
+      "年份",
+      "十神",
+      "本命年"
+    ],
+    "en": [
+      "Day Master",
+      "Rule score",
+      "Strong",
+      "Weak",
+      "Favorable elements",
+      "Unfavorable elements",
+      "Starting age",
+      "Pillar",
+      "Age",
+      "Years",
+      "Ten God",
+      "Birth-animal return"
+    ],
+    "th": [
+      "ดิถี",
+      "คะแนนตามกฎ",
+      "แข็ง",
+      "อ่อน",
+      "ธาตุที่เกื้อหนุน",
+      "ธาตุที่ไม่เกื้อหนุน",
+      "อายุเริ่มรอบ",
+      "ก้านกิ่ง",
+      "อายุ",
+      "ปี",
+      "สิบเทพ",
+      "ปีนักษัตรเกิด"
+    ],
+    "vi": [
+      "Nhật chủ",
+      "Điểm quy tắc",
+      "Mạnh",
+      "Yếu",
+      "Ngũ hành thuận",
+      "Ngũ hành nghịch",
+      "Tuổi khởi vận",
+      "Can chi",
+      "Tuổi",
+      "Năm",
+      "Thập thần",
+      "Năm tuổi"
+    ]
+  },
+  "factLabels": {
+    "zh": {
+      "stemGods": "天干十神",
+      "hiddenGods": "藏干十神"
+    },
+    "en": {
+      "stemGods": "Stem Ten God",
+      "hiddenGods": "Hidden-stem Ten Gods"
+    },
+    "th": {
+      "stemGods": "สิบเทพจากก้านฟ้า",
+      "hiddenGods": "สิบเทพในก้านฟ้าแฝง"
+    },
+    "vi": {
+      "stemGods": "Thập thần thiên can",
+      "hiddenGods": "Thập thần tàng can"
+    }
+  }
+}

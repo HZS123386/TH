@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.venv/
+.env
+*.db
+*.db-*
+data/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+test-results/
+playwright-report/
+*.tsbuildinfo
+tmp/

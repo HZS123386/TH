@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.thai-reading {
+  overflow-wrap: anywhere;
+}
+html:has(.report-generation-dialog[open]) {
+  overflow: hidden;
+}
+.report-generation-dialog {
+  width: calc(100% - 24px);
+  max-width: 480px;
+  max-height: 94dvh;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow-x: hidden;
+  outline: none;
+}
+.report-generation-dialog::backdrop {
+  background: rgb(19 12 36 / 65%);
+  backdrop-filter: blur(4px);
+}
+.report-generation-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  mask-image:
+    linear-gradient(to right, transparent 1%, #0003 8%, #000d 17%, #000 24%, #000 76%, #000d 83%, #0003 92%, transparent 99%),
+    linear-gradient(to bottom, #000 76%, #000d 83%, #0003 92%, transparent 99%),
+    radial-gradient(ellipse 92% 105% at 50% 100%, #000 70%, #000c 77%, #0002 88%, transparent 94%);
+  mask-composite: intersect;
+}
+.report-generation-static {
+  aspect-ratio: 2 / 1;
+}
+.report-progress {
+  display: grid;
+  gap: 14px;
+  width: min(70%, 270px);
+  margin: 18px auto 0;
+}
+.report-progress-value {
+  justify-self: center;
+  min-width: 3.4em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgb(39 23 61 / 86%);
+  color: #ffe6b4;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.report-progress-track {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(39 23 61 / 72%);
+  box-shadow: 0 0 0 1px rgb(228 188 120 / 35%);
+}
+.report-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--report-progress-value, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ac7845, var(--gold), #fff1cd);
+  transition: width .02s linear;
+}
+.report-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: min(100%, 36px);
+  height: 7px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #e9ab5280 60%, #ffe3a8);
+  filter: blur(1px);
+}
+.report-progress-track::after {
+  content: '✦';
+  position: absolute;
+  top: 50%;
+  left: var(--report-progress-value, 0%);
+  transform: translate(-50%, -50%);
+  color: #fff4d1;
+  font: 25px/1 Georgia, serif;
+  text-shadow: 0 0 4px #ffdf9f, 0 0 10px #e3a448;
+  transition: left .02s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .report-progress-fill, .report-progress-track::after { transition: none; }
+}
+.thai-reading select,
+.thai-reading input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid #e4bc7840;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--cream);
+  background: var(--night);
+  font: inherit;
+  font-size: 12px;
+  color-scheme: dark;
+}
+.thai-reading select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.thai-reading button:disabled {
+  opacity: 0.6;
+}
+.thai-reading .theme-option {
+  border: 1px solid #e4bc7840;
+  border-radius: 14px;
+  background: radial-gradient(ellipse at 0 0, #3c2550, transparent 75%), #20152f;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.report-unlock-bar {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 426px;
+  padding: 8px;
+  border: 1px solid #e4bc7840;
+  border-radius: 16px;
+  background: #130c24ed;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 -8px 35px #08030c50;
+}
+.report-unlock-bar .primary {
+  margin: 0;
+  min-height: 52px;
+  font-size: 14px;
+}
+.phone:has(.report-unlock-bar) {
+  padding-bottom: 96px;
+}
+.personal-report {
+  scroll-margin-top: 20px;
+}
+.personal-report h2:focus,
+.personal-report h3:focus {
+  outline: none;
+}
+.personal-report :is(p, li) {
+  overflow-wrap: anywhere;
+}
+.life-report {
+  background: radial-gradient(ellipse at 100% 0, #3b245444, transparent 40%), #130c24;
+}
+.life-report-cover {
+  background: radial-gradient(circle at 87% 21%, #e4bc7859 1px, transparent 2px),
+    radial-gradient(circle at 79% 37%, #f0d5ff4d 1px, transparent 2px),
+    radial-gradient(ellipse at 0 0, #57376e70, transparent 65%),
+    linear-gradient(145deg, #2b1b3e, #140d23);
+}
+.life-catalog-card {
+  background: linear-gradient(145deg, #2c1c3d, #1b1229);
+}
+.life-unlock-offer {
+  background: radial-gradient(ellipse at 50% 0, #9b6b4226, transparent 65%),
+    linear-gradient(160deg, #32203e, #1c122b);
+}
+.report-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-solid border-gold/30 bg-transparent px-3 py-2 text-[10px] text-gold;
+  min-height: 36px;
+}
+.life-report :is(h2, h3, h4, article, section) {
+  overflow-wrap: anywhere;
+}
+.life-report progress {
+  border: 0;
+  border-radius: 4px;
+}
+.life-report progress::-webkit-progress-bar {
+  background: #352343;
+  border-radius: 4px;
+}
+.life-report progress::-webkit-progress-value {
+  background: #e4bc78;
+  border-radius: 4px;
+}
+@media (max-width: 360px) {
+  .report-unlock-bar .primary {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thai-reading * {
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

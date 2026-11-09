@@ -1,0 +1,370 @@
+{
+  "zh": {
+    "weekdays": ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
+    "reference": {
+      "ascendant": "上升星座为{{sign}}的你",
+      "sun-sign": "{{sign}}的你",
+      "sun-sign-range": "出生在{{sign}}交界附近的你"
+    },
+    "opening": {
+      "today": "今天是{{weekday}}。{{reference}}，今天适合让自己的感受与现实处境一起参与选择。留意哪些交流让你自在，哪些期待正在消耗你的精力。接下来的节奏，可以由你慢慢调整。",
+      "week": "{{reference}}，这一周适合看清事情发展的节奏，再决定把心力放在哪里。周内的关注点会逐步移动，不必因为某一天的起伏，就替整周下结论。",
+      "month": "{{reference}}，这个月适合把目光放长一些。关系、工作与自己的需要未必同时得到回应，你可以分清哪些值得继续投入，哪些需要留一点距离，再按自己的节奏推进。"
+    },
+    "affirmations": [
+      "把目光收回来，也能看见新的方向。",
+      "允许自己从容开始，答案不必一次齐全。",
+      "有力量，也可以用温和的方式表达。",
+      "认真倾听自己，也听清对方的话。",
+      "给新的可能留一扇门，也守住自己的判断。",
+      "值得的关系，让你可以安心做自己。",
+      "放下不属于自己的催促，找回适合的节奏。"
+    ],
+    "day_notes": [
+      "今天更值得留意的是，你真正想要的生活是否还藏在别人的期待后面。把自己的意愿放进选择里，会比一味配合更有方向感。",
+      "今天不必急着证明所有想法都正确。先辨清最重要的那件事，把尚不明确的部分留给后续交流，反而更容易找到合适的起点。",
+      "今天适合表达立场，也要给情绪一点缓冲。遇到不同意见时，把对事的判断与对人的感受分开，能让沟通更有余地。",
+      "今天的信息与交流值得多留心。同一句话可能有不同理解，先问清对方真正的意思，再决定自己的回应，会更容易减少误会。",
+      "今天可以对新的想法保持开放，但不必立刻作出承诺。让好奇心与现实条件一起参与判断，你会更清楚什么值得继续了解。",
+      "今天适合感受相处的质量。让你放松的交流值得珍惜；需要你一直猜测的关系，则可以先放慢脚步，听见自己的真实感受。",
+      "今天不妨给已经绷紧的安排留一点余地。如果外界的节奏太快，先回到自己能够承受的范围，下一步会更容易看清。"
+    ],
+    "themes": [
+      "这一阶段的月亮行运把注意力带回自我感受。你可以更清楚地表达自己的需要，不必为了维持气氛而压下所有意见。",
+      "这一阶段更容易触及安全感与价值感。涉及金钱、付出或回报时，先确认自己能否安心接受，再回应外界的期待。",
+      "这一阶段的重点偏向交流与理解。尚未说清的话有机会重新整理，用直接而温和的表达，代替反复猜测彼此的用意。",
+      "这一阶段的注意力偏向归属感与熟悉的人。你可能更在意被理解的感觉，也适合把自己的界限平静地说出来。",
+      "这一阶段偏向表达、心动与创造。允许自己对喜欢的事多一点投入，也让关系中的轻松感有机会自然发生。",
+      "这一阶段更关注生活与工作的实际节奏。如果你感到被很多事情牵动，先确认自己的精力边界，会比勉强同时回应所有人更从容。",
+      "这一阶段的重点落在关系与合作。对方的态度可以作为参考，但真正的决定仍需要兼顾你的感受与双方的共识。",
+      "这一阶段偏向信任与共同承担。涉及承诺、金钱或亲密边界时，适合把含糊的期待说清，让彼此知道什么可以接受。",
+      "这一阶段适合把视野稍微放远。新的知识或不同角度可能帮助你松开旧有判断，但无需为了改变而仓促作出决定。",
+      "这一阶段更容易把注意力放在工作与长期方向上。与其急着得到认可，不如先想清楚什么样的进展对你真正有意义。",
+      "这一阶段偏向朋友、团队与共同愿景。你可以从交流里找到新的支持，也要留意自己是否为了融入而承担了过多期待。",
+      "这一阶段适合沉淀与恢复。某些暂时没有答案的事可以先留白，给自己一点安静，也是在为下一次选择保留力量。"
+    ],
+    "uncertain": "出生时分或地点尚未完整确认，参考星座仍有交界范围。这一阶段适合给自己的判断留余地，先看清真实处境，再决定投入的深浅。",
+    "stages": {
+      "week": ["周初，", "周中，", "临近周末，"],
+      "month": ["月初，", "到了月中，", "接近月底，"]
+    },
+    "phases": {
+      "waxing_0": "当前泰历处于渐盈前段，适合以开放的心态迎接新的可能。无需一下子得到确定的结果，让想法经过真实接触，再决定是否继续靠近。",
+      "waxing_1": "当前泰历的月相正在渐盈，适合把已经有回应的方向慢慢推进。保留期待，也为现实中的磨合留出空间，关系和计划都可以逐步清晰。",
+      "waxing_2": "当前泰历接近望日前后，适合多留意自己的感受与期待。当你很想立刻得到一个答案时，先看清眼前的事实，会让判断更稳一些。",
+      "waning_0": "当前泰历进入渐亏前段，适合回看最近的互动与选择。让已经发生的事提供线索，不必因为一次不如意就否定所有努力。",
+      "waning_1": "当前泰历处于渐亏中段，适合辨清哪些牵挂值得继续，哪些可以慢慢放下。给关系和计划做一点取舍，也是在把精力还给自己。",
+      "waning_2": "当前泰历接近月末，适合让心绪与安排都稍微沉淀。对尚未确定的关系或方向保留耐心，不用在精力不足的时候逼自己给出最终答案。",
+      "unknown": "当前日期没有可用的泰历月相资料。这份解读保留行运与生辰参考，不把缺失的月相当作已知条件。"
+    },
+    "outlook": {
+      "today": "今天的节奏提示：{{theme}}",
+      "week": "本周可留意的线索：{{theme}}",
+      "month": "本月可留意的方向：{{theme}}"
+    },
+    "topics": {
+      "love": {
+        "supportive": "感情与人际更适合真诚地靠近。想表达的心意可以说得清楚一些，也留出空间听见对方的回应；关系的进展，来自彼此都舒服的互动。",
+        "reflective": "感情上适合放慢下结论的速度。一个回应不一定代表全部，先确认自己真正需要的是什么，再观察彼此是否愿意相互理解。",
+        "steady": "感情更适合自然相处。你不必因为一次迟来的回复就替这段关系下定论，持续的尊重与相处感受，比一时的热度更值得参考。",
+        "mixed": "关系中可能存在不同的期待与节奏。与其急着判断对方的态度，不如把在意的地方温和地说出来，再看双方是否愿意调整。"
+      },
+      "money": {
+        "supportive": "财务方面更适合看清自己的价值与长期打算。你可以认真了解值得投入的方向，但让承诺与实际能力相称，会比一时的热情更安心。",
+        "reflective": "财务方面适合先辨清压力来自哪里。若一个决定让你反复不安，就给自己多一点了解细节的时间，不必因为外界催促而匆忙答应。",
+        "steady": "财务方面以维持从容的判断为主。一个机会是否合适，取决于你的真实需要和承受能力；不为比较而勉强自己，也是一种清醒的选择。",
+        "mixed": "财务方面的参考倾向并不一致。面对条件尚未说清的安排，先保留判断的空间，等信息更完整后再衡量自己的选择。"
+      },
+      "family": {
+        "supportive": "家庭与熟悉的关系里，可以多留一点表达关心的空间。把真实的需要说出来，也听见对方的难处，比默默期待彼此猜中更容易靠近。",
+        "reflective": "家庭关系更需要兼顾理解与边界。你可以关心别人，也可以坦诚自己已经疲惫；愿意分担与勉强承担，是两种不同的感受。",
+        "steady": "家庭关系适合延续熟悉而安稳的相处。并非每件事都要马上达成一致，让彼此感到被尊重，往往比争出对错更能维持连接。",
+        "mixed": "家庭议题可能牵动不同人的立场与需要。先听清彼此真正担心的是什么，再一起商量能够接受的安排，会比一次谈妥所有事更有余地。"
+      },
+      "work": {
+        "supportive": "工作上适合让自己的想法被看见。清楚地表达你希望推进的方向，也确认彼此对结果的理解，合作会更容易找到共同的着力点。",
+        "reflective": "工作上更适合留意尚未说清的条件与期待。若你正在考虑变化，先分辨自己想离开的是什么、想走向的又是什么，再作承诺会更从容。",
+        "steady": "工作上适合守住自己的节奏。外界的忙碌未必都是你的优先事项，把眼前的选择放进更长的方向里，会更容易知道心力应该放在哪里。",
+        "mixed": "工作上的参考倾向有变化。面对不同要求时，可以先确认什么真正重要；给沟通与计划留一点调整空间，不必用一次结果定义自己的能力。"
+      }
+    }
+  },
+  "en": {
+    "weekdays": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    "reference": {
+      "ascendant": "your ascendant in {{sign}}",
+      "sun-sign": "your Sun in {{sign}}",
+      "sun-sign-range": "your birth window near the {{sign}} boundary"
+    },
+    "opening": {
+      "today": "It is {{weekday}} in Bangkok. With {{reference}}, read today through both your feelings and your actual circumstances. Notice which conversations give you room to be yourself and which expectations are taking too much energy.",
+      "week": "With {{reference}}, this week invites you to notice the rhythm of events before choosing where to invest your energy. One unsettled day does not have to define the whole week.",
+      "month": "With {{reference}}, this month is best viewed with a little perspective. Relationships, work and your own needs may not move at the same pace. Give yourself room to decide what deserves attention and what needs distance."
+    },
+    "affirmations": [
+      "Turning your attention inward can reveal a new direction.",
+      "You can begin calmly without having every answer.",
+      "Strength can be expressed gently.",
+      "Listen to yourself as carefully as you listen to others.",
+      "Stay open to possibility while keeping your own judgment.",
+      "A worthwhile connection gives you room to be yourself.",
+      "Let go of borrowed urgency and find a pace that fits."
+    ],
+    "day_notes": [
+      "Notice whether your own wishes have been hidden behind other people’s expectations. Letting your preferences into a decision can give it a clearer direction.",
+      "You do not need to prove every idea at once. Identify what matters most and leave unanswered details open to further conversation.",
+      "There is room to express your position without letting urgency speak for you. Separate the issue from your feelings about the person so the conversation can breathe.",
+      "Pay attention to what is actually being communicated. The same words can mean different things; asking what someone means may help more than guessing.",
+      "Stay curious about a new idea without committing immediately. Let practical conditions and curiosity take part in the same decision.",
+      "Notice the quality of your connections. Appreciate conversations that feel comfortable; slow down around those that require constant guessing.",
+      "Leave some room in a tightly packed plan. If the pace around you feels too fast, return to what you can manage before choosing the next step."
+    ],
+    "themes": [
+      "The Moon’s relative position draws attention to your own feelings. There is room to express a need without hiding every disagreement to keep the peace.",
+      "This stage brings security and personal value into focus. Around money, effort or return, consider what you can accept comfortably before responding to outside expectations.",
+      "This stage emphasizes communication and understanding. An unfinished conversation can be approached with clear, gentle words rather than repeated guessing.",
+      "This stage draws attention to belonging and familiar people. Feeling understood may matter more, alongside being able to explain your boundaries calmly.",
+      "This stage favors expression, affection and creativity. Make room for what interests you and allow some ease to develop naturally in your connections.",
+      "This stage focuses on the practical rhythm of life and work. Knowing the limits of your energy can help more than trying to respond to everyone at once.",
+      "This stage puts relationships and cooperation in focus. Someone else’s response is useful information, while your own feelings and a shared agreement still matter.",
+      "This stage highlights trust and shared responsibility. Around promises, money or closeness, make unclear expectations easier for both sides to understand.",
+      "This stage invites a wider perspective. New knowledge or a different viewpoint may loosen an old judgment without requiring a rushed decision.",
+      "This stage draws attention to work and long-term direction. Consider what meaningful progress looks like to you before seeking immediate recognition.",
+      "This stage emphasizes friends, groups and shared hopes. Conversation may offer support; notice whether belonging is asking you to carry too many expectations.",
+      "This stage makes room for reflection and recovery. An unanswered question can stay open for a while without meaning that you have stopped moving forward."
+    ],
+    "uncertain": "The birth time or location is incomplete, so more than one reference sign remains possible. Keep room in your interpretation and let your actual circumstances guide how far you commit.",
+    "stages": {
+      "week": ["Early in the week, ", "Around midweek, ", "Toward the weekend, "],
+      "month": ["Early in the month, ", "Around midmonth, ", "Toward the end of the month, "]
+    },
+    "phases": {
+      "waxing_0": "The Thai calendar is in the early waxing days. This reading suggests staying open to a beginning without needing certainty straight away. Let an idea meet reality before deciding how close to move.",
+      "waxing_1": "The Thai calendar is in the middle waxing days. This reading favors gradually developing something that has already received a response, while leaving room for practical adjustments.",
+      "waxing_2": "The Thai calendar is near its full-moon days. This reading invites attention to feelings and expectations; if an answer feels urgent, give the facts room to settle before deciding.",
+      "waning_0": "The Thai calendar is in the early waning days. Recent interactions and choices can offer perspective. One disappointment does not need to cancel the effort that came before it.",
+      "waning_1": "The Thai calendar is in the middle waning days. This reading invites you to distinguish what still deserves care from what can gradually be released, returning some energy to yourself.",
+      "waning_2": "The Thai calendar is approaching the end of its lunar month. Allow some room for reflection rather than demanding a final answer about a relationship or direction when your energy is low.",
+      "unknown": "A Thai lunar-calendar date is unavailable for this day. The reading retains birth and transit references without treating a missing lunar phase as known."
+    },
+    "outlook": {
+      "today": "A theme to notice today: {{theme}}",
+      "week": "A theme to notice this week: {{theme}}",
+      "month": "A direction to consider this month: {{theme}}"
+    },
+    "topics": {
+      "love": {
+        "supportive": "Relationships favor an honest approach. Express what you mean and leave room to hear the reply; progress can come through an exchange that feels comfortable for both people.",
+        "reflective": "Relationships benefit from a slower conclusion. One response may not tell the whole story. Clarify what you need and observe whether understanding can move in both directions.",
+        "steady": "Relationships favor a natural pace. A late reply does not have to define the connection; sustained respect and the experience of being together offer a longer view.",
+        "mixed": "Relationships may involve different expectations or rhythms. Rather than deciding what someone must feel, gently explain what matters to you and see whether both sides can adjust."
+      },
+      "money": {
+        "supportive": "Money questions favor a clearer view of your value and longer-term intentions. Explore what deserves attention while keeping commitments in proportion to what you can comfortably manage.",
+        "reflective": "Money questions benefit from understanding the source of pressure first. If a decision repeatedly unsettles you, allow time to understand its details rather than agreeing because someone is urging you.",
+        "steady": "Money questions favor an unhurried judgment. Whether an opportunity fits depends on your actual needs and capacity. Choosing without the pressure to keep up with others can be a clear-headed decision.",
+        "mixed": "The money reference results point in different directions. Where conditions remain unclear, keep space for judgment until the information is complete enough to weigh your options."
+      },
+      "family": {
+        "supportive": "Family and familiar relationships can benefit from openly expressed care. Explaining a real need and hearing another person’s difficulty can create more connection than hoping to be understood without words.",
+        "reflective": "Family relationships call for both understanding and boundaries. You can care about others while acknowledging tiredness; sharing a responsibility feels different from carrying it under pressure.",
+        "steady": "Family relationships favor a familiar, steady connection. Not everything needs immediate agreement. Feeling respected can sustain closeness better than settling who is right.",
+        "mixed": "Family matters may involve different needs and positions. Hear what each person is actually worried about before agreeing on an arrangement everyone can live with."
+      },
+      "work": {
+        "supportive": "Work favors giving an idea a clear voice. Explain the direction you hope to pursue and check that others understand the result in the same way, making a shared point of focus easier to find.",
+        "reflective": "Work favors attention to conditions and expectations that have not been clarified. If you are considering a change, distinguish what you want to leave from what you want to move toward before committing.",
+        "steady": "Work favors a pace you can sustain. Other people’s urgency does not automatically define your priorities. A longer view can clarify where your effort belongs.",
+        "mixed": "The work reference results vary. Among competing requests, clarify what matters most and leave room to adjust communication or plans. One outcome does not define your ability."
+      }
+    }
+  },
+  "th": {
+    "weekdays": [
+      "วันอาทิตย์",
+      "วันจันทร์",
+      "วันอังคาร",
+      "วันพุธ",
+      "วันพฤหัสบดี",
+      "วันศุกร์",
+      "วันเสาร์"
+    ],
+    "reference": {
+      "ascendant": "คุณที่มีลัคนาอยู่ใน{{sign}}",
+      "sun-sign": "คุณที่มีอาทิตย์อยู่ใน{{sign}}",
+      "sun-sign-range": "คุณที่ช่วงเวลาเกิดอยู่ใกล้รอยต่อ{{sign}}"
+    },
+    "opening": {
+      "today": "วันนี้เป็น{{weekday}}ตามเวลากรุงเทพฯ สำหรับ{{reference}} ลองอ่านจังหวะวันนี้ควบคู่กับความรู้สึกและสถานการณ์จริง สังเกตว่าบทสนทนาไหนทำให้เป็นตัวเองได้ และความคาดหวังไหนกำลังใช้พลังใจมากเกินไป",
+      "week": "สำหรับ{{reference}} สัปดาห์นี้เหมาะกับการมองจังหวะของเรื่องราวก่อนเลือกว่าจะทุ่มใจตรงไหน วันที่สะดุดเพียงวันเดียวไม่จำเป็นต้องเป็นข้อสรุปของทั้งสัปดาห์",
+      "month": "สำหรับ{{reference}} เดือนนี้เหมาะกับการมองภาพให้ยาวขึ้น ความสัมพันธ์ งาน และความต้องการของตัวเองอาจไม่ได้เคลื่อนไปพร้อมกัน ค่อย ๆ แยกสิ่งที่อยากดูแลต่อออกจากสิ่งที่ควรเว้นระยะ"
+    },
+    "affirmations": [
+      "หันกลับมาฟังตัวเอง อาจมองเห็นทิศทางใหม่",
+      "เริ่มอย่างใจเย็นได้ แม้ยังไม่มีคำตอบครบทุกข้อ",
+      "ความเข้มแข็งแสดงออกอย่างอ่อนโยนได้",
+      "ฟังตัวเองให้ชัด เช่นเดียวกับที่รับฟังคนอื่น",
+      "เปิดรับความเป็นไปได้ พร้อมรักษาวิจารณญาณของตัวเอง",
+      "ความสัมพันธ์ที่มีคุณค่าให้พื้นที่เราเป็นตัวเอง",
+      "วางความเร่งรีบของคนอื่น แล้วหาจังหวะที่เหมาะกับเรา"
+    ],
+    "day_notes": [
+      "ลองดูว่าความต้องการของตัวเองซ่อนอยู่หลังความคาดหวังของใครหรือเปล่า ให้ความรู้สึกของคุณมีส่วนในการตัดสินใจด้วย",
+      "วันนี้ไม่ต้องพิสูจน์ทุกความคิดพร้อมกัน แยกเรื่องที่สำคัญที่สุด แล้วเปิดพื้นที่ให้คุยรายละเอียดที่ยังไม่ชัดต่อได้",
+      "แสดงจุดยืนได้โดยไม่ต้องให้ความรีบร้อนพูดแทน ลองแยกประเด็นของเรื่องออกจากความรู้สึกที่มีต่อคน",
+      "ใส่ใจสิ่งที่อีกฝ่ายต้องการสื่อ คำเดียวกันอาจเข้าใจต่างกัน การถามให้ชัดช่วยได้มากกว่าการเดา",
+      "เปิดใจต่อแนวคิดใหม่ได้โดยยังไม่ต้องรับปากทันที ให้ทั้งความสนใจและเงื่อนไขจริงร่วมอยู่ในการตัดสินใจ",
+      "สังเกตคุณภาพของการอยู่ด้วยกัน บทสนทนาที่สบายใจควรได้รับการดูแล ส่วนความสัมพันธ์ที่ต้องเดาตลอดเวลาอาจค่อย ๆ ชะลอจังหวะลง",
+      "เผื่อที่ว่างในแผนที่แน่นเกินไป หากรอบตัวเร็วเกินรับไหว กลับมาดูขอบเขตของกำลังก่อนเลือกก้าวต่อ"
+    ],
+    "themes": [
+      "ตำแหน่งจันทร์เทียบราศีอ้างอิงชวนกลับมาดูความรู้สึกของตัวเอง บอกความต้องการได้โดยไม่ต้องเก็บทุกความเห็นต่างเพื่อรักษาบรรยากาศ",
+      "ช่วงนี้เน้นความมั่นคงและคุณค่าที่ให้กับตัวเอง เรื่องเงิน การให้ หรือผลตอบแทน ควรฟังด้วยว่าคุณยอมรับได้อย่างสบายใจเพียงใด",
+      "ช่วงนี้เน้นการสื่อสารและความเข้าใจ เรื่องที่ยังคุยไม่จบอาจค่อย ๆ อธิบายด้วยถ้อยคำตรงและอ่อนโยน แทนการเดาใจกันซ้ำ ๆ",
+      "ช่วงนี้เน้นความรู้สึกเป็นส่วนหนึ่งและคนคุ้นเคย การได้รับความเข้าใจอาจสำคัญขึ้น พร้อมกับการบอกขอบเขตของตัวเองอย่างสงบ",
+      "ช่วงนี้เน้นการแสดงออก ความรู้สึกดี และความคิดสร้างสรรค์ ให้พื้นที่กับสิ่งที่ชอบ และปล่อยให้ความสบายใจในความสัมพันธ์ค่อย ๆ เกิดขึ้น",
+      "ช่วงนี้เน้นจังหวะชีวิตและงานที่ทำได้จริง รู้ขอบเขตพลังของตัวเองอาจช่วยมากกว่าพยายามตอบทุกความต้องการพร้อมกัน",
+      "ช่วงนี้เน้นความสัมพันธ์และการร่วมมือ ท่าทีของอีกฝ่ายเป็นข้อมูลหนึ่ง แต่ความรู้สึกของคุณและข้อตกลงร่วมกันก็สำคัญ",
+      "ช่วงนี้เน้นความไว้วางใจและการรับผิดชอบร่วมกัน เรื่องสัญญา เงิน หรือความใกล้ชิด เหมาะกับการทำความคาดหวังให้ชัดสำหรับทั้งสองฝ่าย",
+      "ช่วงนี้ชวนให้มองกว้างขึ้น ความรู้ใหม่หรือมุมมองต่างออกไปอาจช่วยคลายข้อสรุปเดิม โดยไม่จำเป็นต้องรีบเปลี่ยนทางทันที",
+      "ช่วงนี้เน้นงานและทิศทางระยะยาว ลองถามตัวเองว่าความก้าวหน้าแบบไหนมีความหมาย ก่อนรีบแสวงหาการยอมรับจากภายนอก",
+      "ช่วงนี้เน้นเพื่อน กลุ่มคน และความหวังร่วมกัน การพูดคุยอาจช่วยให้รู้สึกมีแรงสนับสนุน แต่ไม่จำเป็นต้องแบกทุกความคาดหวังเพื่อให้เข้ากลุ่มได้",
+      "ช่วงนี้เปิดพื้นที่ให้ทบทวนและฟื้นกำลัง คำถามบางข้อยังเว้นว่างไว้ได้ โดยไม่ได้แปลว่าคุณหยุดเดินต่อ"
+    ],
+    "uncertain": "เวลาเกิดหรือสถานที่เกิดยังไม่ครบ จึงยังมีราศีอ้างอิงได้มากกว่าหนึ่งราศี เผื่อพื้นที่ให้การตีความ และใช้สถานการณ์จริงประกอบการตัดสินใจ",
+    "stages": {
+      "week": ["ช่วงต้นสัปดาห์ ", "ช่วงกลางสัปดาห์ ", "ช่วงปลายสัปดาห์ "],
+      "month": ["ช่วงต้นเดือน ", "ช่วงกลางเดือน ", "ช่วงปลายเดือน "]
+    },
+    "phases": {
+      "waxing_0": "ปฏิทินจันทรคติไทยอยู่ช่วงต้นข้างขึ้น คำอ่านนี้ชวนเปิดใจต่อการเริ่มต้น โดยไม่ต้องได้ความแน่นอนทันที ให้ความคิดได้พบสถานการณ์จริงก่อนตัดสินใจว่าจะเดินต่อแค่ไหน",
+      "waxing_1": "ปฏิทินจันทรคติไทยอยู่ช่วงกลางข้างขึ้น เหมาะกับการค่อย ๆ พัฒนาทิศทางที่เริ่มมีเสียงตอบรับ พร้อมเผื่อพื้นที่ให้ปรับเข้ากับความเป็นจริง",
+      "waxing_2": "ปฏิทินจันทรคติไทยใกล้ช่วงวันเพ็ญ ลองใส่ใจความรู้สึกและความคาดหวัง หากอยากได้คำตอบทันที ให้เวลากับข้อเท็จจริงก่อนตัดสินใจ",
+      "waning_0": "ปฏิทินจันทรคติไทยอยู่ช่วงต้นข้างแรม ย้อนดูการพูดคุยและทางเลือกที่ผ่านมาเพื่อทำความเข้าใจ ความผิดหวังครั้งเดียวไม่จำเป็นต้องลบความพยายามทั้งหมด",
+      "waning_1": "ปฏิทินจันทรคติไทยอยู่ช่วงกลางข้างแรม ลองแยกสิ่งที่ยังอยากดูแลออกจากสิ่งที่ค่อย ๆ วางได้ เพื่อคืนกำลังใจบางส่วนให้ตัวเอง",
+      "waning_2": "ปฏิทินจันทรคติไทยใกล้สิ้นเดือนจันทรคติ ให้ความรู้สึกและแผนต่าง ๆ ได้ตกตะกอน ไม่ต้องบังคับตัวเองให้ตอบเรื่องความสัมพันธ์หรือทิศทางชีวิตในวันที่พลังน้อย",
+      "unknown": "วันนี้ไม่มีข้อมูลวันจันทรคติไทยที่ใช้ได้ คำอ่านยังใช้ข้อมูลเกิดและดาวจร โดยไม่ถือว่าระยะจันทร์ที่ขาดไปเป็นข้อมูลที่ยืนยันแล้ว"
+    },
+    "outlook": {
+      "today": "ประเด็นที่ชวนสังเกตวันนี้: {{theme}}",
+      "week": "ประเด็นที่ชวนสังเกตสัปดาห์นี้: {{theme}}",
+      "month": "ทิศทางที่ชวนพิจารณาเดือนนี้: {{theme}}"
+    },
+    "topics": {
+      "love": {
+        "supportive": "ความสัมพันธ์เหมาะกับการเข้าหากันอย่างจริงใจ บอกสิ่งที่ตั้งใจสื่อให้ชัดและเปิดพื้นที่ฟังคำตอบ ความคืบหน้าอาจเริ่มจากบทสนทนาที่ทั้งคู่สบายใจ",
+        "reflective": "เรื่องความสัมพันธ์เหมาะกับการค่อย ๆ สรุป ท่าทีครั้งเดียวอาจไม่ใช่ทั้งหมด ลองทำความต้องการของตัวเองให้ชัด แล้วดูว่าความเข้าใจเดินเข้าหากันได้ไหม",
+        "steady": "ความสัมพันธ์เหมาะกับจังหวะที่เป็นธรรมชาติ ข้อความที่ตอบช้าไม่จำเป็นต้องเป็นคำตัดสินของทั้งความสัมพันธ์ ความเคารพและความรู้สึกเมื่ออยู่ด้วยกันในระยะยาวสำคัญกว่า",
+        "mixed": "ความสัมพันธ์อาจมีความคาดหวังหรือจังหวะต่างกัน แทนที่จะรีบสรุปว่าอีกฝ่ายรู้สึกอย่างไร ลองบอกเรื่องที่คุณใส่ใจอย่างอ่อนโยน แล้วดูว่าปรับเข้าหากันได้แค่ไหน"
+      },
+      "money": {
+        "supportive": "เรื่องเงินเหมาะกับการเห็นคุณค่าของตัวเองและมองแผนระยะยาวให้ชัด ศึกษาสิ่งที่สนใจได้ พร้อมให้คำรับปากอยู่ในขอบเขตที่รับไหวจริง",
+        "reflective": "เรื่องเงินเหมาะกับการมองต้นตอของความกดดันก่อน หากการตัดสินใจทำให้ไม่สบายใจซ้ำ ๆ ให้เวลาทำความเข้าใจเงื่อนไข โดยไม่ต้องตอบตกลงเพราะถูกเร่ง",
+        "steady": "เรื่องเงินเหมาะกับการใช้วิจารณญาณอย่างไม่รีบ โอกาสหนึ่งเหมาะหรือไม่ขึ้นกับความต้องการและกำลังจริงของคุณ ไม่จำเป็นต้องเลือกเพื่อให้ทันใคร",
+        "mixed": "ผลอ้างอิงเรื่องเงินมีหลายแนวโน้ม หากเงื่อนไขยังไม่ชัด ให้พื้นที่กับการพิจารณา รอให้ข้อมูลเพียงพอก่อนชั่งน้ำหนักทางเลือก"
+      },
+      "family": {
+        "supportive": "ความสัมพันธ์ในบ้านเหมาะกับการแสดงความห่วงใยอย่างชัดเจน บอกความต้องการจริงและฟังสิ่งที่อีกฝ่ายลำบากใจ อาจทำให้ใกล้กันกว่าการรอให้เดาใจถูก",
+        "reflective": "เรื่องครอบครัวต้องการทั้งความเข้าใจและขอบเขต คุณห่วงคนอื่นได้พร้อมกับยอมรับว่าตัวเองเหนื่อย การช่วยแบ่งเบากับการฝืนแบกให้ความรู้สึกต่างกัน",
+        "steady": "เรื่องครอบครัวเหมาะกับความใกล้ชิดที่คุ้นเคยและสม่ำเสมอ ไม่ใช่ทุกเรื่องต้องเห็นตรงกันทันที ความรู้สึกว่าได้รับความเคารพอาจสำคัญกว่าการหาฝ่ายถูก",
+        "mixed": "เรื่องในบ้านอาจเกี่ยวกับความต้องการต่างกัน ฟังให้ชัดว่าแต่ละคนกังวลอะไรจริง ๆ ก่อนคุยถึงทางที่ทุกฝ่ายพอรับได้"
+      },
+      "work": {
+        "supportive": "เรื่องงานเหมาะกับการทำให้ไอเดียของคุณชัดเจน บอกทิศทางที่อยากเดินหน้า และตรวจว่าทุกฝ่ายเข้าใจผลลัพธ์ตรงกัน เพื่อหาจุดร่วมในการทำงาน",
+        "reflective": "เรื่องงานเหมาะกับการมองเงื่อนไขและความคาดหวังที่ยังไม่ชัด หากคิดจะเปลี่ยน ลองแยกว่าอยากออกจากอะไรและอยากเดินไปสู่อะไรก่อนรับปาก",
+        "steady": "เรื่องงานเหมาะกับจังหวะที่ทำต่อได้ ความเร่งของคนอื่นไม่จำเป็นต้องกลายเป็นลำดับสำคัญของคุณทั้งหมด มองทางเลือกในภาพระยะยาวเพื่อรู้ว่าควรทุ่มกำลังตรงไหน",
+        "mixed": "ผลอ้างอิงเรื่องงานมีความเปลี่ยนแปลง เมื่อมีหลายคำขอพร้อมกัน ให้ชัดว่าอะไรสำคัญจริง และเผื่อที่ให้ปรับแผน ผลลัพธ์ครั้งเดียวไม่ได้ตัดสินความสามารถของคุณ"
+      }
+    }
+  },
+  "vi": {
+    "weekdays": ["Chủ nhật", "thứ Hai", "thứ Ba", "thứ Tư", "thứ Năm", "thứ Sáu", "thứ Bảy"],
+    "reference": {
+      "ascendant": "bạn với cung mọc Thái {{sign}} làm điểm tham chiếu",
+      "sun-sign": "bạn với cung Mặt Trời Thái {{sign}} làm điểm tham chiếu",
+      "sun-sign-range": "bạn có khoảng giờ sinh gần ranh giới {{sign}}"
+    },
+    "opening": {
+      "today": "Hôm nay là {{weekday}} theo giờ Bangkok. Với {{reference}}, hãy đọc nhịp hôm nay cùng cảm xúc và hoàn cảnh thực tế. Để ý cuộc trò chuyện nào giúp bạn được là mình, và mong đợi nào đang lấy quá nhiều sức lực.",
+      "week": "Với {{reference}}, tuần này phù hợp để nhận ra nhịp phát triển của sự việc trước khi chọn nơi dành tâm sức. Một ngày chông chênh không cần trở thành kết luận cho cả tuần.",
+      "month": "Với {{reference}}, tháng này nên được nhìn trong một khoảng dài hơn. Quan hệ, công việc và nhu cầu của mình có thể không chuyển động cùng lúc. Bạn có thể phân biệt điều đáng tiếp tục chăm sóc và điều cần một chút khoảng cách."
+    },
+    "affirmations": [
+      "Quay về lắng nghe mình cũng có thể mở ra hướng mới.",
+      "Bạn có thể bắt đầu bình tĩnh dù chưa có đủ mọi câu trả lời.",
+      "Sự mạnh mẽ cũng có thể được thể hiện dịu dàng.",
+      "Lắng nghe mình kỹ như cách bạn lắng nghe người khác.",
+      "Mở lòng với khả năng mới và giữ phán đoán của mình.",
+      "Một kết nối đáng quý cho bạn không gian được là mình.",
+      "Đặt xuống sự vội vã của người khác, tìm nhịp phù hợp với mình."
+    ],
+    "day_notes": [
+      "Hãy nhìn xem mong muốn của mình có đang bị giấu sau kỳ vọng của người khác không. Để ý nguyện của bạn cùng tham gia vào lựa chọn sẽ giúp hướng đi rõ hơn.",
+      "Hôm nay không cần chứng minh mọi ý tưởng cùng một lúc. Nhận ra điều quan trọng nhất và để các chi tiết chưa rõ được tiếp tục trao đổi.",
+      "Bạn có thể nói rõ lập trường mà không để sự vội vã nói thay. Tách vấn đề khỏi cảm xúc về người đối diện sẽ giúp cuộc trò chuyện có thêm khoảng thở.",
+      "Để ý điều người kia thực sự muốn truyền đạt. Cùng một câu có thể được hiểu khác nhau; hỏi rõ thường hữu ích hơn tự đoán.",
+      "Bạn có thể cởi mở với ý tưởng mới mà chưa cần cam kết ngay. Cho cả sự tò mò và điều kiện thực tế cùng tham gia vào quyết định.",
+      "Để ý chất lượng của việc ở bên nhau. Trân trọng cuộc trò chuyện dễ chịu, và chậm lại với những kết nối khiến bạn phải liên tục đoán ý.",
+      "Để một khoảng trống trong lịch đã quá căng. Nếu nhịp xung quanh quá nhanh, quay về điều mình có thể đảm đương trước khi chọn bước tiếp theo."
+    ],
+    "themes": [
+      "Vị trí tương đối của Mặt Trăng đưa sự chú ý về cảm xúc của bạn. Bạn có thể nói nhu cầu của mình mà không cần giấu mọi bất đồng để giữ hòa khí.",
+      "Giai đoạn này nhấn vào sự an tâm và giá trị bản thân. Khi liên quan đến tiền, sự cho đi hay đáp lại, hãy nhìn điều mình có thể thoải mái chấp nhận trước.",
+      "Giai đoạn này nhấn vào giao tiếp và thấu hiểu. Một chuyện chưa nói rõ có thể được mở lại bằng lời trực tiếp, dịu dàng thay cho việc đoán ý nhau.",
+      "Giai đoạn này hướng về sự thuộc về và những người quen thuộc. Cảm giác được hiểu có thể quan trọng hơn, cùng với việc bình tĩnh nói rõ ranh giới.",
+      "Giai đoạn này nhấn vào biểu đạt, rung động và sáng tạo. Dành chỗ cho điều bạn thích và để sự thoải mái trong quan hệ hình thành tự nhiên.",
+      "Giai đoạn này chú ý đến nhịp sống và công việc thực tế. Nhìn rõ giới hạn sức lực có thể hữu ích hơn cố đáp ứng mọi người cùng lúc.",
+      "Giai đoạn này nhấn vào quan hệ và hợp tác. Phản ứng của người kia là một dữ kiện, còn cảm xúc của bạn và sự thống nhất chung vẫn quan trọng.",
+      "Giai đoạn này nhấn vào tin cậy và trách nhiệm chung. Với lời hứa, tiền bạc hoặc sự gần gũi, làm rõ mong đợi sẽ giúp cả hai dễ hiểu nhau hơn.",
+      "Giai đoạn này mời bạn nhìn rộng hơn. Kiến thức mới hay một góc nhìn khác có thể giúp nới lỏng kết luận cũ mà không cần quyết định vội.",
+      "Giai đoạn này hướng về công việc và đường dài. Trước khi tìm sự công nhận tức thì, thử hỏi tiến triển nào thực sự có ý nghĩa với bạn.",
+      "Giai đoạn này nhấn vào bạn bè, tập thể và mong muốn chung. Giao tiếp có thể mang lại hỗ trợ, nhưng bạn không cần gánh quá nhiều kỳ vọng để hòa nhập.",
+      "Giai đoạn này dành chỗ cho lắng lại và hồi sức. Một câu hỏi chưa có lời giải có thể để mở, điều đó không có nghĩa bạn đã ngừng tiến lên."
+    ],
+    "uncertain": "Giờ hoặc nơi sinh chưa đầy đủ nên còn hơn một cung tham chiếu có thể đúng. Giữ khoảng linh hoạt khi đọc và dựa thêm vào hoàn cảnh thực tế trước khi cam kết.",
+    "stages": {
+      "week": ["Đầu tuần, ", "Giữa tuần, ", "Gần cuối tuần, "],
+      "month": ["Đầu tháng, ", "Giữa tháng, ", "Gần cuối tháng, "]
+    },
+    "phases": {
+      "waxing_0": "Lịch trăng Thái đang ở đầu kỳ trăng khuyết lớn dần. Phần đọc này gợi ý cởi mở với khởi đầu mà chưa cần chắc chắn ngay, để ý tưởng gặp thực tế trước khi đi xa hơn.",
+      "waxing_1": "Lịch trăng Thái đang ở giữa kỳ trăng lớn dần. Có thể từng bước phát triển hướng đã nhận được phản hồi, đồng thời dành chỗ cho điều chỉnh thực tế.",
+      "waxing_2": "Lịch trăng Thái gần những ngày trăng tròn. Chú ý đến cảm xúc và mong đợi; khi quá muốn có câu trả lời ngay, cho sự thật thời gian rõ hơn trước khi quyết định.",
+      "waning_0": "Lịch trăng Thái đang ở đầu kỳ trăng nhỏ dần. Những tương tác và lựa chọn gần đây có thể cho bạn thêm góc nhìn; một thất vọng không cần xóa bỏ mọi nỗ lực trước đó.",
+      "waning_1": "Lịch trăng Thái đang ở giữa kỳ trăng nhỏ dần. Phần đọc này gợi ý phân biệt điều còn đáng chăm sóc với điều có thể dần đặt xuống, để trả lại sức lực cho mình.",
+      "waning_2": "Lịch trăng Thái gần cuối tháng âm lịch. Cho cảm xúc và kế hoạch thời gian lắng lại, thay vì buộc mình trả lời dứt khoát chuyện quan hệ hay hướng đi lúc đang mệt.",
+      "unknown": "Ngày này không có dữ liệu lịch trăng Thái khả dụng. Phần đọc giữ tham chiếu sinh và hành tinh, không xem pha trăng còn thiếu là dữ kiện đã biết."
+    },
+    "outlook": {
+      "today": "Một chủ đề để ý hôm nay: {{theme}}",
+      "week": "Một chủ đề để ý tuần này: {{theme}}",
+      "month": "Một hướng để cân nhắc tháng này: {{theme}}"
+    },
+    "topics": {
+      "love": {
+        "supportive": "Quan hệ phù hợp với việc đến gần nhau chân thành. Nói rõ điều muốn bày tỏ và dành chỗ nghe phản hồi; tiến triển có thể đến từ tương tác dễ chịu cho cả hai.",
+        "reflective": "Quan hệ cần một kết luận chậm hơn. Một phản hồi chưa chắc nói lên tất cả; làm rõ điều mình cần rồi quan sát xem sự thấu hiểu có đi từ cả hai phía không.",
+        "steady": "Quan hệ phù hợp với nhịp tự nhiên. Một tin nhắn trả lời chậm không cần định nghĩa cả kết nối; sự tôn trọng bền bỉ và cảm giác khi ở bên nhau cho góc nhìn dài hơn.",
+        "mixed": "Quan hệ có thể có mong đợi hoặc nhịp khác nhau. Thay vì vội kết luận người kia cảm thấy gì, hãy nói nhẹ nhàng điều mình quan tâm rồi xem hai bên có thể điều chỉnh không."
+      },
+      "money": {
+        "supportive": "Chuyện tiền phù hợp để nhìn rõ giá trị của mình và dự định dài hạn. Bạn có thể tìm hiểu hướng đáng quan tâm, đồng thời giữ cam kết trong khả năng thực sự thấy thoải mái.",
+        "reflective": "Chuyện tiền nên bắt đầu từ việc hiểu nguồn áp lực. Nếu một quyết định liên tục khiến bạn bất an, cho mình thời gian xem rõ điều kiện thay vì đồng ý vì bị thúc giục.",
+        "steady": "Chuyện tiền phù hợp với phán đoán bình tĩnh. Một cơ hội có hợp hay không tùy nhu cầu và khả năng thực tế; không ép mình chạy theo so sánh cũng là một lựa chọn tỉnh táo.",
+        "mixed": "Các kết quả tham chiếu về tiền có xu hướng khác nhau. Với điều kiện chưa rõ, giữ khoảng cho phán đoán và chờ đủ thông tin trước khi cân nhắc lựa chọn."
+      },
+      "family": {
+        "supportive": "Gia đình và những quan hệ thân thuộc có thể gần nhau hơn nhờ quan tâm rõ ràng. Nói nhu cầu thật và nghe khó khăn của người kia hữu ích hơn chờ được đoán đúng ý.",
+        "reflective": "Quan hệ gia đình cần cả thấu hiểu lẫn ranh giới. Bạn có thể quan tâm người khác và thừa nhận mình mệt; chia sẻ trách nhiệm khác với gồng gánh vì áp lực.",
+        "steady": "Quan hệ gia đình hợp với gắn kết quen thuộc, đều đặn. Không phải chuyện nào cũng cần đồng ý ngay; cảm giác được tôn trọng có thể giữ gần gũi hơn việc phân định đúng sai.",
+        "mixed": "Chuyện gia đình có thể chạm đến nhu cầu và lập trường khác nhau. Nghe rõ mỗi người thực sự lo điều gì trước khi cùng tìm một sắp xếp có thể chấp nhận."
+      },
+      "work": {
+        "supportive": "Công việc phù hợp để ý tưởng của bạn được nghe rõ. Nói hướng muốn triển khai và kiểm tra xem mọi người có cùng hiểu kết quả không, để tìm điểm tập trung chung.",
+        "reflective": "Công việc nên chú ý điều kiện và mong đợi chưa rõ. Nếu cân nhắc thay đổi, phân biệt điều muốn rời đi và điều muốn hướng tới trước khi cam kết sẽ giúp bình tĩnh hơn.",
+        "steady": "Công việc phù hợp với nhịp có thể duy trì. Sự bận rộn của người khác không tự động là ưu tiên của bạn; nhìn lựa chọn trong đường dài giúp biết nên dành sức ở đâu.",
+        "mixed": "Các kết quả tham chiếu về công việc thay đổi. Giữa nhiều yêu cầu, làm rõ điều thực sự quan trọng và để chỗ điều chỉnh cách trao đổi, kế hoạch; một kết quả không định nghĩa năng lực của bạn."
+      }
+    }
+  }
+}

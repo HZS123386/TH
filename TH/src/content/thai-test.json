@@ -1,0 +1,378 @@
+{
+  "zh": {
+    "category": "泰式占星",
+    "title": "你的泰式占星解读",
+    "intro": "选一个你关心的主题，看看自己的特点、需要留意的地方，以及接下来可以怎么做。",
+    "categoryTitle": "泰式星盘 · 主题解读",
+    "categoryIntro": "从个人特质到生活选择，找到此刻关心的方向",
+    "birth": "出生资料",
+    "required": "请补充出生日期、准确时间和出生地点，以生成个人星盘。",
+    "generate": "生成星盘与解读报告",
+    "loading": "正在计算星盘并整理你的主题解读…",
+    "cancel": "取消生成",
+    "cancelNote": "取消后可以修改资料；已开始的解读可能在后台完成，再次提交相同资料会复用结果。",
+    "results": "本次使用的出生资料",
+    "report": "个人解读报告",
+    "summary": "先看结论",
+    "download": "保存报告",
+    "downloadPreview": "保存试读",
+    "unlock": "查看全部内容，请解锁",
+    "lockedHint": "解锁查看详细提醒与完整行动方案",
+    "lockedSave": "详细提醒与行动方案尚未解锁，请回到测算页面解锁后保存完整报告。",
+    "example": "举个例子",
+    "signals": "可以留意这些信号",
+    "response": "遇到时先这样应对",
+    "pitfall": "容易忽略的地方",
+    "check": "做完后这样检查",
+    "retry": "重新生成解读",
+    "year": "要查看的年份",
+    "error": "暂时无法生成报告，请稍后重试。",
+    "yearNote": "看看这一年哪些事值得优先安排，以及不同阶段可以怎么做。",
+    "sections": {
+      "interpretation": "这对你意味着什么",
+      "opportunities": "需要留意的地方",
+      "advice": "你可以这样做"
+    },
+    "states": {
+      "unconfigured": "星盘已生成，解读服务尚未配置。",
+      "pending": "相同资料的解读正在生成，请稍后重试。",
+      "limited": "解读次数已达限额，请稍后再试。",
+      "unavailable": "星盘已生成，本次解读未完成，请重试。"
+    },
+    "readings": {
+      "overview": {
+        "title": "本命星盘",
+        "subtitle": "性格 · 做事方式 · 相处习惯"
+      },
+      "annual": {
+        "title": "全年运势",
+        "subtitle": "阶段重点 · 提前准备"
+      },
+      "money": {
+        "title": "财富解读",
+        "subtitle": "收入 · 资源 · 财务习惯"
+      },
+      "love": {
+        "title": "感情解读",
+        "subtitle": "吸引 · 沟通 · 亲密关系"
+      },
+      "work": {
+        "title": "事业解读",
+        "subtitle": "能力 · 合作 · 职业方向"
+      },
+      "family": {
+        "title": "家庭解读",
+        "subtitle": "家宅 · 支持 · 共同责任"
+      }
+    },
+    "planets": {
+      "ascendant": "上升",
+      "sun": "太阳",
+      "moon": "月亮",
+      "mars": "火星",
+      "mercury": "水星",
+      "jupiter": "木星",
+      "venus": "金星",
+      "saturn": "土星",
+      "rahu": "罗睺",
+      "ketu": "计都",
+      "uranus": "天王星"
+    },
+    "signs": [
+      "白羊座",
+      "金牛座",
+      "双子座",
+      "巨蟹座",
+      "狮子座",
+      "处女座",
+      "天秤座",
+      "天蝎座",
+      "射手座",
+      "摩羯座",
+      "水瓶座",
+      "双鱼座"
+    ]
+  },
+  "en": {
+    "category": "Thai astrology",
+    "title": "Your personal Thai reading",
+    "intro": "Choose a question to explore your habits, what to watch for, and practical steps you can try.",
+    "categoryTitle": "Your chart, your questions",
+    "categoryIntro": "Explore personal patterns and the choices that matter to you",
+    "birth": "Birth details",
+    "required": "Add your birth date, exact time and birthplace to create a personal chart.",
+    "generate": "Create chart and reading",
+    "loading": "Calculating your chart and preparing your reading…",
+    "cancel": "Cancel generation",
+    "cancelNote": "You can edit your details after cancelling. A reading already started may finish in the background; submitting the same details reuses it.",
+    "results": "Birth details used",
+    "report": "Your personal reading",
+    "summary": "Your main takeaway",
+    "download": "Save report",
+    "downloadPreview": "Save preview",
+    "unlock": "Unlock to read everything",
+    "lockedHint": "Unlock detailed watch points and action plans",
+    "lockedSave": "Detailed watch points and action plans are locked. Return to the reading page to unlock before saving the complete report.",
+    "example": "For example",
+    "signals": "Signs you can look for",
+    "response": "What to try first",
+    "pitfall": "A common mistake to avoid",
+    "check": "How to check whether it helped",
+    "retry": "Try the reading again",
+    "year": "Year to explore",
+    "error": "The report could not be created. Please try again shortly.",
+    "yearNote": "Explore what to focus on during the year and how to prepare for different periods.",
+    "sections": {
+      "interpretation": "What this means for you",
+      "opportunities": "What to watch for",
+      "advice": "What you can try"
+    },
+    "states": {
+      "unconfigured": "Your chart is ready. The reading service has not been configured.",
+      "pending": "A reading for these details is being prepared. Please try again shortly.",
+      "limited": "The reading limit has been reached. Please try again later.",
+      "unavailable": "Your chart is ready, but the reading did not finish. Please retry."
+    },
+    "readings": {
+      "overview": {
+        "title": "Natal chart",
+        "subtitle": "Character · Motivation · Direction"
+      },
+      "annual": {
+        "title": "Year ahead",
+        "subtitle": "Priorities · Preparation"
+      },
+      "money": {
+        "title": "Money",
+        "subtitle": "Income · Resources · Habits"
+      },
+      "love": {
+        "title": "Relationships",
+        "subtitle": "Attraction · Communication · Closeness"
+      },
+      "work": {
+        "title": "Career",
+        "subtitle": "Skills · Collaboration · Direction"
+      },
+      "family": {
+        "title": "Family",
+        "subtitle": "Home · Support · Responsibilities"
+      }
+    },
+    "planets": {
+      "ascendant": "Ascendant",
+      "sun": "Sun",
+      "moon": "Moon",
+      "mars": "Mars",
+      "mercury": "Mercury",
+      "jupiter": "Jupiter",
+      "venus": "Venus",
+      "saturn": "Saturn",
+      "rahu": "Rahu",
+      "ketu": "Ketu",
+      "uranus": "Uranus"
+    },
+    "signs": [
+      "Aries",
+      "Taurus",
+      "Gemini",
+      "Cancer",
+      "Leo",
+      "Virgo",
+      "Libra",
+      "Scorpio",
+      "Sagittarius",
+      "Capricorn",
+      "Aquarius",
+      "Pisces"
+    ]
+  },
+  "th": {
+    "category": "โหราศาสตร์ไทย",
+    "title": "คำอ่านดวงไทยสำหรับคุณ",
+    "intro": "เลือกเรื่องที่อยากเข้าใจ เพื่อดูนิสัย สิ่งที่ควรใส่ใจ และแนวทางที่ลองทำได้จริง",
+    "categoryTitle": "ดวงไทย · อ่านตามเรื่องที่สนใจ",
+    "categoryIntro": "สำรวจลักษณะเฉพาะตัวและทางเลือกที่สำคัญกับคุณ",
+    "birth": "ข้อมูลเกิด",
+    "required": "กรุณาระบุวันเกิด เวลาเกิดที่แน่นอน และสถานที่เกิดเพื่อผูกดวงเฉพาะบุคคล",
+    "generate": "ผูกดวงและสร้างรายงาน",
+    "loading": "กำลังคำนวณดวงและเรียบเรียงคำอ่านของคุณ…",
+    "cancel": "ยกเลิกการสร้าง",
+    "cancelNote": "หลังยกเลิกสามารถแก้ข้อมูลได้ คำอ่านที่เริ่มไปแล้วอาจเสร็จในเบื้องหลัง และจะนำกลับมาใช้เมื่อส่งข้อมูลเดิม",
+    "results": "ข้อมูลเกิดที่ใช้",
+    "report": "รายงานเฉพาะบุคคล",
+    "summary": "ใจความสำคัญสำหรับคุณ",
+    "download": "บันทึกรายงาน",
+    "downloadPreview": "บันทึกตัวอย่าง",
+    "unlock": "ปลดล็อกเพื่ออ่านทั้งหมด",
+    "lockedHint": "ปลดล็อกเพื่ออ่านข้อควรใส่ใจและแผนปฏิบัติทั้งหมด",
+    "lockedSave": "ข้อควรใส่ใจและแผนปฏิบัติยังล็อกอยู่ กลับไปปลดล็อกที่หน้าอ่านดวงก่อนบันทึกรายงานฉบับเต็ม",
+    "example": "ตัวอย่างที่ลองทำได้",
+    "signals": "สัญญาณที่ลองสังเกตได้",
+    "response": "สิ่งที่ลองทำก่อนได้",
+    "pitfall": "สิ่งที่อาจมองข้าม",
+    "check": "วิธีดูว่าช่วยได้หรือไม่",
+    "retry": "สร้างคำอ่านอีกครั้ง",
+    "year": "ปีที่ต้องการดู ค.ศ.",
+    "error": "ยังสร้างรายงานไม่ได้ กรุณาลองอีกครั้งในภายหลัง",
+    "yearNote": "ดูเรื่องที่ควรให้ความสำคัญในแต่ละช่วงของปี และสิ่งที่เตรียมไว้ได้",
+    "sections": {
+      "interpretation": "เกี่ยวข้องกับชีวิตคุณอย่างไร",
+      "opportunities": "เรื่องที่ควรใส่ใจ",
+      "advice": "สิ่งที่คุณลองทำได้"
+    },
+    "states": {
+      "unconfigured": "ผูกดวงแล้ว แต่ยังไม่ได้ตั้งค่าบริการคำอ่าน",
+      "pending": "กำลังสร้างคำอ่านจากข้อมูลนี้ กรุณาลองอีกครั้งในอีกสักครู่",
+      "limited": "ถึงขีดจำกัดการสร้างคำอ่าน กรุณาลองใหม่ภายหลัง",
+      "unavailable": "ผูกดวงแล้ว แต่คำอ่านยังไม่เสร็จ กรุณาลองใหม่"
+    },
+    "readings": {
+      "overview": {
+        "title": "ดวงกำเนิด",
+        "subtitle": "ลักษณะเฉพาะ · แรงขับ · ทิศทาง"
+      },
+      "annual": {
+        "title": "ดวงรายปี",
+        "subtitle": "เรื่องสำคัญ · การเตรียมตัว"
+      },
+      "money": {
+        "title": "การเงิน",
+        "subtitle": "รายได้ · ทรัพยากร · นิสัยการใช้เงิน"
+      },
+      "love": {
+        "title": "ความรัก",
+        "subtitle": "แรงดึงดูด · การสื่อสาร · ความใกล้ชิด"
+      },
+      "work": {
+        "title": "การงาน",
+        "subtitle": "ทักษะ · ความร่วมมือ · ทิศทางอาชีพ"
+      },
+      "family": {
+        "title": "ครอบครัว",
+        "subtitle": "บ้าน · การสนับสนุน · ความรับผิดชอบ"
+      }
+    },
+    "planets": {
+      "ascendant": "ลัคนา",
+      "sun": "อาทิตย์",
+      "moon": "จันทร์",
+      "mars": "อังคาร",
+      "mercury": "พุธ",
+      "jupiter": "พฤหัสบดี",
+      "venus": "ศุกร์",
+      "saturn": "เสาร์",
+      "rahu": "ราหู",
+      "ketu": "เกตุ",
+      "uranus": "มฤตยู"
+    },
+    "signs": [
+      "เมษ",
+      "พฤษภ",
+      "มิถุน",
+      "กรกฎ",
+      "สิงห์",
+      "กันย์",
+      "ตุล",
+      "พิจิก",
+      "ธนู",
+      "มกร",
+      "กุมภ์",
+      "มีน"
+    ]
+  },
+  "vi": {
+    "category": "Chiêm tinh Thái Lan",
+    "title": "Luận giải Thái dành cho bạn",
+    "intro": "Chọn điều bạn quan tâm để hiểu thói quen của mình, điều cần lưu ý và việc cụ thể có thể thử.",
+    "categoryTitle": "Lá số Thái · Chủ đề của bạn",
+    "categoryIntro": "Khám phá đặc điểm riêng và những lựa chọn bạn quan tâm",
+    "birth": "Thông tin sinh",
+    "required": "Hãy bổ sung ngày sinh, giờ sinh chính xác và nơi sinh để lập lá số cá nhân.",
+    "generate": "Lập lá số và tạo báo cáo",
+    "loading": "Đang tính lá số và chuẩn bị luận giải của bạn…",
+    "cancel": "Hủy tạo báo cáo",
+    "cancelNote": "Bạn có thể sửa thông tin sau khi hủy. Luận giải đã bắt đầu có thể hoàn tất trong nền; gửi lại cùng thông tin sẽ dùng kết quả đó.",
+    "results": "Thông tin sinh đã dùng",
+    "report": "Báo cáo cá nhân",
+    "summary": "Điều chính bạn cần biết",
+    "download": "Lưu báo cáo",
+    "downloadPreview": "Lưu bản xem trước",
+    "unlock": "Mở khóa để xem toàn bộ",
+    "lockedHint": "Mở khóa để xem lưu ý chi tiết và kế hoạch hành động",
+    "lockedSave": "Lưu ý chi tiết và kế hoạch hành động chưa được mở khóa. Hãy quay lại trang luận giải để mở khóa trước khi lưu toàn bộ báo cáo.",
+    "example": "Ví dụ cụ thể",
+    "signals": "Dấu hiệu bạn có thể nhận ra",
+    "response": "Việc có thể làm trước",
+    "pitfall": "Điều dễ bỏ sót",
+    "check": "Cách kiểm tra kết quả",
+    "retry": "Tạo lại luận giải",
+    "year": "Năm muốn xem",
+    "error": "Chưa tạo được báo cáo. Vui lòng thử lại sau.",
+    "yearNote": "Tìm hiểu việc nên ưu tiên trong năm và cách chuẩn bị cho từng giai đoạn.",
+    "sections": {
+      "interpretation": "Điều này có ý nghĩa gì với bạn",
+      "opportunities": "Điều cần lưu ý",
+      "advice": "Việc bạn có thể thử"
+    },
+    "states": {
+      "unconfigured": "Đã lập lá số. Dịch vụ luận giải chưa được cấu hình.",
+      "pending": "Luận giải cho thông tin này đang được tạo. Hãy thử lại sau ít phút.",
+      "limited": "Đã đạt giới hạn luận giải. Vui lòng thử lại sau.",
+      "unavailable": "Đã lập lá số nhưng luận giải chưa hoàn tất. Hãy thử lại."
+    },
+    "readings": {
+      "overview": {
+        "title": "Lá số gốc",
+        "subtitle": "Đặc điểm · Động lực · Định hướng"
+      },
+      "annual": {
+        "title": "Vận trình năm",
+        "subtitle": "Ưu tiên · Chuẩn bị"
+      },
+      "money": {
+        "title": "Tài chính",
+        "subtitle": "Thu nhập · Nguồn lực · Thói quen"
+      },
+      "love": {
+        "title": "Tình cảm",
+        "subtitle": "Thu hút · Giao tiếp · Gắn kết"
+      },
+      "work": {
+        "title": "Sự nghiệp",
+        "subtitle": "Kỹ năng · Hợp tác · Định hướng"
+      },
+      "family": {
+        "title": "Gia đình",
+        "subtitle": "Tổ ấm · Hỗ trợ · Trách nhiệm"
+      }
+    },
+    "planets": {
+      "ascendant": "Cung mọc",
+      "sun": "Mặt Trời",
+      "moon": "Mặt Trăng",
+      "mars": "Sao Hỏa",
+      "mercury": "Sao Thủy",
+      "jupiter": "Sao Mộc",
+      "venus": "Sao Kim",
+      "saturn": "Sao Thổ",
+      "rahu": "La Hầu",
+      "ketu": "Kế Đô",
+      "uranus": "Sao Thiên Vương"
+    },
+    "signs": [
+      "Bạch Dương",
+      "Kim Ngưu",
+      "Song Tử",
+      "Cự Giải",
+      "Sư Tử",
+      "Xử Nữ",
+      "Thiên Bình",
+      "Bọ Cạp",
+      "Nhân Mã",
+      "Ma Kết",
+      "Bảo Bình",
+      "Song Ngư"
+    ]
+  }
+}

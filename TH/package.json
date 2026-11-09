@@ -1,0 +1,49 @@
+{
+  "name": "sabai-bazi-starter",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "setup:api": "node scripts/setup-api.mjs",
+    "setup:locations": "node scripts/python.mjs -X utf8 scripts/build-birth-locations.py",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "build:brand": "node --experimental-strip-types scripts/build-brand.mjs",
+    "build:zodiac": "node scripts/build-zodiac.mjs",
+    "test": "vitest run",
+    "test:api": "node scripts/python.mjs -m pytest backend/tests -q",
+    "check:api": "node scripts/python.mjs -m ruff check backend",
+    "verify:thai": "node scripts/verify-thai.mjs",
+    "verify:roxy": "node scripts/python.mjs scripts/verify-roxy.py",
+    "test:e2e": "playwright test",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@fontsource/noto-sans-thai": "^5.3.0",
+    "i18next": "^26.7.1",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-i18next": "^17.1.11",
+    "thai-astrology": "0.3.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^25.0.1",
+    "postcss": "^8.4.49",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.7.2",
+    "vite": "^6.4.1",
+    "vitest": "^4.1.12"
+  }
+}

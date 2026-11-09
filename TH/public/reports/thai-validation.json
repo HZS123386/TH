@@ -1,0 +1,1533 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-05T06:47:26.187Z",
+  "engine": {
+    "name": "thai-astrology",
+    "version": "0.3.2",
+    "source": "https://github.com/kongesque/thai-astrology",
+    "commit": "445577e7cbc8c09ddc98f2ec016cd3d1e32940fb",
+    "rules": "wanjai-suriyayatra-1",
+    "houseSystem": "whole-sign",
+    "weekdayBoundary": "06:00",
+    "planetaryFrameSeconds": 24124
+  },
+  "environment": {
+    "node": "v24.14.1",
+    "icu": "78.2",
+    "tz": "2025c"
+  },
+  "summary": {
+    "cases": 150,
+    "passed": 150,
+    "failed": 0
+  },
+  "groups": {
+    "release-regression": {
+      "cases": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "province-invariants": {
+      "cases": 77,
+      "passed": 77,
+      "failed": 0
+    },
+    "boundaries": {
+      "cases": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "sunrise-upstream-fixtures": {
+      "cases": 41,
+      "passed": 41,
+      "failed": 0,
+      "maxErrorMinutes": 0.5425372123718262,
+      "meanErrorMinutes": 0.24900033738878039
+    },
+    "sunrise-independent-fetch": {
+      "cases": 4,
+      "passed": 4,
+      "failed": 0,
+      "maxErrorMinutes": 0.33693504333496094,
+      "meanErrorMinutes": 0.24719858169555664
+    },
+    "iana-offsets": {
+      "cases": 21,
+      "passed": 21,
+      "failed": 0
+    },
+    "thai-calendar-anchors": {
+      "cases": 3,
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "checks": [
+    {
+      "group": "release-regression",
+      "name": "Published README example; CE/BE and adapter equivalence",
+      "passed": true,
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/README-en.md",
+      "independent": false,
+      "note": "Regression against the published package example, not an independent planetary oracle."
+    },
+    {
+      "group": "province-invariants",
+      "name": "กระบี่",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "กรุงเทพมหานคร",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "กาญจนบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "กาฬสินธุ์",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "กำแพงเพชร",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ขอนแก่น",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "จันทบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ฉะเชิงเทรา",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ชลบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ชัยนาท",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ชัยภูมิ",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ชุมพร",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "เชียงราย",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "เชียงใหม่",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ตรัง",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ตราด",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ตาก",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "นครนายก",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "นครปฐม",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "นครพนม",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "นครราชสีมา",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "นครศรีธรรมราช",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "นครสวรรค์",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "นนทบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "นราธิวาส",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "น่าน",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "บึงกาฬ",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "บุรีรัมย์",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ปทุมธานี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ประจวบคีรีขันธ์",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ปราจีนบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ปัตตานี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "พระนครศรีอยุธยา",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "พะเยา",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "พังงา",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "พัทลุง",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "พิจิตร",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "พิษณุโลก",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "เพชรบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "เพชรบูรณ์",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "แพร่",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ภูเก็ต",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "มหาสารคาม",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "มุกดาหาร",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "แม่ฮ่องสอน",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ยโสธร",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ยะลา",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ร้อยเอ็ด",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ระนอง",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ระยอง",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ราชบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ลพบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ลำปาง",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ลำพูน",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "เลย",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "ศรีสะเกษ",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สกลนคร",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สงขลา",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สตูล",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สมุทรปราการ",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สมุทรสงคราม",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สมุทรสาคร",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สระแก้ว",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สระบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สิงห์บุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สุโขทัย",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สุพรรณบุรี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สุราษฎร์ธานี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "สุรินทร์",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "หนองคาย",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "หนองบัวลำภู",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "อ่างทอง",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "อำนาจเจริญ",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "อุดรธานี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "อุตรดิตถ์",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "อุทัยธานี",
+      "passed": true
+    },
+    {
+      "group": "province-invariants",
+      "name": "อุบลราชธานี",
+      "passed": true
+    },
+    {
+      "group": "boundaries",
+      "name": "06:00 weekday boundary, including Wednesday night convention",
+      "passed": true
+    },
+    {
+      "group": "boundaries",
+      "name": "Unknown time and unresolved place never fabricate a full chart",
+      "passed": true
+    },
+    {
+      "group": "boundaries",
+      "name": "Transit natal houses and shortest differences stay in range",
+      "passed": true
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 1",
+      "passed": true,
+      "expectedMinutes": 352,
+      "actualMinutes": 351.66306495666504,
+      "errorMinutes": 0.33693504333496094,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 13.7563,
+        "longitude": 100.5018,
+        "utcOffsetHours": 7,
+        "expectedSunriseMinutes": 352
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 2",
+      "passed": true,
+      "expectedMinutes": 397,
+      "actualMinutes": 396.670446395874,
+      "errorMinutes": 0.32955360412597656,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": 13.7563,
+        "longitude": 100.5018,
+        "utcOffsetHours": 7,
+        "expectedSunriseMinutes": 397
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 3",
+      "passed": true,
+      "expectedMinutes": 325,
+      "actualMinutes": 325.1192593574524,
+      "errorMinutes": 0.11925935745239258,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "utcOffsetHours": -4,
+        "expectedSunriseMinutes": 325
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 4",
+      "passed": true,
+      "expectedMinutes": 437,
+      "actualMinutes": 436.82886600494385,
+      "errorMinutes": 0.17113399505615234,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "utcOffsetHours": -5,
+        "expectedSunriseMinutes": 437
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 5",
+      "passed": true,
+      "expectedMinutes": 420,
+      "actualMinutes": 420.0594234466553,
+      "errorMinutes": 0.05942344665527344,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "utcOffsetHours": 10,
+        "expectedSunriseMinutes": 420
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 6",
+      "passed": true,
+      "expectedMinutes": 341,
+      "actualMinutes": 340.87706565856934,
+      "errorMinutes": 0.12293434143066406,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "utcOffsetHours": 11,
+        "expectedSunriseMinutes": 341
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 7",
+      "passed": true,
+      "expectedMinutes": 309,
+      "actualMinutes": 308.6253833770752,
+      "errorMinutes": 0.3746166229248047,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 27.7172,
+        "longitude": 85.324,
+        "utcOffsetHours": 5.75,
+        "expectedSunriseMinutes": 309
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 8",
+      "passed": true,
+      "expectedMinutes": 410,
+      "actualMinutes": 410.25893926620483,
+      "errorMinutes": 0.258939266204834,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": 27.7172,
+        "longitude": 85.324,
+        "utcOffsetHours": 5.75,
+        "expectedSunriseMinutes": 410
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 9",
+      "passed": true,
+      "expectedMinutes": 283,
+      "actualMinutes": 283.1819987297058,
+      "errorMinutes": 0.18199872970581055,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": 283
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 10",
+      "passed": true,
+      "expectedMinutes": 484,
+      "actualMinutes": 484.00279998779297,
+      "errorMinutes": 0.00279998779296875,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "utcOffsetHours": 0,
+        "expectedSunriseMinutes": 484
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 11",
+      "passed": true,
+      "expectedMinutes": 410,
+      "actualMinutes": 409.5133924484253,
+      "errorMinutes": 0.48660755157470703,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": -13.8333,
+        "longitude": -171.75,
+        "utcOffsetHours": 13,
+        "expectedSunriseMinutes": 410
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 12",
+      "passed": true,
+      "expectedMinutes": 357,
+      "actualMinutes": 356.6511082649231,
+      "errorMinutes": 0.3488917350769043,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": -13.8333,
+        "longitude": -171.75,
+        "utcOffsetHours": 13,
+        "expectedSunriseMinutes": 357
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 13",
+      "passed": true,
+      "noRise": true,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "utcOffsetHours": 2,
+        "expectedSunriseMinutes": null
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 14",
+      "passed": true,
+      "noRise": true,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": null
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 15",
+      "passed": true,
+      "expectedMinutes": 351,
+      "actualMinutes": 351.1503481864929,
+      "errorMinutes": 0.15034818649291992,
+      "input": {
+        "yearCe": 1900,
+        "month": 6,
+        "day": 21,
+        "latitude": 13.7563,
+        "longitude": 100.5018,
+        "utcOffsetHours": 7,
+        "expectedSunriseMinutes": 351
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 16",
+      "passed": true,
+      "expectedMinutes": 352,
+      "actualMinutes": 351.7499828338623,
+      "errorMinutes": 0.2500171661376953,
+      "input": {
+        "yearCe": 2057,
+        "month": 6,
+        "day": 21,
+        "latitude": 13.7563,
+        "longitude": 100.5018,
+        "utcOffsetHours": 7,
+        "expectedSunriseMinutes": 352
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 17",
+      "passed": true,
+      "expectedMinutes": 488,
+      "actualMinutes": 488.17793369293213,
+      "errorMinutes": 0.1779336929321289,
+      "input": {
+        "yearCe": 2024,
+        "month": 3,
+        "day": 20,
+        "latitude": 0,
+        "longitude": 179,
+        "utcOffsetHours": 14,
+        "expectedSunriseMinutes": 488
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 18",
+      "passed": true,
+      "expectedMinutes": 482,
+      "actualMinutes": 482.12902307510376,
+      "errorMinutes": 0.12902307510375977,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 0,
+        "longitude": 179,
+        "utcOffsetHours": 14,
+        "expectedSunriseMinutes": 482
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 19",
+      "passed": true,
+      "expectedMinutes": 473,
+      "actualMinutes": 473.4999418258667,
+      "errorMinutes": 0.4999418258666992,
+      "input": {
+        "yearCe": 2024,
+        "month": 9,
+        "day": 22,
+        "latitude": 0,
+        "longitude": 179,
+        "utcOffsetHours": 14,
+        "expectedSunriseMinutes": 473
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 20",
+      "passed": true,
+      "expectedMinutes": 478,
+      "actualMinutes": 478.3165955543518,
+      "errorMinutes": 0.31659555435180664,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": 0,
+        "longitude": 179,
+        "utcOffsetHours": 14,
+        "expectedSunriseMinutes": 478
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 21",
+      "passed": true,
+      "expectedMinutes": 360,
+      "actualMinutes": 359.8830485343933,
+      "errorMinutes": 0.11695146560668945,
+      "input": {
+        "yearCe": 2024,
+        "month": 3,
+        "day": 20,
+        "latitude": 0,
+        "longitude": -179,
+        "utcOffsetHours": -12,
+        "expectedSunriseMinutes": 360
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 22",
+      "passed": true,
+      "expectedMinutes": 354,
+      "actualMinutes": 354.3451952934265,
+      "errorMinutes": 0.34519529342651367,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 0,
+        "longitude": -179,
+        "utcOffsetHours": -12,
+        "expectedSunriseMinutes": 354
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 23",
+      "passed": true,
+      "expectedMinutes": 345,
+      "actualMinutes": 345.14946699142456,
+      "errorMinutes": 0.14946699142456055,
+      "input": {
+        "yearCe": 2024,
+        "month": 9,
+        "day": 22,
+        "latitude": 0,
+        "longitude": -179,
+        "utcOffsetHours": -12,
+        "expectedSunriseMinutes": 345
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 24",
+      "passed": true,
+      "expectedMinutes": 351,
+      "actualMinutes": 350.8096647262573,
+      "errorMinutes": 0.19033527374267578,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": 0,
+        "longitude": -179,
+        "utcOffsetHours": -12,
+        "expectedSunriseMinutes": 351
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 25",
+      "passed": true,
+      "expectedMinutes": 367,
+      "actualMinutes": 367.46628999710083,
+      "errorMinutes": 0.4662899971008301,
+      "input": {
+        "yearCe": 2024,
+        "month": 3,
+        "day": 20,
+        "latitude": 27.7172,
+        "longitude": 85.324,
+        "utcOffsetHours": 5.75,
+        "expectedSunriseMinutes": 367
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 26",
+      "passed": true,
+      "expectedMinutes": 352,
+      "actualMinutes": 352.25417375564575,
+      "errorMinutes": 0.25417375564575195,
+      "input": {
+        "yearCe": 2024,
+        "month": 9,
+        "day": 22,
+        "latitude": 27.7172,
+        "longitude": 85.324,
+        "utcOffsetHours": 5.75,
+        "expectedSunriseMinutes": 352
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 27",
+      "passed": true,
+      "expectedMinutes": 362,
+      "actualMinutes": 362.2740340232849,
+      "errorMinutes": 0.2740340232849121,
+      "input": {
+        "yearCe": 2024,
+        "month": 3,
+        "day": 20,
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "utcOffsetHours": 0,
+        "expectedSunriseMinutes": 362
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 28",
+      "passed": true,
+      "expectedMinutes": 223,
+      "actualMinutes": 223.1819987297058,
+      "errorMinutes": 0.18199872970581055,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "utcOffsetHours": 0,
+        "expectedSunriseMinutes": 223
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 29",
+      "passed": true,
+      "expectedMinutes": 347,
+      "actualMinutes": 347.25621700286865,
+      "errorMinutes": 0.25621700286865234,
+      "input": {
+        "yearCe": 2024,
+        "month": 9,
+        "day": 22,
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "utcOffsetHours": 0,
+        "expectedSunriseMinutes": 347
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 30",
+      "passed": true,
+      "expectedMinutes": 358,
+      "actualMinutes": 358.3228826522827,
+      "errorMinutes": 0.32288265228271484,
+      "input": {
+        "yearCe": 2024,
+        "month": 3,
+        "day": 20,
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "utcOffsetHours": 10,
+        "expectedSunriseMinutes": 358
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 31",
+      "passed": true,
+      "expectedMinutes": 345,
+      "actualMinutes": 344.6888852119446,
+      "errorMinutes": 0.3111147880554199,
+      "input": {
+        "yearCe": 2024,
+        "month": 9,
+        "day": 22,
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "utcOffsetHours": 10,
+        "expectedSunriseMinutes": 345
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 32",
+      "passed": true,
+      "expectedMinutes": 281,
+      "actualMinutes": 280.87706565856934,
+      "errorMinutes": 0.12293434143066406,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "utcOffsetHours": 10,
+        "expectedSunriseMinutes": 281
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 33",
+      "passed": true,
+      "expectedMinutes": 391,
+      "actualMinutes": 390.93095541000366,
+      "errorMinutes": 0.06904458999633789,
+      "input": {
+        "yearCe": 2024,
+        "month": 3,
+        "day": 20,
+        "latitude": -13.8333,
+        "longitude": -171.75,
+        "utcOffsetHours": 13,
+        "expectedSunriseMinutes": 391
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 34",
+      "passed": true,
+      "expectedMinutes": 377,
+      "actualMinutes": 376.7183017730713,
+      "errorMinutes": 0.28169822692871094,
+      "input": {
+        "yearCe": 2024,
+        "month": 9,
+        "day": 22,
+        "latitude": -13.8333,
+        "longitude": -171.75,
+        "utcOffsetHours": 13,
+        "expectedSunriseMinutes": 377
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 35",
+      "passed": true,
+      "expectedMinutes": 339,
+      "actualMinutes": 338.4574627876282,
+      "errorMinutes": 0.5425372123718262,
+      "input": {
+        "yearCe": 2024,
+        "month": 3,
+        "day": 20,
+        "latitude": 67.4,
+        "longitude": 20,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": 339
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 36",
+      "passed": true,
+      "noRise": true,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 67.4,
+        "longitude": 20,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": null
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 37",
+      "passed": true,
+      "expectedMinutes": 323,
+      "actualMinutes": 322.7180027961731,
+      "errorMinutes": 0.2819972038269043,
+      "input": {
+        "yearCe": 2024,
+        "month": 9,
+        "day": 22,
+        "latitude": 67.4,
+        "longitude": 20,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": 323
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 38",
+      "passed": true,
+      "noRise": true,
+      "input": {
+        "yearCe": 2024,
+        "month": 12,
+        "day": 21,
+        "latitude": 67.4,
+        "longitude": 20,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": null
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 39",
+      "passed": true,
+      "expectedMinutes": 342,
+      "actualMinutes": 341.68383836746216,
+      "errorMinutes": 0.3161616325378418,
+      "input": {
+        "yearCe": 2024,
+        "month": 3,
+        "day": 20,
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": 342
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 40",
+      "passed": true,
+      "noRise": true,
+      "input": {
+        "yearCe": 2024,
+        "month": 6,
+        "day": 21,
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": null
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-upstream-fixtures",
+      "name": "USNO fixture 41",
+      "passed": true,
+      "expectedMinutes": 326,
+      "actualMinutes": 325.8359742164612,
+      "errorMinutes": 0.16402578353881836,
+      "input": {
+        "yearCe": 2024,
+        "month": 9,
+        "day": 22,
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "utcOffsetHours": 1,
+        "expectedSunriseMinutes": 326
+      },
+      "source": "https://github.com/kongesque/thai-astrology/blob/445577e7cbc8c09ddc98f2ec016cd3d1e32940fb/test/fixtures/sunrise-events.json",
+      "independentlyRetrieved": false
+    },
+    {
+      "group": "sunrise-independent-fetch",
+      "name": "usno-bangkok-summer.json",
+      "passed": true,
+      "expectedMinutes": 352,
+      "actualMinutes": 351.66306495666504,
+      "errorMinutes": 0.33693504333496094,
+      "source": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-06-21&coords=13.7563,100.5018&tz=7",
+      "rawEvidence": "/reports/thai-evidence/usno-bangkok-summer.json",
+      "sha256": "e1cd034f2d0d7611c5db82d989607d933f4ec506f63ced7b8f368725268eb38b",
+      "retrievedDate": "2026-11-05",
+      "apiVersion": "4.0.1",
+      "independentlyRetrieved": true
+    },
+    {
+      "group": "sunrise-independent-fetch",
+      "name": "usno-bangkok-winter.json",
+      "passed": true,
+      "expectedMinutes": 397,
+      "actualMinutes": 396.670446395874,
+      "errorMinutes": 0.32955360412597656,
+      "source": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-12-21&coords=13.7563,100.5018&tz=7",
+      "rawEvidence": "/reports/thai-evidence/usno-bangkok-winter.json",
+      "sha256": "6213a4e96121552dc80df390b2d6a877ff91f2c5f2820f10bef3ce1a3bec058d",
+      "retrievedDate": "2026-11-05",
+      "apiVersion": "4.0.1",
+      "independentlyRetrieved": true
+    },
+    {
+      "group": "sunrise-independent-fetch",
+      "name": "usno-chiangmai.json",
+      "passed": true,
+      "expectedMinutes": 372,
+      "actualMinutes": 371.79274320602417,
+      "errorMinutes": 0.20725679397583008,
+      "source": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-09-15&coords=18.79038,98.98468&tz=7",
+      "rawEvidence": "/reports/thai-evidence/usno-chiangmai.json",
+      "sha256": "d00c70242201f5ba16cd9940b373d669b704d45ad4a04882caf6aebe4006abf2",
+      "retrievedDate": "2026-11-05",
+      "apiVersion": "4.0.1",
+      "independentlyRetrieved": true
+    },
+    {
+      "group": "sunrise-independent-fetch",
+      "name": "usno-newyork.json",
+      "passed": true,
+      "expectedMinutes": 435,
+      "actualMinutes": 434.88495111465454,
+      "errorMinutes": 0.11504888534545898,
+      "source": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-03-10&coords=40.7128,-74.006&tz=-4",
+      "rawEvidence": "/reports/thai-evidence/usno-newyork.json",
+      "sha256": "4e9205040ec3be086ea74008fed0b86bf9b6054a0529499f450305b2909481e4",
+      "retrievedDate": "2026-11-05",
+      "apiVersion": "4.0.1",
+      "independentlyRetrieved": true
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 1: America/New_York",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 2: America/New_York",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 3: America/New_York",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 4: America/New_York",
+      "passed": true,
+      "status": "civil-time-gap-rejected"
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 5: America/New_York",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 6: America/New_York",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 7: America/New_York",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 8: Australia/Lord_Howe",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 9: Australia/Lord_Howe",
+      "passed": true,
+      "status": "civil-time-gap-rejected"
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 10: Pacific/Apia",
+      "passed": true,
+      "status": "civil-time-gap-rejected"
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 11: Asia/Bangkok",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 12: Asia/Bangkok",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 13: Asia/Bangkok",
+      "passed": true,
+      "status": "civil-time-gap-rejected"
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 14: Asia/Bangkok",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 15: Asia/Kathmandu",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 16: Asia/Kolkata",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 17: Africa/Ouagadougou",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 18: Europe/London",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 19: Europe/London",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 20: Australia/Sydney",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "iana-offsets",
+      "name": "Time zone 21: Australia/Sydney",
+      "passed": true,
+      "source": "https://data.iana.org/time-zones/releases/tzdata2025b.tar.gz",
+      "sourceVersion": "2025b",
+      "note": "Upstream distilled IANA facts; Intl runtime comparison, not a new timezone audit."
+    },
+    {
+      "group": "thai-calendar-anchors",
+      "name": "2024-02-24",
+      "passed": true,
+      "expected": {
+        "phase": "waxing",
+        "day": 15,
+        "month": 3
+      },
+      "actual": {
+        "dayBoundary": "civil-midnight",
+        "yearType": "intercalary-month",
+        "phase": "waxing",
+        "day": 15,
+        "month": 3,
+        "secondEighthMonth": false,
+        "label": "ข๑๕ด ๓"
+      },
+      "source": "https://uttaradit.prd.go.th/th/content/page/index/id/263536",
+      "note": "Three fixed 2024 dates only; not a representative estimate of calendar accuracy."
+    },
+    {
+      "group": "thai-calendar-anchors",
+      "name": "2024-05-22",
+      "passed": true,
+      "expected": {
+        "phase": "waxing",
+        "day": 15,
+        "month": 6
+      },
+      "actual": {
+        "dayBoundary": "civil-midnight",
+        "yearType": "ordinary",
+        "phase": "waxing",
+        "day": 15,
+        "month": 6,
+        "secondEighthMonth": false,
+        "label": "ข๑๕ด ๖"
+      },
+      "source": "https://www.prd.go.th/th/content/category/detail/id/31/iid/288362",
+      "note": "Three fixed 2024 dates only; not a representative estimate of calendar accuracy."
+    },
+    {
+      "group": "thai-calendar-anchors",
+      "name": "2024-07-20",
+      "passed": true,
+      "expected": {
+        "phase": "waxing",
+        "day": 15,
+        "month": 8
+      },
+      "actual": {
+        "dayBoundary": "civil-midnight",
+        "yearType": "ordinary",
+        "phase": "waxing",
+        "day": 15,
+        "month": 8,
+        "secondEighthMonth": false,
+        "label": "ข๑๕ด ๘"
+      },
+      "source": "https://nan.prd.go.th/th/content/category/detail/id/9/iid/308385",
+      "note": "Three fixed 2024 dates only; not a representative estimate of calendar accuracy."
+    }
+  ],
+  "independentPlanetaryValidation": {
+    "status": "pending-same-school-external-reference",
+    "samples": 0,
+    "note": "No independent Suriyayatra planetary/ascendant oracle was available. Package examples and invariants cannot establish external positional accuracy."
+  },
+  "predictiveAccuracy": {
+    "status": "not-established",
+    "percentage": null,
+    "note": "No prospective outcome study. Software pass counts, sunrise errors and satisfaction scores do not measure fortune-telling predictive accuracy."
+  }
+}

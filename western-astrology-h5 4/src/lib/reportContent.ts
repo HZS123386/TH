@@ -1,0 +1,85 @@
+import type { LifePoint, LifeReport, LifeSummary } from "./lifeReport";
+import type { Reading } from "./reading";
+
+export type ReportSectionKey = "basics" | "summary" | "traits" | "work" | "money" | "relationships" | "recent" | "advice";
+export interface ReportEntry { point: LifePoint; id?: string }
+export interface ReportGroup { title: string; entries: ReportEntry[] }
+export interface ReportSection {
+  key: ReportSectionKey;
+  title: string;
+  description: string;
+  paid: boolean;
+  ready: boolean;
+  summaries: LifeSummary[];
+  groups: ReportGroup[];
+}
+
+const copy = {
+  zh: {
+    sections: [
+      ["basics", "基础信息", "称呼、解读方式与参考时间范围"],
+      ["summary", "报告摘要", "主要结论与关注重点"],
+      ["traits", "个人特点", "性格、优势与改进方向"],
+      ["work", "事业发展", "工作风格与发展建议"],
+      ["money", "财务方面", "金钱态度与规划参考"],
+      ["relationships", "感情与家庭", "关系需求与沟通建议"],
+      ["recent", "近期关注", "近期主题与行动参考"],
+      ["advice", "总结建议", "优先事项与具体行动"],
+    ],
+    groups: { work: ["工作风格", "发展建议"], money: ["金钱态度", "规划参考"], love: ["关系需求", "相处与沟通建议"], family: ["家庭中的需要与责任", "家庭沟通建议"], annual: ["近期关注的主题", "行动参考"] },
+  },
+  th: {
+    sections: [
+      ["basics", "ข้อมูลพื้นฐาน", "ชื่อ วิธีการอ่าน และช่วงเวลาที่ใช้อ้างอิง"],
+      ["summary", "สรุปรายงาน", "ข้อสรุปหลักและสิ่งที่ควรให้ความสำคัญ"],
+      ["traits", "ลักษณะส่วนตัว", "นิสัย จุดแข็ง และสิ่งที่ค่อย ๆ ปรับได้"],
+      ["work", "การงานและการเติบโต", "รูปแบบการทำงานและแนวทางพัฒนา"],
+      ["money", "การเงิน", "ทัศนคติต่อเงินและแนวทางวางแผน"],
+      ["relationships", "ความสัมพันธ์และครอบครัว", "ความต้องการและแนวทางสื่อสาร"],
+      ["recent", "เรื่องที่ควรใส่ใจช่วงนี้", "ประเด็นและแนวทางลงมือทำ"],
+      ["advice", "ข้อเสนอแนะโดยรวม", "สิ่งสำคัญและการลงมือทำอย่างเป็นรูปธรรม"],
+    ],
+    groups: { work: ["รูปแบบการทำงาน", "แนวทางพัฒนา"], money: ["ทัศนคติต่อเงิน", "แนวทางวางแผน"], love: ["ความต้องการในความสัมพันธ์", "แนวทางพูดคุยและอยู่ร่วมกัน"], family: ["ความต้องการและหน้าที่ในครอบครัว", "แนวทางสื่อสารกับครอบครัว"], annual: ["ประเด็นที่ควรใส่ใจช่วงนี้", "แนวทางลงมือทำ"] },
+  },
+} as const;
+
+// One outline is shared by the screen, saved HTML and PDF. Paid data is gated here too.
+export function reportContent(report: LifeReport): ReportSection[] {
+  const language = report.input.profile.language;
+  const labels = copy[language];
+  const chapters = new Map((report.access === "full" ? report.chapters : []).map(chapter => [chapter.key, chapter]));
+  const groupFor = (reading: Exclude<Reading, "overview">): ReportGroup[] => {
+    const chapter = chapters.get(reading);
+    if (!chapter) return [];
+    const titles = labels.groups[reading];
+    return [
+      { title: titles[0], entries: chapter.insights.map(point => ({ point })) },
+      { title: titles[1], entries: [
+        ...chapter.watchpoints.map(point => ({ point })),
+        ...chapter.actions.map((point, index) => ({ point, id: `life-action-${reading}-${index}` })),
+      ] },
+    ];
+  };
+  return labels.sections.map(([key, title, description], index) => {
+    const section: ReportSection = { key, title, description, paid: index >= 3, ready: false, summaries: [], groups: [] };
+    if (key === "basics") section.ready = true;
+    if (key === "summary" || key === "traits") section.ready = !!report.preview;
+    if (key === "work" || key === "money") {
+      section.ready = chapters.has(key);
+      section.groups = groupFor(key);
+      if (chapters.has(key)) section.summaries = [chapters.get(key)!.summary];
+    }
+    if (key === "relationships") {
+      section.ready = chapters.has("love") && chapters.has("family");
+      section.groups = [...groupFor("love"), ...groupFor("family")];
+      section.summaries = [chapters.get("love")?.summary, chapters.get("family")?.summary].filter((item): item is LifeSummary => !!item);
+    }
+    if (key === "recent") {
+      section.ready = chapters.has("annual");
+      section.groups = groupFor("annual");
+      if (chapters.has("annual")) section.summaries = [chapters.get("annual")!.summary];
+    }
+    if (key === "advice") section.ready = report.access === "full" && !!report.plan;
+    return section;
+  });
+}

@@ -1,0 +1,86 @@
+[
+  {
+    "sign": "aries",
+    "source_file": "01_白羊座_Aries.png",
+    "original_file": "original/aries.png",
+    "bytes": 1499355,
+    "sha256": "1ae20e666ffaab64db4ee0672529a26e7fd4f5f1e7a7c88470d6ceb5e423474d"
+  },
+  {
+    "sign": "taurus",
+    "source_file": "02_金牛座_Taurus.png",
+    "original_file": "original/taurus.png",
+    "bytes": 1412914,
+    "sha256": "822883bd860173d313b5e87b34b7af540980a7a99d4a1076af87fb878074a617"
+  },
+  {
+    "sign": "gemini",
+    "source_file": "03_双子座_Gemini.png",
+    "original_file": "original/gemini.png",
+    "bytes": 1449441,
+    "sha256": "ec25f7607b7c02b6c0ed1cb6b64b34225605b7e1ce7ecf6636552e9cdd8fc48c"
+  },
+  {
+    "sign": "cancer",
+    "source_file": "04_巨蟹座_Cancer.png",
+    "original_file": "original/cancer.png",
+    "bytes": 1670253,
+    "sha256": "487e26ab155f4ccaa5720e7f00643cf705e8b7ddaf3e48ba4a6c8f1363fa9805"
+  },
+  {
+    "sign": "leo",
+    "source_file": "05_狮子座_Leo.png",
+    "original_file": "original/leo.png",
+    "bytes": 1495779,
+    "sha256": "6d5133e3f939da8734f687c5ea79a944fac8333427d5ab07b3e992a95c566452"
+  },
+  {
+    "sign": "virgo",
+    "source_file": "06_处女座_Virgo.png",
+    "original_file": "original/virgo.png",
+    "bytes": 1497528,
+    "sha256": "fd8025095793564a184a98698266a747993a76cac3ba5edb102e1eed08ce5673"
+  },
+  {
+    "sign": "libra",
+    "source_file": "07_天秤座_Libra.png",
+    "original_file": "original/libra.png",
+    "bytes": 1680906,
+    "sha256": "813f636feac75a21b37458866aa54aaeba48e03ca85a1d0c19218ec59f7507a5"
+  },
+  {
+    "sign": "scorpio",
+    "source_file": "08_天蝎座_Scorpio.png",
+    "original_file": "original/scorpio.png",
+    "bytes": 1511198,
+    "sha256": "0ae878f4528671cf8223eb041380cdd83c9bf02fb0330e51563b17cb284c9865"
+  },
+  {
+    "sign": "sagittarius",
+    "source_file": "09_射手座_Sagittarius.png",
+    "original_file": "original/sagittarius.png",
+    "bytes": 1176258,
+    "sha256": "f7ede1048a7905a1762391d356c5ca3104d53302f9d354a3520ec548b4834b05"
+  },
+  {
+    "sign": "capricorn",
+    "source_file": "10_摩羯座_Capricorn.png",
+    "original_file": "original/capricorn.png",
+    "bytes": 1664697,
+    "sha256": "a7efe1c0d5df475b9e7ebf338682eb5b575cf7be6cdabe499146ad7d6d8ddbc9"
+  },
+  {
+    "sign": "aquarius",
+    "source_file": "11_水瓶座_Aquarius.png",
+    "original_file": "original/aquarius.png",
+    "bytes": 1554889,
+    "sha256": "4ecf2a7edb2d41a429d125612ee248e3a5a7d202c38985a68d9e3e406628c728"
+  },
+  {
+    "sign": "pisces",
+    "source_file": "12_双鱼座_Pisces.png",
+    "original_file": "original/pisces.png",
+    "bytes": 1413854,
+    "sha256": "75e47b979d749e209729b8089df8dd2a2c21e541586ff397398fd0fb630ca8b3"
+  }
+]
