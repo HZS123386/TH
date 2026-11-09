@@ -13,6 +13,7 @@ from .thai_readings import AdvicePoint, ReadingPoint, ReadingSummary, WatchPoint
 VERSION = "life-report-2"
 CHAPTERS = ("work", "money", "love", "family", "annual")
 TRAIT_HOUSES = {"strength": ["H1", "H5", "H10"], "decisions": ["H1", "H9", "H10"], "relationships": ["H7", "H4"]}
+PREVIEW_TRAIT_LENGTHS = {"zh": (90, 180), "th": (180, 600)}
 CAREER_VERSION = "career-decision-2"
 CAREER_COPY = {
     "zh": {
@@ -334,7 +335,18 @@ class Plan(BaseModel):
 
 def invalid(reason):
     error = InvalidBaziReport("life_report/" + reason)
-    error.feedback = "Correct the FULL JSON using the exact stage schema. " + reason + ". Keep prose specific, fully in the requested language and free of calculations. Follow citation_rules: exactly ONE topic/trait house ID plus ONE supporting_natal_id, not two houses or two planets. Annual uses ONE monthly ID plus ONE natal ID and beginning/middle/end coverage. For preview also check ALL three text lengths: 90-170 Chinese characters each or 180-650 Thai characters each. Target the middle of the range, with a concrete conditional example and an adjustment. Chapter text fields need at least 60 Chinese characters each. EVERY action step, signal, example, response, pitfall and check needs at least 12 characters, not a short slogan; target 25-55 Chinese characters per step. Fix ALL steps in BOTH actions and all other errors together. Avoid abstract jargon such as 潜意识、能量场、赋能."
+    zh_min, zh_max = PREVIEW_TRAIT_LENGTHS["zh"]
+    th_min, th_max = PREVIEW_TRAIT_LENGTHS["th"]
+    error.feedback = (
+        f"Correct the FULL JSON using the exact stage schema. {reason}. Keep prose specific, fully in the requested language "
+        "and free of calculations. Follow citation_rules: exactly ONE topic/trait house ID plus ONE supporting_natal_id, "
+        "not two houses or two planets. Annual uses ONE monthly ID plus ONE natal ID and beginning/middle/end coverage. "
+        f"For preview also check ALL three text lengths: {zh_min}-{zh_max} Chinese characters each or "
+        f"{th_min}-{th_max} Thai characters each. Target the middle of the range, with a concrete conditional example and an adjustment. "
+        "Chapter text fields need at least 60 Chinese characters each. EVERY action step, signal, example, response, pitfall "
+        "and check needs at least 12 characters, not a short slogan; target 25-55 Chinese characters per step. "
+        "Fix ALL steps in BOTH actions and all other errors together. Avoid abstract jargon such as 潜意识、能量场、赋能."
+    )
     return error
 
 
@@ -399,7 +411,7 @@ def validate_life_story(raw, bundle):
             raise invalid("incorrect trait order")
         if isinstance(story, Preview):
             lengths = {row.key: len(re.findall(r"[\u3400-\u9fff]", row.text)) if story.language == "zh" else len(row.text) for row in points}
-            lower, upper = (90, 170) if story.language == "zh" else (180, 650)
+            lower, upper = PREVIEW_TRAIT_LENGTHS[story.language]
             if any(not lower <= length <= upper for length in lengths.values()):
                 content_errors.append(f"preview text lengths {lengths}; expand below {lower} and shorten above {upper}; target the middle of that range with a concrete situation and adjustment")
         named_points = ([(f"traits[{row.key}]", row) for row in points] if isinstance(story, Preview)
@@ -457,7 +469,8 @@ def validate_life_story(raw, bundle):
         fields = {**({"title": row.title} if hasattr(row, "title") else {}), **public_fields(row)}
         for field, text in fields.items():
             try:
-                validate_text(text, story.language, title=field == "title", narrative=isinstance(story, Chapter) and row is not story.summary and field == "text")
+                narrative = field == "text" and isinstance(row, (Trait, Insight, WatchPoint, AdvicePoint))
+                validate_text(text, story.language, title=field == "title", narrative=narrative)
             except InvalidBaziReport as error:
                 content_errors.append(f"{path}.{field}: {str(error).removeprefix('life_report/')}")
             if re.sub(r"\W", "", text).casefold() in previous:
@@ -492,11 +505,12 @@ def preview_writing_progress(raw, language):
         empty[keys[0]] = text_progress(summary.get("text"), done.get("text") if isinstance(done, dict) else None, 180 if language == "zh" else 600)
     traits, finished = partial.get("traits"), closed.get("traits")
     if isinstance(traits, list):
+        _, trait_limit = PREVIEW_TRAIT_LENGTHS[language]
         for index, key in enumerate(keys[1:]):
             item = traits[index] if index < len(traits) else None
             done = finished[index] if isinstance(finished, list) and index < len(finished) else None
             if isinstance(item, dict):
-                empty[key] = text_progress(item.get("text"), done.get("text") if isinstance(done, dict) else None, 170 if language == "zh" else 650)
+                empty[key] = text_progress(item.get("text"), done.get("text") if isinstance(done, dict) else None, trait_limit)
     # Completed strings stay below 100 until the whole preview is validated and saved.
     return empty
 

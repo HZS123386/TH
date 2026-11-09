@@ -336,7 +336,7 @@ class LifeReports:
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
                               "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
             "price": {"amount": 9900, "currency": "THB", "display": "฿99", "mode": "direct"} if career
-                     else {"amount": 30000, "currency": "CNY", "display": "¥300", "mode": "direct"},
+                     else {"amount": 5000, "currency": "THB", "display": "฿50", "mode": "direct"},
             "preview_state": row["preview_state"], "access": "full" if row["unlocked"] else "preview",
             "full_state": row["full_state"], "progress": {"completed": completed, "total": len(sections)},
             "generation_progress": {"percent": percent, "sections": sections},
