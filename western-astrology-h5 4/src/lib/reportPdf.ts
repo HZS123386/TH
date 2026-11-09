@@ -1,7 +1,7 @@
 import type { Content, ContentOrderedList, ContentStack, ContentText, TDocumentDefinitions } from "pdfmake/interfaces";
 import type { LifeLabels, LifeReport } from "./lifeReport";
 import { reportHtml, ui } from "./reading";
-import { reportContent } from "./reportContent";
+import { reportContent, reportReference } from "./reportContent";
 
 type PdfEngine = typeof import("pdfmake/build/pdfmake");
 type SaveWindow = Window & { showSaveFilePicker?: (options: {
@@ -87,7 +87,7 @@ function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
       [{ colSpan: 2, stack: [
         { text: [...textRuns(`${labels.name}  `), ...textRuns(profile.display_name || labels.defaultName, true)], fontSize: 9.5, color: palette.ink, margin: [0, 0, 0, 6] },
         { text: textRuns(`${labels.method}  ${labels.methodValue}`), fontSize: 9.5, color: palette.ink },
-        { text: textRuns(`${labels.timeRange}  ${report.input.year} · ${labels.yearReference}`), fontSize: 9, color: palette.muted, margin: [0, 6, 0, 0] },
+        { text: textRuns(`${labels.timeRange}  ${reportReference(report, labels)}`), fontSize: 9, color: palette.muted, margin: [0, 6, 0, 0] },
       ] }, {}],
     ] }, fillColor: "#FFFFFF", layout: { hLineWidth: () => .5, vLineWidth: (index) => index === 1 ? 0 : .5,
       hLineColor: () => palette.line, vLineColor: () => palette.line,

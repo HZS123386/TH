@@ -64,6 +64,11 @@ def annual(year: int, ascendant: int):
     return _run({"operation": "annual", "year": year, "ascendant": ascendant})
 
 
+@lru_cache(maxsize=128)
+def career_window(start: str, ascendant: int):
+    return _run({"operation": "career-window", "start": start, "ascendant": ascendant})
+
+
 def civil_day_window(profile: dict):
     """Retain the first and last real civil minutes, including DST fold bounds."""
     zone = ZoneInfo(profile["timezone"])

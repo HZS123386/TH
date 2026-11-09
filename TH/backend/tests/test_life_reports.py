@@ -35,6 +35,8 @@ def story_for(bundle):
         return {**base, "phases": [{"key": key, "title": WORDS[index], "text": WORDS[index] + TEXT, "action_ids": actions[index * 2:index * 2 + 2]} for index, key in enumerate(("observe", "adjust", "review"))]}
     summary = {"text": "先把真正重要的事情说清楚，再选择适合自己的投入方式。", "evidence_ids": ids(0)}
     if bundle["stage"] == "preview":
+        if bundle.get("user_question"):
+            summary = {"text": "先和家人约定可以独处的时间，再一起商量哪些家务需要共同分担。", "evidence_ids": ["H4", "P_sun"]}
         return {**base, "summary": summary, "traits": [{"key": key, "title": WORDS[index], "text": WORDS[index] + TRAIT, "evidence_ids": ids(index, key)} for index, key in enumerate(("strength", "decisions", "relationships"))]}
     topic = TOPICS[bundle["reading"]]
     def row(index):
@@ -92,6 +94,92 @@ def test_preview_is_personal_and_does_not_return_paid_chapters(client):
     assert "birth_date" not in json.dumps(calls[0])
     assert all(len(row["evidence"]) == 2 for row in result["preview"]["traits"])
     assert preview(http)["id"] == result["id"] and len(calls) == 1
+
+
+def test_career_stage_is_persisted_and_unlock_uses_the_same_30_day_window(client):
+    http, app, calls, _ = client
+    body = {"profile": {**PROFILE, "birth_time": None}, "year": 2025,
+            "career": {"stage": "offer", "start": "2025-12-20"}}
+    response = http.post("/api/life-reports", json=body, headers=HEADERS)
+    assert response.status_code == 200, response.text
+    free = response.json()
+    assert free["input"]["career"] == body["career"]
+    assert free["price"]["display"] == "฿99" and free["price"]["currency"] == "THB"
+    assert free["reference_period"] == {"start": "2025-12-20", "end": "2026-01-18"}
+    assert free["time_accuracy"]["mode"] == "estimated"
+    assert [item["title"] for item in free["preview"]["traits"]] == ["如果留下", "如果换走", "眼下先做什么"]
+    assert free["title"] == "新公司在等答复，我接还是留？"
+    assert "接 offer" in free["preview"]["summary"]["text"]
+    assert free["access"] == "preview" and not free["chapters"]
+
+    assert http.post("/api/life-reports", json=body, headers=HEADERS).json()["id"] == free["id"]
+    other_stage = {**body, "career": {**body["career"], "stage": "considering"}}
+    another = http.post("/api/life-reports", json=other_stage, headers=HEADERS).json()
+    assert another["title"] == "今天该辞职，还是先找下家？"
+    assert another["id"] != free["id"] and another["preview"]["summary"]["text"] != free["preview"]["summary"]["text"]
+
+    focused_body = {**body, "career": {**body["career"], "focus": "move"}}
+    focused_response = http.post("/api/life-reports", json=focused_body, headers=HEADERS)
+    assert focused_response.status_code == 200, focused_response.text
+    focused = focused_response.json()
+    assert focused["input"]["career"] == focused_body["career"] and focused["id"] != free["id"]
+    assert focused["preview"]["summary"]["text"].startswith("先核对岗位职责、试用期考核和书面薪资。")
+    assert http.get(f"/api/life-reports/{focused['id']}", headers=HEADERS).json()["preview"] == focused["preview"]
+
+    url = f"/api/life-reports/{free['id']}"
+    assert http.post(url + "/unlock", json={}, headers=HEADERS).status_code == 200
+    finish(http, app)
+    paid = http.get(url, headers=HEADERS).json()
+    assert paid["full_state"] == "ready" and paid["progress"] == {"completed": 1, "total": 1}
+    assert paid["reference_period"] == free["reference_period"] and paid["preview"] == free["preview"]
+    assert [item["title"].split(" · ")[0] for item in paid["chapters"][0]["insights"]] == [
+        "留任的观察时段", "换岗的观察时段", "重新比较",
+    ]
+    assert not calls
+
+
+def test_career_question_is_answered_in_the_same_complete_report(client):
+    http, app, _, _ = client
+    question = {"stage": "offer", "start": "2025-12-20"}
+    response = http.post("/api/life-reports", json={"profile": PROFILE, "year": 2025, "career_question": question}, headers=HEADERS)
+    assert response.status_code == 200, response.text
+    free = response.json()
+    assert free["input"]["career_question"] == {**question, "focus": None}
+    assert free["title"] == "人生报告" and free["price"]["display"] == "¥300"
+    assert free["preview"]["career_answer"]["text"].startswith("如果新岗位能解决你最想离开的原因")
+    assert free["preview"]["career_answer"]["evidence"]
+    assert len(free["preview"]["traits"]) == 3 and len(free["catalog"]) == 5
+    assert not free["chapters"]
+
+    url = f"/api/life-reports/{free['id']}"
+    assert http.post(url + "/unlock", json={}, headers=HEADERS).status_code == 200
+    finish(http, app)
+    full = http.get(url, headers=HEADERS).json()
+    assert full["id"] == free["id"] and full["preview"] == free["preview"]
+    assert full["full_state"] == "ready" and full["plan"]
+    assert [row["key"] for row in full["chapters"]] == ["work", "money", "love", "family", "annual"]
+
+
+def test_custom_question_is_saved_and_drives_the_free_summary(client):
+    http, app, calls, _ = client
+    question = "怎么和家人商量独处时间？"
+    body = {"profile": PROFILE, "year": 2025, "user_question": f"  {question}  "}
+    response = http.post("/api/life-reports", json=body, headers=HEADERS)
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["input"]["user_question"] == question
+    assert calls[0]["user_question"] == question
+    assert {"H2", "H4", "H10"} <= set(calls[0]["citation_rules"]["summary_house_ids"])
+    prompt = app.state.life_reports.writer.prompt(calls[0])
+    assert "answer the concern in user_question" in prompt and question not in prompt
+    assert "独处的时间" in report["preview"]["summary"]["text"]
+    assert len(report["preview"]["traits"]) == 3 and len(report["catalog"]) == 5
+    saved = http.get(f"/api/life-reports/{report['id']}", headers=HEADERS).json()
+    assert saved["input"] == report["input"] and saved["preview"] == report["preview"]
+    for invalid in (" ", "问" * 121, "问题\x00内容"):
+        assert http.post("/api/life-reports", json={**body, "user_question": invalid}, headers=HEADERS).status_code == 422
+    conflict = {**body, "career_question": {"stage": "offer", "start": "2025-12-20"}}
+    assert http.post("/api/life-reports", json=conflict, headers=HEADERS).status_code == 422
 
 
 def test_direct_unlock_finishes_all_chapters_and_a_grounded_plan(client):
