@@ -47,6 +47,17 @@ test("unlock starts paid generation and detailed progress independently of the f
   expect(creates).toBe(1); expect(unlocks).toBe(0);
   await expect(page.getByTestId("life-background-status")).toHaveText(lifeCopy.zh.backgroundRetry);
   await page.getByTestId("life-unlock-button").click();
+  const checkout = page.getByTestId("life-checkout");
+  await expect(checkout).toContainText("฿50");
+  expect(unlocks).toBe(0);
+  await page.keyboard.press("Escape");
+  await expect(checkout).toHaveCount(0);
+  await page.getByTestId("life-unlock-button").click();
+  await page.reload();
+  await expect(checkout).toBeVisible();
+  expect(unlocks).toBe(0);
+  await checkout.screenshot({ path: info.outputPath("checkout.png") });
+  await page.getByTestId("life-checkout-confirm").click();
   const dialog = page.getByTestId("report-generation"), progress = page.getByRole("progressbar"), video = dialog.locator("video");
   await expect.poll(() => video.evaluate((node: HTMLVideoElement) => !node.paused && node.currentTime > .2)).toBe(true);
   await expect(progress).toHaveAttribute("aria-valuenow", "0");
@@ -85,6 +96,7 @@ test("failed full generation retries without creating the free report again", as
   });
   await showFreeReport(page);
   await page.getByTestId("life-unlock-button").click();
+  await page.getByTestId("life-checkout-confirm").click();
   await expect(page.getByTestId("report-generation")).toContainText(lifeCopy.zh.states.unavailable);
   await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "23");
   await page.getByRole("button", { name: lifeCopy.zh.retry, exact: true }).click();
@@ -105,6 +117,7 @@ test("cancelling the unlock animation preserves the preview and prevents late fu
   });
   await showFreeReport(page);
   await page.getByTestId("life-unlock-button").click();
+  await page.getByTestId("life-checkout-confirm").click();
   await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "7");
   await expect(page.locator(".report-generation-static")).toBeVisible();
   await polling;
@@ -127,6 +140,7 @@ test("rate-limited unlock progress waits automatically and displays the full rep
   await page.clock.install({ time: new Date("2026-11-09T08:00:00Z") });
   await page.clock.pauseAt(new Date("2026-11-09T08:00:01Z"));
   await page.getByTestId("life-unlock-button").click();
+  await page.getByTestId("life-checkout-confirm").click();
   await expect(page.getByTestId("report-generation")).toContainText(generationCopy.zh.full);
   await page.clock.runFor(20);
   await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");

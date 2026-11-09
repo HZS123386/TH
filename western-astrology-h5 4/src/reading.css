@@ -36,8 +36,13 @@
   color: var(--gold);
   font-size: 10px;
 }
-html:has(.report-generation-dialog[open]) {
+html:has(.report-generation-dialog[open], .report-checkout-dialog[open]) {
   overflow: hidden;
+}
+.report-checkout-dialog {
+  max-height: 94dvh;
+  border-color: rgb(228 188 120 / 45%);
+  background: radial-gradient(ellipse at top left, #302044, var(--night) 65%);
 }
 .report-generation-dialog {
   width: calc(100% - 24px);

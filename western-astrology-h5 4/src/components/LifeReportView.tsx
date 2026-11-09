@@ -6,6 +6,7 @@ import { reportContent, reportReference } from "../lib/reportContent";
 import { saveReportPdf } from "../lib/reportPdf";
 import { EvidenceDetails } from "./EvidenceDetails";
 import { PaidReportSections } from "./PaidReportSections";
+import { ReportCheckoutDialog } from "./ReportCheckoutDialog";
 import { ReportGenerationDialog } from "./ReportGenerationDialog";
 
 function moveTo(id: string) {
@@ -20,6 +21,7 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
   const [report, setReport] = useState(initial);
   const [error, setError] = useState("");
   const [opening, setOpening] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(() => new URLSearchParams(location.search).get("checkout") === "1");
   const [generation, setGeneration] = useState<GenerationProgress | null>(null);
   const [generationError, setGenerationError] = useState("");
   const [readyReport, setReadyReport] = useState<LifeReport | null>(null);
@@ -37,6 +39,7 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
   const requests = useRef(new Set<AbortController>());
   const language = report.input.profile.language;
   const c = lifeLabels(report);
+  const unlockLabel = `${report.price.display} ${c.unlock}`;
   const career = !!report.input.career;
   const Basics = career ? "details" : "div";
   const full = report.access === "full";
@@ -100,6 +103,14 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
     timer = window.setTimeout(() => void poll(), lifeReportPollInterval);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [report.id, report.access, report.full_state, language, c.historyError, !!generation]);
+
+  function showCheckout(open: boolean) {
+    const url = new URL(location.href);
+    if (open) url.searchParams.set("checkout", "1");
+    else url.searchParams.delete("checkout");
+    history.replaceState(history.state, "", url);
+    setCheckoutOpen(open);
+  }
 
   async function unlock() {
     unlockRequest.current?.abort();
@@ -224,7 +235,7 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
           <BookOpen className="mx-auto text-gold" size={27} strokeWidth={1.4} /><h3 className="mb-3 mt-4 text-xl font-medium leading-8 text-cream">{c.offerTitle}</h3><p className="text-xs leading-7 text-lavender">{c.offerText}</p><ul className="my-5 grid list-none grid-cols-2 gap-3 p-0 text-left text-[11px] leading-5 text-cream">{c.benefits.map(text => <li key={text} className="flex items-start gap-2"><Check size={13} className="mt-0.5 shrink-0 text-gold" />{text}</li>)}</ul>
           <p className="text-[32px] font-semibold text-gold">{report.price.display} <span className="text-[10px] font-normal text-lavender">{report.price.currency}</span></p><p className="mt-2 text-[10px] leading-5 text-lavender">{c.once}</p>
           <p role="status" className="mt-3 text-xs leading-6 text-gold" data-testid="life-background-status">{ready ? c.backgroundReady : report.full_state === "generating" ? c.backgroundGenerating : c.backgroundRetry}</p>
-          <button className="primary" type="button" disabled={opening} onClick={() => void unlock()} data-testid="life-unlock-button">{opening ? <LoaderCircle size={17} className="animate-spin" /> : <LockKeyhole size={17} />}{opening ? c.unlocking : c.unlock}</button><p className="mt-3 text-[10px] leading-5 text-lavender">{c.direct}</p>
+          <button className="primary" type="button" disabled={opening} onClick={() => showCheckout(true)} data-testid="life-unlock-button">{opening ? <LoaderCircle size={17} className="animate-spin" /> : <LockKeyhole size={17} />}{opening ? c.unlocking : unlockLabel}</button><p className="mt-3 text-[10px] leading-5 text-lavender">{c.direct}</p>
         </div>}
 
         {full && <div id="life-full-report" tabIndex={-1} className="border-0 border-t border-solid border-gold/30 px-5 py-7" data-testid="life-full-report">
@@ -236,7 +247,9 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
         <details className="mx-5 mb-6 rounded-xl border border-solid border-gold/20 bg-plum/40 p-4 text-[10px] leading-6 text-lavender"><summary className="cursor-pointer text-gold">{c.sourceVersion}</summary><p className="mt-3">{report.method.name} · {report.method.house_system}</p><p className="mt-1 break-all">{report.method.version} / {report.version}</p></details>
       </>}
       {!!error && <div className="mx-5 mb-5"><p role="alert" className="text-xs leading-6 text-[#f2a6af]">{error}</p>{full && <button type="button" className="report-secondary mt-3" disabled={opening} onClick={() => void unlock()}>{c.retry}</button>}</div>}
-      {preview && !full && offerSeen && <div className="report-unlock-bar"><button type="button" className="primary" disabled={opening} onClick={() => void unlock()}><LockKeyhole size={17} />{opening ? c.unlocking : c.unlock}<ArrowRight size={16} className="ml-auto shrink-0" /></button></div>}
+      {preview && !full && offerSeen && <div className="report-unlock-bar"><button type="button" className="primary" disabled={opening} onClick={() => showCheckout(true)}><LockKeyhole size={17} />{opening ? c.unlocking : unlockLabel}<ArrowRight size={16} className="ml-auto shrink-0" /></button></div>}
+      {preview && !full && checkoutOpen && <ReportCheckoutDialog report={report} product={career ? c.title : report.title}
+        onClose={() => showCheckout(false)} onConfirm={() => { showCheckout(false); void unlock(); }} />}
       {generation && <ReportGenerationDialog career={career} language={language} progress={generation} error={generationError} onCancel={cancelGeneration}
         onRetry={() => void unlock()} onComplete={readyReport ? showFullReport : undefined} />}
     </section>

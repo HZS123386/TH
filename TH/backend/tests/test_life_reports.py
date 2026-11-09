@@ -145,7 +145,8 @@ def test_career_question_is_answered_in_the_same_complete_report(client):
     assert response.status_code == 200, response.text
     free = response.json()
     assert free["input"]["career_question"] == {**question, "focus": None}
-    assert free["title"] == "人生报告" and free["price"]["display"] == "¥300"
+    assert free["title"] == "人生报告"
+    assert free["price"] == {"amount": 5000, "currency": "THB", "display": "฿50", "mode": "direct"}
     assert free["preview"]["career_answer"]["text"].startswith("如果新岗位能解决你最想离开的原因")
     assert free["preview"]["career_answer"]["evidence"]
     assert len(free["preview"]["traits"]) == 3 and len(free["catalog"]) == 5
@@ -459,6 +460,23 @@ def test_writer_rejects_thin_or_misleading_evidence_and_short_traits(client):
             trait["text"] = TRAIT + "你的第十宫落有太阳。"
         with pytest.raises(InvalidBaziReport):
             validate_life_story(json.dumps(story, ensure_ascii=False), bundle)
+
+
+def test_chinese_preview_allows_a_trait_over_the_old_limit(client):
+    http, _, calls, _ = client
+    preview(http)
+    bundle = calls[0]
+    story = story_for(bundle)
+    trait = story["traits"][0]
+    text = trait["text"]
+    length = sum("\u3400" <= char <= "\u9fff" for char in text)
+
+    trait["text"] = text + "稳" * (173 - length)
+    assert validate_life_story(json.dumps(story, ensure_ascii=False), bundle)["traits"][0]["text"] == trait["text"]
+
+    trait["text"] += "稳" * 8
+    with pytest.raises(InvalidBaziReport, match="shorten above 180"):
+        validate_life_story(json.dumps(story, ensure_ascii=False), bundle)
 
 
 def test_cached_model_contract_can_be_revalidated(client):
