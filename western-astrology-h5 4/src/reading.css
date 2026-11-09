@@ -23,7 +23,8 @@ html:has(.report-generation-dialog[open]) {
   background: rgb(19 12 36 / 65%);
   backdrop-filter: blur(4px);
 }
-.report-generation-video {
+.report-generation-video,
+.report-generation-poster {
   display: block;
   width: 100%;
   aspect-ratio: 2 / 1;

@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#130c24">
   <meta name="description" content="สำรวจตัวเองผ่านโหราศาสตร์ไทย เลือกเรื่องที่สนใจและอ่านรายงานส่วนตัวจากข้อมูลเกิดของคุณ">
+  <script>document.documentElement.lang = new URLSearchParams(location.search).get('lang') === 'zh' ? 'zh' : 'th';</script>
   <title>ASTRO · AI — แผนที่ดวงดาวของคุณ</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="preload" as="image" type="image/webp" href="assets/astrologer-purple-stars-900.webp" imagesrcset="assets/astrologer-purple-stars-450.webp 450w, assets/astrologer-purple-stars-900.webp 900w, assets/astrologer-purple-stars-1199.webp 1199w" imagesizes="(max-width: 450px) 100vw, 450px" fetchpriority="high">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,7 +18,10 @@
   </header>
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
-      <img class="portrait" src="assets/astrologer.png" alt="AI astrologer in a violet cloak surrounded by a golden zodiac wheel" fetchpriority="high">
+      <picture>
+        <source type="image/webp" srcset="assets/astrologer-purple-stars-450.webp 450w, assets/astrologer-purple-stars-900.webp 900w, assets/astrologer-purple-stars-1199.webp 1199w" sizes="(max-width: 450px) 100vw, 450px">
+        <img class="portrait" src="assets/astrologer-purple-stars.png" width="1199" height="1312" alt="AI astrologer in a violet cloak surrounded by a golden zodiac wheel" fetchpriority="high" decoding="async">
+      </picture>
       <div class="hero-shade"></div>
       <div class="persona"><span class="tiny-star">✦</span><span data-t="persona">ผู้ช่วยโหราศาสตร์ AI</span></div>
       <div class="hero-copy">

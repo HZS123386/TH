@@ -53,6 +53,7 @@ export function ThaiReadingExperience({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [animationPrepared, setAnimationPrepared] = useState(false);
   const request = useRef<AbortController | null>(null);
   const timezone = place?.timeZone || "Asia/Bangkok";
   const input: LifeInput = {
@@ -148,7 +149,7 @@ export function ThaiReadingExperience({
   return (
     <div className="thai-reading" data-testid="thai-reading-experience">
       <div className="mb-4 flex justify-end"><button type="button" className="report-secondary" onClick={() => setHistoryOpen(true)}><History size={13} />{life.history}</button></div>
-      <form id="birth-form" noValidate onSubmit={generate} aria-busy={loading}>
+      <form id="birth-form" noValidate onSubmit={generate} aria-busy={loading} onFocusCapture={() => setAnimationPrepared(true)}>
         <label className="field-label" htmlFor="birth-date">
           <span className="field-icon" aria-hidden="true">
             ☉
@@ -227,7 +228,7 @@ export function ThaiReadingExperience({
         <p className="time-note mt-4">{c.formHint}</p>
       </form>
 
-      {generation && <ReportGenerationDialog kind="preview" language={language} progress={generation} error={error} onCancel={cancel} onRetry={() => void generate()}
+      {(generation || animationPrepared) && <ReportGenerationDialog kind="preview" open={!!generation} language={language} progress={generation || initialPreviewProgress} error={generation ? error : ""} onCancel={cancel} onRetry={() => void generate()}
         onComplete={readyReport ? () => window.location.assign(lifeReportUrl(readyReport)) : undefined} />}
       {historyOpen && <ReportHistory language={language} onClose={() => setHistoryOpen(false)} onOpen={openSaved} />}
 

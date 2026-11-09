@@ -100,7 +100,7 @@ test("cancelled and superseded requests cannot display an outdated report", asyn
   await sent;
   await page.getByRole("button", { name: generationCopy.zh.cancel, exact: true }).click();
   await page.locator("#birth-time").fill("10:15"); release();
-  await expect(page.getByTestId("report-generation")).toHaveCount(0);
+  await expect(page.getByTestId("report-generation")).not.toBeVisible();
   await expect(page).not.toHaveURL(/report\.html/);
   await expect(page.getByTestId("life-report")).toHaveCount(0);
 });
@@ -359,4 +359,62 @@ test("free reports do not poll or start paid generation before the user unlocks"
   await page.getByTestId("life-unlock-button").click();
   await expect(page.getByTestId("life-action-plan")).toBeVisible();
   expect(api.received).toHaveLength(1);
+});
+
+test("generation media warms on form focus and is visible while its first video frame is delayed", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await routes(page);
+  let mediaRequests = 0;
+  let reportRequests = 0;
+  let releaseVideo!: () => void;
+  const videoGate = new Promise<void>(resolve => { releaseVideo = resolve; });
+  let releaseReport!: () => void;
+  const reportGate = new Promise<void>(resolve => { releaseReport = resolve; });
+  await page.route(/report-loading-web.*\.mp4/, async route => {
+    if (route.request().resourceType() === "media") {
+      mediaRequests++;
+      await videoGate;
+    }
+    await route.continue().catch(() => {});
+  });
+  await page.route(/\/api\/life-reports(?:\?.*)?$/, async route => {
+    if (route.request().method() !== "POST") return route.fallback();
+    reportRequests++;
+    const input = route.request().postDataJSON();
+    await reportGate;
+    await route.fulfill({ json: reportFixture(input) }).catch(() => {});
+  });
+  try {
+    await page.goto("?lang=zh", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#birth-date")).toBeVisible();
+    expect(mediaRequests).toBe(0);
+    await expect(page.getByTestId("report-generation")).toHaveCount(0);
+    await page.locator("#birth-date").fill("1995-08-17");
+    await expect.poll(() => mediaRequests).toBeGreaterThan(0);
+    await expect(page.getByTestId("report-generation")).not.toBeVisible();
+    expect(reportRequests).toBe(0);
+    await page.locator("#birth-time").fill("09:30");
+    await page.locator("#birth-country").fill("Thailand");
+    await page.locator("#birth-province").fill("Bangkok");
+    await page.locator("#birth-city").fill("Bangkok");
+    await page.locator(`[data-place-id="${place.id}"]`).click();
+    await page.locator("#birth-form > button[type='submit']").evaluate(button => button.scrollIntoView({ block: "center", behavior: "instant" }));
+    await page.locator("#birth-form > button[type='submit']").click({ force: true });
+    await expect(page.getByRole("heading", { name: generationCopy.zh.previewTitle })).toBeVisible();
+    await expect.poll(() => reportRequests).toBe(1);
+    const visual = page.getByTestId("generation-visual");
+    await expect(visual).toBeVisible();
+    await expect.poll(() => visual.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    await expect(visual).toHaveCSS("animation-name", "report-visual-breathe");
+    releaseVideo();
+    await expect.poll(() => page.locator(".report-generation-video").evaluate((video: HTMLVideoElement) => video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !video.paused), { timeout: 15000 }).toBe(true);
+    await expect(page.locator(".report-generation-video")).toHaveCSS("opacity", "1");
+    await expect(visual).toHaveCount(0);
+    await page.getByRole("button", { name: generationCopy.zh.cancel, exact: true }).click();
+    await expect(page.getByTestId("report-generation")).not.toBeVisible();
+    expect(await page.locator(".report-generation-video").evaluate((video: HTMLVideoElement) => video.paused)).toBe(true);
+  } finally {
+    releaseVideo();
+    releaseReport();
+  }
 });
