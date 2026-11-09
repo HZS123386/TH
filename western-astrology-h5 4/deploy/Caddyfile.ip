@@ -1,0 +1,31 @@
+# Add this site alongside the existing domain sites in the shared Caddyfile.
+http://129.226.126.212 {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+    }
+    redir / /thai-landing/?lang=zh 302
+
+    @landing path /thai-landing /thai-landing/*
+    @versionedAsset path_regexp assetVersion ^/thai-landing/assets/.+-[A-Za-z0-9_-]{8,}\.(js|css|png|webp|avif|jpg|jpeg|svg|woff2|mp4)$
+    @landingHtml path /thai-landing/ /thai-landing/index.html /thai-landing/report.html
+    handle @landing {
+        header @versionedAsset Cache-Control "public, max-age=31536000, immutable"
+        header @landingHtml Cache-Control "no-cache"
+        reverse_proxy astro-life-report:8000
+    }
+    @reportApi path /api/life-reports /api/life-reports/* /api/thai-locations
+    handle @reportApi {
+        header Cache-Control "no-store"
+        reverse_proxy astro-life-report:8000 {
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+    handle /health {
+        reverse_proxy astro-life-report:8000
+    }
+    handle {
+        respond 404
+    }
+}

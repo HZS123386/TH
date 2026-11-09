@@ -3,3 +3,10 @@ site/
 test-results/
 playwright-report/
 *.log
+output/
+tmp/
+.env
+.env.*
+!.env.example
+*.pem
+*.key

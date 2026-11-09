@@ -1,0 +1,54 @@
+name: astro-life-report
+
+services:
+  app:
+    image: astro-life-report:${ASTRO_RELEASE:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: astro-life-report
+    restart: unless-stopped
+    init: true
+    env_file:
+      - /opt/astro-life-report/shared/runtime.env
+    command:
+      - python
+      - -m
+      - uvicorn
+      - backend.app.main:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "1"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "172.30.88.2"
+    volumes:
+      - /opt/astro-life-report/shared/data:/app/TH/data
+    networks:
+      ingress:
+        aliases:
+          - astro-life-report
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 1536m
+    stop_grace_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  ingress:
+    external: true
+    name: ipplay_default
