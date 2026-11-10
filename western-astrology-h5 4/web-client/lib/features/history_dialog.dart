@@ -22,51 +22,6 @@ class _HistoryDialogState extends State<HistoryDialog> {
   final _token = CancelToken();
   List<Json>? _items;
   String _error = '';
-  String? _deleting;
-
-  Future<void> _delete(Json item) async {
-    if (_deleting != null) return;
-    final c = widget.h5.copy;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(c.t('experience', 'deleteTitle')),
-        content: Text(c.t('experience', 'deleteNotice')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(c.t('experience', 'keep')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(c.t('experience', 'delete')),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || confirmed != true) return;
-    final id = text(item['id']);
-    setState(() {
-      _deleting = id;
-      _error = '';
-    });
-    try {
-      await widget.h5.repository.request(
-        '/api/life-reports/${Uri.encodeComponent(id)}',
-        _token,
-        method: 'DELETE',
-      );
-      if (mounted) {
-        setState(() => _items!.removeWhere((row) => row['id'] == id));
-      }
-    } catch (error) {
-      if (mounted && !_token.cancelled) {
-        setState(() => _error = widget.h5.message(error));
-      }
-    } finally {
-      if (mounted) setState(() => _deleting = null);
-    }
-  }
 
   @override
   void initState() {
@@ -93,48 +48,63 @@ class _HistoryDialogState extends State<HistoryDialog> {
     super.dispose();
   }
 
+  void _open(Json item) {
+    final language = text(object(object(item['input'])['profile'])['language']);
+    Navigator.pop(context);
+    context.go(
+      '/report.html?id=${Uri.encodeComponent(text(item['id']))}&lang=$language${item['access'] == 'full' ? '' : '&checkout=1'}',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.h5.copy;
     return Dialog(
-      insetPadding: const EdgeInsets.all(18),
+      insetPadding: const EdgeInsets.all(16),
+      backgroundColor: const Color(0xFF1C122D),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0x55E4BC78)),
+      ),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: 420,
-          maxHeight: MediaQuery.sizeOf(context).height * .8,
+          maxWidth: 410,
+          maxHeight: MediaQuery.sizeOf(context).height * .9,
         ),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
                   Expanded(
                     child: Text(
-                      c.t('life', 'history'),
+                      c.t('jy', 'history'),
                       style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: c.t('life', 'close'),
+                    tooltip: c.t('jy', 'close'),
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close, size: 24, color: gold),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
               Text(
-                c.t('life', 'historyHint'),
-                style: Theme.of(context).textTheme.bodySmall,
+                c.t('jy', 'historyHint'),
+                style: const TextStyle(fontSize: 12, color: lavender),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               if (_items == null && _error.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(30),
-                  child: CircularProgressIndicator(),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
               if (_items != null)
                 Flexible(
@@ -142,54 +112,62 @@ class _HistoryDialogState extends State<HistoryDialog> {
                     shrinkWrap: true,
                     children: [
                       if (_items!.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.all(25),
-                          child: Text(c.t('life', 'emptyHistory')),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: line),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            c.t('jy', 'emptyHistory'),
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         ),
                       for (final item in _items!)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Panel(
-                            padding: EdgeInsets.zero,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(14),
-                              title: Text(
-                                '${object(object(item['input'])['profile'])['birth_date']} · ${object(item['input'])['year']}',
-                              ),
-                              subtitle: Text(
-                                '${object(object(item['input'])['profile'])['birthplace']}\n${c.t('life', item['access'] == 'full' ? 'fullVersion' : 'previewVersion')} · ${c.t('life', 'open')}',
-                              ),
-                              trailing: IconButton(
-                                tooltip: c.t('experience', 'delete'),
-                                onPressed: _deleting == null
-                                    ? () => unawaited(_delete(item))
-                                    : null,
-                                icon: _deleting == item['id']
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.delete_outline,
-                                        size: 21,
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: line),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      c.t(
+                                        'jy',
+                                        'topics.${object(item['input'])['career_question'] != null ? 'career' : 'life'}.label',
+                                      ),
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      _date(text(item['created_at'])),
+                                      style: const TextStyle(
+                                        fontSize: 11,
                                         color: lavender,
                                       ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              onTap: () {
-                                final language = text(
-                                  object(
-                                    object(item['input'])['profile'],
-                                  )['language'],
-                                );
-                                Navigator.pop(context);
-                                context.go(
-                                  '/report.html?id=${Uri.encodeComponent(text(item['id']))}&lang=$language',
-                                );
-                              },
-                            ),
+                              const SizedBox(width: 12),
+                              OutlinedButton(
+                                onPressed: () => _open(item),
+                                child: Text(
+                                  c.t(
+                                    'jy',
+                                    item['access'] == 'full'
+                                        ? 'openReport'
+                                        : 'checkout.resume',
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                     ],
@@ -209,5 +187,10 @@ class _HistoryDialogState extends State<HistoryDialog> {
         ),
       ),
     );
+  }
+
+  String _date(String value) {
+    final date = DateTime.tryParse(value)?.toLocal().toString();
+    return date == null ? value : date.substring(0, 16);
   }
 }

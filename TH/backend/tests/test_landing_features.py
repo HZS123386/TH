@@ -125,3 +125,27 @@ def test_metrics_are_read_only_aggregates_without_report_or_device_data(client):
     script = Path(__file__).resolve().parents[2] / "scripts" / "landing-metrics.py"
     result = subprocess.run([sys.executable, str(script), app.state.life_reports.store.path], capture_output=True, text=True, check=True)
     assert json.loads(result.stdout) == {"days": 30, "channels": [{"source": "facebook", "campaign": "fortune-th", "visits": 1, "submitted": 0, "seen": 0}]}
+
+
+def test_native_chart_view_reuses_stored_calculation_without_exposing_worker_input(client):
+    http, app, _, _ = client
+    report = preview(http)
+    chart = report["chart"]
+    assert chart["precision"] == "exact" and len(chart["houses"]) == 12
+    with app.state.life_reports.store.connect() as db:
+        stored = json.loads(db.execute("SELECT chart FROM life_reports WHERE id=?", (report["id"],)).fetchone()[0])
+    for planet in chart["planets"]:
+        actual = stored["chart"]["points"][planet["id"]]
+        assert planet["longitude"] == actual["longitudeDegrees"] and planet["house"] == actual["house"]
+    assert chart["aspects"] == [] and chart["relationship_model"] == "sign-based"
+    assert "profile" not in chart and "calculation_input" not in chart
+
+
+def test_estimated_chart_does_not_present_time_sensitive_houses_as_exact(client):
+    from backend.tests.test_life_reports import PROFILE
+    http, _, _, _ = client
+    response = http.post("/api/life-reports", json={"profile": {**PROFILE, "birth_time": None}, "year": 2027}, headers=HEADERS)
+    assert response.status_code == 200, response.text
+    chart = response.json()["chart"]
+    assert chart["precision"] == "estimated" and chart["houses"] == [] and chart["aspects"] == []
+    assert all(p["house"] is None and p["id"] != "ascendant" for p in chart["planets"])

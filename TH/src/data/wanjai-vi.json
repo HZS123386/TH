@@ -1,0 +1,1446 @@
+{
+  "signs": [
+    {
+      "id": "aries",
+      "name": "Bạch Dương",
+      "en": "ARIES",
+      "symbol": "♈",
+      "range": "3.21 — 4.19",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "taurus",
+      "name": "Kim Ngưu",
+      "en": "TAURUS",
+      "symbol": "♉",
+      "range": "4.20 — 5.20",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "gemini",
+      "name": "Song Tử",
+      "en": "GEMINI",
+      "symbol": "♊",
+      "range": "5.21 — 6.21",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "cancer",
+      "name": "Cự Giải",
+      "en": "CANCER",
+      "symbol": "♋",
+      "range": "6.22 — 7.22",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "leo",
+      "name": "Sư Tử",
+      "en": "LEO",
+      "symbol": "♌",
+      "range": "7.23 — 8.22",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "virgo",
+      "name": "Xử Nữ",
+      "en": "VIRGO",
+      "symbol": "♍",
+      "range": "8.23 — 9.22",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "libra",
+      "name": "Thiên Bình",
+      "en": "LIBRA",
+      "symbol": "♎",
+      "range": "9.23 — 10.23",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "scorpio",
+      "name": "Bọ Cạp",
+      "en": "SCORPIO",
+      "symbol": "♏",
+      "range": "10.24 — 11.22",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "sagittarius",
+      "name": "Nhân Mã",
+      "en": "SAGITTARIUS",
+      "symbol": "♐",
+      "range": "11.23 — 12.21",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "capricorn",
+      "name": "Ma Kết",
+      "en": "CAPRICORN",
+      "symbol": "♑",
+      "range": "12.22 — 1.19",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "aquarius",
+      "name": "Bảo Bình",
+      "en": "AQUARIUS",
+      "symbol": "♒",
+      "range": "1.20 — 2.18",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    },
+    {
+      "id": "pisces",
+      "name": "Song Ngư",
+      "en": "PISCES",
+      "symbol": "♓",
+      "range": "2.19 — 3.20",
+      "element": "Tự quan sát",
+      "planet": "Truyền thống chiêm tinh",
+      "note": "Quan sát điều giúp bạn vững tâm và chọn một hành động nhỏ có thể chủ động làm."
+    }
+  ],
+  "topics": [
+    {
+      "id": "love",
+      "name": "Tình cảm",
+      "en": "LOVE",
+      "thai": "ความรัก",
+      "icon": "heart",
+      "hint": "Quan sát hành động có nhất quán trước khi đầu tư thêm. Nói rõ một mong muốn và để người kia có không gian trả lời.",
+      "question": "Người ấy lúc gần lúc xa, mình có nên tiếp tục?",
+      "color": "#eddad5",
+      "product": "rose"
+    },
+    {
+      "id": "money",
+      "name": "Tiền bạc",
+      "en": "MONEY",
+      "thai": "การเงิน",
+      "icon": "coin",
+      "hint": "Tách việc vượt qua tháng này khỏi kế hoạch dài hạn. Bắt đầu từ tiền đã có và giữ khoản cần cho ăn uống, chỗ ở, đi lại thiết yếu.",
+      "question": "Tháng này thiếu tiền, nên ưu tiên điều gì?",
+      "color": "#e9dfbf",
+      "product": "amber"
+    },
+    {
+      "id": "family",
+      "name": "Gia đình",
+      "en": "FAMILY",
+      "thai": "ครอบครัว",
+      "icon": "home",
+      "hint": "Nói rõ điều bạn có thể làm và điều cần được chia sẻ. Một yêu cầu cụ thể dễ trao đổi hơn việc âm thầm gánh mọi trách nhiệm.",
+      "question": "Chuyện gia đình khiến mình mệt, nên mở lời thế nào?",
+      "color": "#dce3d5",
+      "product": "moon"
+    },
+    {
+      "id": "work",
+      "name": "Công việc",
+      "en": "WORK",
+      "thai": "การงาน",
+      "icon": "briefcase",
+      "hint": "Xác định điều cần thay đổi trước khi quyết định. So sánh lựa chọn thực tế và chuẩn bị một bước nhỏ trong khi giữ các cam kết hiện tại.",
+      "question": "Muốn đổi việc nhưng sợ chọn sai thì sao?",
+      "color": "#dce0e7",
+      "product": "purple"
+    }
+  ],
+  "concernLibrary": [
+    {
+      "id": "money_pressure",
+      "topic": "money",
+      "icon": "coin",
+      "label": "Áp lực tiền bạc",
+      "question": "Tháng này thiếu tiền, nên ưu tiên điều gì?",
+      "lead": "Tách việc vượt qua tháng này khỏi kế hoạch dài hạn. Bắt đầu từ tiền đã có và giữ khoản cần cho ăn uống, chỗ ở, đi lại thiết yếu.",
+      "steps": [
+        "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn.",
+        "Để riêng tiền thiết yếu và hoãn một món chưa cần mua.",
+        "Hỏi trực tiếp bên cung cấp về các phương án và tổng chi phí."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn.",
+        "Hỏi trực tiếp bên cung cấp về các phương án và tổng chi phí."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "work_change",
+      "topic": "work",
+      "icon": "briefcase",
+      "label": "Muốn đổi việc",
+      "question": "Muốn đổi việc nhưng sợ chọn sai thì sao?",
+      "lead": "Xác định điều cần thay đổi trước khi quyết định. So sánh lựa chọn thực tế và chuẩn bị một bước nhỏ trong khi giữ các cam kết hiện tại.",
+      "steps": [
+        "Ghi điều đang khó khăn và mong muốn ở công việc mới.",
+        "Chọn một vị trí và đối chiếu yêu cầu với kinh nghiệm của bạn.",
+        "Viết lại một ví dụ công việc cụ thể trước khi ứng tuyển."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Ghi điều đang khó khăn và mong muốn ở công việc mới.",
+        "Viết lại một ví dụ công việc cụ thể trước khi ứng tuyển."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "relationship_unclear",
+      "topic": "love",
+      "icon": "heart",
+      "label": "Mối quan hệ chưa rõ ràng",
+      "question": "Người ấy lúc gần lúc xa, mình có nên tiếp tục?",
+      "lead": "Quan sát hành động có nhất quán trước khi đầu tư thêm. Nói rõ một mong muốn và để người kia có không gian trả lời.",
+      "steps": [
+        "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn.",
+        "Viết một câu rõ ràng về mối quan hệ bạn mong muốn.",
+        "Quan sát lời nói có đi cùng hành động ổn định hay không."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn.",
+        "Quan sát lời nói có đi cùng hành động ổn định hay không."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "study_exam",
+      "topic": null,
+      "icon": "book",
+      "label": "Thi cử và học tập",
+      "question": "Sắp thi rồi, nên chuẩn bị gì trước?",
+      "lead": "Tập trung một phần có thể cải thiện thay vì giải quyết tất cả. Một bài luyện ngắn giúp tìm ra bước tiếp theo.",
+      "steps": [
+        "Liệt kê nội dung, ngày thi và thời gian thực sự có.",
+        "Làm bài luyện ngắn và ghi nguyên nhân từng lỗi.",
+        "Lên lịch nghỉ và làm lại một phần khó."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Liệt kê nội dung, ngày thi và thời gian thực sự có.",
+        "Lên lịch nghỉ và làm lại một phần khó."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "business_slow",
+      "topic": "work",
+      "icon": "bag",
+      "label": "Kinh doanh và khách hàng",
+      "question": "Kinh doanh chậm, nên điều chỉnh từ đâu?",
+      "lead": "Bắt đầu với một phần quan sát được trong hành trình khách hàng. Hỏi khách thật điều chưa rõ trước khi đổi giá hay mua thêm quảng cáo.",
+      "steps": [
+        "Xem lại câu hỏi gần đây, đơn thật và điều chưa được giải đáp.",
+        "Làm rõ một đề nghị: dành cho ai, gồm gì và giá bao nhiêu.",
+        "Thử thay đổi với nhóm nhỏ và ghi nhận kết quả."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Xem lại câu hỏi gần đây, đơn thật và điều chưa được giải đáp.",
+        "Thử thay đổi với nhóm nhỏ và ghi nhận kết quả."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "family_load",
+      "topic": "family",
+      "icon": "home",
+      "label": "Chuyện gia đình",
+      "question": "Chuyện gia đình khiến mình mệt, nên mở lời thế nào?",
+      "lead": "Nói rõ điều bạn có thể làm và điều cần được chia sẻ. Một yêu cầu cụ thể dễ trao đổi hơn việc âm thầm gánh mọi trách nhiệm.",
+      "steps": [
+        "Ghi những việc bạn đang làm cho gia đình.",
+        "Chọn một việc cần giúp và một lời nhờ cụ thể.",
+        "Tìm lúc bình tĩnh để bàn cách chia sẻ phù hợp."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Ghi những việc bạn đang làm cho gia đình.",
+        "Tìm lúc bình tĩnh để bàn cách chia sẻ phù hợp."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "breakup",
+      "topic": "love",
+      "icon": "heart",
+      "label": "Chưa thể buông tay",
+      "question": "Vẫn nhớ người cũ, nên liên lạc hay buông tay?",
+      "lead": "Cho mình khoảng nghỉ trước khi hành động vì cảm xúc mạnh. Làm rõ bạn mong tin nhắn thay đổi điều gì và việc liên lạc có tôn trọng cả hai không.",
+      "steps": [
+        "Viết tin nhắn nhưng chưa gửi ngay.",
+        "Ghi điều bạn mong nghe và điều không thể kiểm soát.",
+        "Chọn một hoạt động hoặc người có thể hỗ trợ hôm nay."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Viết tin nhắn nhưng chưa gửi ngay.",
+        "Chọn một hoạt động hoặc người có thể hỗ trợ hôm nay."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "single",
+      "topic": "love",
+      "icon": "sparkles",
+      "label": "Muốn yêu nghiêm túc",
+      "question": "Muốn yêu nghiêm túc nhưng chưa gặp người phù hợp.",
+      "lead": "Bắt đầu từ kiểu kết nối bạn muốn xây dựng. Cơ hội nhỏ và đều đặn để gặp gỡ hữu ích hơn một hạn chót phải tìm được người yêu.",
+      "steps": [
+        "Ghi ba giá trị bạn muốn chia sẻ với người đồng hành.",
+        "Chọn nơi thoải mái để gặp người có cùng sở thích.",
+        "Giữ nhịp của mình và xem nỗ lực có đến từ hai phía không."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Ghi ba giá trị bạn muốn chia sẻ với người đồng hành.",
+        "Giữ nhịp của mình và xem nỗ lực có đến từ hai phía không."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "stress",
+      "topic": null,
+      "icon": "leaf",
+      "label": "Gần đây rất mệt",
+      "question": "Gần đây rất mệt, làm sao để hôm nay nhẹ hơn?",
+      "lead": "Thu nhỏ nhiệm vụ hôm nay. Nhận ra nhu cầu hiện tại và chọn một việc chăm sóc có thể làm thay vì ép mình giải quyết tất cả.",
+      "steps": [
+        "Gọi tên cảm xúc và một việc đang tiêu hao năng lượng.",
+        "Chọn nghỉ ngắn, ăn uống hoặc làm một việc nhỏ.",
+        "Nói với người tin cậy kiểu hỗ trợ bạn cần."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Gọi tên cảm xúc và một việc đang tiêu hao năng lượng.",
+        "Nói với người tin cậy kiểu hỗ trợ bạn cần."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    },
+    {
+      "id": "confidence",
+      "topic": null,
+      "icon": "sun",
+      "label": "Thêm chút tự tin",
+      "question": "Hôm nay có việc quan trọng, làm gì để vững tâm hơn?",
+      "lead": "Dùng trang phục quen thuộc và một bước chuẩn bị thực tế làm điểm tựa. Màu sắc là nghi thức cá nhân, không quyết định kết quả.",
+      "steps": [
+        "Chọn đồ thoải mái, phù hợp nơi đến và hoạt động.",
+        "Chuẩn bị vật dụng và thông tin sẽ cần.",
+        "Tập câu đầu tiên bạn muốn nói."
+      ],
+      "followups": [
+        "Trước tiên cần kiểm tra thông tin gì?",
+        "Nếu mọi việc không như mong muốn thì sao?"
+      ],
+      "followupAnswers": [
+        "Chọn đồ thoải mái, phù hợp nơi đến và hoạt động.",
+        "Tập câu đầu tiên bạn muốn nói."
+      ],
+      "lens": "Đây là gợi ý biên tập để suy ngẫm, không phải dự đoán từ bản đồ sao cá nhân."
+    }
+  ],
+  "solutionLibrary": {
+    "money_pressure": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先处理即将到期的账单缺口。",
+          "action": "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn. Tách việc vượt qua tháng này khỏi kế hoạch dài hạn. Bắt đầu từ tiền đã có và giữ khoản cần cho ăn uống, chỗ ở, đi lại thiết yếu."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先确定收入不稳定时的可用额度。",
+          "action": "Để riêng tiền thiết yếu và hoãn một món chưa cần mua. Tách việc vượt qua tháng này khỏi kế hoạch dài hạn. Bắt đầu từ tiền đã có và giữ khoản cần cho ăn uống, chỗ ở, đi lại thiết yếu."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Để riêng tiền thiết yếu và hoãn một món chưa cần mua."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Hỏi trực tiếp bên cung cấp về các phương án và tổng chi phí."
+        }
+      ]
+    },
+    "work_change": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：在保留现有工作的同时比较机会。",
+          "action": "Ghi điều đang khó khăn và mong muốn ở công việc mới. Xác định điều cần thay đổi trước khi quyết định. So sánh lựa chọn thực tế và chuẩn bị một bước nhỏ trong khi giữ các cam kết hiện tại."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先让求职行动变得具体、有反馈。",
+          "action": "Chọn một vị trí và đối chiếu yêu cầu với kinh nghiệm của bạn. Xác định điều cần thay đổi trước khi quyết định. So sánh lựa chọn thực tế và chuẩn bị một bước nhỏ trong khi giữ các cam kết hiện tại."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Chọn một vị trí và đối chiếu yêu cầu với kinh nghiệm của bạn."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Viết lại một ví dụ công việc cụ thể trước khi ứng tuyển."
+        }
+      ]
+    },
+    "relationship_unclear": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先了解彼此是否期待同一种关系。",
+          "action": "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn. Quan sát hành động có nhất quán trước khi đầu tư thêm. Nói rõ một mong muốn và để người kia có không gian trả lời."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：讨论已经交往后的相处安排。",
+          "action": "Viết một câu rõ ràng về mối quan hệ bạn mong muốn. Quan sát hành động có nhất quán trước khi đầu tư thêm. Nói rõ một mong muốn và để người kia có không gian trả lời."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Viết một câu rõ ràng về mối quan hệ bạn mong muốn."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Quan sát lời nói có đi cùng hành động ổn định hay không."
+        }
+      ]
+    },
+    "study_exam": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先安排临近考试的重点准备。",
+          "action": "Liệt kê nội dung, ngày thi và thời gian thực sự có. Tập trung một phần có thể cải thiện thay vì giải quyết tất cả. Một bài luyện ngắn giúp tìm ra bước tiếp theo."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先建立能持续的复习节奏。",
+          "action": "Làm bài luyện ngắn và ghi nguyên nhân từng lỗi. Tập trung một phần có thể cải thiện thay vì giải quyết tất cả. Một bài luyện ngắn giúp tìm ra bước tiếp theo."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Làm bài luyện ngắn và ghi nguyên nhân từng lỗi."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Lên lịch nghỉ và làm lại một phần khó."
+        }
+      ]
+    },
+    "business_slow": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先找到咨询到成交之间的阻力。",
+          "action": "Xem lại câu hỏi gần đây, đơn thật và điều chưa được giải đáp. Bắt đầu với một phần quan sát được trong hành trình khách hàng. Hỏi khách thật điều chưa rõ trước khi đổi giá hay mua thêm quảng cáo."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先确认目标客户是否看得懂、看得到。",
+          "action": "Làm rõ một đề nghị: dành cho ai, gồm gì và giá bao nhiêu. Bắt đầu với một phần quan sát được trong hành trình khách hàng. Hỏi khách thật điều chưa rõ trước khi đổi giá hay mua thêm quảng cáo."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Làm rõ một đề nghị: dành cho ai, gồm gì và giá bao nhiêu."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Thử thay đổi với nhóm nhỏ và ghi nhận kết quả."
+        }
+      ]
+    },
+    "family_load": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先重新分配实际事务和照顾负担。",
+          "action": "Ghi những việc bạn đang làm cho gia đình. Nói rõ điều bạn có thể làm và điều cần được chia sẻ. Một yêu cầu cụ thể dễ trao đổi hơn việc âm thầm gánh mọi trách nhiệm."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先找到表达选择与边界的方法。",
+          "action": "Chọn một việc cần giúp và một lời nhờ cụ thể. Nói rõ điều bạn có thể làm và điều cần được chia sẻ. Một yêu cầu cụ thể dễ trao đổi hơn việc âm thầm gánh mọi trách nhiệm."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Chọn một việc cần giúp và một lời nhờ cụ thể."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Tìm lúc bình tĩnh để bàn cách chia sẻ phù hợp."
+        }
+      ]
+    },
+    "breakup": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先照顾断联后的自己并尊重界限。",
+          "action": "Viết tin nhắn nhưng chưa gửi ngay. Cho mình khoảng nghỉ trước khi hành động vì cảm xúc mạnh. Làm rõ bạn mong tin nhắn thay đổi điều gì và việc liên lạc có tôn trọng cả hai không."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先确认继续联系的范围与期待。",
+          "action": "Ghi điều bạn mong nghe và điều không thể kiểm soát. Cho mình khoảng nghỉ trước khi hành động vì cảm xúc mạnh. Làm rõ bạn mong tin nhắn thay đổi điều gì và việc liên lạc có tôn trọng cả hai không."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Ghi điều bạn mong nghe và điều không thể kiểm soát."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Chọn một hoạt động hoặc người có thể hỗ trợ hôm nay."
+        }
+      ]
+    },
+    "single": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先增加自然认识人的机会。",
+          "action": "Ghi ba giá trị bạn muốn chia sẻ với người đồng hành. Bắt đầu từ kiểu kết nối bạn muốn xây dựng. Cơ hội nhỏ và đều đặn để gặp gỡ hữu ích hơn một hạn chót phải tìm được người yêu."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先建立自己的相处判断标准。",
+          "action": "Chọn nơi thoải mái để gặp người có cùng sở thích. Bắt đầu từ kiểu kết nối bạn muốn xây dựng. Cơ hội nhỏ và đều đặn để gặp gỡ hữu ích hơn một hạn chót phải tìm được người yêu."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Chọn nơi thoải mái để gặp người có cùng sở thích."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Giữ nhịp của mình và xem nỗ lực có đến từ hai phía không."
+        }
+      ]
+    },
+    "stress": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先减轻一个具体负担。",
+          "action": "Gọi tên cảm xúc và một việc đang tiêu hao năng lượng. Thu nhỏ nhiệm vụ hôm nay. Nhận ra nhu cầu hiện tại và chọn một việc chăm sóc có thể làm thay vì ép mình giải quyết tất cả."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先观察状态并寻找适合的支持。",
+          "action": "Chọn nghỉ ngắn, ăn uống hoặc làm một việc nhỏ. Thu nhỏ nhiệm vụ hôm nay. Nhận ra nhu cầu hiện tại và chọn một việc chăm sóc có thể làm thay vì ép mình giải quyết tất cả."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Chọn nghỉ ngắn, ăn uống hoặc làm một việc nhỏ."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Nói với người tin cậy kiểu hỗ trợ bạn cần."
+        }
+      ]
+    },
+    "confidence": {
+      "intakeTitle": "Tình huống nào gần với bạn hơn?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Mình cần một bước nhỏ để bắt đầu",
+          "summary": "Bạn muốn bắt đầu bằng một bước vừa sức."
+        },
+        {
+          "id": "b",
+          "label": "Mình sẵn sàng so sánh các lựa chọn",
+          "summary": "Bạn muốn so sánh lựa chọn trước khi hành động."
+        }
+      ],
+      "paths": [
+        {
+          "title": "Hướng 1",
+          "when": "你选择了：先准备能说清楚的开场和重点。",
+          "action": "Chọn đồ thoải mái, phù hợp nơi đến và hoạt động. Dùng trang phục quen thuộc và một bước chuẩn bị thực tế làm điểm tựa. Màu sắc là nghi thức cá nhân, không quyết định kết quả."
+        },
+        {
+          "title": "Hướng 2",
+          "when": "你选择了：先减少环境与流程的不确定。",
+          "action": "Chuẩn bị vật dụng và thông tin sẽ cần. Dùng trang phục quen thuộc và một bước chuẩn bị thực tế làm điểm tựa. Màu sắc là nghi thức cá nhân, không quyết định kết quả."
+        }
+      ],
+      "templates": [
+        {
+          "title": "Bước tiếp theo của mình",
+          "text": "Điều đã xảy ra: ___\nThông tin đã biết: ___\nĐiều cần kiểm tra: ___\nHành động tiếp theo: ___\nLúc xem lại: ___"
+        },
+        {
+          "title": "Lời nhắn có thể điều chỉnh",
+          "text": "Mình muốn trao đổi về ___. Hiện mình biết ___. Điều mình cần là ___. Chúng ta có thể chọn thời gian để bàn bước tiếp theo không?"
+        }
+      ],
+      "branches": [
+        {
+          "when": "Nếu bước đầu hữu ích",
+          "action": "Chuẩn bị vật dụng và thông tin sẽ cần."
+        },
+        {
+          "when": "Nếu vẫn cảm thấy khó",
+          "action": "Tập câu đầu tiên bạn muốn nói."
+        }
+      ]
+    }
+  },
+  "guidance": {
+    "love": {
+      "today": [
+        "Tình cảm",
+        "Quan sát hành động có nhất quán trước khi đầu tư thêm. Nói rõ một mong muốn và để người kia có không gian trả lời.",
+        "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn.",
+        "Viết một câu rõ ràng về mối quan hệ bạn mong muốn."
+      ],
+      "week": [
+        "Tình cảm",
+        "Quan sát hành động có nhất quán trước khi đầu tư thêm. Nói rõ một mong muốn và để người kia có không gian trả lời.",
+        "Viết một câu rõ ràng về mối quan hệ bạn mong muốn.",
+        "Quan sát lời nói có đi cùng hành động ổn định hay không."
+      ],
+      "month": [
+        "Tình cảm",
+        "Quan sát hành động có nhất quán trước khi đầu tư thêm. Nói rõ một mong muốn và để người kia có không gian trả lời.",
+        "Quan sát lời nói có đi cùng hành động ổn định hay không.",
+        "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn."
+      ]
+    },
+    "money": {
+      "today": [
+        "Tiền bạc",
+        "Tách việc vượt qua tháng này khỏi kế hoạch dài hạn. Bắt đầu từ tiền đã có và giữ khoản cần cho ăn uống, chỗ ở, đi lại thiết yếu.",
+        "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn.",
+        "Để riêng tiền thiết yếu và hoãn một món chưa cần mua."
+      ],
+      "week": [
+        "Tiền bạc",
+        "Tách việc vượt qua tháng này khỏi kế hoạch dài hạn. Bắt đầu từ tiền đã có và giữ khoản cần cho ăn uống, chỗ ở, đi lại thiết yếu.",
+        "Để riêng tiền thiết yếu và hoãn một món chưa cần mua.",
+        "Hỏi trực tiếp bên cung cấp về các phương án và tổng chi phí."
+      ],
+      "month": [
+        "Tiền bạc",
+        "Tách việc vượt qua tháng này khỏi kế hoạch dài hạn. Bắt đầu từ tiền đã có và giữ khoản cần cho ăn uống, chỗ ở, đi lại thiết yếu.",
+        "Hỏi trực tiếp bên cung cấp về các phương án và tổng chi phí.",
+        "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn."
+      ]
+    },
+    "family": {
+      "today": [
+        "Gia đình",
+        "Nói rõ điều bạn có thể làm và điều cần được chia sẻ. Một yêu cầu cụ thể dễ trao đổi hơn việc âm thầm gánh mọi trách nhiệm.",
+        "Ghi những việc bạn đang làm cho gia đình.",
+        "Chọn một việc cần giúp và một lời nhờ cụ thể."
+      ],
+      "week": [
+        "Gia đình",
+        "Nói rõ điều bạn có thể làm và điều cần được chia sẻ. Một yêu cầu cụ thể dễ trao đổi hơn việc âm thầm gánh mọi trách nhiệm.",
+        "Chọn một việc cần giúp và một lời nhờ cụ thể.",
+        "Tìm lúc bình tĩnh để bàn cách chia sẻ phù hợp."
+      ],
+      "month": [
+        "Gia đình",
+        "Nói rõ điều bạn có thể làm và điều cần được chia sẻ. Một yêu cầu cụ thể dễ trao đổi hơn việc âm thầm gánh mọi trách nhiệm.",
+        "Tìm lúc bình tĩnh để bàn cách chia sẻ phù hợp.",
+        "Ghi những việc bạn đang làm cho gia đình."
+      ]
+    },
+    "work": {
+      "today": [
+        "Công việc",
+        "Xác định điều cần thay đổi trước khi quyết định. So sánh lựa chọn thực tế và chuẩn bị một bước nhỏ trong khi giữ các cam kết hiện tại.",
+        "Ghi điều đang khó khăn và mong muốn ở công việc mới.",
+        "Chọn một vị trí và đối chiếu yêu cầu với kinh nghiệm của bạn."
+      ],
+      "week": [
+        "Công việc",
+        "Xác định điều cần thay đổi trước khi quyết định. So sánh lựa chọn thực tế và chuẩn bị một bước nhỏ trong khi giữ các cam kết hiện tại.",
+        "Chọn một vị trí và đối chiếu yêu cầu với kinh nghiệm của bạn.",
+        "Viết lại một ví dụ công việc cụ thể trước khi ứng tuyển."
+      ],
+      "month": [
+        "Công việc",
+        "Xác định điều cần thay đổi trước khi quyết định. So sánh lựa chọn thực tế và chuẩn bị một bước nhỏ trong khi giữ các cam kết hiện tại.",
+        "Viết lại một ví dụ công việc cụ thể trước khi ứng tuyển.",
+        "Ghi điều đang khó khăn và mong muốn ở công việc mới."
+      ]
+    }
+  },
+  "products": [
+    {
+      "id": "moon",
+      "name": "Vòng đá mặt trăng",
+      "short": "Vật nhỏ bên mình",
+      "category": "Vòng tay",
+      "price": 490,
+      "color": "#d7d6c7",
+      "dark": "#a5a89a",
+      "tag": "Sản phẩm mẫu",
+      "desc": "Vật nhỏ cho nghi thức hằng ngày. Đây là mẫu ý tưởng, không hứa hẹn thay đổi vận may hay kết quả.",
+      "material": "Thông số mẫu. Chất liệu, kích thước, tồn kho, giao hàng và đổi trả thực tế cần được xác nhận trước khi bán.",
+      "bg": "#eeeade",
+      "type": "bracelet"
+    },
+    {
+      "id": "rose",
+      "name": "Vòng thạch anh hồng",
+      "short": "Vật nhỏ bên mình",
+      "category": "Vòng tay",
+      "price": 390,
+      "color": "#dbb7aa",
+      "dark": "#b78f84",
+      "tag": "Sản phẩm mẫu",
+      "desc": "Vật nhỏ cho nghi thức hằng ngày. Đây là mẫu ý tưởng, không hứa hẹn thay đổi vận may hay kết quả.",
+      "material": "Thông số mẫu. Chất liệu, kích thước, tồn kho, giao hàng và đổi trả thực tế cần được xác nhận trước khi bán.",
+      "bg": "#f1e4dc",
+      "type": "bracelet"
+    },
+    {
+      "id": "star",
+      "name": "Mặt dây ngôi sao",
+      "short": "Vật nhỏ bên mình",
+      "category": "Mặt dây",
+      "price": 290,
+      "color": "#c8bd98",
+      "dark": "#9c8855",
+      "tag": "Sản phẩm mẫu",
+      "desc": "Vật nhỏ cho nghi thức hằng ngày. Đây là mẫu ý tưởng, không hứa hẹn thay đổi vận may hay kết quả.",
+      "material": "Thông số mẫu. Chất liệu, kích thước, tồn kho, giao hàng và đổi trả thực tế cần được xác nhận trước khi bán.",
+      "bg": "#e7e9de",
+      "type": "charm"
+    },
+    {
+      "id": "crystal",
+      "name": "Thạch anh trong",
+      "short": "Vật nhỏ bên mình",
+      "category": "Đá trang trí",
+      "price": 590,
+      "color": "#d9ded7",
+      "dark": "#9aa69a",
+      "tag": "Sản phẩm mẫu",
+      "desc": "Vật nhỏ cho nghi thức hằng ngày. Đây là mẫu ý tưởng, không hứa hẹn thay đổi vận may hay kết quả.",
+      "material": "Thông số mẫu. Chất liệu, kích thước, tồn kho, giao hàng và đổi trả thực tế cần được xác nhận trước khi bán.",
+      "bg": "#e9ece4",
+      "type": "crystal"
+    },
+    {
+      "id": "amber",
+      "name": "Vòng hổ phách",
+      "short": "Vật nhỏ bên mình",
+      "category": "Vòng tay",
+      "price": 450,
+      "color": "#c5a16b",
+      "dark": "#977243",
+      "tag": "Sản phẩm mẫu",
+      "desc": "Vật nhỏ cho nghi thức hằng ngày. Đây là mẫu ý tưởng, không hứa hẹn thay đổi vận may hay kết quả.",
+      "material": "Thông số mẫu. Chất liệu, kích thước, tồn kho, giao hàng và đổi trả thực tế cần được xác nhận trước khi bán.",
+      "bg": "#eee4d4",
+      "type": "bracelet"
+    },
+    {
+      "id": "purple",
+      "name": "Thạch anh tím",
+      "short": "Vật nhỏ bên mình",
+      "category": "Đá trang trí",
+      "price": 690,
+      "color": "#bdb0c7",
+      "dark": "#8b7d9b",
+      "tag": "Sản phẩm mẫu",
+      "desc": "Vật nhỏ cho nghi thức hằng ngày. Đây là mẫu ý tưởng, không hứa hẹn thay đổi vận may hay kết quả.",
+      "material": "Thông số mẫu. Chất liệu, kích thước, tồn kho, giao hàng và đổi trả thực tế cần được xác nhận trước khi bán.",
+      "bg": "#eae6ec",
+      "type": "crystal"
+    }
+  ],
+  "lifeChapters": [
+    {
+      "id": "self",
+      "name": "Tính cách và nhu cầu",
+      "subtitle": "Gợi ý để đối chiếu với trải nghiệm thực tế.",
+      "basis": "Biểu tượng chiêm tinh · nội dung mẫu"
+    },
+    {
+      "id": "love",
+      "name": "Tình cảm và ranh giới",
+      "subtitle": "Gợi ý để đối chiếu với trải nghiệm thực tế.",
+      "basis": "Biểu tượng chiêm tinh · nội dung mẫu"
+    },
+    {
+      "id": "money",
+      "name": "Thói quen tiền bạc",
+      "subtitle": "Gợi ý để đối chiếu với trải nghiệm thực tế.",
+      "basis": "Biểu tượng chiêm tinh · nội dung mẫu"
+    },
+    {
+      "id": "family",
+      "name": "Gia đình và cảm giác thuộc về",
+      "subtitle": "Gợi ý để đối chiếu với trải nghiệm thực tế.",
+      "basis": "Biểu tượng chiêm tinh · nội dung mẫu"
+    },
+    {
+      "id": "work",
+      "name": "Công việc và phát triển",
+      "subtitle": "Gợi ý để đối chiếu với trải nghiệm thực tế.",
+      "basis": "Biểu tượng chiêm tinh · nội dung mẫu"
+    },
+    {
+      "id": "growth",
+      "name": "Hướng dẫn bước tiếp theo",
+      "subtitle": "Gợi ý để đối chiếu với trải nghiệm thực tế.",
+      "basis": "Biểu tượng chiêm tinh · nội dung mẫu"
+    }
+  ],
+  "lifeElementNotes": {
+    "火象": {
+      "title": "Bắt đầu từ điều có thể quan sát.",
+      "text": "Các nguyên tố chiêm tinh là truyền thống biểu tượng, không phải nhãn tính cách cố định. Nhìn lại một trải nghiệm thật: điều gì tiếp năng lượng, điều gì khiến bạn mệt và điều gì giúp bạn ứng xử? Giữ điều phù hợp và kiểm tra phần còn lại.",
+      "practice": "Ghi một quan sát, một nhu cầu và một hành động cho tuần này."
+    },
+    "土象": {
+      "title": "Bắt đầu từ điều có thể quan sát.",
+      "text": "Các nguyên tố chiêm tinh là truyền thống biểu tượng, không phải nhãn tính cách cố định. Nhìn lại một trải nghiệm thật: điều gì tiếp năng lượng, điều gì khiến bạn mệt và điều gì giúp bạn ứng xử? Giữ điều phù hợp và kiểm tra phần còn lại.",
+      "practice": "Ghi một quan sát, một nhu cầu và một hành động cho tuần này."
+    },
+    "风象": {
+      "title": "Bắt đầu từ điều có thể quan sát.",
+      "text": "Các nguyên tố chiêm tinh là truyền thống biểu tượng, không phải nhãn tính cách cố định. Nhìn lại một trải nghiệm thật: điều gì tiếp năng lượng, điều gì khiến bạn mệt và điều gì giúp bạn ứng xử? Giữ điều phù hợp và kiểm tra phần còn lại.",
+      "practice": "Ghi một quan sát, một nhu cầu và một hành động cho tuần này."
+    },
+    "水象": {
+      "title": "Bắt đầu từ điều có thể quan sát.",
+      "text": "Các nguyên tố chiêm tinh là truyền thống biểu tượng, không phải nhãn tính cách cố định. Nhìn lại một trải nghiệm thật: điều gì tiếp năng lượng, điều gì khiến bạn mệt và điều gì giúp bạn ứng xử? Giữ điều phù hợp và kiểm tra phần còn lại.",
+      "practice": "Ghi một quan sát, một nhu cầu và một hành động cho tuần này."
+    }
+  },
+  "lifeLongNotes": {
+    "love": [
+      "Quan sát hành động có nhất quán trước khi đầu tư thêm. Nói rõ một mong muốn và để người kia có không gian trả lời.",
+      "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn.",
+      "Viết một câu rõ ràng về mối quan hệ bạn mong muốn."
+    ],
+    "money": [
+      "Tách việc vượt qua tháng này khỏi kế hoạch dài hạn. Bắt đầu từ tiền đã có và giữ khoản cần cho ăn uống, chỗ ở, đi lại thiết yếu.",
+      "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn.",
+      "Để riêng tiền thiết yếu và hoãn một món chưa cần mua."
+    ],
+    "family": [
+      "Nói rõ điều bạn có thể làm và điều cần được chia sẻ. Một yêu cầu cụ thể dễ trao đổi hơn việc âm thầm gánh mọi trách nhiệm.",
+      "Ghi những việc bạn đang làm cho gia đình.",
+      "Chọn một việc cần giúp và một lời nhờ cụ thể."
+    ],
+    "work": [
+      "Xác định điều cần thay đổi trước khi quyết định. So sánh lựa chọn thực tế và chuẩn bị một bước nhỏ trong khi giữ các cam kết hiện tại.",
+      "Ghi điều đang khó khăn và mong muốn ở công việc mới.",
+      "Chọn một vị trí và đối chiếu yêu cầu với kinh nghiệm của bạn."
+    ],
+    "growth": [
+      "Dùng trang phục quen thuộc và một bước chuẩn bị thực tế làm điểm tựa. Màu sắc là nghi thức cá nhân, không quyết định kết quả.",
+      "Chọn đồ thoải mái, phù hợp nơi đến và hoạt động.",
+      "Chuẩn bị vật dụng và thông tin sẽ cần."
+    ]
+  },
+  "COMPANION_WEEKLY_ACTIONS": {
+    "love": [
+      [
+        "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Viết một câu rõ ràng về mối quan hệ bạn mong muốn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Quan sát lời nói có đi cùng hành động ổn định hay không.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Viết một câu rõ ràng về mối quan hệ bạn mong muốn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Quan sát lời nói có đi cùng hành động ổn định hay không.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Tách sự việc trong ba lần gặp gần đây khỏi suy đoán của bạn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ]
+    ],
+    "money": [
+      [
+        "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Để riêng tiền thiết yếu và hoãn một món chưa cần mua.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Hỏi trực tiếp bên cung cấp về các phương án và tổng chi phí.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Để riêng tiền thiết yếu và hoãn một món chưa cần mua.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Hỏi trực tiếp bên cung cấp về các phương án và tổng chi phí.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Ghi số dư, ngày có khoản thu chắc chắn tiếp theo và hóa đơn đến hạn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ]
+    ],
+    "family": [
+      [
+        "Ghi những việc bạn đang làm cho gia đình.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Chọn một việc cần giúp và một lời nhờ cụ thể.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Tìm lúc bình tĩnh để bàn cách chia sẻ phù hợp.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Ghi những việc bạn đang làm cho gia đình.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Chọn một việc cần giúp và một lời nhờ cụ thể.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Tìm lúc bình tĩnh để bàn cách chia sẻ phù hợp.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Ghi những việc bạn đang làm cho gia đình.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ]
+    ],
+    "work": [
+      [
+        "Ghi điều đang khó khăn và mong muốn ở công việc mới.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Chọn một vị trí và đối chiếu yêu cầu với kinh nghiệm của bạn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Viết lại một ví dụ công việc cụ thể trước khi ứng tuyển.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Ghi điều đang khó khăn và mong muốn ở công việc mới.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Chọn một vị trí và đối chiếu yêu cầu với kinh nghiệm của bạn.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Viết lại một ví dụ công việc cụ thể trước khi ứng tuyển.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ],
+      [
+        "Ghi điều đang khó khăn và mong muốn ở công việc mới.",
+        "Bài thực hành biên tập lặp theo tuần."
+      ]
+    ]
+  },
+  "ASTRO_SAMPLE": {
+    "planets": [
+      {
+        "id": "sun",
+        "name": "太阳",
+        "symbol": "☉",
+        "sign": "leo",
+        "degree": 22,
+        "meaning": [
+          "自我认同与表达",
+          "ตัวตนและการแสดงออก"
+        ]
+      },
+      {
+        "id": "moon",
+        "name": "月亮",
+        "symbol": "☾",
+        "sign": "sagittarius",
+        "degree": 14,
+        "meaning": [
+          "感受与安全感",
+          "ความรู้สึกและความมั่นคงทางใจ"
+        ]
+      },
+      {
+        "id": "mercury",
+        "name": "水星",
+        "symbol": "☿",
+        "sign": "virgo",
+        "degree": 8,
+        "meaning": [
+          "理解、学习与沟通",
+          "ความเข้าใจ การเรียนรู้ และการสื่อสาร"
+        ]
+      },
+      {
+        "id": "venus",
+        "name": "金星",
+        "symbol": "♀",
+        "sign": "cancer",
+        "degree": 26,
+        "meaning": [
+          "喜欢什么、怎样建立关系",
+          "สิ่งที่ชอบและวิธีสร้างความสัมพันธ์"
+        ]
+      },
+      {
+        "id": "mars",
+        "name": "火星",
+        "symbol": "♂",
+        "sign": "gemini",
+        "degree": 11,
+        "meaning": [
+          "行动与表达主张",
+          "การลงมือทำและการยืนยันความต้องการ"
+        ]
+      },
+      {
+        "id": "jupiter",
+        "name": "木星",
+        "symbol": "♃",
+        "sign": "aries",
+        "degree": 8,
+        "meaning": [
+          "探索、学习与拓展视野",
+          "การสำรวจ เรียนรู้ และเปิดมุมมอง"
+        ]
+      },
+      {
+        "id": "saturn",
+        "name": "土星",
+        "symbol": "♄",
+        "sign": "aquarius",
+        "degree": 22,
+        "meaning": [
+          "责任、边界与长期投入",
+          "ความรับผิดชอบ ขอบเขต และความพยายามระยะยาว"
+        ]
+      },
+      {
+        "id": "uranus",
+        "name": "天王星",
+        "symbol": "♅",
+        "sign": "taurus",
+        "degree": 18,
+        "meaning": [
+          "改变与不同的做法",
+          "การเปลี่ยนแปลงและวิธีที่แตกต่าง"
+        ]
+      },
+      {
+        "id": "neptune",
+        "name": "海王星",
+        "symbol": "♆",
+        "sign": "pisces",
+        "degree": 25,
+        "meaning": [
+          "想象、理想与敏感度",
+          "จินตนาการ อุดมคติ และความไวต่อความรู้สึก"
+        ]
+      },
+      {
+        "id": "pluto",
+        "name": "冥王星",
+        "symbol": "♇",
+        "sign": "capricorn",
+        "degree": 27,
+        "meaning": [
+          "深层改变与重新整理",
+          "การเปลี่ยนแปลงลึก ๆ และการจัดระเบียบใหม่"
+        ]
+      }
+    ],
+    "houses": [
+      [
+        "自我呈现",
+        "การแสดงตัวตน"
+      ],
+      [
+        "个人资源与价值",
+        "ทรัพยากรและคุณค่าของตนเอง"
+      ],
+      [
+        "日常交流与学习",
+        "การสื่อสารและการเรียนรู้ในชีวิตประจำวัน"
+      ],
+      [
+        "家庭与归属",
+        "บ้านและความรู้สึกเป็นส่วนหนึ่ง"
+      ],
+      [
+        "创造、兴趣与恋爱",
+        "ความสร้างสรรค์ ความสนใจ และความรัก"
+      ],
+      [
+        "日常工作与作息",
+        "งานประจำวันและกิจวัตร"
+      ],
+      [
+        "一对一关系与合作",
+        "ความสัมพันธ์ตัวต่อตัวและความร่วมมือ"
+      ],
+      [
+        "共同资源与责任",
+        "ทรัพยากรและความรับผิดชอบร่วมกัน"
+      ],
+      [
+        "远行、信念与高等学习",
+        "การเดินทางไกล ความเชื่อ และการศึกษาขั้นสูง"
+      ],
+      [
+        "职业方向与社会角色",
+        "ทิศทางอาชีพและบทบาทในสังคม"
+      ],
+      [
+        "朋友、群体与共同目标",
+        "เพื่อน กลุ่มคน และเป้าหมายร่วมกัน"
+      ],
+      [
+        "独处、内省与幕后工作",
+        "เวลาส่วนตัว การทบทวนตนเอง และงานเบื้องหลัง"
+      ]
+    ],
+    "aspects": [
+      {
+        "a": "sun",
+        "b": "saturn",
+        "angle": 180,
+        "name": [
+          "对分相",
+          "มุมเล็ง"
+        ],
+        "reading": [
+          "练习把自我表达与责任放在一起看：怎样既提出自己的想法，也给现实条件留出空间？",
+          "ฝึกมองการแสดงตัวตนร่วมกับความรับผิดชอบ จะเสนอความคิดของตนเองพร้อมคำนึงถึงเงื่อนไขจริงได้อย่างไร"
+        ]
+      },
+      {
+        "a": "mercury",
+        "b": "mars",
+        "angle": 90,
+        "name": [
+          "四分相",
+          "มุมฉาก"
+        ],
+        "reading": [
+          "练习区分想法与行动的节奏：先确认对方听懂了什么，再决定下一步怎么做。",
+          "ฝึกแยกจังหวะความคิดกับการลงมือทำ ตรวจสอบก่อนว่าอีกฝ่ายเข้าใจอะไร แล้วค่อยกำหนดขั้นตอนถัดไป"
+        ]
+      },
+      {
+        "a": "venus",
+        "b": "neptune",
+        "angle": 120,
+        "name": [
+          "三分相",
+          "มุมตรีโกณ"
+        ],
+        "reading": [
+          "练习把喜欢与想象分开：欣赏美好，同时用实际相处核对自己的期待。",
+          "ฝึกแยกความชอบกับจินตนาการ ชื่นชมสิ่งดี ๆ พร้อมตรวจสอบความคาดหวังจากการอยู่ร่วมกันจริง"
+        ]
+      }
+    ]
+  }
+}

@@ -220,7 +220,7 @@ class ReportRepository {
       queryParameters: {
         'country': country,
         'province': province,
-        'level': 'locality',
+        'level': province.isEmpty ? 'city' : 'locality',
         'query': query,
         'offset': '$offset',
       },

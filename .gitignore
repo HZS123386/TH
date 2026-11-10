@@ -8,6 +8,9 @@
 **/tmp/
 **/output/
 **/data/
+!TH/src/data/
+/TH/src/data/*
+!/TH/src/data/wanjai-*.json
 **/site/
 /TH/dist/
 .env

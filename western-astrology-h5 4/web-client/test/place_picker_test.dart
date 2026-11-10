@@ -41,26 +41,28 @@ void main() {
       ),
     );
     final h5 = H5Controller(translations(), repo, browser);
+    Place? chosen;
     await tester.pumpWidget(
       MaterialApp(
         theme: h5Theme(),
         home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () =>
-                  choosePlace(context, h5, 'TH', province: province),
-              child: const Text('Open'),
+          body: SingleChildScrollView(
+            child: PlacePicker(
+              h5: h5,
+              country: 'TH',
+              province: province,
+              onSelected: (value) => chosen = value,
             ),
           ),
         ),
       ),
     );
-    await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
-    expect(
-      find.widgetWithText(TextField, 'เช่น เมืองเชียงใหม่'),
-      findsOneWidget,
-    );
+    expect(find.byType(Dialog), findsNothing);
+    expect(find.text('กรุงเทพมหานคร'), findsOneWidget);
+    expect(find.text(h5.copy.t('ui', 'noCity')), findsNothing);
+    await tester.tap(find.text('กรุงเทพมหานคร'));
+    expect(chosen?.id, province.id);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     h5.dispose();

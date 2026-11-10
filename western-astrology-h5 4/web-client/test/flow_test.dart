@@ -13,6 +13,8 @@ import 'package:fate_h5/features/birth_date_dialog.dart';
 import 'package:fate_h5/features/generation_dialog.dart';
 import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/report_view_model.dart';
+import 'package:fate_h5/features/place_picker.dart';
+import 'package:fate_h5/features/checkout_dialog.dart';
 import 'support.dart';
 
 http.Response response(dynamic value) => http.Response(
@@ -61,6 +63,7 @@ void main() {
         ReportRepository(browser),
         browser,
       );
+      h5.enterLanding();
       await tester.pumpWidget(
         H5App(
           controller: h5,
@@ -68,10 +71,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await click(
-        tester,
-        find.widgetWithText(TextFormField, 'วันเกิด · ปี ค.ศ.'),
-      );
+      await click(tester, find.byKey(const ValueKey('birth-date')));
       expect(find.byType(BirthDateDialog), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'ยืนยัน'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -83,14 +83,14 @@ void main() {
       expect(route.queryParameters, containsPair('lang', 'zh'));
       expect(route.queryParameters, containsPair('topic', 'love'));
       expect(route.queryParameters, containsPair('startup', '1'));
-      expect(find.text('从出生时刻，读懂你的运程'), findsOneWidget);
+      expect(find.textContaining('从出生时刻，读懂你的运程'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
     },
   );
   testWidgets(
-    'small-phone birth entry, unknown time and cached report completion preserve the real payload',
+    'JY inline form, unknown time and consent lead to the locked checkout without a paid request',
     (tester) async {
       phone(tester);
       final browser = TestBrowser();
@@ -104,12 +104,20 @@ void main() {
           calls.add('${request.method} ${request.url.path}');
           if (request.url.path == '/api/thai-locations') {
             return response({
-              'items': [province],
-              'total': 1,
+              'items': request.url.queryParameters['level'] == 'province'
+                  ? [province]
+                  : [],
+              'total': request.url.queryParameters['level'] == 'province'
+                  ? 1
+                  : 0,
             });
+          }
+          if (request.url.path == '/api/landing/consents') {
+            return response({'accepted': true});
           }
           if (request.method == 'POST') {
             input = object(jsonDecode(request.body));
+            final chart = object(fixture()['chart']);
             current = {
               ...fixture(),
               'input': input,
@@ -117,105 +125,98 @@ void main() {
                 'mode': 'estimated',
                 'assumed_local_time': '12:00',
               },
+              'chart': {
+                ...chart,
+                'precision': 'estimated',
+                'houses': [],
+                'planets': [
+                  for (final p in objects(chart['planets']))
+                    if (p['id'] != 'ascendant') {...p, 'house': null},
+                ],
+              },
             };
           }
           return response(current);
         }),
       );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh')
+        ..enterLanding();
       await tester.pumpWidget(
         H5App(controller: h5, initialLocation: '/?lang=zh'),
       );
       await tester.pumpAndSettle();
-      await click(tester, find.widgetWithText(TextFormField, '出生日期 · 阳历'));
-      expect(find.byType(BirthDateDialog), findsOneWidget);
-      expect(tester.takeException(), isNull);
+      await click(tester, find.byKey(const ValueKey('birth-date')));
       await click(
         tester,
         find.widgetWithText(FilledButton, h5.copy.t('ui', 'confirm')),
       );
+      await click(tester, find.byKey(const ValueKey('birth-time-unknown')));
+      await click(tester, find.byKey(const ValueKey('birth-country')));
+      await click(tester, find.text('泰国'));
+      await click(tester, find.byKey(const ValueKey('birth-province')));
       await click(
         tester,
-        find.widgetWithText(CheckboxListTile, h5.copy.t('ui', 'unknown')),
+        find.descendant(
+          of: find.byType(PlacePicker),
+          matching: find.text('曼谷'),
+        ),
       );
+      await click(tester, find.byKey(const ValueKey('birth-city')));
       await click(
         tester,
-        find.widgetWithText(TextFormField, h5.copy.t('ui', 'country')),
+        find.descendant(
+          of: find.byType(PlacePicker),
+          matching: find.text('曼谷'),
+        ),
       );
-      await click(tester, find.widgetWithText(ListTile, '泰国'));
-      await click(
-        tester,
-        find.widgetWithText(TextFormField, h5.copy.t('ui', 'province')),
-      );
-      await click(tester, find.widgetWithText(ListTile, '曼谷'));
-      await click(
-        tester,
-        find.widgetWithText(FilledButton, h5.copy.t('life', 'generate')),
-      );
+      await click(tester, find.byKey(const ValueKey('generate-report')));
+      expect(input, isNull);
+      expect(find.text('确认使用出生资料'), findsOneWidget);
+      await click(tester, find.byKey(const ValueKey('data-use-agree')));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 600));
       await tester.pumpAndSettle();
-      expect(find.byType(GenerationDialog), findsNothing);
       expect(input, isNotNull);
       expect(object(input!['profile'])['birth_time'], isNull);
       expect(object(input!['profile'])['birth_date'], '1999-01-01');
       expect(object(input!['profile'])['location_id'], province['id']);
-      expect(object(input!['profile'])['latitude'], isNull);
       expect(input!['report_kind'], 'fortune');
       expect(calls, contains('POST /api/life-reports'));
-      expect(find.textContaining('先看清自己的判断习惯'), findsOneWidget);
+      expect(calls.any((value) => value.endsWith('/unlock')), isFalse);
+      expect(find.byType(GenerationDialog), findsNothing);
+      expect(find.byType(ReportCheckout), findsOneWidget);
+      expect(find.text('解锁您的运程'), findsOneWidget);
+      expect(find.text('฿39'), findsOneWidget);
+      expect(find.textContaining('先看清自己的判断习惯'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
     },
   );
   testWidgets(
-    'preview export, test checkout, all themes, plan and full export preserve server permission',
+    'saved complete reports use JY sections and retain all original chapters, plan and PDF export',
     (tester) async {
       phone(tester);
       final browser = TestBrowser();
-      var full = false;
-      final calls = <String>[];
+      final data = fixture(full: true);
       final repo = ReportRepository(
         browser,
         baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          calls.add('${request.method} ${request.url.path}');
-          if (request.url.path.endsWith('/unlock')) full = true;
-          return response(fixture(full: full));
-        }),
+        client: MockClient((_) async => response(data)),
       );
       final h5 = H5Controller(translations(), repo, browser, language: 'zh');
-      final c = h5.copy;
       await tester.pumpWidget(
         H5App(
           controller: h5,
-          initialLocation: '/report.html?id=${fixture()['id']}&lang=zh',
+          initialLocation: '/report.html?id=${data['id']}&lang=zh',
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('付费章节重点'), findsNothing);
-      await click(tester, find.byTooltip(c.t('life', 'exportPdf')));
-      expect(browser.exported!['access'], 'preview');
-      expect(browser.exported!['chapters'], isEmpty);
-      final purchase = find.byKey(const ValueKey('life-sticky-buy'));
-      await click(tester, purchase);
-      expect(find.text(c.t('checkout', 'demo')), findsOneWidget);
-      await click(
-        tester,
-        find.widgetWithText(TextButton, c.t('checkout', 'fillCard')),
-      );
-      await click(tester, find.byKey(const ValueKey('confirm-test-payment')));
-      expect(
-        calls,
-        contains('POST /api/life-reports/${fixture()['id']}/unlock'),
-      );
-      expect(find.byKey(const ValueKey('life-sticky-buy')), findsNothing);
-      expect(find.textContaining('付费章节重点'), findsOneWidget);
-      for (final topic in c.topics) {
-        expect(find.text(c.topicTitle(topic, 2026)), findsWidgets);
-      }
-      await click(tester, find.text(c.t('life', 'plan')));
+      expect(find.text('你的专属星盘报告'), findsOneWidget);
+      expect(find.byType(ReportCheckout), findsNothing);
+      expect(find.textContaining('付费章节重点'), findsWidgets);
       expect(find.text('先观察当前的习惯'), findsOneWidget);
-      await click(tester, find.byTooltip(c.t('life', 'exportPdf')));
+      await click(tester, find.byTooltip(h5.copy.t('life', 'exportPdf')));
       expect(browser.exported!['access'], 'full');
       expect(objects(browser.exported!['chapters']), hasLength(7));
       expect(

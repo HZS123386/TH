@@ -1,352 +1,231 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
-import '../core/repository.dart';
 import '../ui/theme.dart';
+import '../ui/jy_components.dart';
 
-Future<bool?> showCheckout(
-  BuildContext context,
-  H5Controller h5,
-  LifeReport report,
-) => showDialog<bool>(
-  context: context,
-  builder: (_) => CheckoutDialog(h5: h5, report: report),
-);
-
-class CheckoutDialog extends StatefulWidget {
-  const CheckoutDialog({required this.h5, required this.report, super.key});
+class ReportCheckout extends StatefulWidget {
+  const ReportCheckout({
+    required this.h5,
+    required this.report,
+    required this.onBack,
+    required this.onErase,
+    this.busy = false,
+    this.error = '',
+    super.key,
+  });
   final H5Controller h5;
   final LifeReport report;
+  final VoidCallback onBack, onErase;
+  final bool busy;
+  final String error;
   @override
-  State<CheckoutDialog> createState() => _CheckoutDialogState();
+  State<ReportCheckout> createState() => _ReportCheckoutState();
 }
 
-class _CheckoutDialogState extends State<CheckoutDialog>
-    with WidgetsBindingObserver {
-  CancelToken? _request;
-  Timer? _poll;
-  Json? _order;
-  String _error = '', _linkStatus = '';
-  bool _filled = false, _submitted = false, _checking = false;
-  Copy get c => widget.h5.copy.forReport(widget.report);
-  bool get payso => widget.report.price['mode'] == 'payso_test';
-  String t(String key) => c.t('checkout', key);
-  String get link => Uri.base
-      .resolve('report.html')
-      .replace(
-        queryParameters: {
-          'id': widget.report.id,
-          'lang': widget.report.language,
-          'checkout': '1',
-        },
-      )
-      .toString();
+class _ReportCheckoutState extends State<ReportCheckout> {
+  bool _downloadNotice = false;
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    if (payso) unawaited(_prepare());
-  }
-
-  Future<void> _prepare() async {
-    _request?.cancel();
-    final token = CancelToken();
-    _request = token;
-    setState(() => _error = '');
-    try {
-      final order = object(
-        await widget.h5.repository.request(
-          '/api/life-reports/${widget.report.id}/payment',
-          token,
-          body: {},
+  Widget build(BuildContext context) {
+    final c = widget.h5.copy;
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -.84),
+          radius: 1.4,
+          colors: [Color(0xFF392353), Color(0xFF160D29), Color(0xFF0C0816)],
+          stops: [0, .5, 1],
         ),
-      );
-      if (mounted && !token.cancelled) {
-        final action = Uri.tryParse(text(order['action']));
-        if (action == null ||
-            action.scheme != 'https' ||
-            object(order['fields']).isEmpty) {
-          throw const FormatException('invalid_payment');
-        }
-        setState(() => _order = order);
-        _schedule();
-      }
-    } catch (error) {
-      if (mounted && !token.cancelled) {
-        setState(() => _error = widget.h5.message(error));
-      }
-    }
-  }
-
-  void _schedule() {
-    _poll?.cancel();
-    if (mounted) _poll = Timer(const Duration(seconds: 5), () => _check());
-  }
-
-  Future<void> _check() async {
-    if (_checking || !widget.h5.browser.visible) {
-      _schedule();
-      return;
-    }
-    _checking = true;
-    try {
-      final data = object(
-        await widget.h5.repository.request(
-          '/api/life-reports/${widget.report.id}/payment/check',
-          _request!,
-          body: {},
-        ),
-      );
-      if (mounted && !_request!.cancelled) {
-        if (data['paid'] == true) {
-          Navigator.pop(context, true);
-          return;
-        }
-        setState(() => _error = '');
-      }
-    } catch (error) {
-      if (mounted && !_request!.cancelled) {
-        setState(() => _error = widget.h5.message(error));
-      }
-    } finally {
-      _checking = false;
-      _schedule();
-    }
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && payso && _order != null) {
-      unawaited(_check());
-    } else {
-      _poll?.cancel();
-    }
-  }
-
-  @override
-  void dispose() {
-    _poll?.cancel();
-    _request?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Dialog(
-    insetPadding: const EdgeInsets.all(18),
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 420),
+      ),
       child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+        key: const ValueKey('report-checkout'),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+        child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  const Text(
-                    '✧ FATE',
-                    style: TextStyle(
-                      color: gold,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: t('close'),
-                    onPressed: () => Navigator.pop(context, false),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
+              const FateBrand(compact: true),
+              const SizedBox(height: 14),
               Text(
-                t('title'),
+                c.t('jy', 'checkout.eyebrow'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: gold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                c.t('jy', 'checkout.title'),
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 26,
+                  height: 1.25,
+                  color: Color(0xFFFFEDCC),
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                t(payso ? 'payso' : 'demo'),
-                style: const TextStyle(color: gold, fontSize: 12),
-              ),
-              const SizedBox(height: 20),
-              Panel(
-                highlight: true,
+              const SizedBox(height: 24),
+              JYCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
+                radius: 18,
+                borderColor: const Color(0xFFDFB675),
+                colors: const [Color(0xFF4C3263), Color(0xFF241732)],
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      c.t('report', 'title'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0x70E4BC78)),
+                        borderRadius: BorderRadius.circular(24),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF67435C), Color(0xFF51335D)],
+                        ),
                       ),
-                    ),
-                    Text(
-                      t('once'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      widget.report.priceLabel,
-                      style: const TextStyle(
-                        color: gold,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                t('card'),
-                style: const TextStyle(
-                  color: gold,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (payso) ...[
-                Text(
-                  t('paysoHint'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (_order == null && _error.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(15),
-                    child: Text(t('preparing')),
-                  ),
-                if (_order != null) ...[
-                  Text(
-                    '${t('order')} ${object(_order!['fields'])['refno'] ?? ''}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: () {
-                      try {
-                        widget.h5.browser.postPayment(
-                          text(_order!['action']),
-                          object(
-                            _order!['fields'],
-                          ).map((k, v) => MapEntry(k, '$v')),
-                        );
-                        setState(() => _submitted = true);
-                      } catch (error) {
-                        setState(() => _error = widget.h5.message(error));
-                      }
-                    },
-                    child: Text(t('paysoOpen')),
-                  ),
-                  if (_submitted)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
                       child: Text(
-                        t('paysoWaiting'),
-                        style: const TextStyle(color: gold),
-                      ),
-                    ),
-                ],
-              ] else ...[
-                Text(
-                  c.t('report', 'direct'),
-                  style: const TextStyle(color: gold, fontSize: 12),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  key: ValueKey('card-$_filled'),
-                  readOnly: true,
-                  initialValue: _filled ? '4242 4242 4242 4242' : '',
-                  decoration: InputDecoration(
-                    labelText: t('cardNumber'),
-                    hintText: '0000 0000 0000 0000',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        key: ValueKey('expiry-$_filled'),
-                        readOnly: true,
-                        initialValue: _filled ? '12 / 30' : '',
-                        decoration: InputDecoration(
-                          labelText: t('expiry'),
-                          hintText: 'MM / YY',
+                        '✧  ${c.t('jy', 'checkout.contents')}  ✧',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFFFFE3AA),
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        key: ValueKey('security-$_filled'),
-                        readOnly: true,
-                        initialValue: _filled ? '123' : '',
-                        decoration: InputDecoration(
-                          labelText: t('securityCode'),
-                          hintText: 'CVC',
+                    const SizedBox(height: 16),
+                    ReportBadges(copy: c),
+                    const SizedBox(height: 16),
+                    const Divider(height: 1, color: Color(0x40E4BC78)),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          c.t('jy', 'checkout.samplePrice'),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFFF7D69E),
+                          ),
+                        ),
+                        const Spacer(),
+                        const Text(
+                          '฿39',
+                          style: TextStyle(
+                            fontSize: 27,
+                            color: Color(0xFFF7D69E),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    JYButton(
+                      key: const ValueKey('jy-payment-preview'),
+                      label: c.t('jy', 'checkout.pay'),
+                      icon: 'lock',
+                      onPressed: null,
+                      dimDisabled: false,
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      c.t('jy', 'checkout.preview'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: lavender),
+                    ),
+                    const SizedBox(height: 14),
+                    JYButton(
+                      key: const ValueKey('jy-app-download'),
+                      label: c.t('jy', 'checkout.download'),
+                      icon: 'download',
+                      pulse: true,
+                      onPressed: () => setState(() => _downloadNotice = true),
+                    ),
+                    if (_downloadNotice)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 9),
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            c.t('jy', 'checkout.downloadUnavailable'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: lavender,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              JYCard(
+                padding: const EdgeInsets.fromLTRB(13, 17, 13, 15),
+                radius: 16,
+                borderColor: const Color(0x70E4BC78),
+                colors: const [Color(0xFF624162), Color(0xFF261733)],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final line in c.list('jy', 'checkout.aboutTitle'))
+                      Text(
+                        line,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFFFE1A1),
+                          fontSize: 15,
+                          height: 1.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 13,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFF4D9A8)),
+                        borderRadius: BorderRadius.circular(11),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFF1D5), Color(0xFFF3DAB6)],
+                        ),
+                      ),
+                      child: Text(
+                        c.t('jy', 'checkout.about'),
+                        style: const TextStyle(
+                          color: Color(0xFF44283E),
+                          fontSize: 14,
+                          height: 1.65,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  t('cardHint'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                TextButton(
-                  onPressed: _filled
-                      ? null
-                      : () => setState(() => _filled = true),
-                  child: Text(t('fillCard')),
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  key: const ValueKey('confirm-test-payment'),
-                  onPressed: _filled
-                      ? () => Navigator.pop(context, true)
-                      : null,
-                  child: Text(
-                    '${t('cardConfirm')} ${widget.report.priceLabel}',
-                  ),
-                ),
-              ],
-              errorMessage(_error),
-              if (_error.isNotEmpty && _order == null && payso)
-                TextButton(
-                  onPressed: () => _prepare(),
-                  child: Text(t('retry')),
-                ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () async {
-                  try {
-                    await Clipboard.setData(ClipboardData(text: link));
-                    if (mounted) setState(() => _linkStatus = t('copied'));
-                  } catch (_) {
-                    if (mounted) setState(() => _linkStatus = link);
-                  }
-                },
-                icon: const Icon(Icons.link, size: 16),
-                label: Text(t('link')),
               ),
-              if (_linkStatus.isNotEmpty)
-                SelectableText(
-                  _linkStatus,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+              const SizedBox(height: 12),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    onPressed: widget.busy ? null : widget.onBack,
+                    child: Text(c.t('jy', 'checkout.back')),
+                  ),
+                  OutlinedButton(
+                    onPressed: widget.busy ? null : widget.onErase,
+                    child: Text(c.t('jy', 'erase')),
+                  ),
+                ],
+              ),
+              errorMessage(widget.error),
             ],
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

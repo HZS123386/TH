@@ -9,6 +9,13 @@ if(!Number.isInteger(port)||port<1||port>65535||!['http:','https:'].includes(ups
 if(!process.argv.includes('--skip-build'))await buildLanding();
 const root=path.resolve(projectRoot,'site');
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.wasm':'application/wasm','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.ttf':'font/ttf','.otf':'font/otf','.woff2':'font/woff2','.mp4':'video/mp4'};
+// Cancelled font/video requests must release Windows file handles before a rebuild.
+function sendFile(file,res,options){
+ const stream=createReadStream(file,options);
+ res.once('close',()=>stream.destroy());
+ stream.once('error',()=>res.destroy());
+ stream.pipe(res);
+}
 const server=createServer(async(req,res)=>{
  let url;try{url=new URL(req.url,'http://localhost');}catch{res.writeHead(400).end();return;}
  if(url.pathname.startsWith('/api/')||url.pathname==='/health'){
@@ -32,9 +39,9 @@ const server=createServer(async(req,res)=>{
    const match=/^bytes=(\d*)-(\d*)$/.exec(range);let start,end;
    if(match){start=match[1]?Number(match[1]):Math.max(0,info.size-Number(match[2]));end=match[1]?(match[2]?Math.min(Number(match[2]),info.size-1):info.size-1):info.size-1;}
    if(!match||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=info.size||end<start){res.writeHead(416,{'Content-Range':`bytes */${info.size}`}).end();return;}
-   res.writeHead(206,{...headers,'Accept-Ranges':'bytes','Content-Range':`bytes ${start}-${end}/${info.size}`,'Content-Length':end-start+1});if(req.method==='HEAD')res.end();else createReadStream(file,{start,end}).pipe(res);return;
+   res.writeHead(206,{...headers,'Accept-Ranges':'bytes','Content-Range':`bytes ${start}-${end}/${info.size}`,'Content-Length':end-start+1});if(req.method==='HEAD')res.end();else sendFile(file,res,{start,end});return;
   }
-  res.writeHead(200,{...headers,'Content-Length':info.size,...(path.extname(file)==='.mp4'?{'Accept-Ranges':'bytes'}:{})});if(req.method==='HEAD')res.end();else createReadStream(file).pipe(res);
+  res.writeHead(200,{...headers,'Content-Length':info.size,...(path.extname(file)==='.mp4'?{'Accept-Ranges':'bytes'}:{})});if(req.method==='HEAD')res.end();else sendFile(file,res);
  }catch{if(!res.headersSent)res.writeHead(404).end();else res.destroy();}
 });
 server.listen(port,'127.0.0.1',()=>console.log(`FATE Flutter H5: http://127.0.0.1:${port}${basePath}`));

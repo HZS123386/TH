@@ -311,6 +311,24 @@ class LifeReports:
         finally:
             report_progress_context.reset(token)
 
+    def chart_view(self, chart, time_known):
+        """Reuse this report's calculated positions for JY's native chart view."""
+        source = chart.get("chart") or {}
+        points = source.get("points") or {}
+        return {
+            "precision": "exact" if time_known else "estimated",
+            "engine": "Thai Suriyayatra", "relationship_model": "sign-based",
+            "planets": [{"id": key, "label": point["nameThai"], "sign_index": point["sign"],
+                         "sign_name": point["signName"], "longitude": point["longitudeDegrees"],
+                         "degree": point["degrees"] + point["minutes"] / 60,
+                         "house": point["house"] if time_known else None}
+                        for key, point in points.items() if time_known or key != "ascendant"],
+            "houses": [{"number": house["number"], "longitude": house["sign"] * 30}
+                       for house in source.get("houses", [])] if time_known else [],
+            # The local model uses sign relationships, not Western degree-orb aspects.
+            "aspects": [],
+        }
+
     def public(self, row):
         body = json.loads(row["input"])
         language = body["profile"]["language"]
@@ -356,6 +374,7 @@ class LifeReports:
             "id": row["id"], "version": version, "title": title,
             "input": body, "created_at": stamp(row["created"]), "location": chart["location"],
             "method": {"name": "Thai Suriyayatra", "house_system": "whole-sign", "version": thai.ENGINE_VERSION},
+            "chart": self.chart_view(chart, bool(body["profile"].get("birth_time"))),
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
                               "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
             "price": {"amount": 9900, "currency": "THB", "display": "฿99", "mode": "direct"} if career

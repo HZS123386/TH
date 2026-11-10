@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 
+const h5FontFamily = 'NotoSansThai';
+const h5FontFallback = [
+  'FateLanguageLabel',
+  'NotoSansSC',
+  'NotoSansSymbols',
+  'NotoSansSymbols2',
+];
+
 const night = Color(0xFF130C24),
-    panel = Color(0xFF20152F),
+    panel = Color(0xFF211733),
     gold = Color(0xFFE4BC78),
     cream = Color(0xFFFFF5DF),
     lavender = Color(0xFFB4A8C6),
-    line = Color(0xFF483357);
+    line = Color(0xFF463655);
 ThemeData h5Theme() => ThemeData(
   useMaterial3: true,
+  visualDensity: VisualDensity.standard,
   brightness: Brightness.dark,
-  fontFamily: 'NotoSansThai',
-  fontFamilyFallback: const ['FateLanguageLabel', 'NotoSansSC'],
+  fontFamily: h5FontFamily,
+  fontFamilyFallback: h5FontFallback,
   scaffoldBackgroundColor: night,
   colorScheme: const ColorScheme.dark(
     primary: gold,
@@ -21,36 +30,54 @@ ThemeData h5Theme() => ThemeData(
   ),
   textTheme: ThemeData.dark().textTheme
       .apply(
-        fontFamily: 'NotoSansThai',
-        fontFamilyFallback: const ['FateLanguageLabel', 'NotoSansSC'],
+        fontFamily: h5FontFamily,
+        fontFamilyFallback: h5FontFallback,
         bodyColor: cream,
         displayColor: cream,
       )
       .copyWith(
-        bodyMedium: const TextStyle(fontSize: 14, height: 1.85, color: cream),
-        bodySmall: const TextStyle(fontSize: 12, height: 1.8, color: lavender),
+        bodyMedium: const TextStyle(
+          fontFamily: h5FontFamily,
+          fontFamilyFallback: h5FontFallback,
+          fontSize: 14,
+          height: 1.55,
+          color: cream,
+        ),
+        bodySmall: const TextStyle(
+          fontFamily: h5FontFamily,
+          fontFamilyFallback: h5FontFallback,
+          fontSize: 12,
+          height: 1.55,
+          color: lavender,
+        ),
       ),
   appBarTheme: const AppBarTheme(
-    backgroundColor: night,
+    backgroundColor: Color(0xFF110B1F),
     foregroundColor: gold,
     elevation: 0,
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: panel,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+    fillColor: night,
+    isDense: true,
+    hintStyle: const TextStyle(
+      fontSize: 11,
+      color: lavender,
+      fontWeight: FontWeight.w400,
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: line),
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0x40E4BC78)),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: line),
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0x40E4BC78)),
     ),
   ),
   filledButtonTheme: FilledButtonThemeData(
     style: FilledButton.styleFrom(
-      minimumSize: const Size.fromHeight(52),
+      minimumSize: const Size.fromHeight(51),
       backgroundColor: gold,
       foregroundColor: night,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -59,10 +86,17 @@ ThemeData h5Theme() => ThemeData(
   ),
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
-      minimumSize: const Size(0, 48),
+      minimumSize: const Size(0, 36),
       foregroundColor: gold,
-      side: const BorderSide(color: line),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      side: const BorderSide(color: Color(0x4DE4BC78)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      textStyle: const TextStyle(
+        fontFamily: h5FontFamily,
+        fontFamilyFallback: h5FontFallback,
+        fontSize: 10,
+        height: 1.55,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     ),
   ),
   dividerTheme: const DividerThemeData(color: line, space: 42),

@@ -2,6 +2,7 @@ import 'models.dart';
 import 'repository.dart';
 
 abstract interface class BrowserPort implements DeviceStore {
+  void openPage(String path);
   String today(String zone);
   bool get visible;
   void setLanguage(String language, String title);

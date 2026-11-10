@@ -92,6 +92,10 @@ class Place {
   String get zone => text(json['timeZone']);
   String get english => text(json['nameEnglish']);
   String get provinceId => text(json['provinceId']);
+  String name(String language) =>
+      text(json[language == 'zh' ? 'nameChinese' : 'nameThai']).isNotEmpty
+      ? text(json[language == 'zh' ? 'nameChinese' : 'nameThai'])
+      : english;
   bool get representative =>
       json['placeType'] == 'province' ||
       json['coordinateKind'] == 'representative' ||
@@ -212,6 +216,47 @@ class LifeReport {
       throw const FormatException('invalid_preview');
     }
     final report = LifeReport._(row);
+    if (row['chart'] != null) {
+      final chart = object(row['chart']);
+      final planets = objects(chart['planets']),
+          houses = objects(chart['houses']);
+      final exact = text(profile['birth_time']).isNotEmpty;
+      bool number(dynamic value, num min, num max) =>
+          value is num && value.isFinite && value >= min && value < max;
+      if (chart['precision'] != (exact ? 'exact' : 'estimated') ||
+          text(chart['engine']).isEmpty ||
+          chart['planets'] is! List ||
+          planets.length > 32 ||
+          chart['houses'] is! List ||
+          chart['aspects'] is! List ||
+          planets.map((p) => p['id']).toSet().length != planets.length ||
+          planets.any(
+            (p) =>
+                !RegExp(r'^[a-z][a-z0-9_]{0,31}$').hasMatch(text(p['id'])) ||
+                text(p['label']).isEmpty ||
+                !number(p['longitude'], 0, 360) ||
+                !number(p['degree'], 0, 30) ||
+                p['sign_index'] is! int ||
+                !number(p['sign_index'], 0, 12) ||
+                p['house'] != null &&
+                    (p['house'] is! int || !number(p['house'], 1, 13)),
+          ) ||
+          houses.length > 12 ||
+          houses.map((h) => h['number']).toSet().length != houses.length ||
+          houses.any(
+            (h) =>
+                h['number'] is! int ||
+                !number(h['number'], 1, 13) ||
+                !number(h['longitude'], 0, 360),
+          ) ||
+          !exact &&
+              (houses.isNotEmpty ||
+                  planets.any(
+                    (p) => p['id'] == 'ascendant' || p['house'] != null,
+                  ))) {
+        throw const FormatException('invalid_chart');
+      }
+    }
     for (final entry in [
       ('preview_generation_progress', previewKeys),
       ('generation_progress', report.progressKeys),

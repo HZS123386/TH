@@ -9,7 +9,7 @@ import 'package:fate_h5/app/controller.dart';
 import 'package:fate_h5/app/h5_app.dart';
 import 'package:fate_h5/core/models.dart';
 import 'package:fate_h5/core/repository.dart';
-import 'package:fate_h5/features/history_dialog.dart';
+import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/features/information_page.dart';
 import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/welcome_page.dart';
@@ -52,7 +52,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('很高兴遇见你'), findsOneWidget);
+      expect(find.text('很高兴你来了'), findsOneWidget);
       final landingState = tester.state(find.byType(LandingPage));
       await tester.tap(find.byKey(const ValueKey('welcome-start')));
       await tester.pumpAndSettle();
@@ -73,7 +73,7 @@ void main() {
           ReportRepository(browser),
           browser,
         ).welcomeOpen,
-        isFalse,
+        isTrue,
       );
       browser.settings.remove('session:fate-welcome-dismissed');
       final returning = H5Controller(
@@ -103,7 +103,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(WelcomePage), findsNothing);
-      expect(find.text('隐私与资料使用'), findsOneWidget);
+      expect(find.text('隐私政策'), findsOneWidget);
       await tester.tap(find.widgetWithText(TextButton, 'TH'));
       await tester.pumpAndSettle();
       final uri = GoRouter.of(
@@ -111,7 +111,7 @@ void main() {
       ).routeInformationProvider.value.uri;
       expect(uri.path, '/privacy.html');
       expect(uri.queryParameters['lang'], 'th');
-      expect(find.text('ความเป็นส่วนตัวและการใช้ข้อมูล'), findsOneWidget);
+      expect(find.text('นโยบายความเป็นส่วนตัว'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -161,7 +161,7 @@ void main() {
       );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('暂不解析'));
+      await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
       expect(accepted, isFalse);
       expect(attempts, 0);
@@ -186,7 +186,7 @@ void main() {
   );
 
   testWidgets(
-    'history deletion requires confirmation and handles an empty 204 response',
+    'JY result deletion requires confirmation and handles empty 204 responses',
     (tester) async {
       phone(tester);
       final browser = TestBrowser();
@@ -202,29 +202,31 @@ void main() {
             deleted = true;
             return http.Response('', 204);
           }
-          return reply({
-            'items': [report],
-          });
+          return reply(report);
         }),
       );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh')
+        ..enterLanding();
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: HistoryDialog(h5: h5)),
+        H5App(
+          controller: h5,
+          initialLocation: '/report.html?id=${report['id']}&lang=zh',
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('删除报告'));
+      await tester.ensureVisible(find.text('删除此结果'));
+      await tester.tap(find.text('删除此结果'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('保留报告'));
       await tester.pumpAndSettle();
       expect(deleted, isFalse);
-      await tester.tap(find.byTooltip('删除报告'));
+      await tester.ensureVisible(find.text('删除此结果'));
+      await tester.tap(find.text('删除此结果'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, '删除报告'));
       await tester.pumpAndSettle();
       expect(deleted, isTrue);
-      expect(find.byTooltip('删除报告'), findsNothing);
+      expect(find.byType(ReportCheckout), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();

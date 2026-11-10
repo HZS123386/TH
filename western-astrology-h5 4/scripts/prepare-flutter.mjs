@@ -14,16 +14,16 @@ export default {life:lifeCopy,career:careerCopy,generation:generationCopy,ui,for
 const copy = (await import(pathToFileURL(extracted).href + '?v=' + Date.now())).default;
 copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checkout.json'),'utf8'));
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));
+const jy = JSON.parse(await readFile(path.join(root,'src','content','jy.json'),'utf8'));
+copy.jy = jy.jy;
+copy.jyThemes = jy.jyThemes;
 await mkdir(path.join(target,'assets','images'),{recursive:true});
 await mkdir(path.join(target,'assets','fonts'),{recursive:true});
 await writeFile(path.join(target,'assets','copy.json'),JSON.stringify(copy));
 for(const name of ['NotoSansThai.ttf','NotoSansSC-Regular.otf','OFL.txt','OFL-CJK.txt']) {
  await cp(path.join(root,'..','TH','app','assets','fonts',name),path.join(target,'assets','fonts',name));
 }
-await cp(path.join(root,'dist','assets','astrologer-purple-stars-450.webp'),path.join(target,'assets','images','astrologer.webp'));
-await cp(path.join(root,'dist','assets','report-loading-poster.webp'),path.join(target,'assets','images','report-loading-poster.webp'));
 await mkdir(path.join(target,'web','media'),{recursive:true});
-await cp(path.join(root,'dist','assets','report-loading-web.mp4'),path.join(target,'web','media','report-loading-web.mp4'));
 await cp(path.join(root,'dist','public','fonts'),path.join(target,'web','fonts'),{recursive:true});
 await build({entryPoints:[path.join(root,'src','lib','pdfRuntime.ts')],bundle:true,splitting:true,format:'esm',minify:true,outdir:path.join(target,'web','runtime'),entryNames:'report-pdf',chunkNames:'[name]-[hash]'});
 // Synthetic fixtures stay inside tests, outside the Flutter asset manifest.
@@ -33,6 +33,7 @@ const fixtures = await import(pathToFileURL(fixtureModule).href+'?v='+Date.now()
 await mkdir(path.join(target,'test','fixtures'),{recursive:true});
 for(const lang of ['zh','th']) for(const full of [false,true]) {
  const report = fixtures.reportFixture({...fixtures.inputFor(lang),report_kind:'fortune'},full);
+ report.chart = JSON.parse(await readFile(path.join(root,'tests','fixtures','chart.json'),'utf8'));
  await writeFile(path.join(target,'test','fixtures',`${lang}-${full?'full':'preview'}.json`),JSON.stringify(report));
 }
 console.log('Prepared translations, original document exporters, media and fixtures.');

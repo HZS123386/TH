@@ -20,6 +20,12 @@ external JSBoolean? get _privacyControl;
 external JSString? get _doNotTrack;
 
 class WebBrowserPort implements BrowserPort {
+  @override
+  void openPage(String path) => web.window.open(
+    Uri.base.resolve(path).toString(),
+    '_blank',
+    'noopener,noreferrer',
+  );
   String? _key;
   @override
   String ownerKey() {

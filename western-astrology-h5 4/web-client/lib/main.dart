@@ -27,6 +27,10 @@ Future<void> main() async {
     yield LicenseEntryWithLineBreaks([
       'Noto Sans SC',
     ], await rootBundle.loadString('assets/fonts/OFL-CJK.txt'));
+    yield LicenseEntryWithLineBreaks([
+      'Noto Sans Symbols',
+      'Noto Sans Symbols 2',
+    ], await rootBundle.loadString('assets/fonts/OFL-Symbols.txt'));
   });
   final repository = ReportRepository(
     browser,

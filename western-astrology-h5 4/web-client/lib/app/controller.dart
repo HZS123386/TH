@@ -13,9 +13,9 @@ class H5Controller extends ChangeNotifier {
     this.ensureFont,
   }) : _language = language {
     repository.language = language;
-    welcomeOpen =
-        browser.readSetting('fate-welcome-dismissed', session: true) != '1';
+    welcomeOpen = true;
     returningVisitor = browser.readSetting('fate-welcome-seen') == '1';
+    browser.writeSetting('fate-welcome-seen', '1');
     noticeAccepted =
         browser.readSetting('fate-data-use-version') == noticeVersion;
   }
@@ -26,6 +26,7 @@ class H5Controller extends ChangeNotifier {
   static const noticeVersion = 'h5-data-use-1';
   late bool welcomeOpen, noticeAccepted;
   late final bool returningVisitor;
+  bool welcomePortraitRevealed = false;
   Future<void>? _visitRequest;
   Json _visit = {};
   final _events = <String>{};
@@ -34,10 +35,15 @@ class H5Controller extends ChangeNotifier {
 
   void enterLanding() {
     welcomeOpen = false;
-    browser.writeSetting('fate-welcome-seen', '1');
-    browser.writeSetting('fate-welcome-dismissed', '1', session: true);
+    welcomePortraitRevealed = true;
     notifyListeners();
     unawaited(recordVisit());
+  }
+
+  void revealLandingPortrait() {
+    if (welcomePortraitRevealed) return;
+    welcomePortraitRevealed = true;
+    notifyListeners();
   }
 
   Future<void> recordVisit() => _visitRequest ??= _recordVisit();

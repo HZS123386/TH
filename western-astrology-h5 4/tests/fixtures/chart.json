@@ -1,0 +1,157 @@
+{
+  "precision": "exact",
+  "engine": "Thai Suriyayatra",
+  "relationship_model": "sign-based",
+  "planets": [
+    {
+      "id": "ascendant",
+      "label": "ลัคนา",
+      "sign_index": 5,
+      "sign_name": "กันย์",
+      "longitude": 160.5595238095238,
+      "degree": 10.559523809523792,
+      "house": 1
+    },
+    {
+      "id": "sun",
+      "label": "อาทิตย์",
+      "sign_index": 3,
+      "sign_name": "กรกฎ",
+      "longitude": 119.53333333333333,
+      "degree": 29.533333333333335,
+      "house": 11
+    },
+    {
+      "id": "moon",
+      "label": "จันทร์",
+      "sign_index": 0,
+      "sign_name": "เมษ",
+      "longitude": 18.983333333333334,
+      "degree": 18.983333333333334,
+      "house": 8
+    },
+    {
+      "id": "mars",
+      "label": "อังคาร",
+      "sign_index": 5,
+      "sign_name": "กันย์",
+      "longitude": 173.48333333333332,
+      "degree": 23.483333333333334,
+      "house": 1
+    },
+    {
+      "id": "mercury",
+      "label": "พุธ",
+      "sign_index": 4,
+      "sign_name": "สิงห์",
+      "longitude": 143.25,
+      "degree": 23.25,
+      "house": 12
+    },
+    {
+      "id": "jupiter",
+      "label": "พฤหัสบดี",
+      "sign_index": 7,
+      "sign_name": "พิจิก",
+      "longitude": 223.11666666666667,
+      "degree": 13.116666666666667,
+      "house": 3
+    },
+    {
+      "id": "venus",
+      "label": "ศุกร์",
+      "sign_index": 3,
+      "sign_name": "กรกฎ",
+      "longitude": 116.3,
+      "degree": 26.3,
+      "house": 11
+    },
+    {
+      "id": "saturn",
+      "label": "เสาร์",
+      "sign_index": 10,
+      "sign_name": "กุมภ์",
+      "longitude": 323.56666666666666,
+      "degree": 23.566666666666666,
+      "house": 6
+    },
+    {
+      "id": "rahu",
+      "label": "ราหู",
+      "sign_index": 6,
+      "sign_name": "ตุลย์",
+      "longitude": 185.25,
+      "degree": 5.25,
+      "house": 2
+    },
+    {
+      "id": "ketu",
+      "label": "เกตุ",
+      "sign_index": 4,
+      "sign_name": "สิงห์",
+      "longitude": 124.4,
+      "degree": 4.4,
+      "house": 12
+    },
+    {
+      "id": "uranus",
+      "label": "มฤตยู",
+      "sign_index": 9,
+      "sign_name": "มังกร",
+      "longitude": 270.0833333333333,
+      "degree": 0.08333333333333333,
+      "house": 5
+    }
+  ],
+  "houses": [
+    {
+      "number": 1,
+      "longitude": 150
+    },
+    {
+      "number": 2,
+      "longitude": 180
+    },
+    {
+      "number": 3,
+      "longitude": 210
+    },
+    {
+      "number": 4,
+      "longitude": 240
+    },
+    {
+      "number": 5,
+      "longitude": 270
+    },
+    {
+      "number": 6,
+      "longitude": 300
+    },
+    {
+      "number": 7,
+      "longitude": 330
+    },
+    {
+      "number": 8,
+      "longitude": 0
+    },
+    {
+      "number": 9,
+      "longitude": 30
+    },
+    {
+      "number": 10,
+      "longitude": 60
+    },
+    {
+      "number": 11,
+      "longitude": 90
+    },
+    {
+      "number": 12,
+      "longitude": 120
+    }
+  ],
+  "aspects": []
+}

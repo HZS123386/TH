@@ -22,11 +22,8 @@ class _H5AppState extends State<H5App> {
     initialLocation: widget.initialLocation,
     routes: [
       ShellRoute(
-        builder: (context, state, child) => _Shell(
-          report: state.uri.path == '/report.html',
-          landing: state.uri.path == '/',
-          child: child,
-        ),
+        builder: (context, state, child) =>
+            _Shell(landing: state.uri.path == '/', child: child),
         routes: [
           GoRoute(
             path: '/',
@@ -35,6 +32,8 @@ class _H5AppState extends State<H5App> {
                   state.uri.queryParameters['reading'] == 'love' ||
                       state.uri.queryParameters['topic'] == 'love'
                   ? 'love'
+                  : state.uri.queryParameters['topic'] == 'career'
+                  ? 'career'
                   : 'life',
             ),
           ),
@@ -67,10 +66,14 @@ class _H5AppState extends State<H5App> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         if (mounted &&
-            !(widget.initialLocation ?? Uri.base.path).contains(
-              'report.html',
-            )) {
-          await precacheImage(heroImage, context);
+            !(widget.initialLocation ?? Uri.base.path).contains('.html')) {
+          await Future.wait([
+            precacheImage(heroImage, context),
+            precacheImage(
+              const AssetImage('assets/images/astrologer-900.webp'),
+              context,
+            ),
+          ]);
         }
       } finally {
         _allowFrame();
@@ -114,165 +117,35 @@ class _H5AppState extends State<H5App> {
 }
 
 class _Shell extends StatelessWidget {
-  const _Shell({
-    required this.child,
-    required this.report,
-    this.landing = false,
-  });
+  const _Shell({required this.child, this.landing = false});
   final Widget child;
-  final bool report, landing;
+  final bool landing;
   @override
   Widget build(BuildContext context) {
-    final h5 = H5Scope.of(context), c = h5.copy;
+    final h5 = H5Scope.of(context);
     final showWelcome = landing && h5.welcomeOpen;
     return ColoredBox(
       color: const Color(0xFF0B0715),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ExcludeSemantics(
-                excluding: showWelcome,
-                child: IgnorePointer(
-                  ignoring: showWelcome,
-                  child: Scaffold(
-                    appBar: AppBar(
-                      titleSpacing: 20,
-                      title: InkWell(
-                        onTap: () => context.go('/?lang=${h5.language}'),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.auto_awesome_outlined, size: 25),
-                            SizedBox(width: 12),
-                            Text(
-                              'FATE',
-                              style: TextStyle(
-                                fontSize: 21,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      actions: report
-                          ? [
-                              TextButton.icon(
-                                onPressed: () =>
-                                    context.go('/?lang=${h5.language}'),
-                                icon: const Icon(Icons.arrow_back, size: 16),
-                                label: Text(
-                                  c.t('generation', 'back'),
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ),
-                            ]
-                          : [
-                              TextButton(
-                                onPressed: h5.languageLoading
-                                    ? null
-                                    : () async {
-                                        final switched = await h5
-                                            .changeLanguage('th');
-                                        if (!context.mounted) return;
-                                        if (!switched) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                h5.copy.t('ui', 'network'),
-                                              ),
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        final current = GoRouterState.of(
-                                          context,
-                                        ).uri;
-                                        if (current.path != '/report.html') {
-                                          context.replace(
-                                            Uri(
-                                              path: current.path,
-                                              queryParameters: {
-                                                ...current.queryParameters,
-                                                'lang': 'th',
-                                              },
-                                            ).toString(),
-                                          );
-                                        }
-                                      },
-                                child: Text(
-                                  'TH',
-                                  style: TextStyle(
-                                    color: h5.language == 'th'
-                                        ? gold
-                                        : lavender,
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: h5.languageLoading
-                                    ? null
-                                    : () async {
-                                        final switched = await h5
-                                            .changeLanguage('zh');
-                                        if (!context.mounted) return;
-                                        if (!switched) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                h5.copy.t('ui', 'network'),
-                                              ),
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        final current = GoRouterState.of(
-                                          context,
-                                        ).uri;
-                                        if (current.path != '/report.html') {
-                                          context.replace(
-                                            Uri(
-                                              path: current.path,
-                                              queryParameters: {
-                                                ...current.queryParameters,
-                                                'lang': 'zh',
-                                              },
-                                            ).toString(),
-                                          );
-                                        }
-                                      },
-                                child: h5.languageLoading
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(
-                                        '中文',
-                                        style: TextStyle(
-                                          color: h5.language == 'zh'
-                                              ? gold
-                                              : lavender,
-                                        ),
-                                      ),
-                              ),
-                            ],
-                    ),
-                    body: child,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: MediaQuery.sizeOf(context).width >= 700 ? 28 : 0,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 450),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ExcludeSemantics(
+                  excluding: showWelcome,
+                  child: IgnorePointer(
+                    ignoring: showWelcome,
+                    child: Scaffold(body: child),
                   ),
                 ),
-              ),
-              if (showWelcome) Positioned.fill(child: WelcomePage(h5: h5)),
-            ],
+                if (showWelcome) Positioned.fill(child: WelcomePage(h5: h5)),
+              ],
+            ),
           ),
         ),
       ),

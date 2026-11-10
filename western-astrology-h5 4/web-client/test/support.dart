@@ -14,6 +14,9 @@ Json translations() =>
     object(jsonDecode(File('assets/copy.json').readAsStringSync()));
 
 class TestBrowser implements BrowserPort {
+  final openedPages = <String>[];
+  @override
+  void openPage(String path) => openedPages.add(path);
   final settings = <String, String>{
     'session:fate-welcome-dismissed': '1',
     'fate-data-use-version': 'h5-data-use-1',

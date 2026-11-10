@@ -50,6 +50,16 @@ void main() {
     final input = object(data['input']);
     input['profile'] = {...object(input['profile']), 'birth_time': null};
     data['input'] = input;
+    final chart = object(data['chart']);
+    data['chart'] = {
+      ...chart,
+      'precision': 'estimated',
+      'houses': [],
+      'planets': [
+        for (final p in objects(chart['planets']))
+          if (p['id'] != 'ascendant') {...p, 'house': null},
+      ],
+    };
     data['time_accuracy'] = {
       'mode': 'estimated',
       'assumed_local_time': '12:00',
@@ -62,6 +72,29 @@ void main() {
       isNull,
     );
   });
+  test(
+    'a corrupted chart cannot reach the canvas or present unknown-time houses as exact',
+    () {
+      final invalid = fixture();
+      final chart = object(invalid['chart']);
+      invalid['chart'] = {
+        ...chart,
+        'planets': [
+          {...objects(chart['planets']).first, 'longitude': double.nan},
+        ],
+      };
+      expect(() => LifeReport.parse(invalid), throwsFormatException);
+      final unknown = fixture();
+      unknown['input'] = {
+        ...object(unknown['input']),
+        'profile': {
+          ...object(object(unknown['input'])['profile']),
+          'birth_time': null,
+        },
+      };
+      expect(() => LifeReport.parse(unknown), throwsFormatException);
+    },
+  );
   test(
     'invalid or duplicated progress sections cannot produce fabricated completion',
     () {

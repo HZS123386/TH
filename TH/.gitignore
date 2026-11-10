@@ -5,6 +5,9 @@ dist/
 *.db
 *.db-*
 data/
+!src/data/
+src/data/*
+!src/data/wanjai-*.json
 __pycache__/
 .pytest_cache/
 .ruff_cache/
