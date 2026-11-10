@@ -2,6 +2,7 @@
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ThaiReadingExperience } from '../src/components/ThaiReadingExperience';
+import { lifeCopy } from '../src/lib/lifeReport';
 const copy = {
   th: {
     persona: 'หมอดู AI ส่วนตัวของคุณ',
@@ -48,7 +49,7 @@ function onLanguageChange(value) { lang = value; render(); }
 function render() {
   const c = copy[lang], t = c.topics[topic], landing = landingCopy[lang];
   document.documentElement.lang = lang;
-  document.title = lang === 'zh' ? '人生报告 · ASTRO AI' : 'ASTRO · AI โหราศาสตร์ไทยของคุณ';
+  document.title = `${lifeCopy[lang].title} · ASTRO AI`;
   document.querySelectorAll('[data-t]').forEach(el => { el.innerHTML = c[el.dataset.t] ?? ''; });
   document.querySelectorAll('[data-lang]').forEach(el => { el.classList.toggle('active', el.dataset.lang === lang); el.setAttribute('aria-pressed', String(el.dataset.lang === lang)); });
   $('#hero-eyebrow').textContent = t.eyebrow ?? landing.thaiLabel;

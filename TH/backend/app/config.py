@@ -39,6 +39,9 @@ class Settings:
     bazi_report_provider: str = "qwen"
     bazi_reports_per_minute: int = 6
     bazi_reports_per_day: int = 80
+    payso_test_merchant_id: str = ""
+    payso_test_api_key: str = field(default="", repr=False)
+    payso_test_secret_key: str = field(default="", repr=False)
 
     @classmethod
     def from_env(cls):
@@ -71,4 +74,7 @@ class Settings:
             bazi_report_provider=os.getenv("BAZI_REPORT_PROVIDER", "qwen"),
             bazi_reports_per_minute=max(0, int(os.getenv("BAZI_REPORTS_PER_MINUTE", "6"))),
             bazi_reports_per_day=max(0, int(os.getenv("BAZI_REPORTS_PER_DAY", "80"))),
+            payso_test_merchant_id=os.getenv("PAYSO_TEST_MERCHANT_ID", ""),
+            payso_test_api_key=os.getenv("PAYSO_TEST_API_KEY", ""),
+            payso_test_secret_key=os.getenv("PAYSO_TEST_SECRET_KEY", ""),
         )

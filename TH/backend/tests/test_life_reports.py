@@ -87,13 +87,51 @@ def finish(http, app):
 def test_preview_is_personal_and_does_not_return_paid_chapters(client):
     http, _, calls, _ = client
     result = preview(http)
-    assert result["title"] == "人生报告"
+    assert result["title"] == "远程解析"
     assert len(result["preview"]["traits"]) == 3 and len(result["catalog"]) == 5
     assert result["chapters"] == [] and result["plan"] is None
     assert result["access"] == "preview" and result["price"]["mode"] == "direct"
     assert "birth_date" not in json.dumps(calls[0])
     assert all(len(row["evidence"]) == 2 for row in result["preview"]["traits"])
     assert preview(http)["id"] == result["id"] and len(calls) == 1
+
+
+def test_payso_demo_only_unlocks_the_order_verified_by_inquiry(client, monkeypatch):
+    http, app, _, _ = client
+    payments = app.state.life_reports.card_payments
+    monkeypatch.setattr(payments, "enabled", True)
+    monkeypatch.setattr(payments, "merchant", "12345678")
+    report = preview(http)
+    assert report["price"] == {"amount": 5000, "currency": "THB", "display": "฿50", "mode": "payso_test"}
+    path = f"/api/life-reports/{report['id']}"
+    checkout = http.post(f"{path}/payment", headers=HEADERS).json()
+    reference = checkout["fields"]["refno"]
+    assert checkout["fields"]["total"] == "50.00"
+    assert http.post(f"{path}/payment", headers=HEADERS).json() == checkout
+    assert http.post(f"{path}/payment/check", headers={"X-Report-Key": "z" * 48}).status_code == 404
+    assert http.post(f"{path}/unlock", headers=HEADERS).status_code == 402
+
+    result = []
+
+    async def inquiry(ref):
+        assert ref == reference
+        return result
+
+    monkeypatch.setattr(payments, "inquiry", inquiry)
+    postback = "/api/life-reports/payment/payso/postback"
+    notice = {"refno": reference, "total": "50", "completed": "true"}
+    assert http.post(postback, data=notice).status_code == 409
+    result.append({"ReferenceNo": reference, "MerchantID": "12345678", "Total": "49.00",
+                   "CurrencyCode": "00", "Status": "CP", "OrderNo": "123456", "CardType": "V"})
+    assert http.post(f"{path}/payment/check", headers=HEADERS).json() == {"paid": False}
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+    result[0]["Total"] = "50.00"
+    assert http.post(f"{path}/payment/check", headers=HEADERS).json() == {"paid": True}
+    assert http.post(postback, data=notice).status_code == 200
+    finish(http, app)
+    paid = http.get(path, headers=HEADERS).json()
+    assert paid["access"] == "full" and paid["full_state"] == "ready" and paid["chapters"]
 
 
 def test_career_stage_is_persisted_and_unlock_uses_the_same_30_day_window(client):
@@ -145,7 +183,7 @@ def test_career_question_is_answered_in_the_same_complete_report(client):
     assert response.status_code == 200, response.text
     free = response.json()
     assert free["input"]["career_question"] == {**question, "focus": None}
-    assert free["title"] == "人生报告"
+    assert free["title"] == "远程解析"
     assert free["price"] == {"amount": 5000, "currency": "THB", "display": "฿50", "mode": "direct"}
     assert free["preview"]["career_answer"]["text"].startswith("如果新岗位能解决你最想离开的原因")
     assert free["preview"]["career_answer"]["evidence"]
@@ -647,7 +685,7 @@ def test_thai_preview_chapters_and_plan_use_the_same_validated_pipeline(client, 
     finish(http, app)
     full = http.get(f"/api/life-reports/{result['id']}", headers=HEADERS).json()
     assert full["full_state"] == "ready" and len(full["chapters"]) == 5
-    assert full["plan"] and full["title"] == "รายงานชีวิต"
+    assert full["plan"] and full["title"] == "คำอ่านดวงออนไลน์"
 
 
 def test_life_writer_can_correct_two_different_validation_issues_in_one_run(client, monkeypatch):

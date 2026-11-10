@@ -25,7 +25,7 @@ export function ReportPage() {
 
   function display(value: LifeReport) {
     setReport(value); setLanguage(value.input.profile.language);
-    document.title = `${value.input.career ? lifeLabels(value).title : value.title} · ASTRO AI`;
+    document.title = `${lifeLabels(value).title} · ASTRO AI`;
   }
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   async function load() {

@@ -21,6 +21,11 @@ async function generate(page: Page, language: Language = "zh") {
   await expect(page).toHaveURL(/\/report\.html\?id=/);
   await expect(page.getByTestId("life-report")).toBeVisible();
 }
+async function confirmCardDemo(page: Page) {
+  await page.getByRole("button", { name: /填入测试卡|กรอกข้อมูลบัตรทดสอบ/ }).click();
+  await page.getByTestId("life-checkout-confirm").click();
+}
+
 for (const language of ["zh", "th"] as const) {
   test(`life report three free sections five paid sections checkout and exports in ${language}`, async ({ page }, info) => {
     const errors: string[] = [];
@@ -48,10 +53,10 @@ for (const language of ["zh", "th"] as const) {
     await page.getByTestId("life-unlock-button").click();
     const checkout = page.getByTestId("life-checkout");
     await expect(checkout).toContainText(language === "th" ? "ยืนยันคำสั่งซื้อ" : "确认订单");
-    await expect(checkout.getByRole("radio", { name: "PromptPay" })).toBeChecked();
     const cardLabel = language === "th" ? "บัตรเครดิต / เดบิต" : "信用卡 / 借记卡";
-    await checkout.getByText(cardLabel, { exact: true }).click();
-    await expect(checkout.getByRole("radio", { name: cardLabel })).toBeChecked();
+    await expect(checkout).toContainText(c.title);
+    await expect(checkout.getByText(cardLabel, { exact: true })).toBeVisible();
+    await expect(checkout.getByText("PromptPay")).toHaveCount(0);
     await expect(checkout.getByRole("img")).toHaveCount(0);
     const cardNumber = checkout.getByLabel(language === "th" ? "หมายเลขบัตร" : "卡号", { exact: true });
     const confirm = checkout.getByTestId("life-checkout-confirm");
@@ -175,7 +180,7 @@ for (const language of ["zh", "th"] as const) {
     await expect(page.getByTestId("report-time-note")).toHaveText(ui[language].timeNote);
     await expect(page.locator(".life-report-cover")).toContainText(lifeCopy[language].timeUnknown);
     await page.getByTestId("life-unlock-button").click();
-    await page.getByTestId("life-checkout-confirm").click();
+    await confirmCardDemo(page);
     await expect(page.getByTestId("life-action-plan")).toBeVisible();
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: lifeCopy[language].save, exact: true }).first().click();
@@ -239,7 +244,7 @@ test("form and report share the dark purple palette at a narrow width", async ({
   expect(await page.locator(".form-section").evaluate(node => getComputedStyle(node).color)).toBe("rgb(255, 245, 223)");
   await generate(page);
   await page.getByTestId("life-unlock-button").click();
-  await page.getByTestId("life-checkout-confirm").click();
+  await confirmCardDemo(page);
   await expect(page.getByTestId("life-action-plan")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -271,11 +276,50 @@ async function routes(page: Page) {
   });
   return { received, replaceReport(value: LifeReport) { report = value; } };
 }
+
+test("Payso test checkout waits for confirmation before opening the full report", async ({ page, context }) => {
+  const api = await routes(page);
+  const action = "https://www.thaiepay.com/epaylink/payment.aspx";
+  let paid = false;
+  let checks = 0;
+  await page.route("**/api/life-reports/*/payment", route => route.fulfill({
+    json: { action, fields: { refno: "123456789012", total: "50.00", cc: "00" } },
+  }));
+  await page.route("**/api/life-reports/*/payment/check", route => {
+    checks += 1;
+    return route.fulfill({ json: { paid } });
+  });
+  await page.route("**/api/life-reports/*/unlock", route => {
+    expect(paid).toBe(true);
+    return route.fallback();
+  });
+  await context.route(action, route => {
+    expect(new URLSearchParams(route.request().postData() ?? "").get("total")).toBe("50.00");
+    return route.fulfill({ contentType: "text/html", body: "<title>Payso Demo</title>" });
+  });
+  await start(page);
+  await generate(page);
+  const report = reportFixture(api.received[0]);
+  report.price.mode = "payso_test";
+  api.replaceReport(report);
+  await page.reload();
+  await page.getByTestId("life-unlock-button").click();
+  const popup = context.waitForEvent("page");
+  await page.getByTestId("life-checkout-confirm").click();
+  const checkoutPage = await popup;
+  await expect(checkoutPage).toHaveTitle("Payso Demo");
+  await checkoutPage.close();
+  await expect.poll(() => checks, { timeout: 8000 }).toBeGreaterThan(0);
+  await expect(page.getByTestId("life-full-report")).toHaveCount(0);
+  paid = true;
+  await expect(page.getByTestId("life-full-report")).toBeVisible({ timeout: 10000 });
+});
+
 test("saved reports retain their original year and new reports default to the current year", async ({ page }) => {
   const api = await routes(page);
   await start(page); await generate(page);
   await page.getByTestId("life-unlock-button").click();
-  await page.getByTestId("life-checkout-confirm").click();
+  await confirmCardDemo(page);
   await expect(page.getByTestId("life-action-plan")).toBeVisible();
   const currentYear = api.received[0].year;
   const saved = reportFixture({ ...api.received[0], year: currentYear - 1 }, true);
@@ -322,7 +366,7 @@ test("progressive generation retains finished chapters and can resume after inte
     return route.fulfill({ json: report });
   });
   await page.getByTestId("life-unlock-button").click();
-  await page.getByTestId("life-checkout-confirm").click();
+  await confirmCardDemo(page);
   await expect(page.getByTestId("report-generation")).toContainText(lifeCopy.zh.states.unavailable);
   await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
   await page.getByRole("button", { name: lifeCopy.zh.retry, exact: true }).click();
@@ -350,7 +394,7 @@ for (const language of ["zh", "th"] as const) {
     for (const version of ["preview", "full"] as const) {
       if (version === "full") {
         await page.getByTestId("life-unlock-button").click();
-        await page.getByTestId("life-checkout-confirm").click();
+        await confirmCardDemo(page);
         await expect(page.getByTestId("life-action-plan")).toBeVisible();
       }
       const pending = page.waitForEvent("download", { timeout: 60_000 });
@@ -419,7 +463,7 @@ test("free reports do not poll or start paid generation before the user unlocks"
   await expect(page.getByTestId("report-generation")).toHaveCount(0);
   await expect(page.getByTestId("life-full-report")).toHaveCount(0);
   await page.getByTestId("life-unlock-button").click();
-  await page.getByTestId("life-checkout-confirm").click();
+  await confirmCardDemo(page);
   await expect(page.getByTestId("life-action-plan")).toBeVisible();
   expect(api.received).toHaveLength(1);
 });

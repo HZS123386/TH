@@ -248,7 +248,7 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
       </>}
       {!!error && <div className="mx-5 mb-5"><p role="alert" className="text-xs leading-6 text-[#f2a6af]">{error}</p>{full && <button type="button" className="report-secondary mt-3" disabled={opening} onClick={() => void unlock()}>{c.retry}</button>}</div>}
       {preview && !full && offerSeen && <div className="report-unlock-bar"><button type="button" className="primary" disabled={opening} onClick={() => showCheckout(true)}><LockKeyhole size={17} />{opening ? c.unlocking : unlockLabel}<ArrowRight size={16} className="ml-auto shrink-0" /></button></div>}
-      {preview && !full && checkoutOpen && <ReportCheckoutDialog report={report} product={career ? c.title : report.title}
+      {preview && !full && checkoutOpen && <ReportCheckoutDialog report={report} product={c.title}
         onClose={() => showCheckout(false)} onConfirm={() => { showCheckout(false); void unlock(); }} />}
       {generation && <ReportGenerationDialog career={career} language={language} progress={generation} error={generationError} onCancel={cancelGeneration}
         onRetry={() => void unlock()} onComplete={readyReport ? showFullReport : undefined} />}
