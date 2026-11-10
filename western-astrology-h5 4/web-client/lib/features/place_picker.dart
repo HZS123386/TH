@@ -100,14 +100,13 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       bool enabled = true,
     }) => Focus(
       onFocusChange: (focused) {
-        if (!mounted) return;
-        if (focused) {
-          open();
-        } else if (_open == id) {
+        // Web focus can arrive before an arrow press; only explicit taps open it.
+        if (mounted && !focused && _open == id) {
           setState(() => _open = '');
         }
       },
-      child: TapRegion(
+      // Mouse-down on a suggestion must not blur and remove it before mouse-up.
+      child: TextFieldTapRegion(
         onTapOutside: (_) {
           if (_open == id && mounted) setState(() => _open = '');
         },
