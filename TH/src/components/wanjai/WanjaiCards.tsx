@@ -13,18 +13,18 @@ export function TalkEntry({
   const { concern } = usePage(p);
   return (
     <section
-      className={`${compact ? 'p-4' : 'p-[17px]'} rounded-[20px] border border-[#d9b4a0] bg-[#f3e3d8]`}
+      className={`${compact ? 'p-4' : 'p-[17px]'} rounded-[20px] border border-gold/35 bg-surface`}
     >
       {!compact && <p className="mb-3 text-[11px] text-accent">{p.t[`f_${p.state.period}`]}</p>}
       <div className="flex items-center gap-3">
-        <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[15px] bg-primary text-[#fff7ed]">
+        <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[15px] bg-primary text-on-primary">
           <MessageCircle size={24} />
         </span>
         <div>
-          <h2 className="text-[17px] font-medium leading-7 text-[#713930]">
+          <h2 className="text-[17px] font-medium leading-7 text-gold">
             {concern?.question || p.t.j_startTalk}
           </h2>
-          {text && <p className="mt-1 text-[13px] leading-6 text-[#765b4e]">{text}</p>}
+          {text && <p className="mt-1 text-[13px] leading-6 text-ink/85">{text}</p>}
         </div>
       </div>
       <button
@@ -34,7 +34,7 @@ export function TalkEntry({
         {p.t.w_talk}
         <ArrowRight size={17} />
       </button>
-      {!compact && <p className="mt-3 text-xs leading-6 text-[#765b4e]">{p.t.j_topicCaption}</p>}
+      {!compact && <p className="mt-3 text-xs leading-6 text-ink/85">{p.t.j_topicCaption}</p>}
     </section>
   );
 }
@@ -54,7 +54,7 @@ export function JourneyCard({ p }: { p: WanjaiPageProps }) {
         {Array.from({ length: 7 }, (_, i) => (
           <span
             key={i}
-            className={`h-1.5 flex-1 rounded-full ${i < records.length ? 'bg-primary' : 'bg-[#e9dfce]'}`}
+            className={`h-1.5 flex-1 rounded-full ${i < records.length ? 'bg-primary' : 'bg-line'}`}
           />
         ))}
       </span>
@@ -65,21 +65,21 @@ export function JourneyCard({ p }: { p: WanjaiPageProps }) {
   );
 }
 
-export function LifeTeaser({ p }: { p: WanjaiPageProps }) {
+export function ReportsTeaser({ p }: { p: WanjaiPageProps }) {
   return (
     <button
-      className="flex w-full items-center gap-4 rounded-[20px] border border-[#d7c4a0] bg-[#eae0cc] p-5 text-left"
-      onClick={() => p.navigate('life')}
+      className="flex w-full items-center gap-4 rounded-[20px] border border-line bg-surface p-5 text-left"
+      onClick={() => p.navigate('reports')}
     >
-      <span className="grid h-24 w-16 shrink-0 place-items-center rounded-r-lg border border-[#b3955e] bg-[#d7c29b] text-[#725639] shadow-sm">
+      <span className="grid h-24 w-16 shrink-0 place-items-center rounded-r-lg border border-gold/50 bg-surface text-gold shadow-sm">
         <BookOpen size={32} strokeWidth={1} />
       </span>
       <span className="min-w-0">
-        <span className="jy-kicker">{p.t.w_preview}</span>
-        <b className="mt-1 block font-display text-[21px] text-[#6e5135]">{p.t.w_life}</b>
-        <span className="mt-2 block text-xs leading-6 text-[#816c4c]">{p.t.w_lifeIntro}</span>
+        <span className="jy-kicker">{p.t.ux_natalReport}</span>
+        <b className="mt-1 block font-display text-[21px] text-gold">{p.t.ux_reports}</b>
+        <span className="mt-2 block text-xs leading-6 text-ink/85">{p.t.ux_reportsIntro}</span>
       </span>
-      <ArrowRight size={16} className="ml-auto shrink-0 text-[#8d704a]" />
+      <ArrowRight size={16} className="ml-auto shrink-0 text-gold" />
     </button>
   );
 }

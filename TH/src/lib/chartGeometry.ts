@@ -8,6 +8,33 @@ export interface ChartRelation {
   color: string;
 }
 
+export const planetSymbols: Record<keyof ThaiHoroscope['points'], string> = {
+  sun: '☉',
+  moon: '☾',
+  mercury: '☿',
+  venus: '♀\uFE0E',
+  mars: '♂\uFE0E',
+  jupiter: '♃',
+  saturn: '♄',
+  uranus: '♅',
+  rahu: '☊',
+  ketu: '☋',
+  ascendant: 'AC',
+};
+
+export function wholeSignHouseCusps(chart: ThaiHoroscope) {
+  // The engine assigns each whole-sign house a sign; its cusp is that sign's boundary.
+  return chart.houses.map((house) => {
+    const longitudeDegrees = house.sign * 30;
+    return {
+      ...house,
+      longitudeDegrees,
+      degrees: longitudeDegrees % 30,
+      minutes: (longitudeDegrees % 1) * 60,
+    };
+  });
+}
+
 export const chartPoint = (longitude: number, radius: number, rotation: number) => {
   const radians = ((rotation - longitude) * Math.PI) / 180;
   return { x: 240 + radius * Math.cos(radians), y: 240 + radius * Math.sin(radians) };
@@ -36,7 +63,7 @@ export function chartRelations(chart: ThaiHoroscope) {
           from,
           to,
           kind,
-          color: { opposition: '#bc9a52', square: '#bb6f9a', trine: '#638fbd', sextile: '#638fbd' }[
+          color: { opposition: '#e2bc68', square: '#e58bcb', trine: '#78b4eb', sextile: '#a2ce85' }[
             kind
           ],
         });

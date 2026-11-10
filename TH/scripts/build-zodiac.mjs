@@ -3,11 +3,16 @@ import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 // Package the supplied artwork for small UI icons; keep source PNGs unchanged.
-const source = resolve('assets/zodiac/original');
-const output = resolve('public/images/zodiac');
+const illustrated = process.argv.includes('--illustrated');
+const source = resolve(illustrated ? 'assets/zodiac/illustrated' : 'assets/zodiac/original');
+const output = resolve(illustrated ? 'public/images/zodiac/illustrated' : 'public/images/zodiac');
 mkdirSync(output, { recursive: true });
-for (const file of readdirSync(source).filter((name) => name.endsWith('.png'))) {
-  for (const size of [96, 192]) {
+const files = readdirSync(source).filter((name) => name.endsWith('.png'));
+if (illustrated && files.length !== 12)
+  throw new Error('Expected all twelve zodiac illustrations.');
+const sizes = illustrated ? [96, 192, 256, 512] : [96, 192];
+for (const file of files) {
+  for (const size of sizes) {
     const result = spawnSync(
       'ffmpeg',
       [
@@ -35,4 +40,4 @@ for (const file of readdirSync(source).filter((name) => name.endsWith('.png'))) 
     if (result.status !== 0) throw new Error(`Unable to package ${file} at ${size}px`);
   }
 }
-console.log('Packaged twelve zodiac signs at 96px and 192px.');
+console.log(`Packaged ${files.length} zodiac signs at ${sizes.join(', ')}px.`);

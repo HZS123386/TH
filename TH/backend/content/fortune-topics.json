@@ -1,0 +1,47 @@
+{
+  "version": "fortune-reading-1",
+  "topics": [
+    {
+      "key": "annual", "houses": [1, 2, 7, 10],
+      "scope": "The selected calendar year's changing priorities across work, money and relationships, grounded in its calculated monthly states. Cover the beginning, middle and end of the year. Discuss preparation and choices, never guaranteed events or lucky dates.",
+      "zh": {"title": "年度运程", "subtitle": "阶段重点 · 顺势安排", "questions": ["这一年的重点是什么", "不同阶段怎样安排", "哪些事情值得提前准备"], "groups": ["年度节奏与重点", "阶段提醒与安排"]},
+      "th": {"title": "ดวงรายปี", "subtitle": "เรื่องสำคัญ · การเตรียมตัว", "questions": ["เรื่องสำคัญของปี", "การจัดลำดับในแต่ละช่วง", "สิ่งที่ควรเตรียมล่วงหน้า"], "groups": ["จังหวะและเรื่องสำคัญของปี", "ข้อควรใส่ใจและการเตรียมตัว"]}
+    },
+    {
+      "key": "overall", "houses": [1, 4, 9, 10],
+      "scope": "How the person's initiative, home needs, learning and career responsibilities interact. Explain how to choose priorities when these needs compete. Develop a paid synthesis beyond the free personality traits; do not repeat the yearly forecast or make lifelong success claims.",
+      "zh": {"title": "整体运程", "subtitle": "人生主线 · 取舍方向", "questions": ["人生中反复关注什么", "不同需要怎样取舍", "眼下怎样确定主次"], "groups": ["整体倾向与人生主线", "取舍与调整方向"]},
+      "th": {"title": "ภาพรวมชีวิต", "subtitle": "แนวโน้ม · การเลือกทาง", "questions": ["สิ่งที่ให้ความสำคัญในชีวิต", "การชั่งน้ำหนักความต้องการ", "การจัดลำดับเรื่องสำคัญ"], "groups": ["แนวโน้มโดยรวมของชีวิต", "การเลือกและปรับแนวทาง"]}
+    },
+    {
+      "key": "pattern", "houses": [1, 5, 9, 10, 11],
+      "scope": "The interaction between initiative, interests, learning, professional responsibility and support. Explain which strengths work well together, when opportunities can be developed and where the person may overextend. This is a Thai natal-chart synthesis, not a Bazi pattern classification, destiny ranking or success score.",
+      "zh": {"title": "格局解读", "subtitle": "优势组合 · 发展空间", "questions": ["哪些优势能相互配合", "机会怎样转为实际积累", "发展中容易忽略什么"], "groups": ["优势组合与发展空间", "发挥优势与补足短板"]},
+      "th": {"title": "โครงสร้างพื้นดวง", "subtitle": "จุดแข็ง · โอกาสเติบโต", "questions": ["จุดแข็งที่ช่วยส่งเสริมกัน", "การเปลี่ยนโอกาสเป็นประสบการณ์", "สิ่งที่อาจมองข้ามเมื่อพัฒนา"], "groups": ["จุดแข็งและโอกาสพัฒนา", "การใช้จุดแข็งและปรับจุดอ่อน"]}
+    },
+    {
+      "key": "marriage", "houses": [4, 7, 8],
+      "scope": "Long-term partnership and marriage: emotional needs, trust, shared responsibilities, boundaries and communication under pressure. Make examples conditional for single and partnered readers. Never assume marital status, predict infidelity or divorce, or infer a second person's chart.",
+      "zh": {"title": "婚姻情感", "subtitle": "长期相处 · 沟通经营", "questions": ["亲密关系中需要什么", "长期相处容易在哪些事上分歧", "信任与共同责任怎样经营"], "groups": ["亲密需求与长期相处", "沟通边界与共同经营"]},
+      "th": {"title": "ชีวิตคู่และความรัก", "subtitle": "ความไว้ใจ · การสื่อสาร", "questions": ["ความต้องการในความสัมพันธ์", "เรื่องที่อาจเห็นต่างเมื่ออยู่ร่วมกัน", "การสร้างความไว้ใจและแบ่งหน้าที่"], "groups": ["ความต้องการและการอยู่ร่วมกัน", "ขอบเขตและการดูแลความสัมพันธ์"]}
+    },
+    {
+      "key": "wealth", "houses": [2, 6, 10, 11],
+      "scope": "The connection between work style, skills, collaboration, income habits and spending choices. Distinguish career development from money management. Discuss practical preparation and agreements without financial product recommendations, invented amounts or promised gains.",
+      "zh": {"title": "财运事业", "subtitle": "收入习惯 · 职业发展", "questions": ["什么工作方式更适合你", "收入与消费习惯如何配合", "合作与发展怎样做准备"], "groups": ["事业方向与收入习惯", "合作准备与财务安排"]},
+      "th": {"title": "การเงินและการงาน", "subtitle": "รายได้ · เส้นทางอาชีพ", "questions": ["รูปแบบงานที่เหมาะกับคุณ", "นิสัยเรื่องรายได้และรายจ่าย", "การเตรียมตัวเพื่อร่วมงานและเติบโต"], "groups": ["แนวทางอาชีพและนิสัยการเงิน", "การร่วมงานและวางแผนการเงิน"]}
+    },
+    {
+      "key": "risk", "houses": [6, 8, 12],
+      "scope": "Practical obstacles and avoidable friction: overcommitment, unclear shared obligations, overlooked details and insufficient rest. Give observable conditional warning signs and proportionate responses. A traditional indication is not proof of harm: never predict illness, accidents, death, loss amounts or inevitable misfortune, and never sell remedies.",
+      "zh": {"title": "风险提醒", "subtitle": "易遇阻力 · 提前应对", "questions": ["哪些习惯容易带来阻力", "需要留意哪些实际信号", "怎样提前调整安排"], "groups": ["易遇阻力与可观察信号", "边界安排与应对建议"]},
+      "th": {"title": "ข้อควรระวัง", "subtitle": "อุปสรรค · การรับมือ", "questions": ["นิสัยที่อาจทำให้เรื่องติดขัด", "สัญญาณที่สังเกตได้จริง", "การปรับแผนล่วงหน้า"], "groups": ["อุปสรรคและสัญญาณที่ควรใส่ใจ", "ขอบเขตและแนวทางรับมือ"]}
+    },
+    {
+      "key": "romance", "houses": [1, 5, 7, 11],
+      "scope": "Attraction, getting to know a potential partner, preferred ways of connecting, mutual fit, reciprocity and pacing before commitment. Keep this distinct from maintaining an existing marriage. Do not guarantee a soulmate, partner appearance or occupation, meeting date, marriage age or compatibility without another person's data.",
+      "zh": {"title": "姻缘", "subtitle": "吸引偏好 · 缘分相处", "questions": ["你容易被怎样的相处方式吸引", "怎样辨认彼此是否合适", "关系开始时如何把握节奏"], "groups": ["吸引倾向与择偶偏好", "相识节奏与适配观察"]},
+      "th": {"title": "คู่ครองและการพบรัก", "subtitle": "แรงดึงดูด · การเข้ากันได้", "questions": ["รูปแบบการเข้าหาที่ดึงดูดใจ", "วิธีสังเกตว่าเข้ากันได้ไหม", "จังหวะการทำความรู้จักกัน"], "groups": ["แรงดึงดูดและสิ่งที่มองหาในคู่", "การทำความรู้จักและสังเกตความเหมาะสม"]}
+    }
+  ]
+}

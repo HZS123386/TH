@@ -1,44 +1,44 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   BookOpen,
-  BriefcaseBusiness,
   CalendarDays,
-  ArrowUpRight,
+  LockKeyhole,
   Coins,
   Compass,
   Heart,
-  House,
+  HeartHandshake,
+  ShieldAlert,
+  Sparkles,
   LoaderCircle,
   History,
 } from "lucide-react";
 import {
-  readingCopy,
-  readings,
   ui,
   type Language,
   type Place,
 } from "../lib/reading";
 import { careerCopy, generateLifeReport, initialPreviewProgress, lifeCopy, lifeReportUrl, lifeSignature, type GenerationProgress, type LifeInput, type LifeReport } from "../lib/lifeReport";
+import { fortuneTopics, fortuneTopicTitle } from "../lib/fortuneTopics";
 import { ReportGenerationDialog } from "./ReportGenerationDialog";
 import { ReportHistory } from "./ReportHistory";
 import { BirthplaceFields } from "./BirthplaceFields";
 import "../reading.css";
 
 const icons = {
-  overview: Compass,
   annual: CalendarDays,
-  money: Coins,
-  love: Heart,
-  work: BriefcaseBusiness,
-  family: House,
+  overall: Compass,
+  pattern: Sparkles,
+  marriage: HeartHandshake,
+  wealth: Coins,
+  risk: ShieldAlert,
+  romance: Heart,
 };
 
 const careerQuestionStages = ["unspecified", "considering", "searching", "offer"] as const;
 const questionRotationMs = 3800;
 
 export function ThaiReadingExperience({ language }: { language: Language }) {
-  const c = ui[language],
-    b = readingCopy(language);
+  const c = ui[language];
   const life = lifeCopy[language];
   const decision = careerCopy[language];
   const [date, setDate] = useState("");
@@ -67,6 +67,7 @@ export function ThaiReadingExperience({ language }: { language: Language }) {
     start: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date()),
   };
   const input: LifeInput = {
+    report_kind: "fortune",
     profile: {
       display_name: "",
       birth_date: date,
@@ -314,16 +315,23 @@ export function ThaiReadingExperience({ language }: { language: Language }) {
           <span id="main-cta">{loading ? life.generating : life.generate}</span>
         </button>
         <section className="mt-8" aria-label={life.includes} data-testid="life-themes">
-          <h3 className="m-0 text-sm font-semibold text-cream">{life.includes}</h3>
-          <p className="mb-3 mt-2 text-[10px] leading-6 text-lavender">{life.includesHint}</p>
+          <div className="mb-4">
+            <h3 className="m-0 flex items-center gap-2 text-[15px] font-bold leading-6 text-cream"><Sparkles size={15} strokeWidth={1.3} className="shrink-0 text-gold" aria-hidden="true" />{life.includes}</h3>
+            <p className="mb-0 mt-2 text-[10px] leading-5 text-lavender">{life.includesHint}</p>
+          </div>
           <div className="grid grid-cols-2 gap-3" data-testid="life-theme-grid">
-            {readings.map(key => {
+            {fortuneTopics.map(({ key, ...topic }) => {
               const Icon = icons[key];
-              return <article key={key} className="theme-option relative flex aspect-square w-full min-h-0 min-w-0 flex-col p-3 max-[360px]:p-2.5">
-                <Icon size={32} strokeWidth={1.25} className="mb-3 shrink-0 text-gold max-[360px]:mb-1.5 max-[360px]:h-6 max-[360px]:w-6" aria-hidden="true" />
-                <ArrowUpRight size={18} strokeWidth={1.5} className="absolute right-3 top-3 text-gold/65 max-[360px]:right-2.5 max-[360px]:top-2.5 max-[360px]:h-3.5 max-[360px]:w-3.5" aria-hidden="true" />
-                <h4 className="m-0 text-sm font-semibold leading-6 text-cream max-[360px]:text-xs max-[360px]:leading-[18px]">{b.readings[key].title}</h4>
-                <p className="mb-0 mt-1.5 text-[10px] leading-5 text-lavender max-[360px]:mt-1 max-[360px]:text-[9px] max-[360px]:leading-[14px]">{b.readings[key].subtitle}</p>
+              const annual = key === "annual";
+              return <article key={key} data-fortune-topic={key} className={`theme-option relative flex w-full min-w-0 ${annual ? "col-span-2 min-h-[104px] items-center gap-4 p-4 pr-10 max-[360px]:gap-3 max-[360px]:p-3 max-[360px]:pr-9" : "aspect-square min-h-[150px] flex-col p-3.5 max-[360px]:p-3"}`}>
+                <div className={`flex shrink-0 items-center justify-center border border-solid border-gold/20 bg-gold/[0.07] text-gold ${annual ? "h-14 w-14 rounded-2xl max-[360px]:h-12 max-[360px]:w-12" : "mb-3 h-10 w-10 rounded-xl max-[360px]:mb-2 max-[360px]:h-8 max-[360px]:w-8"}`} aria-hidden="true">
+                  <Icon size={annual ? 29 : 24} strokeWidth={1.25} className={annual ? "max-[360px]:h-7 max-[360px]:w-7" : "max-[360px]:h-5 max-[360px]:w-5"} />
+                </div>
+                <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-night/40 text-gold/60" aria-label={life.locked}><LockKeyhole size={11} strokeWidth={1.5} aria-hidden="true" /></span>
+                <div className="min-w-0">
+                  <h4 className={`m-0 font-bold tracking-[0.01em] text-cream ${annual ? "text-[17px] leading-7 max-[360px]:text-[15px]" : "text-sm leading-6 max-[360px]:text-xs max-[360px]:leading-5"}`}>{fortuneTopicTitle(key, language, year)}</h4>
+                  <p className={`mb-0 mt-1.5 text-[10px] font-medium leading-5 text-lavender ${annual ? "" : "max-[360px]:mt-1 max-[360px]:text-[9px] max-[360px]:leading-4"}`}>{topic[language].subtitle}</p>
+                </div>
               </article>;
             })}
           </div>

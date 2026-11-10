@@ -126,18 +126,18 @@ export function ChatPanel({
   }
   return (
     <section
-      className="jy-chat flex min-w-0 flex-col overflow-hidden bg-[#f8f4ec]"
+      className="jy-chat flex min-w-0 flex-col overflow-hidden bg-panel"
       aria-labelledby="chat-title"
     >
       <header className="flex shrink-0 items-center gap-3 px-4 pb-3 pt-4">
-        <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[15px] bg-primary text-[#fff7ed]">
+        <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[15px] bg-primary text-on-primary">
           <MessageCircle size={24} strokeWidth={1.5} />
         </span>
         <div className="min-w-0 flex-1">
           <h1 id="chat-title" className="text-[17px] font-semibold">
             {t.brandName} · {t.w_questions}
           </h1>
-          <p className="mt-1 text-xs text-[#78674f]">{t.j_listen}</p>
+          <p className="mt-1 text-xs text-ink/85">{t.j_listen}</p>
         </div>
         <button
           className="jy-icon"
@@ -147,9 +147,9 @@ export function ChatPanel({
           <MoreHorizontal size={22} />
         </button>
       </header>
-      <div className="flex shrink-0 items-center justify-between gap-2 border-y border-[#e3d8c8] bg-[#f2ebdf] px-4 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-y border-line bg-surface px-4 py-2">
         <button
-          className="min-h-7 text-xs text-[#806447]"
+          className="min-h-7 text-xs text-muted"
           aria-label={t.j_chooseTopic}
           disabled={generating}
           onClick={onTopics}
@@ -161,14 +161,14 @@ export function ChatPanel({
         </button>
       </div>
       {contextSummary && (
-        <details className="shrink-0 border-b border-line bg-[#faf4e9] px-4 py-2 text-xs leading-6 text-[#806447]">
+        <details className="shrink-0 border-b border-line bg-panel px-4 py-2 text-xs leading-6 text-muted">
           <summary className="cursor-pointer">{t.j_context}</summary>
           <p className="py-2">{contextSummary}</p>
         </details>
       )}
       {provider === 'mock' && (
         <p
-          className="border-b border-line bg-[#f4ecdc] px-5 py-3 text-[11px] leading-6 text-muted"
+          className="border-b border-line bg-surface px-5 py-3 text-[11px] leading-6 text-muted"
           role="note"
         >
           {realModelReady ? t.m_demoSelected : t.m_modelMissing}
@@ -226,12 +226,12 @@ export function ChatPanel({
                   className={`enter flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
                   {message.role === 'assistant' && (
-                    <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-white">
+                    <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary">
                       <BrandMark className="h-4 w-4" />
                     </span>
                   )}
                   <div
-                    className={`min-w-0 max-w-[90%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-tr-sm bg-surface' : 'flex-1 rounded-tl-sm bg-[#f2ecdf]'}`}
+                    className={`min-w-0 max-w-[90%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-tr-sm bg-surface' : 'flex-1 rounded-tl-sm bg-surface'}`}
                   >
                     <div className="mb-1.5 text-[10px] font-medium text-muted">
                       {message.role === 'user' ? t.you : t.brandName}
@@ -262,10 +262,10 @@ export function ChatPanel({
               ))}
               {generating && (
                 <div className="flex gap-3">
-                  <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-white">
+                  <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary">
                     <BrandMark className="h-4 w-4" />
                   </span>
-                  <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm bg-[#f2ecdf] px-4 py-3">
+                  <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm bg-surface px-4 py-3">
                     <div className="mb-1.5 text-[10px] font-medium text-muted">
                       {t.brandName}
                       {provider === 'mock' ? ` · ${t.demo}` : ''}
@@ -332,7 +332,7 @@ export function ChatPanel({
             <button
               type="button"
               onClick={onStop}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-white hover:bg-primary/90"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-on-primary hover:bg-primary/90"
               aria-label={t.stop}
             >
               <Square size={16} fill="currentColor" />
@@ -340,7 +340,7 @@ export function ChatPanel({
           ) : (
             <button
               type="submit"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-white hover:bg-primary/90"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-on-primary hover:bg-primary/90"
               aria-label={t.send}
               disabled={!input.trim() || !hasProfile}
             >

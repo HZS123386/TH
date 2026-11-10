@@ -87,6 +87,8 @@ export function recognizeBirthplace(input, selectedCountry) {
 
 // Structured inputs must stay inside the explicitly selected country and province.
 export function searchBirthCities(country, provinceId, input, offset = 0) {
+  if (!countries[country]) return { items: [], total: 0, resolved: null };
+  if (!provinceId) return searchPlaces(normalized(input), country, null, offset, true);
   const region = regions.find(row => row.countryCode === country && row.id === provinceId);
   if (!region) return { items: [], total: 0, resolved: null };
   const parent = db().prepare('SELECT admin1 FROM regions WHERE country=? AND json_extract(payload,\'$.id\')=?').get(country, provinceId);
@@ -96,9 +98,11 @@ export function searchBirthCities(country, provinceId, input, offset = 0) {
 
 function searchPlaces(query, country, provinceCode, offset, administrative = false) {
   if (!query) {
-    if (!country || !provinceCode) return { items: [], total: 0, resolved: null };
-    const total = db().prepare('SELECT COUNT(*) AS total FROM places WHERE country=? AND admin1=?').get(country, provinceCode).total;
-    const rows = db().prepare(`SELECT p.* FROM places p WHERE p.country=? AND p.admin1=? ORDER BY ${priority},p.population DESC,p.id LIMIT 100 OFFSET ?`).all(country, provinceCode, offset);
+    if (!country) return { items: [], total: 0, resolved: null };
+    const where = provinceCode ? 'p.country=? AND p.admin1=?' : 'p.country=?';
+    const params = provinceCode ? [country, provinceCode] : [country];
+    const total = db().prepare(`SELECT COUNT(*) AS total FROM places p WHERE ${where}`).get(...params).total;
+    const rows = db().prepare(`SELECT p.* FROM places p WHERE ${where} ORDER BY ${priority},p.population DESC,p.id LIMIT 100 OFFSET ?`).all(...params, offset);
     return { items: rows.map(cityPlace), total, resolved: null };
   }
   const where = ['n.country IN (\'CN\',\'TH\')', 'n.name>=?', 'n.name<?'];

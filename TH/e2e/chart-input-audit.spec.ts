@@ -3,6 +3,7 @@ import zh from '../src/locales/zh-CN.json' with { type: 'json' };
 import type { ThaiChart } from '../src/lib/thai';
 
 const profile = {
+  gender: 'female',
   display_name: 'Audit sample',
   birth_date: '1999-02-20',
   birth_time: '07:15',
@@ -30,13 +31,7 @@ test('confirmed morning clock, UTC, coordinates and Thai calculation labels stay
   const value: ThaiChart = await (await pending).json();
   expect(value.calculation_input?.utc_datetime).toBe('1999-02-19T23:15+00:00');
   await expect(page.getByTestId('natal-birth-card')).toContainText('07:15 · 上午');
-  const settings = page.getByTestId('chart-calculation-settings');
-  await expect(settings).toContainText(zh.q_system);
-  await expect(settings).toContainText(zh.q_houses);
-  await settings.locator('summary').click();
-  await expect(settings).toContainText('1999-02-20T07:15+08:00');
-  await expect(settings).toContainText('1999-02-19T23:15+00:00');
-  await expect(settings).toContainText('39.9075, 116.39723');
+  await expect(page.getByTestId('chart-calculation-settings')).toHaveCount(0);
   await expect(page.getByRole('button', { name: zh.c_orbitView, exact: true })).toBeVisible();
   await expect(page.getByTestId('natal-birth-card')).toContainText(zh.q_sun);
   await expect(page.getByTestId('natal-birth-card')).toContainText(zh.q_moon);
@@ -50,15 +45,21 @@ test('confirmed morning clock, UTC, coordinates and Thai calculation labels stay
     );
   }
   await page.getByTestId('chart-reading-button').click();
+  await page.getByTestId('reading-calculation').locator(':scope > summary').click();
   await expect(page.getByTestId('reading-birth-source')).toContainText('07:15 · 上午');
-  await expect(page.getByTestId('chart-calculation-settings')).toContainText(zh.q_system);
+  const settings = page.getByTestId('chart-calculation-settings');
+  await expect(settings).toContainText(zh.q_system);
+  await expect(settings).toContainText(zh.q_houses);
+  await settings.locator('summary').click();
+  await expect(settings).toContainText('1999-02-20T07:15+08:00');
+  await expect(settings).toContainText('1999-02-19T23:15+00:00');
+  await expect(settings).toContainText('39.9075, 116.39723');
 });
 
 test('AM and PM picker drafts preview different 24-hour values without changing a cancelled choice', async ({
   page,
 }) => {
   await page.goto('/birth');
-  await page.locator('summary').filter({ hasText: zh.f_optional }).click();
   const input = page.getByRole('button', { name: zh.birthTime, exact: true });
   await expect(input).toContainText(zh.am);
   await input.click();
@@ -77,7 +78,7 @@ test('AM and PM picker drafts preview different 24-hour values without changing 
   await dialog.getByRole('option', { name: zh.am, exact: true }).click();
   await expect(dialog.getByTestId('birth-clock-preview')).toContainText('07:15');
   await dialog.getByRole('button', { name: zh.pickerDone, exact: true }).click();
-  await page.getByRole('button', { name: zh.f_cta, exact: true }).click();
+  await page.getByRole('button', { name: zh.ux_saveReturn, exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('wanjai.birth')!).birth_time))
     .toBe('07:15');

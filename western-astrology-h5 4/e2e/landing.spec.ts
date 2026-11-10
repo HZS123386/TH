@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { ui, type Language } from "../src/lib/reading";
 import { careerCopy, generationCopy, lifeCopy, type LifeInput, type LifeReport } from "../src/lib/lifeReport";
+import { fortuneCopy } from "../src/lib/fortuneTopics";
 import { bangkokProvince, place, readyPreviewFixture, reportFixture } from "../tests/fixtures/lifeReport";
 
 // Synthetic fixtures test presentation and transport without consuming paid generation.
@@ -22,15 +23,16 @@ async function generate(page: Page, language: Language = "zh") {
   await expect(page.getByTestId("life-report")).toBeVisible();
 }
 for (const language of ["zh", "th"] as const) {
-  test(`life report three free sections five paid sections checkout and exports in ${language}`, async ({ page }, info) => {
+  test(`fortune report three free sections seven paid themes checkout and exports in ${language}`, async ({ page }, info) => {
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     const api = await routes(page);
-    const c = lifeCopy[language];
+    const c = { ...lifeCopy[language], ...fortuneCopy[language] };
     await start(page, language); await generate(page, language);
     await expect(page.getByRole("heading", { name: c.title, exact: true })).toBeVisible();
     await expect(page.getByTestId("life-free-traits").locator("article")).toHaveCount(3);
-    await expect(page.getByTestId("life-catalog").locator("button")).toHaveCount(8);
+    await expect(page.getByTestId("life-catalog").locator("button")).toHaveCount(11);
+    expect(api.received[0].report_kind).toBe("fortune");
     await expect(page.getByTestId("life-report")).not.toContainText("付费专属分析正文");
     await expect(page.getByTestId("life-unlock-offer")).toContainText("฿50");
     await expect(page.getByTestId("life-unlock-offer")).toContainText(c.direct);
@@ -64,7 +66,7 @@ for (const language of ["zh", "th"] as const) {
     await checkout.screenshot({ path: `test-results/card-checkout-${language}-${info.project.name}.png` });
     await confirm.click();
     await expect(page.getByTestId("life-full-report")).toBeVisible();
-    await expect(page.locator('[data-testid^="life-section-"]')).toHaveCount(4);
+    await expect(page.locator('[data-testid^="life-section-"]')).toHaveCount(7);
     await expect(page.getByTestId("life-action-plan")).toBeVisible();
     await expect(page.getByTestId("life-unlock-button")).toHaveCount(0);
     await expect(page.locator(".report-unlock-bar")).toHaveCount(0);
@@ -74,10 +76,47 @@ for (const language of ["zh", "th"] as const) {
     const text = await readFile((await full.path())!, "utf8");
     expect(text).toContain(c.plan);
     if (language === "zh") expect(text).toContain("付费专属分析正文");
-    await page.getByTestId("life-section-work").screenshot({ path: `test-results/life-work-${language}-${info.project.name}.png` });
+    await page.getByTestId("life-section-wealth").screenshot({ path: `test-results/fortune-wealth-${language}-${info.project.name}.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.locator(".reading-section, #reading-dialog, [data-card]")).toHaveCount(0);
     expect(errors).toEqual([]);
+  });
+}
+
+for (const language of ["zh", "th"] as const) {
+  test(`app and purchase choices remain separate in ${language}`, async ({ page }, info) => {
+    await page.setViewportSize({ width: 320, height: 760 });
+    await routes(page); await start(page, language); await generate(page, language);
+    let unlocks = 0;
+    page.on("request", request => { if (request.method() === "POST" && request.url().endsWith("/unlock")) unlocks++; });
+    const url = page.url();
+    const offer = page.getByTestId("life-unlock-offer");
+    const app = page.getByTestId("life-app-button");
+    const buy = page.getByTestId("life-unlock-button");
+    await expect(app).toHaveAccessibleName(lifeCopy[language].downloadApp);
+    await expect(buy).toHaveAccessibleName(`฿50 ${lifeCopy[language].buyReading}`);
+    await app.click();
+    await expect(page).toHaveURL(url);
+    await expect(page.getByTestId("life-checkout")).toHaveCount(0);
+    await expect(page.getByTestId("life-full-report")).toHaveCount(0);
+    await offer.screenshot({ path: info.outputPath(`unlock-choices-${language}.png`) });
+    const sticky = page.locator(".report-unlock-bar");
+    await expect(sticky.getByRole("button")).toHaveCount(2);
+    await expect(page.getByTestId("life-sticky-app")).toBeInViewport();
+    await expect(page.getByTestId("life-sticky-buy")).toBeInViewport();
+    await page.getByTestId("life-sticky-app").click();
+    await expect(page).toHaveURL(url);
+    expect(unlocks).toBe(0);
+    await sticky.screenshot({ path: info.outputPath(`sticky-choices-${language}.png`) });
+    await page.getByTestId("life-sticky-buy").click();
+    await expect(page.getByTestId("life-checkout")).toBeVisible();
+    await expect(page.getByTestId("life-checkout")).toContainText("฿50");
+    expect(unlocks).toBe(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("life-checkout")).toHaveCount(0);
+    await buy.click();
+    await expect(page.getByTestId("life-checkout")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
 
@@ -124,7 +163,7 @@ test("a selected question survives language changes and opens its answer in the 
   expect(api.received[0].career).toBeUndefined();
   await expect(page.getByRole("heading", { name: careerCopy.zh.situations.offer.question, exact: true })).toBeVisible();
   await expect(page.getByText(answer, { exact: true })).toBeVisible();
-  await expect(page.getByTestId("life-catalog").locator("button")).toHaveCount(8);
+  await expect(page.getByTestId("life-catalog").locator("button")).toHaveCount(11);
 });
 
 test("a typed question replaces the selected question and is preserved as report text", async ({ page }) => {
@@ -215,11 +254,11 @@ test("a failed preview stays in its animation with its actual error and can retr
   expect(attempts).toBe(2);
 });
 
-test("form and report share the dark purple palette at a narrow width", async ({ page }) => {
+test("fortune cards keep a balanced purple layout and readable text at a narrow width", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 760 });
   await routes(page); await start(page);
   const themes = page.getByTestId("life-themes");
-  await expect(themes.locator("article")).toHaveCount(6);
+  await expect(themes.locator("article")).toHaveCount(7);
   const buttonBox = await page.getByRole("button", { name: lifeCopy.zh.generate, exact: true }).boundingBox();
   const themesBox = await themes.boundingBox();
   expect(buttonBox!.y + buttonBox!.height).toBeLessThan(themesBox!.y);
@@ -228,10 +267,16 @@ test("form and report share the dark purple palette at a narrow width", async ({
     await page.evaluate(() => document.fonts.ready);
     const cards = await themes.locator("article").evaluateAll(nodes => nodes.map(node => {
       const style = getComputedStyle(node), box = node.getBoundingClientRect();
-      return { background: style.background, border: style.borderColor, shadow: style.boxShadow, width: box.width, height: box.height, fits: node.scrollHeight <= node.clientHeight + 1 };
+      return { background: style.background, border: style.borderColor, shadow: style.boxShadow, width: box.width, height: box.height, x: box.x, y: box.y, fits: node.scrollHeight <= node.clientHeight + 1 && node.scrollWidth <= node.clientWidth + 1 };
     }));
     expect(new Set(cards.map(card => `${card.background}|${card.border}|${card.shadow}`)).size).toBe(1);
-    expect(cards.every(card => Math.abs(card.height - card.width) < 1 && card.fits)).toBe(true);
+    expect(cards.every(card => card.fits)).toBe(true);
+    expect(cards[0].width).toBeGreaterThan(cards[1].width * 1.9);
+    for (let index = 1; index < cards.length; index += 2) {
+      expect(Math.abs(cards[index].y - cards[index + 1].y)).toBeLessThan(1);
+      expect(Math.abs(cards[index].height - cards[index + 1].height)).toBeLessThan(1);
+      expect(cards[index].x).toBeLessThan(cards[index + 1].x);
+    }
   }
   await page.locator('[data-lang="zh"]').click();
   const colors = await page.locator("#birth-date,#birth-time,#birth-country,#birth-province,#birth-city").evaluateAll(nodes => nodes.map(node => ({ background: getComputedStyle(node).backgroundColor, color: getComputedStyle(node).color, scheme: getComputedStyle(node).colorScheme })));
@@ -324,10 +369,10 @@ test("progressive generation retains finished chapters and can resume after inte
   await page.getByTestId("life-unlock-button").click();
   await page.getByTestId("life-checkout-confirm").click();
   await expect(page.getByTestId("report-generation")).toContainText(lifeCopy.zh.states.unavailable);
-  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
   await page.getByRole("button", { name: lifeCopy.zh.retry, exact: true }).click();
   await expect(page.getByTestId("life-action-plan")).toBeVisible();
-  await expect(page.locator('[data-testid^="life-section-"]')).toHaveCount(4);
+  await expect(page.locator('[data-testid^="life-section-"]')).toHaveCount(7);
 });
 
 for (const language of ["zh", "th"] as const) {

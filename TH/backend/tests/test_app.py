@@ -37,6 +37,18 @@ def test_health_and_auth(client):
     assert client.get("/api/history", headers=headers).status_code == 401
 
 
+@pytest.mark.parametrize("gender", ["female", "male"])
+def test_profile_gender_is_saved_with_account(client, gender):
+    headers = setup_profile(client)
+    client.post("/api/chat", headers=headers, json={"message": "你好"})
+    saved = client.put("/api/profile", headers=headers, json={**PROFILE, "gender": gender})
+    assert saved.status_code == 200
+    assert saved.json()["profile"]["gender"] == gender
+    assert client.get("/api/profile", headers=headers).json()["profile"]["gender"] == gender
+    assert len(client.get("/api/history", headers=headers).json()) == 2
+    assert client.put("/api/profile", headers=headers, json={**PROFILE, "gender": "invalid"}).status_code == 422
+
+
 def test_public_module_catalog_marks_future_astrology_as_planned(client):
     modules = client.get("/api/modules").json()
     assert [module["id"] for module in modules if module["status"] == "ready"] == ["bazi", "thai_astrology"]

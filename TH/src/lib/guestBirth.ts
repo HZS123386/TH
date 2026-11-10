@@ -39,6 +39,7 @@ export function cleanGuestBirth(value: unknown): Profile | null {
     birthplace: typeof row.birthplace === 'string' ? row.birthplace.slice(0, 100) : '',
     language: ['zh', 'th', 'vi', 'en'].includes(row.language || '') ? row.language! : 'th',
   };
+  if (row.gender === 'female' || row.gender === 'male') profile.gender = row.gender;
   if (row.country_code && /^[A-Z]{2}$/.test(row.country_code))
     profile.country_code = row.country_code;
   if (row.location_id && /^geonames:[1-9][0-9]{0,10}$/.test(row.location_id))
@@ -55,6 +56,15 @@ export function cleanGuestBirth(value: unknown): Profile | null {
     profile.longitude = row.longitude;
   }
   return profile;
+}
+export function hasChartBirthDetails(profile: Profile | null) {
+  return !!(
+    profile?.display_name.trim() &&
+    (profile.gender === 'female' || profile.gender === 'male') &&
+    profile.birth_date &&
+    profile.birthplace.trim() &&
+    profile.birth_time !== ''
+  );
 }
 export function readGuestBirth(): Profile | null {
   try {

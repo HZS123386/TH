@@ -5,18 +5,18 @@ import { BrandMark } from './BrandMark';
 
 const pillarKeys = ['year', 'month', 'day', 'hour'] as const;
 const elements = [
-  { key: '木', label: 'wood', color: '#5d805b', tint: '#e4ebde' },
-  { key: '火', label: 'fire', color: '#a8594c', tint: '#f2e3de' },
-  { key: '土', label: 'earth', color: '#9c7a36', tint: '#f2e9d5' },
-  { key: '金', label: 'metal', color: '#87736a', tint: '#ebe5df' },
-  { key: '水', label: 'water', color: '#668995', tint: '#e1ebed' },
+  { key: '木', label: 'wood', color: '#9ac79a', tint: '#21352b' },
+  { key: '火', label: 'fire', color: '#f0a397', tint: '#3a222e' },
+  { key: '土', label: 'earth', color: '#e4bc78', tint: '#392c27' },
+  { key: '金', label: 'metal', color: '#d4c2e5', tint: '#34263f' },
+  { key: '水', label: 'water', color: '#9fc9e6', tint: '#202c43' },
 ] as const;
 const charColors: Record<string, string> = Object.fromEntries([
-  ...'甲乙寅卯'.split('').map((c) => [c, 'text-[#5d805b]']),
-  ...'丙丁巳午'.split('').map((c) => [c, 'text-[#a8594c]']),
-  ...'戊己丑辰未戌'.split('').map((c) => [c, 'text-[#9c7a36]']),
-  ...'庚辛申酉'.split('').map((c) => [c, 'text-[#87736a]']),
-  ...'壬癸子亥'.split('').map((c) => [c, 'text-[#668995]']),
+  ...'甲乙寅卯'.split('').map((c) => [c, 'text-[#9ac79a]']),
+  ...'丙丁巳午'.split('').map((c) => [c, 'text-[#f0a397]']),
+  ...'戊己丑辰未戌'.split('').map((c) => [c, 'text-[#e4bc78]']),
+  ...'庚辛申酉'.split('').map((c) => [c, 'text-[#d4c2e5]']),
+  ...'壬癸子亥'.split('').map((c) => [c, 'text-[#9fc9e6]']),
 ]);
 
 export function ChartPanel({
@@ -60,7 +60,7 @@ export function ChartPanel({
             {pillarKeys.map((key) => (
               <div
                 key={key}
-                className={`rounded-xl px-1 py-4 text-center ${key === 'day' ? 'bg-[#eee2ce] ring-1 ring-accent/10' : 'bg-[#f3eee5]'}`}
+                className={`rounded-xl px-1 py-4 text-center ${key === 'day' ? 'bg-surface ring-1 ring-accent/10' : 'bg-panel'}`}
               >
                 <div className="text-xs font-medium">{t[key]}</div>
                 <div className="mt-1 text-[9px] tracking-[.15em] text-muted">

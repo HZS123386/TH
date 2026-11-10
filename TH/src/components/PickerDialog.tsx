@@ -11,14 +11,20 @@ export function PickerDialog({
   onCancel,
   confirmLabel,
   confirmDisabled = false,
+  wide = false,
+  hideConfirm = false,
+  cancelDisabled = false,
 }: {
   title: string;
   t: Copy;
   children: ReactNode;
-  onConfirm: () => void;
+  onConfirm?: () => void;
   onCancel: () => void;
   confirmLabel?: string;
   confirmDisabled?: boolean;
+  wide?: boolean;
+  hideConfirm?: boolean;
+  cancelDisabled?: boolean;
 }) {
   const id = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -30,6 +36,8 @@ export function PickerDialog({
     document.body.style.overflow = 'hidden';
     panelRef.current?.focus();
     function keyboard(event: KeyboardEvent) {
+      const dialogs = document.querySelectorAll('[aria-modal="true"]');
+      if (dialogs[dialogs.length - 1] !== panelRef.current) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         cancelRef.current();
@@ -61,7 +69,7 @@ export function PickerDialog({
   }, []);
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center overflow-y-auto bg-[#453b2e]/35 p-3 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-[80] flex items-end justify-center overflow-y-auto bg-night/75 p-3 backdrop-blur-sm sm:items-center sm:p-6"
       onClick={(event) => {
         if (event.target === event.currentTarget) onCancel();
       }}
@@ -72,7 +80,7 @@ export function PickerDialog({
         aria-modal="true"
         aria-labelledby={id}
         tabIndex={-1}
-        className="enter my-auto max-h-[calc(100dvh-24px)] w-full max-w-[430px] overflow-y-auto rounded-[24px] border border-[#d8c29e] bg-panel p-5 shadow-2xl outline-none sm:p-6"
+        className={`enter my-auto max-h-[calc(100dvh-24px)] w-full overflow-y-auto rounded-[24px] border border-line bg-panel p-5 shadow-2xl outline-none sm:p-6 ${wide ? 'max-w-[900px]' : 'max-w-[430px]'}`}
       >
         <div className="mb-5 flex items-center justify-between gap-3">
           <h3 id={id} className="text-lg font-semibold">
@@ -82,21 +90,24 @@ export function PickerDialog({
             type="button"
             className="btn-quiet !rounded-full !p-2"
             aria-label={t.pickerCancel}
+            disabled={cancelDisabled}
             onClick={onCancel}
           >
             <X size={20} />
           </button>
         </div>
         {children}
-        <button
-          type="button"
-          className="btn-primary mt-6 w-full !rounded-2xl !py-3.5"
-          onClick={onConfirm}
-          disabled={confirmDisabled}
-        >
-          <Check size={18} />
-          {confirmLabel || t.pickerDone}
-        </button>
+        {!hideConfirm && (
+          <button
+            type="button"
+            className="btn-primary mt-6 w-full !rounded-2xl !py-3.5"
+            onClick={onConfirm}
+            disabled={confirmDisabled}
+          >
+            <Check size={18} />
+            {confirmLabel || t.pickerDone}
+          </button>
+        )}
       </div>
     </div>,
     document.body,
@@ -108,7 +119,7 @@ export function WheelGroup({ children }: { children: ReactNode }) {
     <div className="relative">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-[116px] h-11 rounded-xl border border-accent/60 bg-gradient-to-r from-[#dec9a8]/50 to-[#d9b49f]/40 shadow-sm"
+        className="pointer-events-none absolute inset-x-0 top-[116px] h-11 rounded-xl border border-accent/60 bg-gradient-to-r from-gold/15 to-surface/40 shadow-sm"
       />
       <div className="relative flex gap-1 sm:gap-3">{children}</div>
       <div

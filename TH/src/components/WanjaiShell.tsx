@@ -1,24 +1,22 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
-  Bell,
   ArrowRight,
   BookOpen,
-  Heart,
+  House,
   LogOut,
-  MessageCircle,
   MoreHorizontal,
-  ShoppingBag,
-  Sparkles,
-  Sun,
+  Orbit,
   UserRound,
   LockKeyhole,
   X,
 } from 'lucide-react';
 import type { Copy } from '../lib/i18n';
 import type { Language } from '../types';
-import type { WanjaiView } from '../lib/wanjai';
+import type { AppView } from '../lib/routes';
+import { westernCopy } from '../lib/western';
 import { BrandLockup } from './BrandLockup';
 import { LanguageFlag } from './LanguageFlag';
+import { Starfield } from './Starfield';
 
 export interface WanjaiBottomAction {
   label: string;
@@ -44,8 +42,8 @@ export function WanjaiShell({
   children: ReactNode;
   t: Copy;
   language: Language;
-  view: WanjaiView;
-  navigate: (view: WanjaiView) => void;
+  view: AppView;
+  navigate: (view: AppView) => void;
   onLanguages: () => void;
   onLogout: () => void;
   signedIn: boolean;
@@ -66,35 +64,27 @@ export function WanjaiShell({
     observer.observe(footer);
     return () => observer.disconnect();
   }, [entry]);
-  const group = ['questions', 'concern', 'solution', 'chat'].includes(view)
-    ? 'chat'
-    : ['profile', 'auth', 'memories', 'share', 'orders', 'bazi-test', 'thai-test'].includes(view)
-      ? 'mine'
-      : ['daily', 'journey', 'inbox'].includes(view)
-        ? 'overview'
-        : ['life', 'example', 'chart-reading'].includes(view)
-          ? 'chart'
-          : view === 'favorites'
-            ? 'shop'
-            : view;
+  const a = westernCopy(language);
+  const group = ['profile', 'auth', 'orders'].includes(view) ? 'mine' : view === 'report' ? 'reports' : view;
   const items = [
-    { id: 'overview', label: t.w_home, icon: Sun },
-    { id: 'chart', label: t.w_chart, icon: Sparkles },
-    { id: 'chat', label: t.w_questions, icon: MessageCircle },
-    { id: 'shop', label: t.w_shop, icon: ShoppingBag },
-    { id: 'mine', label: t.w_mine, icon: Heart },
+    { id: 'overview', label: a.home, icon: House },
+    { id: 'chart', label: a.chart, icon: Orbit },
+    { id: 'reports', label: a.reports, icon: BookOpen },
+    { id: 'mine', label: a.mine, icon: UserRound },
   ] as const;
-  const go = (next: WanjaiView) => {
+  const go = (next: AppView) => {
     setMenu(false);
     navigate(next);
   };
   return (
     <div
-      className="jy-app relative mx-auto min-h-svh w-full max-w-[430px] bg-[#f7f4ed] shadow-[0_0_70px_#40372d14]"
+      className="jy-app relative isolate mx-auto min-h-svh w-full max-w-[430px] bg-canvas shadow-[0_0_80px_#00000055]"
       data-layout="jy-react"
       data-screen={view}
+      style={{ '--app-nav-height': `${bottomHeight || 82}px` } as CSSProperties}
     >
-      <header className="sticky top-0 z-30 flex h-[62px] items-center justify-between gap-2 bg-[#f7f4ed]/95 px-[19px] backdrop-blur-xl">
+      <Starfield compact />
+      <header className="sticky top-0 z-30 flex h-[62px] items-center justify-between gap-2 border-b border-gold/10 bg-canvas/95 px-[19px] backdrop-blur-xl">
         <button
           onClick={() => go('overview')}
           aria-label={t.homeLabel}
@@ -108,14 +98,6 @@ export function WanjaiShell({
               <LanguageFlag language={language} className="h-5 w-5" />
             </button>
           )}
-          <button
-            className="jy-icon"
-            aria-label={t.w_inbox}
-            disabled={disabled}
-            onClick={() => go('inbox')}
-          >
-            <Bell size={20} />
-          </button>
           {signedIn ? (
             <button className="jy-icon" aria-label={t.logout} disabled={busy} onClick={onLogout}>
               <LogOut size={18} />
@@ -138,7 +120,7 @@ export function WanjaiShell({
       {menu && (
         <>
           <button
-            className="fixed inset-0 z-30 bg-ink/20"
+            className="fixed inset-0 z-30 bg-night/70"
             aria-label={t.closeNavigation}
             onClick={() => setMenu(false)}
           />
@@ -153,19 +135,17 @@ export function WanjaiShell({
               </button>
             </div>
             {[
-              { id: 'thai-test', label: t.th_readingTool },
-              { id: 'questions', label: t.w_chooseQuestion },
-              { id: 'daily', label: t.w_daily },
-              { id: 'journey', label: t.w_journey },
-              { id: 'memories', label: t.memories },
-              { id: 'orders', label: t.j_orders },
-              { id: 'explore', label: t.w_bazi },
+              { id: 'chart', label: a.myChart },
+              { id: 'reports', label: a.reports },
+              { id: 'profile', label: a.birth },
+              { id: 'orders', label: a.purchaseHistory },
+              { id: 'mine', label: a.mine },
             ].map((item) => (
               <button
                 key={item.id}
                 className="flex min-h-11 w-full items-center gap-3 border-t border-line py-2 text-left text-sm"
                 disabled={disabled}
-                onClick={() => go(item.id as WanjaiView)}
+                onClick={() => go(item.id as AppView)}
               >
                 <BookOpen size={15} className="text-gold" />
                 {item.label}
@@ -175,7 +155,7 @@ export function WanjaiShell({
         </>
       )}
       <main
-        className={view === 'chat' && !entry ? '' : 'px-[19px] pb-[110px] pt-3'}
+        className="relative z-10 px-[19px] pb-[110px] pt-3"
         style={bottomAction ? { paddingBottom: bottomHeight + 24 } : undefined}
       >
         {children}
@@ -186,7 +166,7 @@ export function WanjaiShell({
           className="fixed bottom-0 left-1/2 z-30 w-full max-w-[430px] -translate-x-1/2"
         >
           {bottomAction && (
-            <div className="border-t border-[#e3d8c8] bg-[#f7f4ed]/95 px-[19px] py-3 backdrop-blur-xl">
+            <div className="border-t border-line bg-panel/95 px-[19px] py-3 backdrop-blur-xl">
               <button
                 type="button"
                 data-testid={
@@ -194,7 +174,7 @@ export function WanjaiShell({
                 }
                 aria-controls={bottomAction.controls}
                 aria-expanded={bottomAction.kind === 'unlock' ? false : undefined}
-                className="jy-primary w-full shadow-[0_4px_16px_-8px_#8a3f31]"
+                className="jy-primary w-full shadow-[0_4px_20px_-10px_#e4bc7866]"
                 onClick={() => {
                   setMenu(false);
                   bottomAction.onClick();
@@ -212,23 +192,17 @@ export function WanjaiShell({
           )}
           <nav
             aria-label={t.workspace}
-            className="grid grid-cols-5 gap-1 border-t border-[#dfd6c5] bg-[#f6f0e5]/95 px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-xl"
+            className="grid grid-cols-4 gap-1 border-t border-line bg-panel/95 px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-xl"
           >
             {items.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 aria-current={group === id ? 'page' : undefined}
                 disabled={disabled}
-                className={`flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-0.5 text-[11px] ${group === id ? 'bg-[#ead7c6] text-accent' : 'text-[#73644f]'}`}
+                className={`flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-0.5 text-[11px] ${group === id ? 'bg-surface text-accent' : 'text-muted'}`}
                 onClick={() => go(id)}
               >
-                <span
-                  className={
-                    id === 'chat' && group === id
-                      ? 'rounded-xl bg-primary px-3 py-1 text-white'
-                      : 'px-3 py-1'
-                  }
-                >
+                <span className="px-3 py-1">
                   <Icon size={21} strokeWidth={1.5} />
                 </span>
                 <span>{label}</span>

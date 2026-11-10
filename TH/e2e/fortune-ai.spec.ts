@@ -81,9 +81,11 @@ test('keeps native results readable if personalized writing fails', async ({ pag
   await page.getByRole('button', { name: zh.confirmLanguage, exact: true }).click();
   await chooseChineseDate(page, '1999-02-20');
   await page.getByRole('button', { name: zh.f_cta, exact: true }).click();
-  await expect(page.getByTestId('fortune-focus')).toContainText(zh.o_fallback);
+  await expect(page.getByTestId('fortune-focus')).toContainText(zh.ux_serviceBusy);
   await expect(
-    page.getByTestId('fortune-focus').getByRole('button', { name: zh.retry, exact: true }),
+    page
+      .getByTestId('fortune-focus')
+      .getByRole('button', { name: zh.ux_retryReading, exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId('fortune-narrative')).not.toBeEmpty();
   await expect(page.getByTestId('fortune-topics').getByRole('article')).toHaveCount(4);

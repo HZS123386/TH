@@ -12,17 +12,17 @@ export function WanjaiQuestions(p: WanjaiPageProps) {
       return (
         <button
           key={concern.id}
-          className={`flex min-h-[87px] w-full items-center gap-3 rounded-[17px] border p-4 text-left ${p.state.concern === concern.id ? 'border-primary bg-[#eadfcd]' : 'border-[#decbb0] bg-[#fffaf1]'}`}
+          className={`flex min-h-[87px] w-full items-center gap-3 rounded-[17px] border p-4 text-left ${p.state.concern === concern.id ? 'border-primary bg-surface' : 'border-line bg-panel'}`}
           onClick={() => {
             p.update({ concern: concern.id, option: null, topic: concern.topic as Topic });
             p.navigate('concern');
           }}
         >
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#dbc39a] bg-[#f2e6cb] text-[#9c7945]">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line bg-surface text-gold">
             <Icon size={23} strokeWidth={1.5} />
           </span>
           <span className="min-w-0 flex-1">
-            <small className="text-[11px] text-[#997d58]">{concern.label}</small>
+            <small className="text-[11px] text-muted">{concern.label}</small>
             <b className="mt-1 block text-[15px] font-normal leading-7">{concern.question}</b>
           </span>
           <ArrowRight size={15} className="shrink-0 text-accent" />
@@ -34,7 +34,7 @@ export function WanjaiQuestions(p: WanjaiPageProps) {
       <PageIntro title={p.t.f_concern.replace(/（.*?）/, '')} sub={p.t.w_hubSub} />
       <div className="space-y-3">{cards(0, 6)}</div>
       <details className="my-5">
-        <summary className="cursor-pointer py-2 text-sm text-[#8c6f49]">
+        <summary className="cursor-pointer py-2 text-sm text-muted">
           {p.t.j_otherConcerns}
         </summary>
         <div className="mt-3 space-y-3">{cards(6, 10)}</div>
@@ -43,7 +43,7 @@ export function WanjaiQuestions(p: WanjaiPageProps) {
         {p.t.j_noQuestion}
       </button>
       <button
-        className="mt-4 min-h-11 w-full text-sm text-[#9a7d56]"
+        className="mt-4 min-h-11 w-full text-sm text-muted"
         onClick={() => p.navigate('overview')}
       >
         {p.t.w_home} →
@@ -61,11 +61,11 @@ export function WanjaiConcern(p: WanjaiPageProps) {
   const path = option ? solution.paths[solution.options.indexOf(option)] : null;
   return (
     <div className="space-y-[18px]" data-testid="jy-concern-page">
-      <button className="min-h-10 text-sm text-[#9b8058]" onClick={() => navigate('questions')}>
+      <button className="min-h-10 text-sm text-muted" onClick={() => navigate('questions')}>
         ‹ {t.w_chooseQuestion}
       </button>
       <header className="text-center">
-        <span className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-[#d8bf91] bg-[#eee0c5] text-[#9c7945]">
+        <span className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-gold/35 bg-surface text-gold">
           <Icon size={29} strokeWidth={1.5} />
         </span>
         <p className="jy-kicker mt-4">
@@ -82,7 +82,7 @@ export function WanjaiConcern(p: WanjaiPageProps) {
             <button
               key={row.id}
               aria-pressed={state.option === row.id}
-              className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm leading-7 ${state.option === row.id ? 'border-primary bg-[#efe1cf] text-accent' : 'border-line bg-[#fbf6ec]'}`}
+              className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm leading-7 ${state.option === row.id ? 'border-primary bg-surface text-accent' : 'border-line bg-panel'}`}
               onClick={() => update({ option: row.id as 'a' | 'b' })}
             >
               <span className="flex-1">{row.label}</span>
@@ -92,12 +92,12 @@ export function WanjaiConcern(p: WanjaiPageProps) {
         </div>
       </section>
       <details className="jy-card !p-0">
-        <summary className="cursor-pointer p-4 text-sm text-[#92754f]">{t.j_themeOverview}</summary>
+        <summary className="cursor-pointer p-4 text-sm text-muted">{t.j_themeOverview}</summary>
         <div className="border-t border-line px-4 pb-4">
           <ThaiBasis p={p} topic={concern.topic as Topic} />
         </div>
       </details>
-      <article className="rounded-[19px] border-l-[3px] border-[#b99a65] bg-[#ede3d0] p-5">
+      <article className="rounded-[19px] border-l-[3px] border-gold/35 bg-surface p-5">
         <p className="jy-kicker">
           {t.j_conclusion} · {t.w_editorial}
         </p>
@@ -121,7 +121,7 @@ export function WanjaiConcern(p: WanjaiPageProps) {
                 <button
                   key={key}
                   aria-pressed={done}
-                  className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left ${done ? 'border-[#9faa8e] bg-[#e8ecdf]' : 'border-line bg-panel'}`}
+                  className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left ${done ? 'border-emerald-400/30 bg-emerald-950/35' : 'border-line bg-panel'}`}
                   onClick={() =>
                     update({
                       checks: done
@@ -154,7 +154,7 @@ export function WanjaiConcern(p: WanjaiPageProps) {
           <ArrowRight size={16} />
         </button>
       </section>
-      <section className="rounded-[19px] border border-[#d6c29e] bg-[#eee3cf] p-5">
+      <section className="rounded-[19px] border border-line bg-surface p-5">
         <p className="jy-kicker">{t.w_preview}</p>
         <h2 className="my-2 text-xl">{t.w_solution}</h2>
         <p className="jy-copy">{t.w_planIntro}</p>
@@ -163,7 +163,7 @@ export function WanjaiConcern(p: WanjaiPageProps) {
           <ArrowRight size={16} />
         </button>
       </section>
-      <p className="text-xs leading-7 text-[#9b8a6f]">
+      <p className="text-xs leading-7 text-muted">
         {t.w_editorial} · {t.j_backendNote}
       </p>
       <button className="jy-outline w-full" onClick={() => navigate('overview')}>

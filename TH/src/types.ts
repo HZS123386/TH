@@ -2,6 +2,7 @@ export type Language = 'zh' | 'en' | 'th' | 'vi';
 export type ProviderId = 'mock' | 'deepseek' | 'qwen' | 'openai' | 'kimi' | 'companion';
 export interface Profile {
   display_name: string;
+  gender?: 'female' | 'male' | null;
   birth_date: string;
   birth_time: string | null;
   timezone: string;
@@ -25,6 +26,7 @@ export interface Chart {
   notes: string[];
 }
 export interface ProfileRecord {
+  profile_id?: string;
   profile: Profile;
   chart: Chart;
   revision: number;

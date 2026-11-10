@@ -184,9 +184,9 @@ def test_atomic_lease_deduplicates_parallel_calls_and_failed_calls_cool_down(tmp
     expiry = datetime.now().timestamp() + 3600
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = list(pool.map(lambda _: reports.claim("same", "account:a", "network:a", expiry), range(8)))
-    assert [state for state, _ in results].count("claimed") == 1
-    assert [state for state, _ in results].count("pending") == 7
-    lease = next(lease for state, lease in results if state == "claimed")
+    assert [state for state, _, _ in results].count("claimed") == 1
+    assert [state for state, _, _ in results].count("pending") == 7
+    lease = next(lease for state, lease, _ in results if state == "claimed")
     reports.finish("same", "wrong-lease", {"source": "wrong"})
     assert reports.cached("same") is None
     reports.finish("same", lease)
@@ -199,15 +199,29 @@ def test_cache_expiry_account_limit_and_shared_network_limit_are_enforced(tmp_pa
     settings = configured(tmp_path, fortune_per_day=1, fortune_network_per_day=2)
     reports = FortuneReports(Storage(settings.database_path), settings, asyncio.Semaphore(1))
     monkeypatch.setattr("backend.app.fortune_reports.time.time", lambda: 10000)
-    state, lease = reports.claim("a", "account:a", "network:shared", 10010)
+    state, lease, _ = reports.claim("a", "account:a", "network:shared", 10010)
     assert state == "claimed"
     reports.finish("a", lease, {"source": "ai"})
     assert reports.claim("a", "account:a", "network:shared", 10010)[0] == "cached"
-    assert reports.claim("new-a", "account:a", "network:shared", 20000)[0] == "limited"
+    state, _, retry = reports.claim("new-a", "account:a", "network:shared", 20000)
+    assert state == "limited"
+    assert retry == {"limit_scope": "personal", "retry_after": 86400}
     assert reports.claim("b", "account:b", "network:shared", 20000)[0] == "claimed"
-    assert reports.claim("c", "account:c", "network:shared", 20000)[0] == "limited"
+    state, _, retry = reports.claim("c", "account:c", "network:shared", 20000)
+    assert state == "limited"
+    assert retry == {"limit_scope": "network", "retry_after": 86400}
     monkeypatch.setattr("backend.app.fortune_reports.time.time", lambda: 10011)
     assert reports.cached("a") is None
+
+
+def test_guest_owner_limit_is_identified_as_shared_network_not_personal_usage(tmp_path, monkeypatch):
+    settings = configured(tmp_path, fortune_per_day=1, fortune_network_per_day=1000)
+    reports = FortuneReports(Storage(settings.database_path), settings, asyncio.Semaphore(1))
+    monkeypatch.setattr("backend.app.fortune_reports.time.time", lambda: 10000)
+    assert reports.claim("first-visitor", "guest:network:shared", "network:shared", 20000)[0] == "claimed"
+    state, _, retry = reports.claim("new-visitor", "guest:network:shared", "network:shared", 20000)
+    assert state == "limited"
+    assert retry == {"limit_scope": "network", "retry_after": 86400}
 
 
 def test_model_api_protocol_cache_reuse_and_no_profile_or_history_leak(tmp_path, monkeypatch):
@@ -259,7 +273,7 @@ def test_chat_reuses_only_the_same_account_cached_report_and_native_factors(tmp_
         reports = client.app.state.fortune_reports
         owner = "account:" + client.app.state.store.hash(client.get("/api/auth/me", headers=first).json()["user_id"])
         key = reports.key(value, DATE_ONLY, owner)
-        _, lease = reports.claim(key, owner, "test-network", reports.expiry(value))
+        _, lease, _ = reports.claim(key, owner, "test-network", reports.expiry(value))
         written = validate_story(sample_story(value, "zh"), value, "zh")
         reports.finish(key, lease, written)
         captured = []

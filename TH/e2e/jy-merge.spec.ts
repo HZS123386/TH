@@ -9,7 +9,9 @@ test('JY teaching example is accessible before birthday and never becomes a pers
   await page.goto('/');
   await page.getByRole('radio', { name: /简体中文/ }).check();
   await page.getByRole('button', { name: zh.confirmLanguage, exact: true }).click();
-  await page.getByRole('button', { name: zh.j_exampleChart, exact: true }).click();
+  await expect(page.getByTestId('birth-entry')).toBeVisible();
+  await expect(page.getByRole('button', { name: zh.j_exampleChart, exact: true })).toHaveCount(0);
+  await page.goto('/example');
   await expect(page).toHaveURL(/\/example$/);
   await expect(page.getByRole('note')).toContainText(zh.j_exampleNotice);
   await expect(page.getByRole('img', { name: zh.th_natal, exact: true })).toBeVisible();
@@ -36,7 +38,7 @@ test('JY page flow retains local language, logo and wheels and carries a selecte
   await page.goto('/');
   await page.getByRole('radio', { name: /简体中文/ }).check();
   await page.getByRole('button', { name: zh.confirmLanguage, exact: true }).click();
-  await expect(page.locator('[data-layout="jy-react"] [data-brand-mark="lotus-star"]')).toHaveCount(
+  await expect(page.locator('[data-layout="jy-react"] [data-brand-mark="astro-star"]')).toHaveCount(
     1,
   );
   await expect(page.getByRole('button', { name: zh.f_cta, exact: true })).toBeDisabled();

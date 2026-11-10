@@ -2,6 +2,7 @@
 import asyncio
 from datetime import datetime, timedelta
 import json
+import math
 import re
 import secrets
 import time
@@ -210,19 +211,27 @@ class FortuneReports:
             db.execute("DELETE FROM fortune_usage WHERE created<?", (now - 86400,))
             row = db.execute("SELECT payload,pending_until,retry_after FROM fortune_reports WHERE cache_key=?", (key,)).fetchone()
             if row and row["payload"]:
-                return "cached", ""
+                return "cached", "", {}
             if row and row["pending_until"] > now:
-                return "pending", ""
+                return "pending", "", {"retry_after": max(1, math.ceil(row["pending_until"] - now))}
             if row and row["retry_after"] > now:
-                return "cooldown", ""
+                return "cooldown", "", {"retry_after": max(1, math.ceil(row["retry_after"] - now))}
             limits = [(owner, self.settings.fortune_per_minute, self.settings.fortune_per_day), (network, 15, self.settings.fortune_network_per_day)]
             for scope, minute_limit, day_limit in limits:
                 minute, day = db.execute("SELECT COALESCE(SUM(created>=?),0),COUNT(*) FROM fortune_usage WHERE scope=? AND created>=?", (now - 60, scope, now - 86400)).fetchone()
                 if minute >= minute_limit or day >= day_limit:
-                    return "limited", ""
+                    window, limit = (86400, day_limit) if day >= day_limit else (60, minute_limit)
+                    # A rolling limit frees a slot when the corresponding usage row expires.
+                    oldest = db.execute(
+                        "SELECT created FROM fortune_usage WHERE scope=? AND created>=? ORDER BY created LIMIT 1 OFFSET ?",
+                        (scope, now - window, max(0, (day if window == 86400 else minute) - limit)),
+                    ).fetchone()
+                    wait = max(1, math.ceil(oldest[0] + window - now)) if oldest else window
+                    personal = scope == owner and owner.startswith("account:")
+                    return "limited", "", {"limit_scope": "personal" if personal else "network", "retry_after": wait}
             db.executemany("INSERT INTO fortune_usage VALUES (?,?)", [(owner, now), (network, now)])
             db.execute("INSERT INTO fortune_reports(cache_key,expires,pending_until,lease) VALUES (?,?,?,?) ON CONFLICT(cache_key) DO UPDATE SET expires=excluded.expires,pending_until=excluded.pending_until,lease=excluded.lease", (key, expires, now + 45, lease))
-        return "claimed", lease
+        return "claimed", lease, {}
 
     def finish(self, key, lease, story=None):
         with self.store.connect() as db:
@@ -265,7 +274,7 @@ class FortuneReports:
         if cached:
             return {"narrative": cached, "generation": {"available": self.enabled, "state": "ready", "cached": True}}
         fallback = {**narrative(value, profile["language"]), "source": "rules"}
-        state, lease = self.claim(key, owner, network, self.expiry(value)) if self.enabled else ("unconfigured", "")
+        state, lease, retry = self.claim(key, owner, network, self.expiry(value)) if self.enabled else ("unconfigured", "", {})
         if state == "cached":
             return {"narrative": self.cached(key) or fallback, "generation": {"available": self.enabled, "state": "ready", "cached": True}}
         if state == "claimed":
@@ -281,4 +290,5 @@ class FortuneReports:
             except (InvalidReport, httpx.HTTPError, TimeoutError):
                 self.finish(key, lease)
                 state = "unavailable"
-        return {"narrative": fallback, "generation": {"available": self.enabled, "state": "fallback", "reason": state, "cached": False}}
+                retry = {"retry_after": 45}
+        return {"narrative": fallback, "generation": {"available": self.enabled, "state": "fallback", "reason": state, "cached": False, **retry}}

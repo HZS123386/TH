@@ -67,7 +67,7 @@ export function ReportCheckoutDialog({ report, product, onClose, onConfirm }: {
     <dialog ref={dialog} className="report-checkout-dialog p-5 text-cream" aria-labelledby={title} data-testid="life-checkout"
       onCancel={event => { event.preventDefault(); onClose(); }}>
       <div className="flex items-center justify-between gap-3">
-        <span className="font-serif text-sm tracking-[0.2em] text-gold"><span aria-hidden="true">✧</span> FATE</span>
+        <span className="text-sm font-bold tracking-[0.1em] text-gold"><span aria-hidden="true">✧</span> FATE</span>
         <button type="button" className="rounded-lg bg-transparent p-2 text-lavender" aria-label={c.close} onClick={onClose}><X size={20} aria-hidden="true" /></button>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">

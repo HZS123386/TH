@@ -38,3 +38,8 @@ Validation fixtures under scripts/fixtures/thai are numerical facts attributed
 to the pinned upstream MIT project, USNO and IANA. Four USNO JSON responses
 under reports/thai-evidence were retrieved independently on 2026-11-05 using
 synthetic public dates and coordinates; they contain no user birth records.
+
+The twelve illustrations under images/zodiac/illustrated were generated with the
+built-in image_gen tool on 2026-11-09 for ASTRO AI. Source PNGs and the exact
+generation prompts are retained under assets/zodiac/illustrated. Existing zodiac
+artwork outside that directory remains unchanged.

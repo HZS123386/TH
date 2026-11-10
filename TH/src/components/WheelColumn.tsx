@@ -122,6 +122,7 @@ export function WheelColumn({
             id={`${id}-${optionIndex}`}
             role="option"
             data-wheel-index={optionIndex}
+            data-wheel-value={option.value}
             aria-selected={optionIndex === index}
             className={`flex h-11 select-none snap-center items-center justify-center px-1 text-center text-sm leading-tight transition-colors sm:text-base ${optionIndex === index ? 'font-semibold text-accent' : 'text-muted/70'}`}
             onClick={() => {
@@ -132,7 +133,9 @@ export function WheelColumn({
               select(optionIndex);
             }}
           >
-            {option.label}
+            <span className="line-clamp-2 break-words" title={option.label}>
+              {option.label}
+            </span>
           </div>
         ))}
       </div>

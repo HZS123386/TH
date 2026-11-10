@@ -4,7 +4,7 @@ import type { ThaiChart } from '../lib/thai';
 export function ChartCalculationNote({ value, t }: { value: ThaiChart; t: Copy }) {
   return (
     <section
-      className="mb-5 rounded-2xl border border-[#dfcfb5] bg-[#f3ecdf] p-3 text-xs leading-6 text-[#856b49]"
+      className="mb-5 rounded-2xl border border-line bg-surface p-3 text-xs leading-6 text-muted"
       data-testid="chart-calculation-settings"
     >
       <h3 className="sr-only">{t.q_settings}</h3>
@@ -12,7 +12,7 @@ export function ChartCalculationNote({ value, t }: { value: ThaiChart; t: Copy }
         {[t.q_system, t.q_houses, t.q_lines].map((label) => (
           <span
             key={label}
-            className="rounded-lg border border-[#dcc8a6] bg-panel px-2 py-1 text-[10px] leading-5"
+            className="rounded-lg border border-line bg-panel px-2 py-1 text-[10px] leading-5"
           >
             {label}
           </span>

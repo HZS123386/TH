@@ -1,12 +1,12 @@
-# ดวงใจ / 星心 · 泰国本地生活与占星陪伴
+# ASTRO · AI · 泰式占星与生活陪伴
 
 当前独立测算页已改为泰式占星：访问 `/thai-test`，原 `/bazi-test` 链接也进入该页面，或从右上角菜单和“我的”进入“泰式占星解读”。按本命星盘、全年运势、财富、感情、事业、家庭六个主题计算实际泰式宫位与宫主星，再生成各自的解读和行动建议。生日、准确出生时间、出生地和时区参与计算，全年主题使用所选年份逐日行运；页面和导出随系统语言切换。说明与真实接口验收见 [THAI_READING_TESTING.md](docs/THAI_READING_TESTING.md)。
 
 原Roxy八字工具保留于 `/tools/bazi`，仍可通过探索模块进入，不展示原始JSON与计算依据入口。GitHub本地及双源对照仍可通过验收脚本使用。Roxy密钥仅保存在服务端；启用后的新档案八字与八字聊天使用Roxy，泰式引擎继续独立运行。操作、额度和准确性测试方法见 [ROXY_BAZI_TESTING.md](docs/ROXY_BAZI_TESTING.md)。下文旧接入记录中的“没有接通Roxy商业接口”描述属于本次接入之前的状态。
 
-界面品牌已更新为原创莲花星芒标记，展示名随语言切换：中文「星心」、泰语「ดวงใจ」、英语「Starheart」、越南语「Tâm An」。副标题、聊天署名、分享卡和浏览器标题同步切换。品牌设计与可导出矢量资产见 [docs/BRAND_DESIGN.md](docs/BRAND_DESIGN.md)；项目原有 WANJAI 技术标识和数据键保持兼容。
+界面品牌统一为「ASTRO · AI」，四种语言共用四角星标记与深紫暖金主题，与落地页保持一致。副标题、聊天署名、分享卡和浏览器标题同步切换。品牌设计与可导出矢量资产见 [docs/BRAND_DESIGN.md](docs/BRAND_DESIGN.md)；项目原有 WANJAI 技术标识和数据键保持兼容。
 
-按提供的 WANJAI 离线 App 与可行性报告改造的本地项目，现已对照 GitHub JY 分支移植页面及交互。主界面采用米白、砖红、黄铜金与鼠尾草绿；桌面与移动端统一为 JY 的居中 App 布局和“运势 / 星盘 / 聊聊 / 好物 / 我的”底部五栏。首次打开保留本地四语言弹窗，确认后记住语言，之后可在“我的”中再次打开；Logo 和生辰滚轮也保留本地实现。使用 React 18、TypeScript、Tailwind、pnpm、Vitest 与 FastAPI / SQLite 技术栈。合并来源、页面对应、服务衔接与验收步骤见 [docs/JY_MERGE.md](docs/JY_MERGE.md)。
+按提供的 WANJAI 离线 App 与可行性报告改造的本地项目，现已对照 GitHub JY 分支移植页面及交互。主界面采用深紫、暖金与浅奶油文字；桌面与移动端统一为 JY 的居中 App 布局和“运势 / 星盘 / 聊聊 / 好物 / 我的”底部五栏。首次打开保留本地四语言弹窗，确认后记住语言，之后可在“我的”中再次打开；Logo 和生辰滚轮也保留本地实现。使用 React 18、TypeScript、Tailwind、pnpm、Vitest 与 FastAPI / SQLite 技术栈。合并来源、页面对应、服务衔接与验收步骤见 [docs/JY_MERGE.md](docs/JY_MERGE.md)。
 
 ## 快速开始
 

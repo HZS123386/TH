@@ -19,7 +19,8 @@ HEADERS = {"X-Report-Key": "test-owner-key-with-more-than-thirty-two-characters"
 WORDS = ["先确认清楚任务", "给安排留些余地", "把需要表达清楚", "遇到变化先核对", "选择能做到的事", "完成以后再复盘"]
 TRAIT = "遇到一件要求还不清楚的事情时，你可能更愿意先问清楚完成标准，再选择怎样投入。比如接到临时安排，可以先确认对方最在意的结果，再决定从哪一部分开始。这样能让准备更踏实，也减少反复修改的时间。如果事情需要先试一版，可以约定一个较小的范围，做完后再根据反馈调整，不必等到所有条件都确定。"
 TEXT = "先把这件事情的要求和已有安排写清楚，再和相关的人确认优先顺序。遇到临时变化时，可以先说清自己能够完成的范围，避免在条件不明确时把所有事情都答应下来。"
-TOPICS = {"overview": "生活", "money": "收入", "work": "工作", "love": "相处", "family": "家庭", "annual": "安排"}
+TOPICS = {"overview": "生活", "money": "收入", "work": "工作", "love": "相处", "family": "家庭", "annual": "安排",
+          "overall": "取舍", "pattern": "优势", "marriage": "经营", "wealth": "积累", "risk": "留意", "romance": "相识"}
 
 
 def story_for(bundle):
@@ -94,6 +95,66 @@ def test_preview_is_personal_and_does_not_return_paid_chapters(client):
     assert "birth_date" not in json.dumps(calls[0])
     assert all(len(row["evidence"]) == 2 for row in result["preview"]["traits"])
     assert preview(http)["id"] == result["id"] and len(calls) == 1
+
+
+def test_fortune_topics_unlock_with_distinct_evidence_and_content_progress(client):
+    http, app, calls, _ = client
+    legacy = preview(http)
+    response = http.post("/api/life-reports", json={"profile": PROFILE, "year": 2027, "report_kind": "fortune"}, headers=HEADERS)
+    assert response.status_code == 200, response.text
+    report = response.json()
+    keys = ["annual", "overall", "pattern", "marriage", "wealth", "risk", "romance"]
+    assert report["id"] != legacy["id"] and report["title"] == "运程解析"
+    assert report["version"] == "fortune-reading-1"
+    assert [item["key"] for item in report["catalog"]] == keys
+    assert report["catalog"][0]["title"] == "2027年运程"
+    assert report["chapters"] == [] and report["plan"] is None
+    assert len(calls) == 2 and not app.state.life_reports.tasks
+    unlocked = http.post(f"/api/life-reports/{report['id']}/unlock", json={}, headers=HEADERS).json()
+    assert unlocked["progress"] == {"completed": 0, "total": 8}
+    with app.state.life_reports.store.connect() as db:
+        lease = db.execute("SELECT lease FROM life_reports WHERE id=?", (report["id"],)).fetchone()[0]
+    app.state.life_reports.record_progress(report["id"], lease, {"annual": 25, "overall": 50})
+    partial = http.get(f"/api/life-reports/{report['id']}", headers=HEADERS).json()
+    assert partial["generation_progress"]["percent"] == 9
+    assert partial["preview_generation_progress"]["percent"] == 100
+    assert partial["chapters"] == []
+    finish(http, app)
+    full = http.get(f"/api/life-reports/{report['id']}", headers=HEADERS).json()
+    assert full["full_state"] == "ready", full
+    assert [chapter["key"] for chapter in full["chapters"]] == keys
+    assert full["progress"] == {"completed": 8, "total": 8}
+    assert full["generation_progress"]["percent"] == 100 and full["plan"]
+    bundles = {bundle["reading"]: bundle for bundle in calls if bundle["stage"] == "chapter"}
+    assert bundles["risk"]["topic_evidence"] == ["H6", "H8", "H12"]
+    assert bundles["marriage"]["topic_evidence"] == ["H4", "H7", "H8"]
+    assert bundles["romance"]["topic_evidence"] == ["H1", "H5", "H7", "H11"]
+    assert {fact["month"] for key, fact in bundles["annual"]["evidence"].items() if key.startswith("M")} == set(range(1, 13))
+    for key in keys:
+        assert app.state.life_reports.parts_writer.prompt(bundles[key])
+    assert preview(http)["id"] == legacy["id"]
+    count = len(calls)
+    assert http.post(f"/api/life-reports/{report['id']}/unlock", json={}, headers=HEADERS).json()["full_state"] == "ready"
+    assert len(calls) == count
+
+
+def test_fortune_retry_keeps_the_six_successful_topics(client):
+    http, app, calls, mode = client
+    mode["fail"] = "risk"
+    report = http.post("/api/life-reports", json={"profile": PROFILE, "year": 2027, "report_kind": "fortune"}, headers=HEADERS).json()
+    http.post(f"/api/life-reports/{report['id']}/unlock", json={}, headers=HEADERS)
+    finish(http, app)
+    partial = http.get(f"/api/life-reports/{report['id']}", headers=HEADERS).json()
+    assert partial["full_state"] == "unavailable"
+    assert {item["key"] for item in partial["chapters"]} == {"annual", "overall", "pattern", "marriage", "wealth", "romance"}
+    assert partial["generation_progress"]["percent"] < 100 and partial["plan"] is None
+    done = {key: sum(bundle["reading"] == key for bundle in calls) for key in ("annual", "overall", "pattern", "marriage", "wealth", "romance")}
+    mode["fail"] = None
+    http.post(f"/api/life-reports/{report['id']}/unlock", json={}, headers=HEADERS)
+    finish(http, app)
+    full = http.get(f"/api/life-reports/{report['id']}", headers=HEADERS).json()
+    assert full["full_state"] == "ready" and len(full["chapters"]) == 7
+    assert all(sum(bundle["reading"] == key for bundle in calls) == count for key, count in done.items())
 
 
 def test_career_stage_is_persisted_and_unlock_uses_the_same_30_day_window(client):

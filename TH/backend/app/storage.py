@@ -142,12 +142,17 @@ class Storage:
 
     def save_profile(self, user_id: str, payload: dict, chart: dict):
         with self.connect() as db:
+            previous = db.execute("SELECT payload FROM profiles WHERE user_id=?", (user_id,)).fetchone()
+            birth_fields = ("birth_date", "birth_time", "timezone", "birthplace", "country_code", "location_id", "latitude", "longitude")
+            old_profile = json.loads(previous["payload"]) if previous else {}
+            birth_changed = any(old_profile.get(field) != payload.get(field) for field in birth_fields)
             db.execute(
                 """INSERT INTO profiles VALUES (?, 1, ?, ?) ON CONFLICT(user_id)
                 DO UPDATE SET revision=revision+1, payload=excluded.payload, chart=excluded.chart""",
                 (user_id, json.dumps(payload), json.dumps(chart)),
             )
-            db.execute("DELETE FROM messages WHERE user_id=?", (user_id,))
+            if birth_changed:
+                db.execute("DELETE FROM messages WHERE user_id=?", (user_id,))
         return self.profile(user_id)
 
     def history(self, user_id: str, limit: int = 60):

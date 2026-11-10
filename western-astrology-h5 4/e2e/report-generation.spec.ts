@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { generationCopy, lifeCopy, type LifeInput } from "../src/lib/lifeReport";
+import { generationCopy, lifeCopy, type LifeInput, type LifeReport } from "../src/lib/lifeReport";
+import { fortuneCopy, fortuneTopicKeys } from "../src/lib/fortuneTopics";
 import { bangkokProvince, inputFor, place, reportFixture } from "../tests/fixtures/lifeReport";
 
 async function fillBirth(page: Page) {
@@ -24,11 +25,8 @@ async function showFreeReport(page: Page) {
 }
 function partial(input: LifeInput, percent: number) {
   const report = { ...reportFixture(input), access: "full" as const, full_state: "generating" as const };
-  report.generation_progress = { percent, sections: [
-    {key: "work", percent: Math.min(100, percent * 5)}, {key: "money", percent: Math.max(0, Math.min(100, percent * 5 - 100))},
-    {key: "relationships", percent: Math.max(0, Math.min(100, percent * 5 - 200))},
-    {key: "annual", percent: Math.max(0, Math.min(100, percent * 5 - 300))}, {key: "plan", percent: Math.max(0, percent * 5 - 400)},
-  ] };
+  const keys: NonNullable<LifeReport["generation_progress"]>["sections"][number]["key"][] = input.report_kind === "fortune" ? [...fortuneTopicKeys, "plan"] : ["work", "money", "relationships", "annual", "plan"];
+  report.generation_progress = { percent, sections: keys.map((key, index) => ({ key, percent: Math.max(0, Math.min(100, percent * keys.length - index * 100)) })) };
   return report;
 }
 
@@ -63,7 +61,8 @@ test("unlock starts paid generation and detailed progress independently of the f
   await expect(progress).toHaveAttribute("aria-valuenow", "0");
   percent = 7;
   await expect(progress).toHaveAttribute("aria-valuenow", "7");
-  await expect(dialog.getByTestId("generation-sections")).toContainText("35%");
+  await expect(dialog.getByTestId("generation-sections")).toContainText("56%");
+  await expect(dialog.getByTestId("generation-sections").locator("div")).toHaveCount(8);
   percent = 14;
   await expect(progress).toHaveAttribute("aria-valuenow", "14");
   await dialog.screenshot({ path: info.outputPath("unlock-detailed-progress.png") });
@@ -76,7 +75,7 @@ test("unlock starts paid generation and detailed progress independently of the f
   ready = true;
   await expect(page.getByTestId("life-action-plan")).toBeVisible({ timeout: 8_000 });
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByTestId("life-full-report").getByText(lifeCopy.zh.full, { exact: true })).toBeInViewport();
+  await expect(page.getByTestId("life-full-report").getByText(fortuneCopy.zh.full, { exact: true })).toBeInViewport();
   expect(creates).toBe(1); expect(unlocks).toBe(1);
   await page.reload();
   await expect(page.getByTestId("life-action-plan")).toBeVisible();

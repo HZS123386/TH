@@ -92,7 +92,7 @@ test('reference features: questions, plans, progress, reminders, keepsakes and l
   await page.getByRole('button', { name: 'A note for a friend', exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save the card', exact: true }).click();
-  expect((await download).suggestedFilename()).toBe('Starheart-a-little-comfort.png');
+  expect((await download).suggestedFilename()).toBe(`${en.brandName}-a-little-comfort.png`);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });

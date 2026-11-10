@@ -19,7 +19,7 @@ export function ThaiLocationInput({
   const [places, setPlaces] = useState<AstrologyLocation[]>([]);
   const [error, setError] = useState('');
   const [manual, setManual] = useState(profile.latitude != null);
-  const [expanded, setExpanded] = useState(!!profile.location_id || profile.latitude != null);
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     if (!expanded) return;
     const controller = new AbortController();

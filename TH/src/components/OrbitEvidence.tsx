@@ -3,7 +3,7 @@ import type { Copy } from '../lib/i18n';
 import type { Language, Profile } from '../types';
 import type { ThaiChart } from '../lib/thai';
 import { contentFor } from '../lib/wanjai';
-import { type ChartRelation } from '../lib/chartGeometry';
+import { planetSymbols, type ChartRelation } from '../lib/chartGeometry';
 import { PickerDialog } from './PickerDialog';
 import { formatBirthTime } from '../lib/birthTime';
 
@@ -56,7 +56,10 @@ export function OrbitEvidence({
         {values.map((value) => (
           <section key={value.key} className="rounded-xl border border-line p-4">
             <h4 className="text-sm font-medium">
-              {value.number ?? 'ลั'} · {planetLabel(value.key, t)}{' '}
+              <span aria-hidden="true" className="mr-1 text-base text-muted">
+                {planetSymbols[value.key]}
+              </span>
+              {planetLabel(value.key, t)}{' '}
               <span lang="th" className="text-xs text-muted">
                 {value.nameThai}
               </span>
@@ -81,7 +84,7 @@ export function OrbitEvidence({
       </div>
       {profile && (
         <section
-          className="mt-5 rounded-xl bg-[#f4ecdf] p-4 text-xs leading-7"
+          className="mt-5 rounded-xl bg-surface p-4 text-xs leading-7"
           data-testid="orbit-birth-source"
         >
           <h4 className="mb-1 font-medium">{t.c_birthSource}</h4>

@@ -11,6 +11,7 @@ export type WanjaiView =
   | 'overview'
   | 'chart'
   | 'chart-reading'
+  | 'reports'
   | 'bazi-test'
   | 'thai-test'
   | 'example'

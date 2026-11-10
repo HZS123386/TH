@@ -4,19 +4,22 @@
 
 @layer base {
   :root {
-    --c-accent: 141 58 49;
-    --c-primary: 141 58 49;
-    --c-surface: 243 232 224;
-    --c-canvas: 250 248 244;
-    --c-panel: 255 254 250;
-    --c-ink: 56 56 47;
-    --c-muted: 119 121 105;
-    --c-line: 232 227 215;
-    --c-gold: 167 137 79;
+    /* ASTRO · AI palette shared with the landing page. */
+    --c-accent: 228 188 120;
+    --c-primary: 228 188 120;
+    --c-on-primary: 28 16 42;
+    --c-surface: 39 23 61;
+    --c-canvas: 19 12 36;
+    --c-panel: 32 21 47;
+    --c-ink: 255 245 223;
+    --c-muted: 180 168 198;
+    --c-line: 72 51 87;
+    --c-gold: 228 188 120;
+    --c-night: 11 7 21;
+    color-scheme: dark;
   }
   body {
-    @apply m-0 min-h-screen bg-[#e9e6df] font-sans text-ink antialiased;
-    color-scheme: light;
+    @apply m-0 min-h-screen bg-night font-sans text-ink antialiased;
   }
   button,
   input,
@@ -40,25 +43,25 @@
 }
 @layer components {
   .jy-card {
-    @apply rounded-[20px] border border-[#e3d8c8] bg-[#fffdf8] p-5;
+    @apply rounded-[20px] border border-line bg-panel p-5;
   }
   .jy-primary {
-    @apply inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-primary px-5 py-3 text-center text-[15px] font-medium leading-6 text-[#fff9f1] disabled:opacity-45;
+    @apply inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-primary px-5 py-3 text-center text-[15px] font-medium leading-6 text-on-primary hover:brightness-110 disabled:opacity-45;
   }
   .jy-outline {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#d8c7ac] bg-transparent px-4 py-2.5 text-sm leading-6 text-[#806447];
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gold/35 bg-transparent px-4 py-2.5 text-sm leading-6 text-gold hover:bg-gold/10;
   }
   .jy-icon {
-    @apply inline-flex h-9 w-8 items-center justify-center rounded-xl text-[#867358] hover:bg-[#eae1d1];
+    @apply inline-flex h-9 w-8 items-center justify-center rounded-xl text-muted hover:bg-surface hover:text-gold;
   }
   .jy-title {
     @apply text-[23px] font-semibold leading-[1.6] tracking-[-0.3px];
   }
   .jy-kicker {
-    @apply text-[11px] leading-6 tracking-wide text-[#9b8058];
+    @apply text-[11px] leading-6 tracking-wide text-gold;
   }
   .jy-copy {
-    @apply text-sm leading-7 text-[#78674f];
+    @apply text-sm leading-7 text-ink/80;
   }
   .jy-link {
     @apply flex min-h-12 w-full items-center justify-between gap-3 border-b border-line py-3 text-left text-sm last:border-0;
@@ -68,7 +71,7 @@
     min-height: 300px;
   }
   .jy-composer {
-    @apply flex min-h-[54px] items-center gap-2 rounded-2xl border border-[#ded0ba] bg-panel px-3 py-1;
+    @apply flex min-h-[54px] items-center gap-2 rounded-2xl border border-line bg-panel px-3 py-1;
   }
   .jy-chat-input {
     @apply block h-9 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-base leading-6 shadow-none outline-none;
@@ -79,8 +82,7 @@
     outline: none;
   }
   .jy-app {
-    --c-canvas: 247 244 237;
-    --c-panel: 255 253 248;
+    background-image: radial-gradient(ellipse at 100% 0, rgb(70 38 103 / 0.12), transparent 44%);
   }
   .jy-app .btn-primary {
     @apply min-h-11 rounded-xl;
@@ -98,7 +100,7 @@
     @apply rounded-2xl border border-line/80 bg-panel/90 shadow-soft;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-accent/30 bg-primary px-5 py-3 text-sm font-medium text-white hover:brightness-95;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-accent/30 bg-primary px-5 py-3 text-sm font-medium text-on-primary hover:brightness-110;
   }
   .btn-quiet {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface hover:text-accent;
@@ -111,14 +113,14 @@
   }
 }
 .language-dialog::backdrop {
-  background: rgb(91 75 56 / 0.16);
-  backdrop-filter: blur(3px);
+  background: rgb(11 7 21 / 0.72);
+  backdrop-filter: blur(5px);
 }
 .mobile-tabbar {
   padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
 summary::marker {
-  color: #b7975a;
+  color: rgb(var(--c-gold));
 }
 .cosmic-hero {
   background-image:
@@ -149,6 +151,30 @@ summary::marker {
 }
 .star-twinkle {
   animation: star-twinkle 7s ease-in-out infinite;
+}
+.celestial-float {
+  animation: celestial-float 6s ease-in-out infinite;
+}
+.celestial-twinkle {
+  animation: celestial-twinkle 5s ease-in-out infinite;
+}
+@keyframes celestial-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(1deg);
+  }
+}
+@keyframes celestial-twinkle {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 @keyframes star-twinkle {
   0%,

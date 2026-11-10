@@ -13,6 +13,7 @@ class Input(BaseModel):
 
 class ProfileInput(Input):
     display_name: str = Field(default="", max_length=60)
+    gender: Literal["female", "male"] | None = None
     birth_date: date
     birth_time: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     timezone: str = "Asia/Bangkok"

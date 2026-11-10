@@ -34,7 +34,7 @@ export function WanjaiJourney(p: WanjaiPageProps) {
         : steps[Math.min(records.length, 6)];
   return (
     <div className="mx-auto max-w-3xl">
-      <button className="mb-3 min-h-10 text-sm text-[#9b8058]" onClick={() => navigate('concern')}>
+      <button className="mb-3 min-h-10 text-sm text-muted" onClick={() => navigate('concern')}>
         ‹ {t.j_backQuestion}
       </button>
       <PageIntro title={t.j_journeyTitle} sub={concern.question} />
@@ -155,19 +155,19 @@ export function WanjaiDaily(p: WanjaiPageProps & { embedded?: boolean }) {
   return (
     <div className="mx-auto max-w-4xl">
       {!p.embedded && <PageIntro title={t.w_daily} sub={`${bangkokDay()} · ${t.w_bangkok}`} />}
-      <section className="rounded-[22px] border border-[#56604b] bg-[radial-gradient(ellipse_at_110%_-10%,#69735988,transparent_65%)] bg-[#424c3c] p-[21px] text-[#fbf5e8] [&_.btn-quiet]:text-[#e8d9b5]">
-        <p className="mb-4 text-xs text-[#e4d2ac]">✧ {t.j_todayMessage}</p>
+      <section className="rounded-[22px] border border-line bg-[radial-gradient(ellipse_at_110%_-10%,#6c428e66,transparent_65%)] bg-surface p-[21px] text-ink [&_.btn-quiet]:text-gold">
+        <p className="mb-4 text-xs text-gold">✧ {t.j_todayMessage}</p>
         <h2 className="mb-3 font-display text-[26px] leading-[1.55]">
           {state.mood === 'tired' ? t.j_todayGentle : t.w_focus}
         </h2>
-        <p className="mb-5 text-sm leading-8 text-[#e6e8d9]">{action}</p>
+        <p className="mb-5 text-sm leading-8 text-ink/85">{action}</p>
         <h2 className="mb-4 text-sm">{t.w_mood}</h2>
         <div className="flex flex-wrap gap-3">
           {(['steady', 'ready', 'tired'] as const).map((mood) => (
             <button
               key={mood}
               aria-pressed={state.mood === mood}
-              className={`flex-1 rounded-xl border px-2 py-2.5 text-xs ${state.mood === mood ? 'border-[#e8d9b5] bg-[#e8d9b5] text-[#36422e]' : 'border-[#c7c9b157] text-[#e8ecdd]'}`}
+              className={`flex-1 rounded-xl border px-2 py-2.5 text-xs ${state.mood === mood ? 'border-gold bg-primary text-on-primary' : 'border-line text-ink'}`}
               onClick={() => update({ mood })}
             >
               {t[`w_${mood}`]}

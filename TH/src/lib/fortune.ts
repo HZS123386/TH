@@ -34,6 +34,8 @@ export interface FortuneGeneration {
   state: 'rules' | 'ready' | 'fallback';
   cached: boolean;
   reason?: string;
+  limit_scope?: 'personal' | 'network';
+  retry_after?: number;
 }
 
 export interface FortuneFactor {

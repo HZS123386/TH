@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { calculateThaiHoroscope } from 'thai-astrology';
-import { chartPoint, chartRelations } from './chartGeometry';
+import { chartPoint, chartRelations, wholeSignHouseCusps } from './chartGeometry';
 
 it('checks every pair against independent sign-distance rules for the confirmed Beijing morning chart', () => {
   const chart = calculateThaiHoroscope({
@@ -38,6 +38,14 @@ it('checks every pair against independent sign-distance rules for the confirmed 
   expect(chart.points.sun.sign).toBe(10);
   expect(chart.points.moon.sign).toBe(11);
   expect(chart.points.ascendant.sign).toBe(10);
+  const cusps = wholeSignHouseCusps(chart);
+  expect(cusps.map((house) => house.longitudeDegrees)).toEqual([
+    300, 330, 0, 30, 60, 90, 120, 150, 180, 210, 240, 270,
+  ]);
+  expect(cusps[0].longitudeDegrees).not.toBe(chart.points.ascendant.longitudeDegrees);
+  expect(cusps.map((house) => [house.number, house.degrees, house.minutes])).toEqual(
+    Array.from({ length: 12 }, (_, index) => [index + 1, 0, 0]),
+  );
 });
 
 it('places the actual ascendant on the left and wraps longitudes at 360 degrees', () => {

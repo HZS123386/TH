@@ -169,6 +169,11 @@ test('optional wheels, birthday changes and explicit account binding use the sav
   await expectReadings(page, first);
   await expect(page.getByTestId('fortune-focus')).toContainText(zh.f_basisAsc);
   await navigate(page, zh.w_chart);
+  const setup = page.getByRole('dialog', { name: zh.c_chartSetupTitle, exact: true });
+  await setup.getByLabel(zh.name, { exact: true }).fill('体验用户');
+  await setup.getByText(zh.c_female, { exact: true }).click();
+  await setup.getByRole('button', { name: zh.c_viewMyChart, exact: true }).click();
+  await expect(setup).toHaveCount(0);
   await expect(page.getByRole('img', { name: zh.th_natal, exact: true })).toBeVisible();
   const originalMarkers = await page
     .getByTestId('thai-orbit-wheel')
@@ -187,7 +192,9 @@ test('optional wheels, birthday changes and explicit account binding use the sav
       response.url().endsWith('/api/fortune') &&
       response.request().postDataJSON().profile.birth_date === '1995-08-17',
   );
-  await page.getByRole('button', { name: zh.f_cta, exact: true }).click();
+  await page.getByRole('button', { name: zh.ux_saveReturn, exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await navigate(page, zh.w_home);
   const second = await (await changed).json();
   expect(second.birth.date).toBe('1995-08-17');
   expect(second.birth.reference_signs).not.toEqual(first.birth.reference_signs);
@@ -210,7 +217,7 @@ test('optional wheels, birthday changes and explicit account binding use the sav
   expect((await (await saved).json()).profile).toMatchObject({
     birth_date: '1995-08-17',
     birth_time: '19:15',
-    birthplace: 'Bangkok, Thailand',
+    birthplace: expect.stringContaining('曼谷'),
   });
   await page.getByRole('button', { name: zh.logout, exact: true }).click();
   await expect(page.getByTestId('fortune-focus')).toBeVisible();

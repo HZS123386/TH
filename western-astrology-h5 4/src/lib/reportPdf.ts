@@ -74,7 +74,7 @@ function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
   const value = (value: string, size = 10.5): Content => ({ text: textRuns(value), fontSize: size, color: palette.ink, lineHeight: 1.3, margin: [0, 0, 0, 4] });
   return [
     { columns: [
-      { text: "ASTRO · AI", color: palette.paleGold, characterSpacing: 2.2, fontSize: 9 },
+      { text: "FATE", color: palette.paleGold, characterSpacing: 2.2, fontSize: 9 },
       { text: textRuns(version), width: 140, alignment: "right", fontSize: 9, color: palette.paleGold },
     ], margin: [0, 0, 0, 16] },
     { text: textRuns(labels.title), fontSize: 34, color: "#FFF5DF", lineHeight: 1.15 },
@@ -204,16 +204,16 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
   }
   return {
     pageSize: "A4", pageMargins: [52, 62, 52, 62],
-    info: { title: labels.title, author: "ASTRO AI", subject: full ? labels.fullVersion : labels.previewVersion, keywords: `${report.method.version} / ${report.version}` },
+    info: { title: labels.title, author: "FATE", subject: full ? labels.fullVersion : labels.previewVersion, keywords: `${report.method.version} / ${report.version}` },
     defaultStyle: { font: "NotoChinese", fontSize: 10.5, color: palette.ink, lineHeight: 1.5 },
     background: (page, size) => ({ svg: pageArtwork(size.width, size.height, page === 1), width: size.width, height: size.height }),
     header: page => page === 1 ? [] : ({ columns: [
-      { text: "ASTRO · AI", characterSpacing: 1.5, color: palette.gold },
+      { text: "FATE", characterSpacing: 1.5, color: palette.gold },
       { text: textRuns(`${labels.title} · ${edition(report, labels)}`), alignment: "right", color: palette.muted },
     ], fontSize: 8, margin: [52, 27, 52, 0] }),
     content: Array.from(document.body.children).flatMap(element => blocks(element)),
     footer: (page, count) => ({ columns: [
-      { text: textRuns(`ASTRO · AI  /  ${report.id.slice(0, 12).toUpperCase()}`) },
+      { text: textRuns(`FATE  /  ${report.id.slice(0, 12).toUpperCase()}`) },
       { text: `${page} / ${count}`, alignment: "right" },
     ], fontSize: 7.5, color: palette.muted, margin: [52, 32, 52, 0] }),
   };

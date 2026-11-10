@@ -10,7 +10,7 @@ describe('birth profile', () => {
     fireEvent.click(screen.getByText('填入示例资料'));
     fireEvent.click(screen.getByLabelText('不记得确切时间'));
     expect(screen.getByRole('button', { name: '出生时间' })).toBeDisabled();
-    fireEvent.submit(screen.getByText('保存档案并生成命盘').closest('form')!);
+    fireEvent.submit(screen.getByText('保存并返回').closest('form')!);
     await waitFor(() =>
       expect(save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -47,7 +47,7 @@ describe('birth profile', () => {
       }),
     );
     fireEvent.click(dialog.getByRole('button', { name: '完成' }));
-    fireEvent.submit(screen.getByText('保存档案并生成命盘').closest('form')!);
+    fireEvent.submit(screen.getByText('保存并返回').closest('form')!);
     await waitFor(() =>
       expect(save).toHaveBeenCalledWith(expect.objectContaining({ birth_time: expected })),
     );
@@ -55,7 +55,7 @@ describe('birth profile', () => {
   it('requires a birth date before saving', async () => {
     const save = vi.fn();
     render(<ProfileForm language="zh" t={translations.zh} onSave={save} onBack={() => {}} />);
-    fireEvent.submit(screen.getByText('保存档案并生成命盘').closest('form')!);
+    fireEvent.submit(screen.getByText('保存并返回').closest('form')!);
     expect(await screen.findByRole('alert')).toHaveTextContent(translations.zh.chooseBirthDate);
     expect(save).not.toHaveBeenCalled();
   });
@@ -77,7 +77,7 @@ describe('birth profile', () => {
         onBack={() => {}}
       />,
     );
-    fireEvent.submit(screen.getByText('保存档案并生成命盘').closest('form')!);
+    fireEvent.submit(screen.getByText('保存并返回').closest('form')!);
     await waitFor(() =>
       expect(save).toHaveBeenCalledWith(
         expect.objectContaining({ birth_time: null, birthplace: '' }),
@@ -98,7 +98,7 @@ describe('birth profile', () => {
     fireEvent.click(screen.getByLabelText('不记得确切时间'));
     fireEvent.click(screen.getByLabelText('不记得确切时间'));
     expect(screen.getByRole('button', { name: '出生时间' })).toHaveTextContent('9:30');
-    fireEvent.submit(screen.getByText('保存档案并生成命盘').closest('form')!);
+    fireEvent.submit(screen.getByText('保存并返回').closest('form')!);
     await waitFor(() =>
       expect(save).toHaveBeenCalledWith(expect.objectContaining({ birth_time: '21:30' })),
     );
@@ -113,8 +113,8 @@ describe('birth profile', () => {
       />,
     );
     fireEvent.click(screen.getByText('填入示例资料'));
-    fireEvent.submit(screen.getByText('保存档案并生成命盘').closest('form')!);
+    fireEvent.submit(screen.getByText('保存并返回').closest('form')!);
     expect(await screen.findByRole('alert')).toHaveTextContent('出生时刻不存在');
-    expect(screen.getByRole('button', { name: '保存档案并生成命盘' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '保存并返回' })).toBeEnabled();
   });
 });

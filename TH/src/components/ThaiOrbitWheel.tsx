@@ -1,8 +1,9 @@
 import { useId, useState } from 'react';
 import type { ThaiHoroscope } from 'thai-astrology';
 import type { Copy } from '../lib/i18n';
-import { thaiSignNames } from '../lib/thai';
+import { contentFor } from '../lib/wanjai';
 import { chartPoint, chartRelations } from '../lib/chartGeometry';
+import { zodiacAbbreviation } from '../lib/zodiac';
 import type { Language, Profile } from '../types';
 import type { ThaiChart } from '../lib/thai';
 import { OrbitEvidence, planetLabel } from './OrbitEvidence';
@@ -14,6 +15,7 @@ export function ThaiOrbitWheel({
   profile,
   location,
   showDetails = true,
+  highlightedPoints = [],
 }: {
   chart?: ThaiHoroscope;
   t: Copy;
@@ -21,8 +23,10 @@ export function ThaiOrbitWheel({
   profile?: Profile | null;
   location?: ThaiChart['location'];
   showDetails?: boolean;
+  highlightedPoints?: (keyof ThaiHoroscope['points'])[];
 }) {
   const id = useId();
+  const signs = contentFor(language).signs;
   const [selectedPoint, setSelectedPoint] = useState<keyof ThaiHoroscope['points'] | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const rotation = chart ? chart.points.ascendant.longitudeDegrees + 180 : 105;
@@ -72,13 +76,13 @@ export function ThaiOrbitWheel({
         <title id={`${id}-title`}>{chart ? t.th_natal : t.th_chartLayout}</title>
         <desc id={`${id}-desc`}>
           {chart
-            ? `${t.c_orbitNote} ${planets.map((point) => `${point.nameThai}: ${point.longitudeDegrees.toFixed(2)}°, ${t.th_house} ${point.house}`).join('; ')}`
+            ? `${t.c_orbitNote} ${planets.map((point) => `${planetLabel(point.key, t)}: ${point.longitudeDegrees.toFixed(2)}°, ${t.th_house} ${point.house}`).join('; ')}`
             : t.th_chartPendingNote}
         </desc>
         <defs>
           <radialGradient id={`${id}-fill`}>
-            <stop stopColor="#faf2ee" />
-            <stop offset="1" stopColor="#fffdf8" />
+            <stop stopColor="rgb(var(--c-surface))" />
+            <stop offset="1" stopColor="rgb(var(--c-canvas))" />
           </radialGradient>
           <filter id={`${id}-glow`} x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="3" />
@@ -89,7 +93,7 @@ export function ThaiOrbitWheel({
           cy="240"
           r="220"
           fill="none"
-          stroke="#c6a175"
+          stroke="rgb(var(--c-gold))"
           strokeOpacity=".2"
           strokeWidth="8"
           filter={`url(#${id}-glow)`}
@@ -99,7 +103,7 @@ export function ThaiOrbitWheel({
           cy="240"
           r="232"
           fill="none"
-          stroke="#baa4be"
+          stroke="rgb(var(--c-muted))"
           strokeOpacity=".4"
           strokeDasharray="2 9"
         />
@@ -108,7 +112,7 @@ export function ThaiOrbitWheel({
           cy="240"
           r="220"
           fill={`url(#${id}-fill)`}
-          stroke="#b89564"
+          stroke="rgb(var(--c-gold))"
           strokeWidth="2"
         />
         {[184, 150, 110].map((radius) => (
@@ -118,40 +122,40 @@ export function ThaiOrbitWheel({
             cy="240"
             r={radius}
             fill="none"
-            stroke="#b6a7b0"
+            stroke="rgb(var(--c-muted))"
             strokeOpacity=".65"
           />
         ))}
-        {thaiSignNames.map((name, i) => {
+        {signs.map(({ id: signId, name }, i) => {
           const start = chartPoint(i * 30, 110, rotation),
             end = chartPoint(i * 30, 220, rotation),
             label = chartPoint(i * 30 + 15, 202, rotation),
-            house = chartPoint(i * 30 + 15, 96, rotation);
+            house = chartPoint(i * 30 + 15, 130, rotation);
           const houseNumber = chart?.houses.find((row) => row.sign === i)?.number;
-          let labelRotation = rotation - (i * 30 + 15) + 90;
-          while (labelRotation > 90) labelRotation -= 180;
-          while (labelRotation < -90) labelRotation += 180;
           return (
-            <g key={name}>
+            <g key={signId}>
+              <title>{name}</title>
               <line
                 x1={start.x}
                 y1={start.y}
                 x2={end.x}
                 y2={end.y}
-                stroke="#b6a7b0"
+                stroke="rgb(var(--c-muted))"
                 strokeOpacity=".55"
               />
               <text
-                lang="th"
+                lang="en"
+                aria-label={name}
+                data-zodiac-label={signId}
+                className="font-display"
                 x={label.x}
                 y={label.y}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="#6f5c4d"
-                fontSize="18"
-                transform={`rotate(${labelRotation} ${label.x} ${label.y})`}
+                fill="rgb(var(--c-muted))"
+                fontSize="16"
               >
-                {name}
+                {zodiacAbbreviation(i)}
               </text>
               {houseNumber && (
                 <text
@@ -159,8 +163,9 @@ export function ThaiOrbitWheel({
                   y={house.y}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  fill="#a28a74"
-                  fontSize="15"
+                  fill="rgb(var(--c-muted))"
+                  fillOpacity=".9"
+                  fontSize="14"
                 >
                   {houseNumber}
                 </text>
@@ -170,14 +175,22 @@ export function ThaiOrbitWheel({
         })}
         {chart &&
           links.map(({ from, to, color, kind }) => {
-            const a = chartPoint(from.longitudeDegrees, 86, rotation),
-              b = chartPoint(to.longitudeDegrees, 86, rotation);
+            // End just inside the inner ring (r=110), leaving a narrow visual gap.
+            const a = chartPoint(from.longitudeDegrees, 107, rotation),
+              b = chartPoint(to.longitudeDegrees, 107, rotation);
             return (
               <g
                 key={`${from.key}-${to.key}`}
                 className="cursor-pointer"
                 data-link={`${from.key}:${to.key}`}
                 data-kind={kind}
+                opacity={
+                  !highlightedPoints.length ||
+                  highlightedPoints.includes(from.key) ||
+                  highlightedPoints.includes(to.key)
+                    ? 1
+                    : 0.15
+                }
                 onClick={() => inspectLine(`${from.key}:${to.key}`)}
               >
                 <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth="12" />
@@ -188,24 +201,30 @@ export function ThaiOrbitWheel({
                   x2={b.x}
                   y2={b.y}
                   stroke={color}
-                  strokeWidth="1.1"
-                  strokeOpacity=".65"
+                  strokeWidth="1.8"
+                  strokeOpacity=".95"
+                  strokeLinecap="round"
                 />
               </g>
             );
           })}
         {chart && (
-          <g stroke="#bb914b" strokeWidth="1" strokeOpacity=".7">
+          <g stroke="rgb(var(--c-gold))" strokeWidth="1" strokeOpacity=".7">
             <line x1="20" y1="240" x2="460" y2="240" />
-            <circle cx="240" cy="240" r="5" fill="#bb914b" />
+            <circle cx="240" cy="240" r="5" fill="rgb(var(--c-gold))" />
             <text
               className="cursor-pointer"
               onClick={() => inspectPoint('ascendant')}
+              data-ascendant="true"
+              data-highlighted={highlightedPoints.includes('ascendant')}
+              fontWeight={highlightedPoints.includes('ascendant') ? '700' : '400'}
+              textDecoration={highlightedPoints.includes('ascendant') ? 'underline' : undefined}
               x="62"
               y="232"
-              fill="#987540"
+              fill="rgb(var(--c-gold))"
+              fillOpacity=".85"
               stroke="none"
-              fontSize="14"
+              fontSize="12"
             >
               ลั / ASC
             </text>
@@ -216,10 +235,22 @@ export function ThaiOrbitWheel({
             key={point.key}
             data-planet={point.key}
             data-longitude={point.longitudeDegrees}
-            aria-label={`${point.nameThai} ${point.longitudeDegrees.toFixed(2)}°`}
+            data-highlighted={highlightedPoints.includes(point.key)}
+            opacity={!highlightedPoints.length || highlightedPoints.includes(point.key) ? 1 : 0.35}
+            aria-label={`${planetLabel(point.key, t)} ${point.longitudeDegrees.toFixed(2)}°`}
             className="cursor-pointer"
             onClick={() => inspectPoint(point.key)}
           >
+            {highlightedPoints.includes(point.key) && (
+              <circle
+                cx={x}
+                cy={y}
+                r="15"
+                fill="none"
+                stroke="rgb(var(--c-gold))"
+                strokeWidth="1.5"
+              />
+            )}
             <circle
               cx={x}
               cy={y}
@@ -231,25 +262,25 @@ export function ThaiOrbitWheel({
               cx={x}
               cy={y}
               r="9"
-              stroke="#a57c91"
+              stroke="rgb(var(--c-gold))"
               strokeWidth=".8"
-              fill={point.key === 'sun' ? '#e9c47c' : '#fffdf8'}
+              fill={point.key === 'sun' ? 'rgb(var(--c-primary))' : 'rgb(var(--c-surface))'}
             />
             <text
               x={x}
               y={y + 0.5}
               textAnchor="middle"
               dominantBaseline="central"
-              fill="#704f52"
-              fontSize="13"
-              fontWeight="600"
+              fill={point.key === 'sun' ? 'rgb(var(--c-on-primary))' : 'rgb(var(--c-muted))'}
+              fontSize="12"
+              fontWeight="500"
             >
               {point.number}
             </text>
           </g>
         ))}
         {!chart && (
-          <g fill="none" stroke="#b49667" strokeWidth="1.5">
+          <g fill="none" stroke="rgb(var(--c-gold))" strokeWidth="1.5">
             <circle cx="240" cy="240" r="18" />
             <path d="M240 228v12l8 6" strokeLinecap="round" />
           </g>
@@ -265,7 +296,7 @@ export function ThaiOrbitWheel({
             className="rounded-xl border border-line bg-canvas/70 p-3"
             data-testid="orbit-points"
           >
-            <summary className="cursor-pointer text-xs leading-6 text-[#85633c]">
+            <summary className="cursor-pointer text-xs leading-6 text-gold">
               {t.c_pointDetails}
             </summary>
             <div className="mt-3 grid grid-cols-5 gap-1.5">
@@ -277,7 +308,7 @@ export function ThaiOrbitWheel({
                   aria-haspopup="dialog"
                   onClick={() => inspectPoint(point.key)}
                 >
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#f1e5d3] text-xs text-[#947147]">
+                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-surface text-xs text-muted">
                     {point.number ?? 'ลั'}
                   </span>
                   <span>{planetLabel(point.key, t)}</span>
@@ -289,7 +320,7 @@ export function ThaiOrbitWheel({
             className="mt-2 rounded-xl border border-line bg-canvas/70 p-3"
             data-testid="orbit-links"
           >
-            <summary className="cursor-pointer text-xs leading-6 text-[#85633c]">
+            <summary className="cursor-pointer text-xs leading-6 text-gold">
               {t.c_lineDetails} · {links.length}
             </summary>
             <div className="mt-2 max-h-60 overflow-y-auto">

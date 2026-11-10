@@ -44,7 +44,7 @@ export function ThaiRasiWheel({
         role="img"
         aria-labelledby={`${id}-title`}
         aria-describedby={`${id}-desc`}
-        className="mx-auto h-auto w-full rounded-xl bg-[#fffdf8]"
+        className="mx-auto h-auto w-full rounded-xl bg-panel"
       >
         <title id={`${id}-title`}>
           {chart ? t[`th_${mode === 'rasi' ? 'natal' : mode}`] : t.th_chartLayout}
@@ -54,8 +54,8 @@ export function ThaiRasiWheel({
             ? `${t.th_chartSymbol} ${channels.map((value, i) => `${thaiSignNames[i]}: ${value || '—'}`).join('; ')}`
             : t.th_chartPendingNote}
         </desc>
-        <circle cx="480" cy="490" r={radius} fill="#fffdf8" stroke="#685b48" strokeWidth="1.2" />
-        <g stroke="#80715c" strokeWidth="0.8">
+        <circle cx="480" cy="490" r={radius} fill="rgb(var(--c-panel))" stroke="rgb(var(--c-gold))" strokeWidth="1.2" />
+        <g stroke="rgb(var(--c-muted))" strokeWidth="0.8">
           {[-halfSquare, halfSquare].map((offset) => (
             <g key={offset}>
               <line
@@ -84,8 +84,8 @@ export function ThaiRasiWheel({
             )),
           )}
         </g>
-        <circle cx="480" cy="490" r="285" fill="none" stroke="#685b48" strokeWidth="1.8" />
-        <circle cx="480" cy="490" r="279" fill="none" stroke="#685b48" strokeWidth="0.8" />
+        <circle cx="480" cy="490" r="285" fill="none" stroke="rgb(var(--c-gold))" strokeWidth="1.8" />
+        <circle cx="480" cy="490" r="279" fill="none" stroke="rgb(var(--c-gold))" strokeWidth="0.8" />
         <g textAnchor="middle" dominantBaseline="central" fontWeight="400">
           {thaiSignNames.map((sign, i) => {
             const angle = -90 - i * 30;
@@ -101,7 +101,7 @@ export function ThaiRasiWheel({
                 lang="th"
                 key={i}
                 transform={`translate(${x} ${y}) rotate(${rotation})`}
-                fill="#284c69"
+                fill="rgb(var(--c-gold))"
                 fontSize="26"
               >
                 {sign}
@@ -116,7 +116,7 @@ export function ThaiRasiWheel({
                   x={positions[i][0]}
                   y={positions[i][1]}
                   aria-label={`${thaiSignNames[i]} ${channel}`}
-                  fill="#2f2922"
+                  fill="rgb(var(--c-ink))"
                   fontSize={channel.length > 5 ? 30 : 40}
                   textLength={channel.length > 5 ? 105 : undefined}
                   lengthAdjust="spacingAndGlyphs"
@@ -125,7 +125,7 @@ export function ThaiRasiWheel({
                   {channel.split(/(ลั|\*)/).map((part, j) => (
                     <tspan
                       key={j}
-                      fill={part === 'ลั' || part === '*' ? '#b73732' : undefined}
+                      fill={part === 'ลั' || part === '*' ? '#f0a397' : undefined}
                       fontSize={part === '*' ? 23 : undefined}
                     >
                       {part}
@@ -135,7 +135,7 @@ export function ThaiRasiWheel({
               ),
           )}
           {!chart ? (
-            <g fill="none" stroke="#b7975a" strokeWidth="3" aria-hidden="true">
+            <g fill="none" stroke="rgb(var(--c-gold))" strokeWidth="3" aria-hidden="true">
               <circle cx="480" cy="490" r="28" />
               <path d="M480 472v18l14 10" strokeLinecap="round" strokeLinejoin="round" />
             </g>
@@ -143,7 +143,7 @@ export function ThaiRasiWheel({
             <text
               x="480"
               y="476"
-              fill="#3e3326"
+              fill="rgb(var(--c-ink))"
               fontSize="22"
               aria-label={`${t.th_centerSun} ${sun.degrees}° ${sun.minutes.toFixed(1)}′`}
             >
@@ -153,7 +153,7 @@ export function ThaiRasiWheel({
               </tspan>
             </text>
           ) : (
-            <text lang="th" x="480" y="490" fill="#8d6734" fontSize="19">
+            <text lang="th" x="480" y="490" fill="rgb(var(--c-gold))" fontSize="19">
               {mode === 'navamsa' ? 'นวางค์' : 'ตรียางค์'}
             </text>
           )}

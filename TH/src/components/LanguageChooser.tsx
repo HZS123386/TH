@@ -112,7 +112,7 @@ export function LanguageChooser({
             {LANGUAGES.map((item) => (
               <label
                 key={item.id}
-                className={`group relative flex min-h-[72px] min-w-0 cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors languageCompact:min-h-[62px] languageCompact:px-[12px] languageCompact:py-[8px] languageTight:min-h-[54px] languageTight:gap-[8px] languageTight:py-[6px] languageWide:min-h-[56px] languageWide:px-[8px] ${language === item.id ? 'border-accent/65 bg-[#f3e8e0] ring-1 ring-accent/10' : 'border-line bg-canvas/60 hover:border-gold/60 hover:bg-[#f6f0e4]'}`}
+                className={`group relative flex min-h-[72px] min-w-0 cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors languageCompact:min-h-[62px] languageCompact:px-[12px] languageCompact:py-[8px] languageTight:min-h-[54px] languageTight:gap-[8px] languageTight:py-[6px] languageWide:min-h-[56px] languageWide:px-[8px] ${language === item.id ? 'border-accent/65 bg-surface ring-1 ring-accent/10' : 'border-line bg-canvas/60 hover:border-gold/60 hover:bg-panel'}`}
               >
                 <input
                   type="radio"
@@ -143,7 +143,7 @@ export function LanguageChooser({
                   </span>
                 </span>
                 <span
-                  className={`flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full border peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-4 peer-focus-visible:ring-offset-panel languageTight:h-[20px] languageTight:w-[20px] languageWide:h-[18px] languageWide:w-[18px] ${language === item.id ? 'border-primary bg-primary text-white' : 'border-[#cfc4b1] bg-panel text-muted'}`}
+                  className={`flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full border peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-4 peer-focus-visible:ring-offset-panel languageTight:h-[20px] languageTight:w-[20px] languageWide:h-[18px] languageWide:w-[18px] ${language === item.id ? 'border-primary bg-primary text-on-primary' : 'border-line bg-panel text-muted'}`}
                 >
                   {language === item.id && <Check size={16} strokeWidth={2.5} />}
                 </span>

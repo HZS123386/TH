@@ -124,22 +124,17 @@ test('personal Thai circle, catalog, divisions, live transits and account revisi
   await page.getByLabel('不记得确切时间').check();
   await page.getByRole('button', { name: '保存档案并生成命盘', exact: true }).click();
   await navigate(page, '我的星盘');
-  await expect(
-    page.getByText(
-      '出生时间未知：仅展示出生公历星期及可确定的泰历日期；不推测上升、宫位、行星位置或ทักษา。',
-      { exact: true },
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId('birthday-overview')).toBeVisible();
   await expect(page.getByRole('img', { name: zh.th_chartLayout, exact: true })).toBeVisible();
   await expect(page.getByRole('img', { name: zh.th_natal, exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'ทักษา 八项生辰主题' })).toHaveCount(0);
   await page
-    .getByTestId('thai-chart-placeholder')
+    .getByTestId('jy-chart-page')
     .getByRole('button', { name: zh.j_exampleChart, exact: true })
     .click();
   await expect(page.getByRole('note')).toContainText(zh.j_exampleNotice);
   await expect(page.getByRole('img', { name: zh.th_natal, exact: true })).toBeVisible();
-  await page.getByRole('button', { name: zh.back, exact: true }).click();
+  await page.getByRole('button', { name: zh.j_myChart, exact: true }).click();
   await expect(page.getByRole('img', { name: zh.th_chartLayout, exact: true })).toBeVisible();
   expect(
     await page.evaluate(async () => {

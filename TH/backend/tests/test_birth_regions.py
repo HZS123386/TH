@@ -119,6 +119,21 @@ def test_dropdown_browses_with_pagination_and_never_crosses_selected_scope(clien
     assert client.get("/api/thai-locations", params={**params, "province": "invalid"}).status_code == 422
 
 
+@pytest.mark.parametrize("country", ["CN", "TH"])
+def test_countrywide_city_directory_can_browse_every_indexed_place(client, country):
+    import sqlite3
+    from pathlib import Path
+
+    with sqlite3.connect(Path(__file__).resolve().parents[2] / "data/birth-locations.sqlite3") as db:
+        total = db.execute("SELECT COUNT(*) FROM places WHERE country=?", (country,)).fetchone()[0]
+    first = client.get("/api/thai-locations", params={"country": country, "level": "locality"}).json()
+    second = client.get("/api/thai-locations", params={"country": country, "level": "locality", "offset": 100}).json()
+    assert first["total"] == second["total"] == total
+    assert len(first["items"]) == len(second["items"]) == 100
+    assert not {row["id"] for row in first["items"]} & {row["id"] for row in second["items"]}
+    assert all(row["countryCode"] == country for row in first["items"] + second["items"])
+
+
 def test_index_contains_cities_for_all_34_chinese_and_77_thai_provinces():
     import json
     import sqlite3

@@ -6,12 +6,26 @@ import vi from '../src/locales/vi.json' with { type: 'json' };
 
 export async function navigate(page: Page, name: string) {
   const copy = [zh, en, th, vi];
+  const shop = copy.find((t) => t.w_shop === name);
+  if (shop) name = shop.ux_shopPreview;
+  const reading = copy.find((t) => t.th_readingTool === name);
+  if (reading) {
+    await page
+      .getByRole('navigation')
+      .getByRole('button', { name: reading.ux_reports, exact: true })
+      .click();
+    await page
+      .getByTestId('report-library')
+      .getByRole('button', { name: new RegExp('^' + reading.ux_topicReport) })
+      .click();
+    return;
+  }
   const home = copy.find((t) => t.w_home === name);
   if (home) {
     await page.getByRole('button', { name: home.homeLabel, exact: true }).click();
     return;
   }
-  if (copy.some((t) => [t.w_chart, t.w_questions, t.w_shop, t.w_mine].includes(name))) {
+  if (copy.some((t) => [t.w_chart, t.w_questions, t.ux_reports, t.w_mine].includes(name))) {
     await page.getByRole('navigation').getByRole('button', { name, exact: true }).click();
     return;
   }
@@ -66,7 +80,7 @@ export async function selectWheel(column: Locator, label: string) {
 export async function chooseChineseDate(page: Page, date: string) {
   const [year, month, day] = date.split('-').map(Number);
   await page.getByRole('button', { name: '出生日期', exact: true }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('dialog', { name: '出生日期', exact: true });
   await selectWheel(dialog.getByRole('listbox', { name: '年', exact: true }), String(year));
   await selectWheel(dialog.getByRole('listbox', { name: '月', exact: true }), `${month}月`);
   await selectWheel(dialog.getByRole('listbox', { name: '日', exact: true }), String(day));

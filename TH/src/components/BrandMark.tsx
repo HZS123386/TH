@@ -9,10 +9,10 @@ export function BrandMark({ className = '' }: { className?: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      data-brand-mark="lotus-star"
+      data-brand-mark="astro-star"
     >
       {brandSymbolPaths.map((path, i) => {
-        const color = path.tone === 'gold' ? '#ad8848' : 'currentColor';
+        const color = path.tone === 'gold' ? 'rgb(var(--c-gold))' : 'currentColor';
         return (
           <path
             key={i}

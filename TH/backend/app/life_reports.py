@@ -15,7 +15,7 @@ from pydantic import Field, model_validator
 
 from . import thai
 from .bazi_reports import report_progress_context, report_usage_context
-from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
+from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
 from .schemas import Input, ProfileInput, ThaiReadingInput
 from .thai_readings import HOUSES, copy_for, grounding
 
@@ -41,6 +41,7 @@ class CareerInput(Input):
 class LifeInput(Input):
     profile: ProfileInput
     year: int = Field(ge=1901, le=2100)
+    report_kind: Literal["life", "fortune"] = "life"
     career: CareerInput | None = None
     career_question: CareerInput | None = None
     user_question: str | None = Field(default=None, min_length=1, max_length=120, pattern=r"^[^\x00-\x1f\x7f]+$")
@@ -50,6 +51,8 @@ class LifeInput(Input):
         if self.profile.language not in ("zh", "th"):
             raise ValueError("language_invalid")
         if sum(value is not None for value in (self.career, self.career_question, self.user_question)) > 1:
+            raise ValueError("career_input_conflict")
+        if self.career and self.report_kind == "fortune":
             raise ValueError("career_input_conflict")
         career = self.career_question or self.career
         if career and career.start.year != self.year:
@@ -157,7 +160,12 @@ class LifeReports:
                 raise ReportLeaseLost()
 
     def bundle(self, body, chart, reading, months=None):
-        result = grounding(ThaiReadingInput(profile=body.profile, year=body.year, reading=reading), chart, months or [])
+        topic = FORTUNE_TOPICS.get(reading) if body.report_kind == "fortune" else None
+        result = grounding(ThaiReadingInput(profile=body.profile, year=body.year, reading="overview" if topic else reading),
+                           chart, months or [], houses=topic["houses"] if topic else None)
+        result["reading"] = reading
+        if body.report_kind == "fortune":
+            result["report_kind"] = "fortune"
         if not body.profile.birth_time:
             result["birth_time_basis"] = {"mode": "estimated", "assumed_local_time": "12:00"}
             for fact in result["evidence"].values():
@@ -173,13 +181,16 @@ class LifeReports:
     async def create(self, body, owner, network, *, wait=True):
         profile = body.profile.model_dump(mode="json")
         snapshot = body.model_dump(mode="json", exclude=None if body.career else {"career"})
+        if body.report_kind == "life":
+            snapshot.pop("report_kind")
         if body.career_question is None:
             snapshot.pop("career_question")
         if body.user_question is None:
             snapshot.pop("user_question")
         if body.career and body.career.focus is None:
             snapshot["career"].pop("focus")
-        fingerprint = hashlib.sha256(encoded([CAREER_VERSION if body.career else VERSION, snapshot]).encode()).hexdigest()
+        version = CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
+        fingerprint = hashlib.sha256(encoded([version, snapshot]).encode()).hexdigest()
         with self.store.connect() as db:
             existing = db.execute("SELECT id FROM life_reports WHERE owner=? AND fingerprint=?", (owner, fingerprint)).fetchone()
         if existing:
@@ -300,33 +311,41 @@ class LifeReports:
         body = json.loads(row["input"])
         language = body["profile"]["language"]
         career = body.get("career")
+        fortune = body.get("report_kind") == "fortune"
         labels = CAREER_COPY[language] if career else None
         chart = json.loads(row["chart"])
         records = json.loads(row["chapters"])
         preview = json.loads(row["preview"]) if row["preview"] else None
-        title = "人生报告" if language == "zh" else "รายงานชีวิต"
-        version = VERSION
+        title = ("运程解析" if language == "zh" else "วิเคราะห์ดวงชะตา") if fortune else ("人生报告" if language == "zh" else "รายงานชีวิต")
+        version = FORTUNE_VERSION if fortune else VERSION
         if career:
             title = preview["story"].get("title", labels["title"]) if preview else labels["title"]
             version = preview.get("version", "career-decision-1") if preview else CAREER_VERSION
         marks = json.loads(row.get("generation_progress", "{}"))
         preview_sections = [{"key": key, "percent": 100 if preview else min(99, marks.get(key, 0))}
                             for key in ("preview_summary", "preview_strength", "preview_decisions", "preview_relationships")]
-        parts = {key: 100 if key in records else min(99, marks.get(key, 0)) for key in CHAPTERS}
-        sections = [
+        chapter_keys = FORTUNE_CHAPTERS if fortune else CHAPTERS
+        parts = {key: 100 if key in records else min(99, marks.get(key, 0)) for key in chapter_keys}
+        sections = ([{"key": key, "percent": parts[key]} for key in chapter_keys] + [
+            {"key": "plan", "percent": 100 if row["plan"] else min(99, marks.get("plan", 0))},
+        ]) if fortune else [
             {"key": "work", "percent": parts["work"]}, {"key": "money", "percent": parts["money"]},
             {"key": "relationships", "percent": (parts["love"] + parts["family"]) / 2},
             {"key": "annual", "percent": parts["annual"]},
             {"key": "plan", "percent": 100 if row["plan"] else min(99, marks.get("plan", 0))},
         ]
-        completed = sum(key in records for key in ("work", "money", "annual")) + ("love" in records and "family" in records) + bool(row["plan"])
-        chapter_keys = CHAPTERS
+        completed = (sum(key in records for key in chapter_keys) + bool(row["plan"])) if fortune else (
+            sum(key in records for key in ("work", "money", "annual")) + ("love" in records and "family" in records) + bool(row["plan"]))
         if career:
             sections = [{"key": "work", "percent": parts["work"]}]
             completed = int("work" in records)
             chapter_keys = ("work",)
         titles = [labels["chapter"]] if labels else TITLES[language]
         questions = [list(labels["paid_titles"])] if labels else QUESTIONS[language]
+        if fortune:
+            titles = [FORTUNE_TOPICS[key][language]["title"] for key in chapter_keys]
+            titles[0] = f"{body['year']}年运程" if language == "zh" else f"ดวงปี {body['year']}"
+            questions = [FORTUNE_TOPICS[key][language]["questions"] for key in chapter_keys]
         percent = int(sum(section["percent"] for section in sections) / len(sections))
         percent = min(percent, 100 if row["full_state"] == "ready" else 99)
         result = {
@@ -343,7 +362,7 @@ class LifeReports:
             "preview_generation_progress": {"percent": int(sum(section["percent"] for section in preview_sections) / 4), "sections": preview_sections},
             "feedback": row["feedback"],
             "catalog": [{"key": key, "title": titles[index], "questions": questions[index],
-                         "houses": list(HOUSES[key]), "ready": key in records} for index, key in enumerate(chapter_keys)],
+                         "houses": FORTUNE_TOPICS[key]["houses"] if fortune else list(HOUSES[key]), "ready": key in records} for index, key in enumerate(chapter_keys)],
             "preview": {"summary": public_point(preview["story"]["summary"], preview["evidence"], language),
                         "traits": [public_point(item, preview["evidence"], language) for item in preview["story"]["traits"]]} if preview else None,
             "chapters": [], "plan": None,
@@ -434,6 +453,7 @@ class LifeReports:
             preview_context = {"summary": preview["summary"]["text"],
                                "traits": [{key: item[key] for key in ("key", "title", "text")} for item in preview["traits"]]}
             records = json.loads(row["chapters"])
+            chapter_keys = FORTUNE_CHAPTERS if body.report_kind == "fortune" else CHAPTERS
             slots = asyncio.Semaphore(self.chapter_concurrency)
 
             async def chapter(reading):
@@ -444,7 +464,7 @@ class LifeReports:
                         async with self.calculation_slots:
                             months = await asyncio.to_thread(thai.annual, body.year, chart["chart"]["points"]["ascendant"]["sign"])
                     bundle = self.bundle(body, chart, reading, months)
-                    previous = [text for key, record in records.items() if key in CHAPTERS for kind in ("insights", "watchpoints", "actions")
+                    previous = [text for key, record in records.items() if key in chapter_keys for kind in ("insights", "watchpoints", "actions")
                                 for point in record["story"][kind] for text in (point["title"], point["text"])]
                     bundle.update(stage="chapter", preview=preview_context, previous_points=previous)
                     generated = await self.write_part(report_id, lease, bundle, owner, network)
@@ -457,14 +477,14 @@ class LifeReports:
 
             # Independent topics share the preview; a failed topic does not discard or block its siblings.
             async with asyncio.TaskGroup() as group:
-                jobs = [group.create_task(chapter(reading)) for reading in CHAPTERS if reading not in records]
+                jobs = [group.create_task(chapter(reading)) for reading in chapter_keys if reading not in records]
             failures = [job.result() for job in jobs if job.result() != "ready"]
             if failures:
                 self.update(report_id, expected_lease=lease, full_state=failures[0], lease="", lease_until=0)
                 return
             # The editor selects existing actions from concise excerpts; full details stay in the snapshot.
             actions = {f"{reading}:{index}": {"title": item["title"], "text": item["text"], "first_step": item["steps"][0], "check": item["check"]}
-                       for reading in CHAPTERS for index, item in enumerate(records[reading]["story"]["actions"])}
+                       for reading in chapter_keys for index, item in enumerate(records[reading]["story"]["actions"])}
             bundle = {"stage": "plan", "reading": "life-plan", "language": body.profile.language, "preview": preview_context,
                       "source_actions": actions, "translation_fields": {}, "fixed_translations": {}}
             if not body.profile.birth_time:

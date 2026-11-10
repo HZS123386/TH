@@ -19,7 +19,6 @@ export function BirthEntry({
   update,
   onSave,
   onCancel,
-  onPreview,
 }: {
   profile: Profile | null;
   language: Language;
@@ -28,7 +27,6 @@ export function BirthEntry({
   update: (patch: Partial<CompanionState>) => void;
   onSave: (profile: Profile, openConcern?: boolean) => Promise<void>;
   onCancel?: () => void;
-  onPreview?: () => void;
 }) {
   const [form, setForm] = useState<Profile>(
     profile || {
@@ -82,9 +80,9 @@ export function BirthEntry({
               topic: (concern.topic as Topic | null) || state.topic,
             })
           }
-          className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left ${selected ? 'border-primary bg-[#eee1cc]' : 'border-line bg-[#fdfaf4]'}`}
+          className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left ${selected ? 'border-primary bg-surface' : 'border-line bg-panel'}`}
         >
-          <span className="rounded-full border border-gold/30 bg-[#f2e8d4] p-3 text-gold">
+          <span className="rounded-full border border-gold/30 bg-surface p-3 text-gold">
             <Icon size={20} />
           </span>
           <span className="min-w-0 flex-1">
@@ -114,12 +112,6 @@ export function BirthEntry({
         </h1>
         <p className="mt-4 text-sm leading-7 text-muted">{t.f_partial}</p>
       </header>
-      {onPreview && (
-        <button className="jy-outline mb-5 w-full" onClick={onPreview}>
-          {t.j_exampleChart}
-          <ArrowRight size={16} />
-        </button>
-      )}
       <form
         onSubmit={(event) => void submit(event)}
         className="panel space-y-7 rounded-3xl p-5 sm:p-8"
@@ -136,7 +128,7 @@ export function BirthEntry({
             onChange={(birth_date) => setForm((prev) => ({ ...prev, birth_date }))}
           />
           {valid && (
-            <p className="mt-3 flex items-center gap-2 text-xs text-[#64724d]">
+            <p className="mt-3 flex items-center gap-2 text-xs text-emerald-300">
               <Check size={14} />
               {t.f_dateConfirmed} · {form.birth_date} · พ.ศ.{' '}
               {Number(form.birth_date.slice(0, 4)) + 543}
@@ -156,16 +148,18 @@ export function BirthEntry({
             />
             <BirthplacePicker
               value={form.birthplace}
+              locationId={form.location_id}
+              countryCode={form.country_code}
               timezone={form.timezone}
               language={language}
               t={t}
-              onChange={(birthplace, timezone) =>
+              onChange={(birthplace, timezone, location) =>
                 setForm((prev) => ({
                   ...prev,
                   birthplace,
                   timezone,
-                  location_id: null,
-                  country_code: null,
+                  location_id: location?.id || null,
+                  country_code: location?.countryCode || null,
                   latitude: null,
                   longitude: null,
                 }))
@@ -189,16 +183,21 @@ export function BirthEntry({
                 {t.f_clearPlace}
               </button>
             )}
-            <TimezonePicker
-              value={form.timezone}
-              t={t}
-              onChange={(timezone) => setForm((prev) => ({ ...prev, timezone }))}
-            />
-            <ThaiLocationInput
-              profile={form}
-              t={t}
-              onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
-            />
+            <details className="text-xs text-muted">
+              <summary className="cursor-pointer py-2">{t.ux_advancedBirth}</summary>
+              <div className="mt-3 space-y-4">
+                <TimezonePicker
+                  value={form.timezone}
+                  t={t}
+                  onChange={(timezone) => setForm((prev) => ({ ...prev, timezone }))}
+                />
+                <ThaiLocationInput
+                  profile={form}
+                  t={t}
+                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                />
+              </div>
+            </details>
           </div>
         </details>
         <section>
@@ -209,7 +208,6 @@ export function BirthEntry({
             <div className="mt-4 space-y-3">{concernCards(6, 10)}</div>
           </details>
         </section>
-        <p className="text-xs leading-6 text-muted">{t.f_privacy}</p>
         {error && (
           <p role="alert" className="text-sm text-accent">
             {error}
@@ -218,13 +216,13 @@ export function BirthEntry({
         <div
           className={
             profile
-              ? 'sticky bottom-20 -mx-2 rounded-2xl border border-line bg-panel/95 p-3 backdrop-blur'
-              : 'fixed bottom-0 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 border-t border-line bg-[#f7f4ed]/95 px-5 pb-[max(14px,env(safe-area-inset-bottom))] pt-4 backdrop-blur'
+              ? 'sticky bottom-20 -mx-2 rounded-2xl border border-line bg-panel/95 px-3 py-2 backdrop-blur'
+              : 'fixed bottom-0 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 border-t border-line bg-panel/95 px-5 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur'
           }
         >
           <button
             type="submit"
-            className="jy-primary w-full justify-center"
+            className="jy-primary min-h-11 w-full justify-center py-2.5"
             disabled={!valid || saving}
           >
             {saving ? t.loading : state.concern ? t.j_seeConcern : t.f_cta}
@@ -233,14 +231,14 @@ export function BirthEntry({
           {state.concern && (
             <button
               type="button"
-              className="mt-2 min-h-10 w-full text-xs text-[#9b8058]"
+              className="mt-1 min-h-9 w-full text-xs text-muted"
               disabled={!valid || saving}
               onClick={() => void submit(undefined, false)}
             >
               {t.j_todayLater}
             </button>
           )}
-          <p className="mt-3 text-center text-[11px] leading-5 text-muted">{t.f_free}</p>
+          <p className="mt-1 text-center text-[11px] leading-4 text-muted">{t.f_free}</p>
         </div>
         {onCancel && (
           <button type="button" className="btn-quiet" disabled={saving} onClick={onCancel}>

@@ -47,8 +47,7 @@ export function WanjaiShop(p: WanjaiPageProps) {
               <article key={order.id} className="jy-card">
                 <div className="flex items-center gap-4">
                   <div
-                    className="h-20 w-20 shrink-0 overflow-hidden rounded-xl"
-                    style={{ background: item.bg }}
+                    className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface"
                   >
                     <ProductArt {...item} title={item.name} />
                   </div>
@@ -83,25 +82,25 @@ export function WanjaiShop(p: WanjaiPageProps) {
         sub={t.w_shopIntro}
       />
       <details
-        className="mb-5 rounded-[17px] border border-[#daceb9] bg-[#fffaf0]"
+        className="mb-5 rounded-[17px] border border-line bg-panel"
         data-testid="taste-panel"
       >
         <summary className="flex cursor-pointer items-center justify-between gap-3 p-4 text-sm">
           <span>
             {t.j_tasteTitle}
-            <small className="ml-3 text-[#ac9472]">{t.j_optional}</small>
+            <small className="ml-3 text-muted">{t.j_optional}</small>
           </span>
           <span>＋</span>
         </summary>
         <div className="space-y-4 border-t border-line p-4">
           <fieldset>
-            <legend className="mb-2 text-xs text-[#92754f]">{t.j_style}</legend>
+            <legend className="mb-2 text-xs text-muted">{t.j_style}</legend>
             <div className="flex flex-wrap gap-2">
               {(['any', 'warm', 'soft', 'cool'] as const).map((style) => (
                 <button
                   key={style}
                   aria-pressed={taste.style === style}
-                  className={`rounded-xl border px-3 py-2 text-xs ${taste.style === style ? 'border-primary bg-[#eddfcc] text-accent' : 'border-[#ddcfb8]'}`}
+                  className={`rounded-xl border px-3 py-2 text-xs ${taste.style === style ? 'border-primary bg-surface text-accent' : 'border-line'}`}
                   onClick={() => setTaste({ style })}
                 >
                   {
@@ -120,7 +119,7 @@ export function WanjaiShop(p: WanjaiPageProps) {
               ))}
             </div>
           </fieldset>
-          <label className="block text-xs text-[#92754f]" htmlFor="shop-budget">
+          <label className="block text-xs text-muted" htmlFor="shop-budget">
             {t.w_budget}
           </label>
           <select
@@ -149,7 +148,7 @@ export function WanjaiShop(p: WanjaiPageProps) {
           <button
             key={category}
             aria-pressed={taste.category === category}
-            className={`min-h-10 rounded-xl border px-3 text-xs ${taste.category === category ? 'border-primary bg-primary text-white' : 'border-[#dccfb8] text-[#8a714d]'}`}
+            className={`min-h-10 rounded-xl border px-3 text-xs ${taste.category === category ? 'border-primary bg-primary text-on-primary' : 'border-line text-muted'}`}
             onClick={() => setTaste({ category })}
           >
             {t[`w_${category}`]}
@@ -163,7 +162,7 @@ export function WanjaiShop(p: WanjaiPageProps) {
           {t.w_favorites}
         </button>
       </div>
-      <p className="mb-5 flex items-center gap-2 text-[11px] text-[#9e8a6c]">
+      <p className="mb-5 flex items-center gap-2 text-[11px] text-muted">
         <Truck size={15} />
         {t.w_productNote}
       </p>
@@ -173,8 +172,7 @@ export function WanjaiShop(p: WanjaiPageProps) {
             <div className="relative">
               <button
                 aria-label={item.name}
-                className="block h-[166px] w-full overflow-hidden rounded-[17px]"
-                style={{ backgroundColor: item.bg }}
+                className="block h-[166px] w-full overflow-hidden rounded-[17px] bg-surface"
                 onClick={() => {
                   setSelected(item.id);
                   setStage('detail');
@@ -206,9 +204,9 @@ export function WanjaiShop(p: WanjaiPageProps) {
             >
               {item.name}
             </button>
-            <p className="mt-1 text-[11px] leading-6 text-[#a18a66]">{item.tag}</p>
+            <p className="mt-1 text-[11px] leading-6 text-muted">{item.tag}</p>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="font-display text-xl text-[#8d3a31]">฿{item.price}</span>
+              <span className="font-display text-xl text-gold">฿{item.price}</span>
               <small className="text-[9px] text-muted">{t.w_priceNote}</small>
             </div>
           </article>
@@ -228,7 +226,7 @@ export function WanjaiShop(p: WanjaiPageProps) {
           </button>
         </div>
       )}
-      <section className="mt-7 rounded-[18px] bg-[#e8dfcc] p-5">
+      <section className="mt-7 rounded-[18px] bg-surface p-5">
         <h2 className="text-[18px] leading-8">{t.j_shopStory}</h2>
         <p className="jy-copy mt-2">{t.j_tasteNote}</p>
       </section>
@@ -271,7 +269,7 @@ export function WanjaiShop(p: WanjaiPageProps) {
         >
           {stage === 'saved' ? (
             <div className="py-4 text-center">
-              <Check size={38} className="mx-auto mb-4 text-[#73816b]" />
+              <Check size={38} className="mx-auto mb-4 text-emerald-300" />
               <p className="jy-copy">{t.w_paymentNote}</p>
               <button
                 className="jy-outline mt-5"
@@ -287,8 +285,7 @@ export function WanjaiShop(p: WanjaiPageProps) {
           ) : (
             <>
               <div
-                className="mb-4 h-40 overflow-hidden rounded-2xl"
-                style={{ backgroundColor: product.bg }}
+                className="mb-4 h-40 overflow-hidden rounded-2xl bg-surface"
               >
                 <ProductArt {...product} title={product.name} />
               </div>

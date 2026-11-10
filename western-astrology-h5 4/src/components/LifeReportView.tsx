@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowRight, BookOpen, Check, Download, LoaderCircle, LockKeyhole, Printer, Sparkles } from "lucide-react";
+import { ArrowDown, BookOpen, Check, Download, LoaderCircle, LockKeyhole, Printer, Sparkles } from "lucide-react";
 import { ApiError, reportHtml, ui, type Language } from "../lib/reading";
 import { initialGenerationProgress, isLifeReport, lifeApi, lifeLabels, lifeReportPollInterval, unlockLifeReport, type Feedback, type GenerationProgress, type LifeReport } from "../lib/lifeReport";
 import { reportContent, reportReference } from "../lib/reportContent";
@@ -8,6 +8,7 @@ import { EvidenceDetails } from "./EvidenceDetails";
 import { PaidReportSections } from "./PaidReportSections";
 import { ReportCheckoutDialog } from "./ReportCheckoutDialog";
 import { ReportGenerationDialog } from "./ReportGenerationDialog";
+import { ReportUnlockActions } from "./ReportUnlockActions";
 
 function moveTo(id: string) {
   const target = document.getElementById(id);
@@ -39,7 +40,6 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
   const requests = useRef(new Set<AbortController>());
   const language = report.input.profile.language;
   const c = lifeLabels(report);
-  const unlockLabel = `${report.price.display} ${c.unlock}`;
   const career = !!report.input.career;
   const Basics = career ? "details" : "div";
   const full = report.access === "full";
@@ -182,7 +182,7 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
   return (
     <section className="personal-report life-report -mx-2 mt-7 rounded-2xl border border-solid border-gold/35 bg-night text-cream" data-testid="life-report">
       <header id="life-section-basics" tabIndex={-1} className="life-report-cover rounded-t-2xl border-0 border-b border-solid border-gold/20 px-5 pb-6 pt-7">
-        <div className="flex items-center justify-between gap-3 text-[10px] text-gold"><span className="tracking-[0.15em]">ASTRO · AI</span><span>{full ? c.fullVersion : c.preview}</span></div>
+        <div className="flex items-center justify-between gap-3 text-[10px] text-gold"><span className="tracking-[0.15em]">FATE</span><span>{full ? c.fullVersion : c.preview}</span></div>
         {!career && <Sparkles className="mb-3 mt-6 text-gold" size={27} strokeWidth={1.2} aria-hidden="true" />}
         <h2 id="life-report-title" tabIndex={-1} className={`text-[30px] font-medium leading-tight tracking-wide ${career ? "mt-5" : ""}`}>{c.title}</h2>
         <p className="mt-3 text-xs leading-6 text-lavender">{c.subtitle}</p>
@@ -233,9 +233,10 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
 
         {!full && <div id="life-unlock-offer" ref={offer} tabIndex={-1} className="life-unlock-offer mx-3 mb-5 rounded-2xl border border-solid border-gold/50 p-5 text-center" data-testid="life-unlock-offer">
           <BookOpen className="mx-auto text-gold" size={27} strokeWidth={1.4} /><h3 className="mb-3 mt-4 text-xl font-medium leading-8 text-cream">{c.offerTitle}</h3><p className="text-xs leading-7 text-lavender">{c.offerText}</p><ul className="my-5 grid list-none grid-cols-2 gap-3 p-0 text-left text-[11px] leading-5 text-cream">{c.benefits.map(text => <li key={text} className="flex items-start gap-2"><Check size={13} className="mt-0.5 shrink-0 text-gold" />{text}</li>)}</ul>
-          <p className="text-[32px] font-semibold text-gold">{report.price.display} <span className="text-[10px] font-normal text-lavender">{report.price.currency}</span></p><p className="mt-2 text-[10px] leading-5 text-lavender">{c.once}</p>
+          <p className="mt-2 text-[10px] leading-5 text-lavender">{c.once}</p>
           <p role="status" className="mt-3 text-xs leading-6 text-gold" data-testid="life-background-status">{ready ? c.backgroundReady : report.full_state === "generating" ? c.backgroundGenerating : c.backgroundRetry}</p>
-          <button className="primary" type="button" disabled={opening} onClick={() => showCheckout(true)} data-testid="life-unlock-button">{opening ? <LoaderCircle size={17} className="animate-spin" /> : <LockKeyhole size={17} />}{opening ? c.unlocking : unlockLabel}</button><p className="mt-3 text-[10px] leading-5 text-lavender">{c.direct}</p>
+          <ReportUnlockActions language={language} price={report.price.display} opening={opening} onPurchase={() => showCheckout(true)} />
+          <p className="mt-3 text-[10px] leading-5 text-lavender">{c.direct}</p>
         </div>}
 
         {full && <div id="life-full-report" tabIndex={-1} className="border-0 border-t border-solid border-gold/30 px-5 py-7" data-testid="life-full-report">
@@ -247,7 +248,7 @@ export function LifeReportView({ initial, onRetryPreview, previewBusy = false }:
         <details className="mx-5 mb-6 rounded-xl border border-solid border-gold/20 bg-plum/40 p-4 text-[10px] leading-6 text-lavender"><summary className="cursor-pointer text-gold">{c.sourceVersion}</summary><p className="mt-3">{report.method.name} · {report.method.house_system}</p><p className="mt-1 break-all">{report.method.version} / {report.version}</p></details>
       </>}
       {!!error && <div className="mx-5 mb-5"><p role="alert" className="text-xs leading-6 text-[#f2a6af]">{error}</p>{full && <button type="button" className="report-secondary mt-3" disabled={opening} onClick={() => void unlock()}>{c.retry}</button>}</div>}
-      {preview && !full && offerSeen && <div className="report-unlock-bar"><button type="button" className="primary" disabled={opening} onClick={() => showCheckout(true)}><LockKeyhole size={17} />{opening ? c.unlocking : unlockLabel}<ArrowRight size={16} className="ml-auto shrink-0" /></button></div>}
+      {preview && !full && offerSeen && <div className="report-unlock-bar"><ReportUnlockActions compact language={language} price={report.price.display} opening={opening} onPurchase={() => showCheckout(true)} /></div>}
       {preview && !full && checkoutOpen && <ReportCheckoutDialog report={report} product={career ? c.title : report.title}
         onClose={() => showCheckout(false)} onConfirm={() => { showCheckout(false); void unlock(); }} />}
       {generation && <ReportGenerationDialog career={career} language={language} progress={generation} error={generationError} onCancel={cancelGeneration}

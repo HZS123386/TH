@@ -1,7 +1,7 @@
-import type { LifeLabels, LifePoint, LifeReport, LifeSummary } from "./lifeReport";
-import type { Reading } from "./reading";
+import type { LifeLabels, LifePoint, LifeReport, LifeSummary, ReportTopic } from "./lifeReport";
+import { fortuneTopics, fortuneTopicTitle, type FortuneTopicKey } from "./fortuneTopics";
 
-export type ReportSectionKey = "basics" | "summary" | "traits" | "work" | "money" | "relationships" | "recent" | "advice";
+export type ReportSectionKey = "basics" | "summary" | "traits" | "work" | "money" | "relationships" | "recent" | "advice" | FortuneTopicKey;
 export interface ReportEntry { point: LifePoint; id?: string }
 export interface ReportGroup { title: string; entries: ReportEntry[] }
 export interface ReportSection {
@@ -60,10 +60,9 @@ export function reportContent(report: LifeReport): ReportSection[] {
     ];
     return sections;
   }
-  const groupFor = (reading: Exclude<Reading, "overview">): ReportGroup[] => {
+  const groupFor = (reading: ReportTopic, titles: readonly string[]): ReportGroup[] => {
     const chapter = chapters.get(reading);
     if (!chapter) return [];
-    const titles = labels.groups[reading];
     return [
       { title: titles[0], entries: chapter.insights.map(point => ({ point })) },
       { title: titles[1], entries: [
@@ -72,23 +71,37 @@ export function reportContent(report: LifeReport): ReportSection[] {
       ] },
     ];
   };
+  if (report.input.report_kind === "fortune") {
+    const free: ReportSection[] = labels.sections.slice(0, 3).map(([key, title, description]) => ({
+      key, title: key === "summary" ? language === "zh" ? "运程摘要" : "สรุปแนวโน้มชีวิต" : title,
+      description, paid: false, ready: key === "basics" || !!report.preview, summaries: [], groups: [],
+    }));
+    const paid: ReportSection[] = fortuneTopics.map(topic => {
+      const chapter = chapters.get(topic.key);
+      return { key: topic.key, title: fortuneTopicTitle(topic.key, language, report.input.year),
+        description: topic[language].questions.join(" · "), paid: true, ready: !!chapter,
+        summaries: chapter ? [chapter.summary] : [], groups: groupFor(topic.key, topic[language].groups) };
+    });
+    return [...free, ...paid, { key: "advice", title: labels.sections[7][1], description: labels.sections[7][2],
+      paid: true, ready: report.access === "full" && !!report.plan, summaries: [], groups: [] }];
+  }
   return labels.sections.map(([key, title, description], index) => {
     const section: ReportSection = { key, title, description, paid: index >= 3, ready: false, summaries: [], groups: [] };
     if (key === "basics") section.ready = true;
     if (key === "summary" || key === "traits") section.ready = !!report.preview;
     if (key === "work" || key === "money") {
       section.ready = chapters.has(key);
-      section.groups = groupFor(key);
+      section.groups = groupFor(key, labels.groups[key]);
       if (chapters.has(key)) section.summaries = [chapters.get(key)!.summary];
     }
     if (key === "relationships") {
       section.ready = chapters.has("love") && chapters.has("family");
-      section.groups = [...groupFor("love"), ...groupFor("family")];
+      section.groups = [...groupFor("love", labels.groups.love), ...groupFor("family", labels.groups.family)];
       section.summaries = [chapters.get("love")?.summary, chapters.get("family")?.summary].filter((item): item is LifeSummary => !!item);
     }
     if (key === "recent") {
       section.ready = chapters.has("annual");
-      section.groups = groupFor("annual");
+      section.groups = groupFor("annual", labels.groups.annual);
       if (chapters.has("annual")) section.summaries = [chapters.get("annual")!.summary];
     }
     if (key === "advice") section.ready = report.access === "full" && !!report.plan;

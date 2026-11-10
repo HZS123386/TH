@@ -1,10 +1,85 @@
 import { ArrowRight, Bell, RefreshCw, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { Copy } from '../../lib/i18n';
 import { type Topic } from '../../lib/wanjai';
-import { fillCopy, useFortune, type FortuneFactor } from '../../lib/fortune';
+import {
+  fillCopy,
+  useFortune,
+  type FortuneFactor,
+  type FortuneGeneration,
+} from '../../lib/fortune';
 import { WanjaiDaily } from './WanjaiCompanion';
 import { ZodiacIcon } from '../ZodiacIcon';
-import { JourneyCard, LifeTeaser } from './WanjaiCards';
+import { JourneyCard, ReportsTeaser } from './WanjaiCards';
 import { type WanjaiPageProps, topicIcons, usePage } from './WanjaiShared';
+
+function FortuneStatus({
+  generation,
+  t,
+  onRetry,
+}: {
+  generation: FortuneGeneration;
+  t: Copy;
+  onRetry: () => void;
+}) {
+  const [retryAt, setRetryAt] = useState(() => Date.now() + (generation.retry_after || 0) * 1000);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    setRetryAt(Date.now() + (generation.retry_after || 0) * 1000);
+    setNow(Date.now());
+  }, [generation]);
+  useEffect(() => {
+    if (now >= retryAt) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [retryAt, now >= retryAt]);
+  const message = !generation.available
+    ? t.ux_rulesReady
+    : generation.reason === 'limited'
+      ? generation.limit_scope === 'personal'
+        ? t.ux_personalLimit
+        : generation.limit_scope === 'network'
+          ? t.ux_sharedLimit
+          : t.ux_serviceBusy
+      : generation.reason === 'pending'
+        ? t.ux_readingPending
+        : t.ux_serviceBusy;
+  const waiting = now < retryAt;
+  return (
+    <div
+      role="status"
+      className="mb-3 text-xs leading-6 text-muted"
+      data-testid="fortune-fallback-status"
+    >
+      <p>{message}</p>
+      {generation.available && (
+        <>
+          {generation.retry_after && (
+            <p>
+              {fillCopy(t.ux_retryAt, {
+                time: new Intl.DateTimeFormat(t.dateLocale, {
+                  ...(new Date(retryAt).toLocaleDateString() !== new Date(now).toLocaleDateString()
+                    ? { month: 'short', day: 'numeric' }
+                    : {}),
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  ...(generation.retry_after! < 3600 ? { second: '2-digit' } : {}),
+                }).format(new Date(retryAt)),
+              })}
+            </p>
+          )}
+          <button
+            disabled={waiting}
+            className="mt-1 min-h-10 underline underline-offset-4"
+            onClick={onRetry}
+          >
+            {waiting ? t.ux_retryWaiting : t.ux_retryReading}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function WanjaiHome(p: WanjaiPageProps) {
   const { t, state, update, navigate } = p;
@@ -45,7 +120,7 @@ export function WanjaiHome(p: WanjaiPageProps) {
     <div className="space-y-[18px]" data-testid="jy-fortune-page">
       <div className="flex items-center justify-between gap-3 pb-0.5">
         <div>
-          <p className="mb-2 text-[11px] text-[#9e8b6e]">
+          <p className="mb-2 text-[11px] text-muted">
             {p.profile?.display_name || reference || t.brandName}
           </p>
           <h1 className="text-[21px] font-semibold leading-8 tracking-tight">{t.w_hello}</h1>
@@ -53,7 +128,7 @@ export function WanjaiHome(p: WanjaiPageProps) {
         <button
           aria-label={t.w_chart}
           onClick={() => navigate('chart')}
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-[#a1844e]"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-gold"
         >
           {value && signs?.length ? (
             <span className="flex -space-x-3">
@@ -75,20 +150,20 @@ export function WanjaiHome(p: WanjaiPageProps) {
         <div
           role="group"
           aria-label={t.w_home}
-          className="grid grid-cols-3 gap-[3px] rounded-[14px] bg-[#ebe5d9] p-[5px]"
+          className="grid grid-cols-3 gap-[3px] rounded-[14px] bg-surface p-[5px]"
         >
           {(['today', 'week', 'month'] as const).map((period) => (
             <button
               key={period}
               aria-pressed={state.period === period}
               onClick={() => update({ period })}
-              className={`min-h-11 rounded-[10px] px-1 py-2.5 text-sm ${state.period === period ? 'bg-primary text-[#fff9f1] shadow-sm' : 'text-[#98836a]'}`}
+              className={`min-h-11 rounded-[10px] px-1 py-2.5 text-sm ${state.period === period ? 'bg-primary text-on-primary shadow-sm' : 'text-muted'}`}
             >
               {t[`w_${period}`]}
             </button>
           ))}
         </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#927a5e]">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
           <span>
             {value
               ? `${date(value.period_start)}${value.period_end !== value.period_start ? ` — ${date(value.period_end)}` : ''}`
@@ -119,33 +194,28 @@ export function WanjaiHome(p: WanjaiPageProps) {
             data-period={value.period}
             aria-label={t[`w_${value.period}`]}
             aria-live="polite"
-            className="rounded-[20px] border border-[#d9b4a0] bg-[#f3e3d8] p-[17px]"
+            className="rounded-[20px] border border-gold/35 bg-[radial-gradient(ellipse_at_top_right,#4c2c6655,transparent_70%)] bg-surface p-[17px]"
           >
             <p className="mb-3 text-xs text-accent">{t[`n_motto_${value.period}`]}</p>
-            <h2 className="text-[18px] font-medium leading-8 text-[#713930]">
+            <h2 className="text-[18px] font-medium leading-8 text-gold">
               {value.narrative.affirmation}
             </h2>
-            <div className="mt-5 border-t border-[#dcc9b8] pt-4">
+            <div className="mt-5 border-t border-line pt-4">
               <h3 className="mb-3 text-base font-medium text-accent">{t[`w_${value.period}`]}</h3>
               {fortune.writing && (
                 <p
                   role="status"
-                  className="mb-3 flex items-center gap-2 text-xs leading-6 text-[#8c785c]"
+                  className="mb-3 flex items-center gap-2 text-xs leading-6 text-muted"
                 >
                   <RefreshCw size={14} className="shrink-0 animate-spin" />
                   {t.o_generating}
                 </p>
               )}
               {!fortune.writing && value.generation?.state === 'fallback' && (
-                <div role="status" className="mb-3 text-xs leading-6 text-[#8c785c]">
-                  <p>{t[value.generation.reason === 'limited' ? 'o_limited' : 'o_fallback']}</p>
-                  <button className="mt-1 underline underline-offset-4" onClick={fortune.retry}>
-                    {t.retry}
-                  </button>
-                </div>
+                <FortuneStatus generation={value.generation} t={t} onRetry={fortune.retry} />
               )}
               <div
-                className="space-y-4 text-sm leading-8 text-[#765b4e]"
+                className="space-y-4 text-sm leading-8 text-ink/85"
                 data-testid="fortune-narrative"
               >
                 {value.narrative.paragraphs.map((paragraph, index) => {
@@ -155,7 +225,7 @@ export function WanjaiHome(p: WanjaiPageProps) {
                     <div key={index}>
                       {factor && (
                         <p
-                          className="mb-1 text-[10px] leading-5 text-[#9a8167]"
+                          className="mb-1 text-[10px] leading-5 text-muted"
                           data-testid="fortune-paragraph-evidence"
                         >
                           {factorLabel(factor)}
@@ -167,22 +237,22 @@ export function WanjaiHome(p: WanjaiPageProps) {
                 })}
               </div>
             </div>
-            <p className="mt-4 text-xs leading-6 text-[#765b4e]">
+            <p className="mt-4 text-xs leading-6 text-ink/85">
               {fillCopy(t.f_birthUsed, { date: value.birth.date })} · {t.f_reference}：{reference}
             </p>
-            <p className="mt-1 text-[11px] leading-6 text-[#8c785c]">
+            <p className="mt-1 text-[11px] leading-6 text-muted">
               {t[value.birth.basis === 'ascendant' ? 'f_basisAsc' : 'f_basisSun']}
             </p>
             {value.birth.reference_signs.length > 1 && (
-              <p className="mt-1 text-[11px] leading-6 text-[#8c785c]">{t.f_boundary}</p>
+              <p className="mt-1 text-[11px] leading-6 text-muted">{t.f_boundary}</p>
             )}
             {state.period === 'today' && (
-              <div className="mt-5 border-t border-[#dcc9b8] pt-4">
-                <p className="mb-3 text-[13px] text-[#765b4e]">{t.w_feedback}</p>
+              <div className="mt-5 border-t border-line pt-4">
+                <p className="mb-3 text-[13px] text-ink/85">{t.w_feedback}</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     aria-pressed={state.helpful === true}
-                    className={`jy-outline flex-1 !text-xs ${state.helpful === true ? '!border-primary !bg-[#ead7c6]' : ''}`}
+                    className={`jy-outline flex-1 !text-xs ${state.helpful === true ? '!border-primary !bg-surface' : ''}`}
                     onClick={() => update({ helpful: true })}
                   >
                     {t.w_helpful}
@@ -205,7 +275,7 @@ export function WanjaiHome(p: WanjaiPageProps) {
               <h2 className="text-[17px] font-medium">
                 {t[`w_${value.period}`]} · {t.j_fourTopics}
               </h2>
-              <span className="text-[10px] text-[#a18c70]">{t.f_readingHint}</span>
+              <span className="text-[10px] text-muted">{t.f_readingHint}</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {data.topics.map((topic) => {
@@ -217,7 +287,7 @@ export function WanjaiHome(p: WanjaiPageProps) {
                     key={key}
                     data-testid={`fortune-${key}`}
                     data-code={reading.code}
-                    className={`min-w-0 rounded-[17px] border bg-panel p-[14px] ${focusTopic === key ? 'border-[#b78e69]' : 'border-[#e3d8c8]'}`}
+                    className={`min-w-0 rounded-[17px] border bg-panel p-[14px] ${focusTopic === key ? 'border-primary' : 'border-line'}`}
                   >
                     <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-accent">
                       <Icon size={17} className="shrink-0" />
@@ -226,11 +296,11 @@ export function WanjaiHome(p: WanjaiPageProps) {
                     <p className="mb-2 text-[15px] font-medium leading-7">
                       {t[`f_${reading.code}`]}
                     </p>
-                    <p className="text-xs leading-7 text-[#765b4e]">
+                    <p className="text-xs leading-7 text-ink/85">
                       {value.narrative.topics[key].text}
                     </p>
                     {value.narrative.source === 'ai' && (
-                      <p className="mt-3 border-t border-[#e3d8c8] pt-2 text-xs leading-7 text-[#8c6d4d]">
+                      <p className="mt-3 border-t border-line pt-2 text-xs leading-7 text-muted">
                         {value.narrative.topics[key].outlook}
                       </p>
                     )}
@@ -244,7 +314,7 @@ export function WanjaiHome(p: WanjaiPageProps) {
             </button>
           </section>
           <details data-testid="fortune-basis" className="jy-card !p-0">
-            <summary className="cursor-pointer p-4 text-sm text-[#705d41]">{t.f_basis}</summary>
+            <summary className="cursor-pointer p-4 text-sm text-gold">{t.f_basis}</summary>
             <div className="space-y-3 border-t border-line p-4 text-xs leading-7 text-muted">
               <p>{t.j_backendNote}</p>
               <p>
@@ -326,7 +396,7 @@ export function WanjaiHome(p: WanjaiPageProps) {
           <JourneyCard p={p} />
           {state.period === 'today' && (
             <details className="jy-card !p-0">
-              <summary className="cursor-pointer p-4 text-sm text-[#705d41]">
+              <summary className="cursor-pointer p-4 text-sm text-gold">
                 {t.w_daily} · {t.w_rhythm} · {t.w_palette}
               </summary>
               <div className="border-t border-line p-3">
@@ -335,14 +405,14 @@ export function WanjaiHome(p: WanjaiPageProps) {
             </details>
           )}
           <details className="pt-2">
-            <summary className="mb-4 cursor-pointer text-sm text-[#8b7659]">{t.j_longTerm}</summary>
-            <LifeTeaser p={p} />
+            <summary className="mb-4 cursor-pointer text-sm text-muted">{t.j_longTerm}</summary>
+            <ReportsTeaser p={p} />
           </details>
-          <section className="flex gap-3 rounded-[18px] border border-[#e0d7c7] bg-[#ebe7dc] p-4">
-            <Bell size={23} className="mt-1 shrink-0 text-[#9c8866]" />
+          <section className="flex gap-3 rounded-[18px] border border-line bg-surface p-4">
+            <Bell size={23} className="mt-1 shrink-0 text-gold" />
             <div>
               <h2 className="text-[15px] leading-7">{t.w_return}</h2>
-              <p className="mt-1 text-xs leading-6 text-[#9b8a6e]">{t.w_rhythmNote}</p>
+              <p className="mt-1 text-xs leading-6 text-muted">{t.w_rhythmNote}</p>
               <button
                 className="mt-2 text-xs text-accent underline underline-offset-4"
                 onClick={() => navigate('daily')}

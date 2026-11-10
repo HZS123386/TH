@@ -19,7 +19,7 @@ export function ThaiBasis({ p, topic }: { p: WanjaiPageProps; topic?: Topic }) {
   const signs = contentFor(p.language).signs;
   return (
     <section
-      className="mb-6 rounded-xl border border-gold/35 bg-[#f4ecdc] p-5"
+      className="mb-6 rounded-xl border border-gold/35 bg-surface p-5"
       aria-label={t.th_facts}
     >
       <h2 className="mb-3 text-sm text-accent">{t.th_facts}</h2>

@@ -14,10 +14,15 @@ export const ZODIAC_SIGNS = [
   'pisces',
 ] as const;
 
-export function zodiacArtwork(signIndex: number) {
+export function zodiacAbbreviation(signIndex: number) {
+  return ZODIAC_SIGNS[signIndex]?.slice(0, 3).toUpperCase() ?? '—';
+}
+
+export function zodiacArtwork(signIndex: number, size: 96 | 256 = 96) {
   if (!Number.isInteger(signIndex) || signIndex < 0 || signIndex >= ZODIAC_SIGNS.length)
     return null;
   const id = ZODIAC_SIGNS[signIndex];
-  const src = `/images/zodiac/${id}-96.webp`;
-  return { id, src, srcSet: `${src} 1x, /images/zodiac/${id}-192.webp 2x` };
+  const folder = size === 96 ? '/images/zodiac' : '/images/zodiac/illustrated';
+  const src = `${folder}/${id}-${size}.webp`;
+  return { id, src, srcSet: `${src} 1x, ${folder}/${id}-${size * 2}.webp 2x` };
 }

@@ -1,0 +1,382 @@
+{
+  "zh": {
+    "chartTitle": "你的本命盘 · 解读视图",
+    "chartNote": "与上一页共用出生时的星位。点选星体或连线可查看位置，阅读时的高亮只帮助定位。",
+    "legend": "本命星体",
+    "focus": "正在关注",
+    "reset": "查看全盘",
+    "showOnChart": "在图中查看",
+    "planetShareTitle": "连线占比说明",
+    "planetShareMethod": "右上角百分比为该星体参与的连线次数，占所有星体参与次数的比例；每条线的两个端点各计一次。取整显示，合计可能有舍入误差，用于观察本盘关系图中的参与程度。",
+    "planetShareEmpty": "本盘没有可统计的关系连线，百分比显示为“—”。",
+    "navigation": "解读目录",
+    "sections": ["总览", "元素", "星体", "十二宫", "连线", "生活主题"],
+    "elementsTitle": "你的元素与行动节奏",
+    "elements": ["火象", "土象", "风象", "水象"],
+    "elementNotes": [
+      "先尝试，再从行动中找到方向。可以为重要决定多留一次核对。",
+      "重视可执行的安排与积累。可以给计划留一点调整空间。",
+      "通过交流和比较理解事情。可以把讨论落实成一项具体行动。",
+      "留意感受与相处氛围。可以先说清自己的需要，再决定如何回应。"
+    ],
+    "modalities": ["本位", "固定", "变动"],
+    "methodTitle": "这些比例怎么算？",
+    "method": "仅按太阳、月亮、水星、金星、火星、木星、土星所在星座分类，每颗计一份，共七份。百分比保留一位小数，合计可能有四舍五入误差。这是星位分布，不是性格得分或预测概率。",
+    "leading": "分布较多：{{names}}",
+    "tie": "{{names}}并列，适合结合具体星体一起理解。",
+    "zero": "某类为0，只表示这七颗星体没有落入该类星座，不代表你缺少相应能力。",
+    "signStyleTitle": "星座表达方式",
+    "signStyles": [
+      "倾向直接开始，遇到选择时愿意先试一小步。",
+      "倾向先确认稳定性，靠持续投入累积结果。",
+      "倾向多问、多比较，在交流中找到新思路。",
+      "倾向先照顾熟悉感，留意人与环境是否让自己安心。",
+      "倾向主动表达，愿意为重视的事情承担一个清楚的角色。",
+      "倾向拆解细节，通过改善步骤把事情做好。",
+      "倾向比较双方需要，借助协商寻找可接受的安排。",
+      "倾向深入确认信任与投入，不急于只看表面做判断。",
+      "倾向把眼光放远，通过学习和新经验寻找方向。",
+      "倾向先明确责任，以可持续的安排推进长期目标。",
+      "倾向独立思考，尝试有别于惯例的做法。",
+      "倾向留意感受和想象，为理解不同处境保留空间。"
+    ],
+    "observe": "可以这样观察自己",
+    "houseActions": [
+      "开始一件新事时，先写下你想主动承担的部分，再听听他人的期待。",
+      "做购买或支出决定前，先列出必要项与可延后项，再核对可用资源。",
+      "结束一次重要沟通前，用自己的话复述结论，确认双方说的是同一件事。",
+      "讨论居住或家庭安排时，把需要的空间、时间和分工说具体。",
+      "给一个兴趣留出小段固定时间，观察你是否愿意持续投入。",
+      "遇到阻力时，把问题拆成可核对的小步骤，先解决最影响进度的一项。",
+      "建立合作或关系前，先谈清彼此的期待、责任和可以拒绝的边界。",
+      "涉及共同支出或责任时，把各自承担的部分和调整办法写下来。",
+      "选择学习或新体验前，先确定一个想回答的问题，再检视所得。",
+      "接下任务前，确认交付内容、优先级和完成标准，避免只凭印象答应。",
+      "向人求助时，说明需要什么、何时需要，以及自己能提供哪些配合。",
+      "给日程留出恢复和独处的时间，定期检查哪些安排持续占用精力。"
+    ],
+    "basis": "查看这项解读的依据",
+    "topicsTitle": "把命盘放回生活",
+    "topicsIntro": "每个主题结合相关宫位、宫主星及其实际落点来阅读。先看看哪些描述符合你的经历，再决定是否采用建议。",
+    "topicBridge": "在「{{topic}}」中，可以留意「{{theme}}」如何影响你的选择。",
+    "topics": [
+      {
+        "title": "事业与工作",
+        "question": "你更容易在哪类任务中发挥？可以比较独立完成、协作沟通和持续跟进时，哪一种安排更适合你。",
+        "contexts": ["工作中的主动性和个人表达可能更值得留意，例如你是否愿意提出自己的做法。","工作选择可能与收入稳定和资源安排相连，例如接受新机会前会先确认报酬。","工作中可以留意信息沟通与学习方式，例如交接时双方是否理解一致。","工作节奏可能受到居住安排和家庭责任影响，例如在家办公时如何划分边界。","可以观察工作是否给创意与兴趣留出空间，例如哪些任务让你愿意多投入一点。","可以关注每天的工作安排，例如流程和分工是否让你反复返工。","工作中可以留意合作与协商，例如你和同事对职责的理解是否一致。","工作可能涉及共同资源与风险，例如预算由谁批准、责任如何分担。","工作选择可能与进修和发展方向相连，例如一项技能能否支撑下一步目标。","可以留意职业角色和长期目标，例如你想承担的职责是否符合当前精力。","工作中可以观察团队和人际支持，例如需要帮助时是否清楚该找谁。","可以关注工作后的恢复空间，例如哪些承诺持续占用本来用于休息的时间。"],
+        "action": "选一项本周最重要的工作，写清目标、所需帮助和下一步，再与相关的人确认。"
+      },
+      {
+        "title": "金钱与资源",
+        "question": "可以观察自己如何区分需要与想要，以及独立支出和共同责任是否分得清楚。",
+        "contexts": ["金钱安排可能与你的个人选择相连，例如是否容易为了维护独立感而独自承担支出。","可以关注收入与日常开支的平衡，例如固定支出是否挤占了储蓄空间。","财务安排可以从信息沟通入手，例如付款前是否理解价格、期限和条件。","金钱可能牵涉居住与家庭安排，例如租金、房贷或家用如何分担。","可以观察兴趣和娱乐支出，例如一次小额消费是否经常累积超出预期。","可以关注日常财务习惯，例如账单、订阅和报销是否有固定的整理时间。","金钱可能牵涉伴侣或合作关系，例如双方是否清楚谁支付、谁做决定。","可以关注共同账目和长期责任，例如借款、保险或共同支出有哪些约定。","金钱可能与学习和出行计划相连，例如进修费用是否已纳入预算。","收入与职业责任可能相连，例如职位变化时是否同步讨论报酬和投入。","可以留意社交与群体活动的支出，例如人情往来是否影响自己的预算。","可以关注容易忽略的开支，例如为了省心而持续支付但很少使用的服务。"],
+        "action": "选一笔近期支出，核对预算、付款条件和共同承担的部分，再决定是否支付。"
+      },
+      {
+        "title": "感情与合作",
+        "question": "不论是否正在恋爱，都可以观察自己如何表达需要、建立信任，以及面对不同意见。",
+        "contexts": ["关系中可以留意自我表达，例如为了维持和气是否经常收起自己的意见。","关系可能涉及稳定感和价值观，例如两人对时间、金钱和付出的理解是否相近。","可以关注沟通方式，例如你希望对方听你倾诉，还是一起想办法。","亲密关系可能牵涉居住与家人的边界，例如两人是否拥有自己的相处空间。","可以观察共同兴趣和轻松相处的机会，例如是否只讨论责任而忘了约会。","可以留意日常相处习惯，例如家务和陪伴是否有可持续的安排。","关系中可以留意平等协商，例如不同意见能否在没有催促的情况下说清楚。","可以关注信任和共同责任，例如私密信息、金钱与承诺的边界是否明确。","关系可能与不同背景和未来方向相连，例如双方是否能尊重彼此的成长计划。","可以留意工作角色如何进入关系，例如忙碌时是否说明陪伴和支持的需要。","可以观察朋友与伴侣之间的平衡，例如社交安排是否给彼此留下自主空间。","可以关注独处和情绪恢复的需要，例如沉默时能否让对方知道自己需要一点时间。"],
+        "action": "选一个具体需要，用“我希望……”开头表达，再听听对方的需要，约定一次小调整。"
+      },
+      {
+        "title": "家庭与归属",
+        "question": "可以留意哪些相处方式让你安心，以及家庭、居住和个人空间的安排是否合适。",
+        "contexts": ["家庭中可以留意个人空间，例如照顾家人的同时能否保留自己的生活安排。","家庭可能涉及安全感与资源分配，例如共同开支是否让每个人都感到公平。","可以观察家人之间的信息传达，例如期待是否被当成理所当然而没有说出口。","可以关注居住环境和相处规则，例如怎样安排空间会让你更放松。","家庭中可以留意轻松互动，例如是否有不围绕任务和成绩的共同时间。","可以关注家务和照顾安排，例如重复劳动是否总落在同一个人身上。","可以留意家庭成员之间的协商，例如重大决定是否听取了相关人的意见。","家庭可能涉及共同财产与责任，例如大额支出和照顾分工是否有清楚约定。","可以关注家人之间的观念差异，例如不同成长经历是否影响了对未来的期待。","可以留意事业责任如何影响家庭，例如工作忙碌时，家务和陪伴需要怎样重新分配。","可以观察家人以外的支持，例如朋友和社区是否能分担一些照顾压力。","可以关注休息与独处的边界，例如家人是否知道你何时需要安静和恢复。"],
+        "action": "选一项家务、照顾或居住安排，和家人说清谁负责、何时完成，并给彼此留出休息时间。"
+      }
+    ],
+    "topicRuler": "第{{anchor}}宫的宫主星：{{planet}} · {{sign}} · 第{{house}}宫",
+    "connections": "相关领域",
+    "relatedThemes": "{{first}}与{{second}}之间的配合",
+    "houseCusp": "宫头起点",
+    "cuspNote": "沿用泰式整宫制：每宫从对应星座0°开始。",
+    "basicReport": "本命解读",
+    "readingBasis": "计算与阅读口径",
+    "scope": "本报告把实际星位与传统象征组合为可核对的阅读提示，适合自我观察。它不对具体事件、财富或感情结果作保证；日期相关的变化请查看“我的运势”。"
+  },
+  "en": {
+    "chartTitle": "Your natal chart · reading view",
+    "chartNote": "The birth positions are the same as on the previous page. Select a body or line to inspect it. Reading highlights only help you locate the relevant points.",
+    "legend": "Natal bodies",
+    "focus": "In focus",
+    "reset": "Show whole chart",
+    "showOnChart": "Show on chart",
+    "planetShareTitle": "About the connection shares",
+    "planetShareMethod": "Each badge shows the body's share of all connection endpoints. Both ends of each line count once. Percentages are rounded to whole numbers, so totals may differ slightly from 100%. This describes participation in this chart's connections.",
+    "planetShareEmpty": "This chart has no connections to count, so shares display as a dash.",
+    "navigation": "Reading contents",
+    "sections": ["Overview", "Elements", "Bodies", "Houses", "Connections", "Life topics"],
+    "elementsTitle": "Your elements and ways of acting",
+    "elements": ["Fire", "Earth", "Air", "Water"],
+    "elementNotes": [
+      "Try a small action to find a direction. Leave time to check important decisions.",
+      "Build through practical plans and steady effort. Leave some room to adjust the plan.",
+      "Use conversation and comparison to understand things. Turn one discussion into a clear next step.",
+      "Notice feelings and the atmosphere between people. Name your needs before choosing a response."
+    ],
+    "modalities": ["Cardinal", "Fixed", "Mutable"],
+    "methodTitle": "How are these shares counted?",
+    "method": "Only the Sun, Moon, Mercury, Venus, Mars, Jupiter and Saturn count, grouped by their signs: seven equal shares. Percentages use one decimal, so totals may have a small rounding difference. These are position counts, not personality scores or event probabilities.",
+    "leading": "More represented: {{names}}",
+    "tie": "{{names}} share the lead. Read them alongside the individual bodies.",
+    "zero": "Zero means that none of these seven bodies occupies signs in that group. It does not mean you lack that ability.",
+    "signStyleTitle": "Expression through the sign",
+    "signStyles": [
+      "May prefer a direct start and a small first attempt when choosing.",
+      "May check for stability and build results through steady commitment.",
+      "May ask questions and compare options to discover fresh ideas.",
+      "May seek familiarity and notice whether people and surroundings feel reassuring.",
+      "May express a clear position and take a visible role in something that matters.",
+      "May break things into details and improve the steps along the way.",
+      "May compare both sides and negotiate an arrangement people can accept.",
+      "May look beyond first impressions and take time to establish trust.",
+      "May seek direction through learning, wider perspectives and new experiences.",
+      "May clarify responsibilities and use sustainable plans for longer goals.",
+      "May think independently and try an approach outside the usual routine.",
+      "May notice feelings and imagination, allowing room for different experiences."
+    ],
+    "observe": "Something to try and observe",
+    "houseActions": [
+      "When starting something, name the part you want to take on, then ask what others expect.",
+      "Before spending, separate essentials from things that can wait and check the resources available.",
+      "At the end of an important conversation, restate the conclusion to check that both sides agree.",
+      "When discussing home arrangements, be specific about space, time and shared tasks.",
+      "Set aside a short regular slot for an interest and notice whether you want to keep doing it.",
+      "Break an obstacle into things you can check. Address the part that blocks progress first.",
+      "Before a partnership, discuss expectations, responsibilities and the right to say no.",
+      "Write down each person's share of a common cost or duty and how changes will be handled.",
+      "Choose a question before starting a course or new experience, then review what you learned.",
+      "Before accepting a task, confirm the deliverable, priority and standard for completion.",
+      "When asking for help, explain what you need, when you need it and how you can cooperate.",
+      "Leave time for rest and solitude. Review which commitments repeatedly drain your attention."
+    ],
+    "basis": "See the basis for this reading",
+    "topicsTitle": "Bring the chart into everyday life",
+    "topicsIntro": "Each topic combines its houses, their rulers and the rulers' actual placements. Compare these reading prompts with your experience before choosing any advice.",
+    "topicBridge": "For {{topic}}, notice how {{theme}} may influence your choices.",
+    "topics": [
+      {
+        "title": "Work and career",
+        "question": "Compare independent tasks, collaboration and sustained follow-through. Which arrangement helps you work well?",
+        "contexts": ["At work, notice room for initiative: can you suggest your own way of doing a task?","Work choices may connect with income security, such as checking pay before accepting an opportunity.","Notice communication and learning at work, including whether handovers are understood by both sides.","Home arrangements may affect work, such as boundaries when working from home.","Notice where work leaves room for creativity and interests that sustain your attention.","Look at daily workflows, including recurring rework caused by unclear steps.","Notice cooperation at work, such as whether colleagues agree on responsibilities.","Work may involve shared resources: clarify who approves budgets and carries responsibility.","Notice how training supports the direction you want your work to take.","Consider the role you want at work and whether its responsibilities fit your capacity.","Notice team support and whether you know whom to ask for help.","Notice commitments that repeatedly use time meant for rest after work."],
+        "action": "Choose one important task this week. Write down the goal, support needed and next step, then confirm it with those involved."
+      },
+      {
+        "title": "Money and resources",
+        "question": "Notice how you separate needs from wants, and personal spending from shared responsibilities.",
+        "contexts": ["Money choices may connect with independence, such as taking on every cost yourself.","Notice the balance between regular expenses, income and room for savings.","Check financial information, including prices, deadlines and conditions before paying.","Money may connect with housing and family, including how rent or household costs are shared.","Notice entertainment spending and whether small purchases regularly add up.","Look at daily money habits, such as time for checking subscriptions and bills.","Money may involve partners: clarify who pays and who makes decisions.","Notice shared accounts and longer responsibilities, including agreements about borrowing or joint costs.","Learning and travel may affect your budget; check how these plans are funded.","Income may connect with work responsibilities; discuss pay when a role changes.","Notice social spending and whether group plans fit your own budget.","Look for easily overlooked costs, such as services you keep paying for but rarely use."],
+        "action": "Choose one upcoming expense. Check your budget, payment terms and any shared responsibility before deciding."
+      },
+      {
+        "title": "Relationships and cooperation",
+        "question": "Single or partnered, you can observe how you express needs, develop trust and handle differences.",
+        "contexts": ["Notice self-expression in relationships: do you hold back opinions to keep the peace?","Shared values may matter, including what time, money and effort mean to each person.","Notice whether a conversation calls for listening, advice or a joint solution.","Relationships may connect with home and family boundaries, including room to be together privately.","Notice shared interests and relaxed time together beyond routine responsibilities.","Look at daily relationship habits, including sustainable arrangements for chores and companionship.","Notice equal negotiation and whether differences can be discussed without pressure.","Notice trust and shared responsibilities, including boundaries around privacy, money and promises.","Different backgrounds may shape future plans; make room for both people to grow.","Notice how work enters the relationship, including how you ask for support when busy.","Look at the balance between friendships, the relationship and personal freedom.","Notice the need for solitude and explain when quiet time helps you recover."],
+        "action": "Choose one specific need, express it with “I would like…”, listen to the other person and agree on a small adjustment."
+      },
+      {
+        "title": "Home and belonging",
+        "question": "Notice which ways of living together feel reassuring and whether there is enough room for personal needs.",
+        "contexts": ["Notice personal space at home and whether caring for others leaves room for your own plans.","Household resources may shape security: does everyone understand how costs are shared?","Notice communication with family, especially expectations that have never been spoken aloud.","Look at your living space and which arrangements help you feel at ease.","Notice time for enjoyable family interaction beyond tasks and expectations.","Look at household chores and care, including whether repeated work falls to one person.","Notice family negotiation and whether decisions include the people affected.","Family may involve shared assets and duties; clarify large expenses and care arrangements.","Different experiences may shape family expectations for the future.","Notice how work responsibilities affect home life and how chores and time together need rebalancing.","Look at support beyond the household, including friends or community help with care.","Notice boundaries for rest and whether family knows when you need quiet time."],
+        "action": "Choose one household, care or living arrangement. Agree who does what and when, leaving room for everyone to rest."
+      }
+    ],
+    "topicRuler": "House {{anchor}} ruler: {{planet}} · {{sign}} · house {{house}}",
+    "connections": "Related areas",
+    "relatedThemes": "Cooperation between {{first}} and {{second}}",
+    "houseCusp": "House cusp",
+    "cuspNote": "This keeps the Thai whole-sign system. Each house starts at 0° of its sign.",
+    "basicReport": "Natal reading",
+    "readingBasis": "Calculation and reading method",
+    "scope": "This report combines actual positions with traditional symbolism as prompts for self-observation. It does not guarantee events, wealth or relationship outcomes. See My Fortune for changes tied to a date."
+  },
+  "th": {
+    "chartTitle": "ดวงกำเนิด · มุมมองคำอ่าน",
+    "chartNote": "ใช้ตำแหน่งดาวเวลาเกิดชุดเดียวกับหน้าก่อน แตะดาวหรือเส้นเพื่อดูข้อมูล การเน้นสีช่วยระบุตำแหน่งที่กำลังอ่านเท่านั้น",
+    "legend": "ดาวกำเนิด",
+    "focus": "กำลังดู",
+    "reset": "ดูทั้งดวง",
+    "showOnChart": "ดูในแผนผัง",
+    "planetShareTitle": "วิธีนับสัดส่วนเส้นสัมพันธ์",
+    "planetShareMethod": "ป้ายแสดงสัดส่วนปลายเส้นที่เชื่อมกับดาวดวงนั้นเทียบกับปลายเส้นทั้งหมด แต่ละเส้นนับทั้งสองปลาย ปัดเป็นจำนวนเต็ม ผลรวมจึงอาจต่างจาก100%เล็กน้อย ใช้ดูการมีส่วนร่วมของดาวในแผนผังนี้",
+    "planetShareEmpty": "ดวงนี้ไม่มีเส้นสัมพันธ์ให้นับ จึงแสดงสัดส่วนเป็นขีด",
+    "navigation": "สารบัญคำอ่าน",
+    "sections": ["ภาพรวม", "ธาตุ", "ดาว", "เรือน", "ความสัมพันธ์", "เรื่องในชีวิต"],
+    "elementsTitle": "ธาตุและจังหวะการลงมือ",
+    "elements": ["ไฟ", "ดิน", "ลม", "น้ำ"],
+    "elementNotes": [
+      "ลองลงมือทีละน้อยเพื่อหาทิศทาง และเผื่อเวลาตรวจสอบก่อนตัดสินใจเรื่องสำคัญ",
+      "ค่อย ๆ สร้างผลจากแผนที่ทำได้จริง พร้อมเปิดช่องให้ปรับแผน",
+      "ใช้การพูดคุยและเปรียบเทียบเพื่อเข้าใจเรื่องต่าง ๆ แล้วเลือกขั้นตอนที่ทำต่อได้",
+      "สังเกตความรู้สึกและบรรยากาศระหว่างกัน บอกความต้องการก่อนเลือกวิธีตอบสนอง"
+    ],
+    "modalities": ["เริ่มต้น", "คงที่", "ปรับเปลี่ยน"],
+    "methodTitle": "สัดส่วนนี้นับอย่างไร?",
+    "method": "นับเฉพาะอาทิตย์ จันทร์ พุธ ศุกร์ อังคาร พฤหัสบดี และเสาร์ตามราศีที่สถิต ดาวละหนึ่งส่วน รวมเจ็ดส่วน แสดงทศนิยมหนึ่งตำแหน่ง ผลรวมอาจต่างเล็กน้อยจากการปัดเศษ เป็นสัดส่วนตำแหน่งดาว ไม่ใช่คะแนนนิสัยหรือโอกาสเกิดเหตุการณ์",
+    "leading": "มีสัดส่วนมาก: {{names}}",
+    "tie": "{{names}}มีสัดส่วนมากเท่ากัน ควรอ่านร่วมกับดาวแต่ละดวง",
+    "zero": "ค่า0หมายถึงดาวเจ็ดดวงนี้ไม่ได้อยู่ในราศีกลุ่มนั้น ไม่ได้หมายความว่าคุณไม่มีความสามารถด้านนั้น",
+    "signStyleTitle": "รูปแบบการแสดงออกตามราศี",
+    "signStyles": [
+      "อาจชอบเริ่มตรง ๆ และลองทำขั้นเล็กก่อนตัดสินใจ",
+      "อาจมองหาความมั่นคงและสะสมผลจากความต่อเนื่อง",
+      "อาจชอบถามและเปรียบเทียบเพื่อพบแนวคิดใหม่",
+      "อาจให้ความสำคัญกับความคุ้นเคยและความอุ่นใจ",
+      "อาจอยากแสดงจุดยืนและรับบทบาทชัดเจนในเรื่องที่สำคัญ",
+      "อาจแบ่งงานเป็นรายละเอียดและค่อย ๆ ปรับขั้นตอน",
+      "อาจพิจารณาความต้องการทั้งสองฝ่ายแล้วหาข้อตกลง",
+      "อาจใช้เวลาสร้างความไว้วางใจและไม่ตัดสินแค่ภายนอก",
+      "อาจหาทิศทางผ่านการเรียนรู้และประสบการณ์ใหม่",
+      "อาจกำหนดความรับผิดชอบและวางแผนระยะยาวที่ทำต่อได้",
+      "อาจคิดอย่างอิสระและลองวิธีที่ต่างจากเดิม",
+      "อาจใส่ใจความรู้สึก จินตนาการ และประสบการณ์ที่แตกต่าง"
+    ],
+    "observe": "ลองทำและสังเกตตนเอง",
+    "houseActions": [
+      "ก่อนเริ่มเรื่องใหม่ บอกส่วนที่อยากรับผิดชอบ แล้วถามความคาดหวังของผู้อื่น",
+      "ก่อนใช้จ่าย แยกสิ่งจำเป็นกับสิ่งที่รอได้ แล้วตรวจทรัพยากรที่มี",
+      "จบการคุยเรื่องสำคัญด้วยการทวนข้อสรุป เพื่อให้เข้าใจตรงกัน",
+      "คุยเรื่องที่อยู่ให้ชัดทั้งพื้นที่ เวลา และการแบ่งหน้าที่",
+      "กันเวลาสั้น ๆ ให้สิ่งที่สนใจ แล้วดูว่าอยากทำต่อหรือไม่",
+      "แบ่งอุปสรรคเป็นข้อที่ตรวจสอบได้ แล้วเริ่มแก้ส่วนที่ขวางงานมากที่สุด",
+      "ก่อนร่วมมือกัน คุยความคาดหวัง หน้าที่ และขอบเขตการปฏิเสธ",
+      "จดส่วนที่แต่ละคนรับผิดชอบในค่าใช้จ่ายหรืองานร่วม พร้อมวิธีปรับข้อตกลง",
+      "ตั้งคำถามก่อนเริ่มเรียนหรือหาประสบการณ์ใหม่ แล้วทบทวนสิ่งที่ได้",
+      "ก่อนรับงาน ยืนยันผลงานที่ต้องส่ง ลำดับความสำคัญ และเกณฑ์เสร็จงาน",
+      "ขอความช่วยเหลือให้ชัดว่าต้องการอะไร เมื่อใด และจะร่วมมืออย่างไร",
+      "เผื่อเวลาพักและอยู่ลำพัง ทบทวนสิ่งที่ใช้แรงใจซ้ำ ๆ"
+    ],
+    "basis": "ดูข้อมูลที่ใช้ในคำอ่าน",
+    "topicsTitle": "นำดวงมาสังเกตชีวิตประจำวัน",
+    "topicsIntro": "แต่ละเรื่องอ่านจากเรือนที่เกี่ยวข้อง ดาวเจ้าเรือน และตำแหน่งจริง ลองเทียบกับประสบการณ์ก่อนเลือกใช้คำแนะนำ",
+    "topicBridge": "สำหรับ{{topic}} ลองสังเกตว่า{{theme}}เกี่ยวข้องกับการเลือกของคุณอย่างไร",
+    "topics": [
+      {
+        "title": "งานและอาชีพ",
+        "question": "ลองเปรียบเทียบงานที่ทำคนเดียว งานร่วมทีม และงานที่ต้องติดตามต่อเนื่อง แบบใดช่วยให้ทำงานได้ดี?",
+        "contexts": ["สังเกตพื้นที่ให้เริ่มทำงานด้วยตนเอง เช่น กล้าเสนอวิธีของตัวเองหรือไม่","งานอาจเกี่ยวกับความมั่นคงของรายได้ เช่น ตรวจค่าตอบแทนก่อนรับโอกาสใหม่","สังเกตการสื่อสารและเรียนรู้ในงาน เช่น ส่งต่องานแล้วเข้าใจตรงกันหรือไม่","การจัดบ้านอาจกระทบงาน เช่น ขอบเขตเวลาทำงานที่บ้าน","สังเกตว่างานเปิดพื้นที่ให้ความคิดสร้างสรรค์และความสนใจเพียงใด","ดูขั้นตอนงานประจำ เช่น มีงานที่ต้องแก้ซ้ำเพราะขั้นตอนไม่ชัดหรือไม่","สังเกตความร่วมมือ เช่น เพื่อนร่วมงานเข้าใจหน้าที่ตรงกันหรือไม่","งานอาจใช้ทรัพยากรร่วม ควรชัดว่าใครอนุมัติงบและรับผิดชอบส่วนใด","สังเกตว่าการเรียนเพิ่มเติมช่วยทิศทางงานที่ต้องการอย่างไร","พิจารณาบทบาทงานที่อยากรับและกำลังที่มีในปัจจุบัน","ดูเครือข่ายช่วยเหลือในงาน และรู้หรือไม่ว่าควรขอความช่วยเหลือจากใคร","สังเกตคำรับปากที่เบียดเวลาพักหลังงานซ้ำ ๆ"],
+        "action": "เลือกงานสำคัญหนึ่งเรื่องในสัปดาห์นี้ เขียนเป้าหมาย ความช่วยเหลือที่ต้องการ และขั้นต่อไป แล้วคุยกับผู้เกี่ยวข้อง"
+      },
+      {
+        "title": "เงินและทรัพยากร",
+        "question": "สังเกตการแยกสิ่งจำเป็นกับสิ่งที่อยากได้ และค่าใช้จ่ายส่วนตัวกับความรับผิดชอบร่วม",
+        "contexts": ["การเงินอาจเกี่ยวกับความเป็นอิสระ เช่น รับค่าใช้จ่ายไว้คนเดียวหรือไม่","ดูสมดุลรายได้ ค่าใช้จ่ายประจำ และพื้นที่สำหรับเงินออม","ตรวจข้อมูลก่อนจ่าย ทั้งราคา กำหนดเวลา และเงื่อนไข","การเงินอาจโยงกับบ้าน เช่น ค่าเช่าหรือค่าใช้จ่ายในครัวเรือนแบ่งกันอย่างไร","สังเกตค่าใช้จ่ายเพื่อความสนใจและบันเทิงที่สะสมทีละน้อย","ดูนิสัยการเงินประจำวัน เช่น เวลาตรวจบิลและบริการที่สมัครไว้","การเงินอาจเกี่ยวกับคู่หรือผู้ร่วมงาน ควรชัดว่าใครจ่ายและใครตัดสินใจ","ดูบัญชีและภาระร่วม เช่น ข้อตกลงการยืมหรือค่าใช้จ่ายร่วม","แผนเรียนและเดินทางอาจกระทบงบ ควรรวมค่าใช้จ่ายไว้ด้วย","รายได้อาจโยงกับบทบาทงาน เมื่อหน้าที่เปลี่ยนควรคุยค่าตอบแทนด้วย","สังเกตค่าเข้าสังคมว่าเหมาะกับงบส่วนตัวหรือไม่","มองหาค่าใช้จ่ายที่ลืมง่าย เช่น บริการที่จ่ายต่อแต่ไม่ค่อยใช้"],
+        "action": "เลือกค่าใช้จ่ายใกล้ตัวหนึ่งรายการ ตรวจงบ เงื่อนไข และส่วนที่รับผิดชอบร่วมก่อนตัดสินใจ"
+      },
+      {
+        "title": "ความรักและการร่วมมือ",
+        "question": "ไม่ว่าจะมีคู่หรือไม่ ลองสังเกตการบอกความต้องการ การสร้างความไว้ใจ และการรับฟังความต่าง",
+        "contexts": ["สังเกตการแสดงความเห็นในความสัมพันธ์ เช่น เก็บความคิดไว้เพื่อเลี่ยงความขัดแย้งหรือไม่","ค่านิยมร่วมอาจสำคัญ เช่น แต่ละคนมองเวลา เงิน และความใส่ใจอย่างไร","สังเกตว่าการคุยครั้งนี้ต้องการผู้ฟัง คำแนะนำ หรือการหาทางออกร่วม","ความสัมพันธ์อาจโยงกับบ้านและขอบเขตครอบครัว เช่น มีพื้นที่ส่วนตัวร่วมกันหรือไม่","ดูความสนใจร่วมและเวลาอยู่ด้วยกันแบบผ่อนคลาย นอกเหนือจากหน้าที่","ดูนิสัยอยู่ร่วมกัน เช่น งานบ้านและเวลาให้กันทำต่อเนื่องได้หรือไม่","สังเกตการตกลงอย่างเท่าเทียม ว่าคุยความต่างโดยไม่กดดันได้หรือไม่","ดูความไว้ใจและหน้าที่ร่วม รวมถึงขอบเขตเรื่องส่วนตัว เงิน และคำสัญญา","พื้นเพต่างกันอาจกระทบแผนอนาคต ควรมีพื้นที่ให้ทั้งคู่เติบโต","สังเกตงานที่เข้ามากระทบความสัมพันธ์ เช่น บอกความต้องการเมื่อยุ่งอย่างไร","ดูสมดุลระหว่างเพื่อน คนรัก และอิสระส่วนตัว","สังเกตความต้องการอยู่ลำพัง และบอกอีกฝ่ายเมื่ออยากพักเงียบ ๆ"],
+        "action": "เลือกความต้องการหนึ่งข้อ เริ่มด้วย “ฉันอยาก…” ฟังอีกฝ่าย แล้วตกลงปรับเรื่องเล็ก ๆ ร่วมกัน"
+      },
+      {
+        "title": "บ้านและความผูกพัน",
+        "question": "สังเกตวิธีอยู่ร่วมกันที่ทำให้อุ่นใจ และพื้นที่สำหรับความต้องการส่วนตัว",
+        "contexts": ["สังเกตพื้นที่ส่วนตัวที่บ้าน ว่าการดูแลผู้อื่นยังเหลือที่ให้แผนชีวิตของตนหรือไม่","ทรัพยากรร่วมอาจมีผลต่อความอุ่นใจ ทุกคนเข้าใจการแบ่งค่าใช้จ่ายหรือไม่","ดูการสื่อสารในครอบครัว โดยเฉพาะความคาดหวังที่ยังไม่เคยพูดออกมา","ดูพื้นที่อยู่อาศัยและรูปแบบที่ช่วยให้คุณผ่อนคลาย","สังเกตเวลาทำสิ่งสนุกด้วยกัน นอกเหนือจากงานและความคาดหวัง","ดูงานบ้านและการดูแล ว่างานซ้ำ ๆ ตกอยู่ที่คนเดียวหรือไม่","ดูการตัดสินใจในบ้าน ว่าคนที่ได้รับผลมีโอกาสออกความเห็นหรือไม่","ครอบครัวอาจมีทรัพย์สินและภาระร่วม ควรชัดเรื่องค่าใช้จ่ายใหญ่และการดูแล","ประสบการณ์ต่างกันอาจทำให้ครอบครัวคาดหวังอนาคตไม่เหมือนกัน","ดูหน้าที่การงานที่กระทบบ้าน เช่น ช่วงงานยุ่งควรแบ่งงานบ้านและเวลาให้กันใหม่อย่างไร","ดูแรงสนับสนุนนอกบ้าน เช่น เพื่อนหรือชุมชนช่วยแบ่งเบาการดูแลได้หรือไม่","ดูขอบเขตการพัก ว่าคนในบ้านรู้หรือไม่ว่าเมื่อใดคุณต้องการความสงบ"],
+        "action": "เลือกงานบ้าน การดูแล หรือการอยู่อาศัยหนึ่งเรื่อง ตกลงว่าใครทำอะไร เมื่อใด และเผื่อเวลาพักให้กัน"
+      }
+    ],
+    "topicRuler": "เจ้าเรือนที่{{anchor}}: {{planet}} · {{sign}} · เรือนที่{{house}}",
+    "connections": "เรื่องที่เกี่ยวข้อง",
+    "relatedThemes": "การประสานระหว่าง{{first}}กับ{{second}}",
+    "houseCusp": "จุดเริ่มเรือน",
+    "cuspNote": "ใช้เรือนแบบทั้งราศีของไทย แต่ละเรือนเริ่มที่0°ของราศีนั้น",
+    "basicReport": "คำอ่านดวงกำเนิด",
+    "readingBasis": "วิธีคำนวณและแนวทางอ่าน",
+    "scope": "คำอ่านนี้นำตำแหน่งจริงมาประกอบสัญลักษณ์ตามตำรา เพื่อใช้สังเกตตนเอง ไม่รับรองเหตุการณ์ ทรัพย์สิน หรือผลของความสัมพันธ์ เรื่องที่เปลี่ยนตามวันให้ดูหน้าดวงของฉัน"
+  },
+  "vi": {
+    "chartTitle": "Lá số gốc · chế độ luận giải",
+    "chartNote": "Dùng cùng vị trí lúc sinh như trang trước. Chọn thiên thể hoặc đường nối để xem dữ liệu. Phần tô sáng chỉ giúp xác định nội dung đang đọc.",
+    "legend": "Thiên thể lúc sinh",
+    "focus": "Đang xem",
+    "reset": "Xem toàn bộ",
+    "showOnChart": "Xem trên lá số",
+    "planetShareTitle": "Cách tính tỷ lệ liên kết",
+    "planetShareMethod": "Mỗi nhãn cho biết tỷ lệ đầu nối thuộc thiên thể đó trên tổng số đầu nối. Mỗi đường được tính ở cả hai đầu. Tỷ lệ làm tròn thành số nguyên nên tổng có thể lệch nhẹ khỏi100%. Đây là mức tham gia vào các liên kết của lá số này.",
+    "planetShareEmpty": "Lá số không có liên kết để đếm nên tỷ lệ được hiển thị bằng dấu gạch.",
+    "navigation": "Mục lục luận giải",
+    "sections": ["Tổng quan", "Nguyên tố", "Thiên thể", "Các nhà", "Liên kết", "Chủ đề sống"],
+    "elementsTitle": "Nguyên tố và nhịp hành động",
+    "elements": ["Lửa", "Đất", "Khí", "Nước"],
+    "elementNotes": [
+      "Thử một bước nhỏ để tìm hướng đi. Dành thời gian kiểm tra quyết định quan trọng.",
+      "Tích lũy qua kế hoạch thực tế và nỗ lực đều đặn. Chừa chỗ để điều chỉnh.",
+      "Hiểu vấn đề qua trao đổi và so sánh. Biến một cuộc thảo luận thành bước làm cụ thể.",
+      "Chú ý cảm xúc và bầu không khí giữa mọi người. Nói rõ nhu cầu trước khi phản hồi."
+    ],
+    "modalities": ["Khởi xướng", "Cố định", "Linh hoạt"],
+    "methodTitle": "Các tỷ lệ được tính thế nào?",
+    "method": "Chỉ tính Mặt Trời, Mặt Trăng, Sao Thủy, Sao Kim, Sao Hỏa, Sao Mộc và Sao Thổ theo cung, mỗi thiên thể một phần trong bảy phần bằng nhau. Tỷ lệ có một chữ số thập phân nên tổng có thể lệch nhẹ do làm tròn. Đây là phân bố vị trí, không phải điểm tính cách hay xác suất sự kiện.",
+    "leading": "Nhóm có nhiều hơn: {{names}}",
+    "tie": "{{names}} cùng dẫn đầu. Hãy đọc cùng vị trí từng thiên thể.",
+    "zero": "Số0 chỉ có nghĩa bảy thiên thể này không ở các cung thuộc nhóm đó, không có nghĩa bạn thiếu năng lực tương ứng.",
+    "signStyleTitle": "Cách biểu đạt qua cung",
+    "signStyles": [
+      "Có thể thích bắt đầu trực tiếp và thử một bước nhỏ khi lựa chọn.",
+      "Có thể tìm sự ổn định và tích lũy kết quả bằng cam kết đều đặn.",
+      "Có thể đặt câu hỏi và so sánh để tìm ý tưởng mới.",
+      "Có thể ưu tiên sự quen thuộc và cảm giác an tâm với người, môi trường xung quanh.",
+      "Có thể muốn thể hiện quan điểm và nhận vai trò rõ ràng trong việc quan trọng.",
+      "Có thể chia nhỏ chi tiết và cải thiện từng bước thực hiện.",
+      "Có thể cân nhắc nhu cầu hai bên rồi thương lượng một sắp xếp chấp nhận được.",
+      "Có thể cần thời gian xây dựng lòng tin và nhìn sâu hơn ấn tượng ban đầu.",
+      "Có thể tìm hướng đi qua học hỏi, góc nhìn rộng và trải nghiệm mới.",
+      "Có thể làm rõ trách nhiệm và lập kế hoạch bền vững cho mục tiêu dài hạn.",
+      "Có thể suy nghĩ độc lập và thử cách khác với thói quen cũ.",
+      "Có thể chú ý cảm xúc, trí tưởng tượng và dành chỗ cho trải nghiệm khác nhau."
+    ],
+    "observe": "Điều có thể thử và quan sát",
+    "houseActions": [
+      "Khi bắt đầu việc mới, nói rõ phần bạn muốn đảm nhận rồi hỏi mong đợi của người khác.",
+      "Trước khi chi tiền, tách việc cần thiết khỏi việc có thể chờ rồi kiểm tra nguồn lực.",
+      "Kết thúc cuộc trao đổi quan trọng bằng cách nhắc lại kết luận để xác nhận hai bên hiểu đúng.",
+      "Khi bàn việc nhà, nói cụ thể về không gian, thời gian và phân công.",
+      "Dành một khoảng ngắn đều đặn cho sở thích rồi xem bạn có muốn tiếp tục không.",
+      "Chia trở ngại thành các bước kiểm tra được và xử lý phần cản tiến độ trước.",
+      "Trước khi hợp tác, trao đổi kỳ vọng, trách nhiệm và quyền từ chối.",
+      "Ghi rõ phần mỗi người chịu trong chi phí hoặc công việc chung và cách thay đổi thỏa thuận.",
+      "Đặt một câu hỏi trước khi học hay thử trải nghiệm mới rồi xem lại điều đã học.",
+      "Trước khi nhận việc, xác nhận sản phẩm cần giao, ưu tiên và tiêu chí hoàn thành.",
+      "Khi nhờ giúp đỡ, nói rõ cần gì, khi nào và bạn có thể phối hợp ra sao.",
+      "Chừa thời gian nghỉ ngơi, ở một mình và xem lại cam kết nào liên tục hao sức."
+    ],
+    "basis": "Xem căn cứ của phần luận giải",
+    "topicsTitle": "Đưa lá số vào đời sống",
+    "topicsIntro": "Mỗi chủ đề kết hợp các nhà liên quan, chủ tinh và vị trí thực tế. Đối chiếu với trải nghiệm trước khi chọn lời khuyên.",
+    "topicBridge": "Với {{topic}}, hãy quan sát {{theme}} có thể ảnh hưởng lựa chọn ra sao.",
+    "topics": [
+      {
+        "title": "Công việc và sự nghiệp",
+        "question": "So sánh việc độc lập, phối hợp và theo dõi dài hạn. Cách sắp xếp nào giúp bạn làm việc tốt?",
+        "contexts": ["Quan sát sự chủ động trong công việc, như việc bạn có thể đề xuất cách làm riêng hay không.","Lựa chọn công việc có thể gắn với thu nhập ổn định, như kiểm tra thù lao trước khi nhận cơ hội.","Quan sát giao tiếp và học hỏi ở nơi làm việc, nhất là sự hiểu đúng khi bàn giao.","Sắp xếp ở nhà có thể ảnh hưởng công việc, như ranh giới khi làm tại nhà.","Quan sát không gian cho sáng tạo và sở thích giúp bạn duy trì hứng thú với việc làm.","Xem quy trình hằng ngày, như việc phải sửa lại nhiều lần vì bước làm chưa rõ.","Quan sát hợp tác trong công việc, như đồng nghiệp có hiểu trách nhiệm giống nhau không.","Công việc có thể liên quan nguồn lực chung: cần rõ người duyệt ngân sách và người chịu trách nhiệm.","Quan sát việc học thêm có hỗ trợ hướng nghề nghiệp bạn muốn hay không.","Cân nhắc vai trò nghề nghiệp mong muốn và trách nhiệm có vừa sức hiện tại không.","Xem hỗ trợ trong nhóm và bạn có biết nên nhờ ai khi cần không.","Quan sát các cam kết lặp lại làm mất thời gian nghỉ sau giờ làm."],
+        "action": "Chọn một việc quan trọng trong tuần. Viết mục tiêu, hỗ trợ cần có và bước tiếp theo, rồi xác nhận với người liên quan."
+      },
+      {
+        "title": "Tiền bạc và nguồn lực",
+        "question": "Quan sát cách bạn tách nhu cầu khỏi mong muốn, chi tiêu cá nhân khỏi trách nhiệm chung.",
+        "contexts": ["Tiền bạc có thể gắn với sự độc lập, như việc tự nhận mọi khoản chi.","Quan sát cân bằng giữa thu nhập, chi phí cố định và khoảng dành cho tiết kiệm.","Kiểm tra thông tin tài chính, gồm giá, hạn và điều kiện trước khi thanh toán.","Tiền bạc có thể gắn với nhà ở và gia đình, như cách chia tiền thuê và chi phí sinh hoạt.","Quan sát khoản chi vui chơi và các món nhỏ thường cộng dồn ngoài dự tính.","Xem thói quen tài chính hằng ngày, như lịch kiểm tra hóa đơn và đăng ký dịch vụ.","Tiền có thể liên quan đối tác: làm rõ ai chi trả và ai quyết định.","Quan sát tài khoản và nghĩa vụ chung, gồm thỏa thuận vay hoặc chia chi phí.","Học tập và đi lại có thể tác động ngân sách; hãy tính cả các kế hoạch này.","Thu nhập có thể gắn với trách nhiệm công việc; trao đổi thù lao khi vai trò thay đổi.","Quan sát chi phí xã giao và mức phù hợp với ngân sách cá nhân.","Tìm khoản chi dễ bỏ sót, như dịch vụ vẫn trả tiền nhưng ít dùng."],
+        "action": "Chọn một khoản chi sắp tới. Kiểm tra ngân sách, điều kiện thanh toán và trách nhiệm chung trước khi quyết định."
+      },
+      {
+        "title": "Tình cảm và hợp tác",
+        "question": "Dù độc thân hay có đôi, bạn có thể quan sát cách nói nhu cầu, xây lòng tin và xử lý khác biệt.",
+        "contexts": ["Quan sát cách bày tỏ bản thân trong quan hệ: bạn có giữ ý kiến để tránh bất đồng không?","Giá trị chung có thể quan trọng, như cách mỗi người hiểu về thời gian, tiền và sự quan tâm.","Quan sát cuộc trò chuyện đang cần lắng nghe, lời khuyên hay cùng tìm cách giải quyết.","Quan hệ có thể gắn với nhà và ranh giới gia đình, như có không gian riêng để ở bên nhau không.","Quan sát sở thích chung và thời gian thư giãn ngoài những trách nhiệm thường ngày.","Xem thói quen ở bên nhau, gồm sắp xếp bền vững cho việc nhà và sự đồng hành.","Quan sát trao đổi bình đẳng và khả năng nói rõ bất đồng mà không gây áp lực.","Xem niềm tin và trách nhiệm chung, gồm ranh giới về riêng tư, tiền và cam kết.","Hoàn cảnh khác nhau có thể định hình kế hoạch tương lai; để cả hai có chỗ phát triển.","Quan sát công việc đi vào quan hệ như thế nào, gồm cách xin hỗ trợ khi bận.","Xem cân bằng giữa bạn bè, quan hệ và tự do cá nhân.","Quan sát nhu cầu ở một mình và giải thích khi bạn cần yên tĩnh để hồi phục."],
+        "action": "Chọn một nhu cầu cụ thể, bắt đầu bằng “Tôi mong…”, lắng nghe người kia và thống nhất một điều chỉnh nhỏ."
+      },
+      {
+        "title": "Gia đình và sự gắn bó",
+        "question": "Chú ý cách sống cùng nhau khiến bạn an tâm và không gian cho nhu cầu riêng.",
+        "contexts": ["Quan sát không gian cá nhân ở nhà và việc chăm sóc người khác có còn chỗ cho kế hoạch của bạn không.","Nguồn lực gia đình có thể ảnh hưởng cảm giác an tâm: mọi người có hiểu cách chia chi phí không?","Xem giao tiếp trong gia đình, nhất là mong đợi chưa từng được nói ra.","Quan sát nơi ở và cách sắp xếp giúp bạn thoải mái hơn.","Xem thời gian vui vẻ cùng gia đình ngoài nhiệm vụ và kỳ vọng.","Quan sát việc nhà và chăm sóc, như việc lặp lại có luôn dồn vào một người không.","Xem quyết định trong gia đình có lắng nghe người chịu ảnh hưởng không.","Gia đình có thể có tài sản và nghĩa vụ chung; làm rõ khoản chi lớn và phân công chăm sóc.","Trải nghiệm khác nhau có thể tạo kỳ vọng khác nhau về tương lai gia đình.","Quan sát trách nhiệm nghề nghiệp ảnh hưởng nhà ra sao, như chia lại việc nhà và thời gian khi bận.","Xem hỗ trợ ngoài gia đình, như bạn bè hoặc cộng đồng giúp giảm áp lực chăm sóc.","Quan sát ranh giới nghỉ ngơi và người nhà có biết khi nào bạn cần yên tĩnh không."],
+        "action": "Chọn một việc nhà, chăm sóc hoặc sắp xếp nơi ở. Thống nhất ai làm gì, khi nào, và dành thời gian nghỉ cho mọi người."
+      }
+    ],
+    "topicRuler": "Chủ tinh nhà{{anchor}}: {{planet}} · {{sign}} · nhà{{house}}",
+    "connections": "Lĩnh vực liên quan",
+    "relatedThemes": "Sự phối hợp giữa {{first}} và {{second}}",
+    "houseCusp": "Điểm đầu nhà",
+    "cuspNote": "Giữ hệ nhà nguyên cung của Thái: mỗi nhà bắt đầu ở0° của cung.",
+    "basicReport": "Luận giải lá số gốc",
+    "readingBasis": "Cách tính và cách đọc",
+    "scope": "Báo cáo kết hợp vị trí thực tế với biểu tượng truyền thống để tự quan sát. Không bảo đảm sự kiện, tài sản hay kết quả tình cảm. Xem Vận trình của tôi để đọc thay đổi theo ngày."
+  }
+}

@@ -79,7 +79,7 @@ export function TeachingWheel() {
       className="mx-auto w-full max-w-[420px] text-gold"
       aria-hidden="true"
     >
-      <circle cx="210" cy="210" r="191" fill="#f7f0e2" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="210" cy="210" r="191" fill="rgb(var(--c-canvas))" stroke="currentColor" strokeWidth="1.2" />
       {[168, 142, 118].map((r) => (
         <circle
           key={r}
@@ -118,7 +118,7 @@ export function TeachingWheel() {
           <path
             key={i}
             d={`M${p.x} ${p.y}L${q.x} ${q.y}`}
-            stroke={a.angle === 180 ? '#a75e50' : '#8a9b99'}
+            stroke={a.angle === 180 ? '#d98d98' : '#a5bace'}
             strokeOpacity=".7"
             fill="none"
           />
@@ -128,8 +128,8 @@ export function TeachingWheel() {
         const pos = point(p.id);
         return (
           <g key={p.id}>
-            <circle {...{ cx: pos.x, cy: pos.y }} r="11" fill="#fffefa" stroke="#b7975a" />
-            <text x={pos.x} y={pos.y + 5} textAnchor="middle" fontSize="14" fill="#8d3a31">
+            <circle {...{ cx: pos.x, cy: pos.y }} r="11" fill="rgb(var(--c-surface))" stroke="rgb(var(--c-gold))" />
+            <text x={pos.x} y={pos.y + 5} textAnchor="middle" fontSize="14" fill="rgb(var(--c-ink))">
               {p.symbol}
             </text>
           </g>

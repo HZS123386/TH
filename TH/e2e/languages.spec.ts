@@ -51,7 +51,7 @@ for (const option of LANGUAGES) {
     );
     const lockup = page.locator('[data-brand-lockup]:visible').first();
     await expect(lockup).toContainText(translations[option.id].brandName);
-    await expect(lockup.locator('[data-brand-mark="lotus-star"]')).toHaveCount(1);
+    await expect(lockup.locator('[data-brand-mark="astro-star"]')).toHaveCount(1);
     expect(
       await lockup.evaluate((root) => {
         const name = root.querySelector('span[lang] > span')!;

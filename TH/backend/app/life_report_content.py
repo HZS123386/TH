@@ -2,6 +2,7 @@
 from datetime import date
 import json
 import re
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -12,6 +13,10 @@ from .thai_readings import AdvicePoint, ReadingPoint, ReadingSummary, WatchPoint
 
 VERSION = "life-report-2"
 CHAPTERS = ("work", "money", "love", "family", "annual")
+FORTUNE_CATALOG = json.loads((Path(__file__).resolve().parents[1] / "content" / "fortune-topics.json").read_text(encoding="utf-8"))
+FORTUNE_VERSION = FORTUNE_CATALOG["version"]
+FORTUNE_TOPICS = {topic["key"]: topic for topic in FORTUNE_CATALOG["topics"]}
+FORTUNE_CHAPTERS = tuple(FORTUNE_TOPICS)
 TRAIT_HOUSES = {"strength": ["H1", "H5", "H10"], "decisions": ["H1", "H9", "H10"], "relationships": ["H7", "H4"]}
 PREVIEW_TRAIT_LENGTHS = {"zh": (90, 180), "th": (180, 600)}
 CAREER_VERSION = "career-decision-2"
@@ -612,7 +617,10 @@ class LifeWriter(BaziReports):
                 contract += " แต่ละ text เขียนเป็นย่อหน้าราวสี่ร้อยถึงหกร้อยตัวอักษร สูงสุดเจ็ดร้อย อธิบายนิสัยในเรื่องนี้ผ่านสถานการณ์ที่อาจพบ จุดแข็ง ข้อจำกัด และวิธีปรับอย่างต่อเนื่อง ใช้หัวข้อที่บอกเนื้อหาโดยตรง ไม่ใช้หัวข้อสำเร็จรูปหรือกล่าวอ้างว่ารู้ประวัติชีวิต"
         if stage == "chapter":
             topics = {"work": "work style, collaboration and development advice", "money": "attitude to money and practical planning", "love": "relationship needs and communication", "family": "family needs, responsibilities and communication", "annual": "current themes and practical action priorities using the supplied year's evidence"}
-            contract += "\nWrite directly about " + topics[bundle["reading"]] + ". insights explain the person's style and needs; watchpoints explain the situations where this style needs adjustment; actions give tailored development or communication advice. Expand the reasoning rather than repeating a sentence or adding generic encouragement."
+            subject = FORTUNE_TOPICS[bundle["reading"]]["scope"] if bundle.get("report_kind") == "fortune" else topics[bundle["reading"]]
+            contract += "\nWrite directly about " + subject + ". insights explain the person's style and needs; watchpoints explain the situations where this style needs adjustment; actions give tailored development or communication advice. Expand the reasoning rather than repeating a sentence or adding generic encouragement."
+        if stage == "chapter" and bundle.get("report_kind") == "fortune":
+            contract += "\nAnswer only this topic. Do not repeat another topic's conclusions or infer personal events from its display name."
         if stage == "chapter" and bundle["reading"] == "annual":
             contract += "\nAcross the six points cite at least one actual monthly ID from EACH group 1-4, 5-8 and 9-12, paired with one natal ID. Dates, months and years stay out of public prose."
         if stage == "preview" and bundle.get("user_question"):

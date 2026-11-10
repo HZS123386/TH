@@ -13,7 +13,7 @@ import { type WanjaiView } from '../../lib/wanjai';
 import { LANGUAGES } from '../../lib/languages';
 import { PickerDialog } from '../PickerDialog';
 import { WanjaiMark } from '../WanjaiArtwork';
-import { drawBrandMark } from '../../lib/brand';
+import { brandColors, drawBrandMark } from '../../lib/brand';
 import { type WanjaiPageProps, PageIntro, Note, usePage } from './WanjaiShared';
 
 export function WanjaiMine(p: WanjaiPageProps) {
@@ -24,10 +24,9 @@ export function WanjaiMine(p: WanjaiPageProps) {
   const [advisor, setAdvisor] = useState(false);
   const option = solution?.options.find((row) => row.id === state.option);
   const rows = [
-    { view: 'thai-test', label: t.th_readingTool, icon: BookOpen },
+    { view: 'reports', label: t.ux_reports, icon: BookOpen },
     { view: 'journey', label: t.w_journey, icon: CalendarDays },
-    { view: 'solution', label: t.w_solution, icon: BookOpen },
-    { view: 'life', label: t.w_life, icon: Star },
+    { view: 'shop', label: t.ux_shopPreview, icon: Star },
     { view: 'favorites', label: `${t.w_favorites} · ${state.favorites.length}`, icon: Heart },
     { view: 'orders', label: t.j_orders, icon: BookOpen },
     { view: 'daily', label: t.w_reminder, icon: Bell },
@@ -36,8 +35,8 @@ export function WanjaiMine(p: WanjaiPageProps) {
   return (
     <div className="space-y-5" data-testid="jy-profile-page">
       <PageIntro title={t.j_mineTitle} sub={t.j_mineIntro} />
-      <section className="relative overflow-hidden rounded-[22px] border border-[#d8c29d] bg-[#eadbc0] p-6">
-        <div className="absolute -right-6 -top-5 text-[#b69b6b]/30">
+      <section className="relative overflow-hidden rounded-[22px] border border-line bg-surface p-6">
+        <div className="absolute -right-6 -top-5 text-gold/30">
           <WanjaiMark className="h-40 w-40" />
         </div>
         <div className="relative">
@@ -45,12 +44,12 @@ export function WanjaiMine(p: WanjaiPageProps) {
             {t.w_mine} · {p.account?.username || t.brandName}
           </p>
           <h2 className="my-3 text-[26px] leading-9">{p.profile?.display_name || t.brandName}</h2>
-          <p className="text-sm text-[#94734c]">{p.profile?.birth_date || t.w_noBirth}</p>
-          <p className="mb-5 mt-2 text-xs leading-6 text-[#9f855f]">
+          <p className="text-sm text-muted">{p.profile?.birth_date || t.w_noBirth}</p>
+          <p className="mb-5 mt-2 text-xs leading-6 text-muted">
             {p.profile?.birth_time || t.timeUnknown} · {p.profile?.birthplace || t.birthplace}
           </p>
           <button
-            className="jy-outline !border-[#bda174]"
+            className="jy-outline !border-gold/35"
             aria-label={t.edit}
             onClick={() => navigate('profile')}
           >
@@ -60,10 +59,10 @@ export function WanjaiMine(p: WanjaiPageProps) {
         </div>
       </section>
       <button
-        className="flex w-full items-center gap-3 rounded-[17px] border border-[#dac9ac] bg-[#f1e7d5] p-4 text-left"
+        className="flex w-full items-center gap-3 rounded-[17px] border border-line bg-surface p-4 text-left"
         onClick={() => navigate('chat')}
       >
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] bg-primary text-white">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] bg-primary text-on-primary">
           <BookOpen size={23} />
         </span>
         <span className="flex-1">
@@ -84,7 +83,7 @@ export function WanjaiMine(p: WanjaiPageProps) {
           <p className="jy-copy">{option?.summary || concern.lead}</p>
           <p className="mt-3 text-xs leading-6 text-muted">{t.w_savedContext}</p>
           <button
-            className="mt-3 text-xs text-[#a0855a] underline underline-offset-4"
+            className="mt-3 text-xs text-gold underline underline-offset-4"
             onClick={() => setForget(true)}
           >
             {t.j_forgetContext}
@@ -108,7 +107,7 @@ export function WanjaiMine(p: WanjaiPageProps) {
             · ฿{state.taste.budget}
           </p>
         </div>
-        <ChevronRight size={16} className="text-[#a0855a]" />
+        <ChevronRight size={16} className="text-gold" />
       </button>
       <section className="jy-card">
         <h2 className="mb-3 text-[16px]">{t.j_myFocus}</h2>
@@ -128,7 +127,7 @@ export function WanjaiMine(p: WanjaiPageProps) {
       <section className="jy-card">
         <h2 className="mb-3 text-[17px]">{t.w_wish}</h2>
         {state.wish ? (
-          <blockquote className="mb-4 rounded-xl bg-[#f4ecdd] p-4 text-[15px] leading-8">
+          <blockquote className="mb-4 rounded-xl bg-surface p-4 text-[15px] leading-8">
             “{state.wish}”
           </blockquote>
         ) : (
@@ -141,13 +140,13 @@ export function WanjaiMine(p: WanjaiPageProps) {
       <section className="jy-card !py-1">
         {rows.map(({ view, label, icon: Icon }) => (
           <button key={view} className="jy-link" onClick={() => navigate(view as WanjaiView)}>
-            <Icon size={18} className="shrink-0 text-[#a98a58]" />
+            <Icon size={18} className="shrink-0 text-gold" />
             <span className="flex-1">{label}</span>
-            <ChevronRight size={15} className="text-[#ac9572]" />
+            <ChevronRight size={15} className="text-muted" />
           </button>
         ))}
         <button className="jy-link" onClick={() => navigate('memories')}>
-          <BookOpen size={18} className="text-[#a98a58]" />
+          <BookOpen size={18} className="text-gold" />
           <span className="flex-1">{t.memoryTitle}</span>
           <ChevronRight size={15} />
         </button>
@@ -176,7 +175,7 @@ export function WanjaiMine(p: WanjaiPageProps) {
         </label>
       </section>
       <details className="jy-card !p-4">
-        <summary className="cursor-pointer text-sm text-[#92754f]">{t.w_about}</summary>
+        <summary className="cursor-pointer text-sm text-muted">{t.w_about}</summary>
         <p className="my-4 text-xs leading-7 text-muted">
           {t.w_sunNote}
           <br />
@@ -266,12 +265,12 @@ export function WanjaiShare(p: WanjaiPageProps) {
     canvas.height = 1200;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.fillStyle = '#f6f0e4';
+    ctx.fillStyle = brandColors.canvas;
     ctx.fillRect(0, 0, 900, 1200);
-    ctx.strokeStyle = '#b7975a';
+    ctx.strokeStyle = brandColors.gold;
     ctx.lineWidth = 2;
     ctx.strokeRect(48, 48, 804, 1104);
-    ctx.fillStyle = '#8d3a31';
+    ctx.fillStyle = brandColors.ink;
     ctx.textAlign = 'center';
     drawBrandMark(ctx, 394, 112, 112);
     ctx.font = '48px \"Noto Sans Thai\", \"Microsoft YaHei\", Georgia, serif';
@@ -287,7 +286,7 @@ export function WanjaiShare(p: WanjaiPageProps) {
       } else line += char;
     }
     ctx.fillText(line, 450, y);
-    ctx.fillStyle = '#99856a';
+    ctx.fillStyle = brandColors.muted;
     ctx.font = '22px \"Noto Sans Thai\", \"Microsoft YaHei\", sans-serif';
     ctx.fillText(t.brandRitual, 450, 1000);
     canvas.toBlob((blob) => {
@@ -303,7 +302,7 @@ export function WanjaiShare(p: WanjaiPageProps) {
   return (
     <div className="mx-auto max-w-xl">
       <PageIntro title={t.w_share} sub={t.w_shareIntro} />
-      <div className="rounded-2xl border border-gold/40 bg-[#f4eddf] p-6 sm:p-8">
+      <div className="rounded-2xl border border-gold/40 bg-surface p-6 sm:p-8">
         <div className="border border-gold/50 px-6 py-14 text-center">
           <WanjaiMark className="mx-auto mb-5 h-14 w-14 text-accent" />
           <p className="font-display text-2xl tracking-[.15em] text-accent">{t.brandName}</p>

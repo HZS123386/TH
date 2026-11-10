@@ -1,40 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { WanjaiView } from './wanjai';
+export type AppView = 'overview' | 'chart' | 'reports' | 'report' | 'mine' | 'auth' | 'profile' | 'orders';
 
-export const viewPaths: Record<WanjaiView, string> = {
+export const viewPaths: Record<AppView, string> = {
   overview: '/fortune',
   chart: '/chart',
-  'chart-reading': '/chart/reading',
-  'bazi-test': '/tools/bazi',
-  'thai-test': '/thai-test',
-  example: '/example',
-  questions: '/questions',
-  concern: '/reflection',
-  daily: '/daily',
-  journey: '/journey',
-  solution: '/plan',
-  life: '/life',
-  shop: '/shop',
+  reports: '/reports',
+  report: '/reports/reading',
   mine: '/profile',
-  share: '/share',
-  favorites: '/favorites',
-  inbox: '/messages',
-  chat: '/consult',
   profile: '/birth',
-  memories: '/memories',
-  explore: '/explore',
   auth: '/login',
   orders: '/orders',
 };
 
-export function viewForPath(path: string): WanjaiView {
-  if (path.replace(/\/$/, '') === '/bazi-test') return 'thai-test';
+export function viewForPath(path: string): AppView {
   const found = Object.entries(viewPaths).find(([, value]) => value === path.replace(/\/$/, ''));
-  if (found) return found[0] as WanjaiView;
-  if (/^\/(thai-chart|sun-sign)(\/|$)/.test(path)) return 'chart';
-  if (/^\/(line-consult|readings|history)(\/|$)/.test(path)) return 'chat';
+  if (found) return found[0] as AppView;
   if (path === '/settings') return 'mine';
-  if (path === '/checkout') return 'shop';
   if (/^\/orders(\/|$)/.test(path)) return 'orders';
   return 'overview';
 }
@@ -50,7 +31,7 @@ export function usePageRoute() {
     window.addEventListener('popstate', back);
     return () => window.removeEventListener('popstate', back);
   }, []);
-  const setView = useCallback((value: WanjaiView | ((previous: WanjaiView) => WanjaiView)) => {
+  const setView = useCallback((value: AppView | ((previous: AppView) => AppView)) => {
     const next = typeof value === 'function' ? value(current.current) : value;
     current.current = next;
     if (location.pathname !== viewPaths[next]) history.pushState(null, '', viewPaths[next]);

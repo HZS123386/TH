@@ -25,7 +25,7 @@ export function ReportPage() {
 
   function display(value: LifeReport) {
     setReport(value); setLanguage(value.input.profile.language);
-    document.title = `${value.input.career ? lifeLabels(value).title : value.title} · ASTRO AI`;
+    document.title = `${value.input.career ? lifeLabels(value).title : value.title} · FATE`;
   }
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   async function load() {
@@ -76,7 +76,7 @@ export function ReportPage() {
   }
   return <div className="phone" data-testid="report-page">
     <header className="topbar">
-      <a className="brand" href={landing.href} aria-label="Astro AI"><span className="brand-star" aria-hidden="true">✧</span>ASTRO<span className="brand-dot">·</span>AI</a>
+      <a className="brand" href={landing.href} aria-label="FATE"><span className="brand-star" aria-hidden="true">✧</span> FATE</a>
       <a className="report-secondary" href={landing.href}><ArrowLeft size={13} />{flow.back}</a>
     </header>
     <main className="px-5 pb-8" aria-busy={loading}>

@@ -15,6 +15,7 @@ import { BirthDatePicker } from './BirthDatePicker';
 import { BirthTimeInput } from './BirthTimeInput';
 import { BirthplacePicker, TimezonePicker } from './BirthplacePicker';
 import { ThaiLocationInput } from './ThaiLocationInput';
+import { formatBirthTime } from '../lib/birthTime';
 import { ThaiReadingCards } from './ThaiReadingCards';
 import type { WanjaiBottomAction } from './WanjaiShell';
 
@@ -23,12 +24,14 @@ export function ThaiTestPage({
   language,
   t,
   onBack,
+  onEditBirth,
   onBottomActionChange,
 }: {
   profile: Profile | null;
   language: Language;
   t: Copy;
   onBack: () => void;
+  onEditBirth?: () => void;
   onBottomActionChange?: (action: WanjaiBottomAction | undefined) => void;
 }) {
   const b = thaiReadingCopy(language);
@@ -43,8 +46,27 @@ export function ThaiTestPage({
         language,
       },
   );
-  const [reading, setReading] = useState<ThaiReading>('overview');
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [reading, setReading] = useState<ThaiReading>(() => {
+    const selected = new URLSearchParams(location.search).get('reading');
+    return selected && Object.keys(b.readings).includes(selected)
+      ? (selected as ThaiReading)
+      : 'overview';
+  });
+  const [year, setYear] = useState(() => {
+    const selected = Number(new URLSearchParams(location.search).get('year'));
+    return Number.isInteger(selected) && selected >= 1901 && selected <= 2100
+      ? selected
+      : new Date().getFullYear();
+  });
+  useEffect(() => {
+    if (!['/thai-test', '/bazi-test'].includes(location.pathname)) return;
+    const url = new URL(location.href);
+    if (reading === 'overview') url.searchParams.delete('reading');
+    else url.searchParams.set('reading', reading);
+    if (reading === 'annual') url.searchParams.set('year', String(year));
+    else url.searchParams.delete('year');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+  }, [reading, year]);
   const [result, setResult] = useState<ThaiReadingResult | null>(null);
   const [detailsUnlocked, setDetailsUnlocked] = useState(false);
   const detailsId = useId();
@@ -52,6 +74,9 @@ export function ThaiTestPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const request = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (profile) setBirth(profile);
+  }, [profile]);
   const input: ThaiReadingInput = {
     profile: { ...birth, language, birth_time: birth.birth_time || null },
     reading,
@@ -151,20 +176,18 @@ export function ThaiTestPage({
           <article
             key={index}
             className={
-              section.id === 'interpretation'
-                ? ''
-                : 'rounded-xl border border-[#e8dece] bg-[#f7f4ed] p-4'
+              section.id === 'interpretation' ? '' : 'rounded-xl border border-line bg-panel p-4'
             }
           >
             {item.period && (
-              <p className="mb-2 text-xs font-medium text-[#96713f]">
+              <p className="mb-2 text-xs font-medium text-gold">
                 {thaiPeriodLabel(item.period, language)}
               </p>
             )}
-            <h4 className="flex items-start gap-2 text-sm font-semibold leading-6 text-[#634b39]">
+            <h4 className="flex items-start gap-2 text-sm font-semibold leading-6 text-ink/85">
               {section.id === 'advice' && (
                 <span
-                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#eaddc5] text-xs text-[#86633d]"
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface text-xs text-gold"
                   aria-hidden="true"
                 >
                   {index + 1}
@@ -172,11 +195,11 @@ export function ThaiTestPage({
               )}
               {item.title}
             </h4>
-            <p className="mt-2 text-sm leading-7 text-[#665448]">{item.text}</p>
+            <p className="mt-2 text-sm leading-7 text-ink/85">{item.text}</p>
             {item.signals && (
               <div className="mt-4">
-                <h5 className="text-xs font-medium text-[#96713f]">{b.signals}</h5>
-                <ul className="mt-2 list-disc space-y-2 pl-4 text-sm leading-7 text-[#665448]">
+                <h5 className="text-xs font-medium text-gold">{b.signals}</h5>
+                <ul className="mt-2 list-disc space-y-2 pl-4 text-sm leading-7 text-ink/85">
                   {item.signals.map((signal, i) => (
                     <li key={i}>{signal}</li>
                   ))}
@@ -185,16 +208,16 @@ export function ThaiTestPage({
             )}
             {item.response && (
               <div className="mt-4">
-                <h5 className="text-xs font-medium text-[#96713f]">{b.response}</h5>
-                <p className="mt-2 text-sm leading-7 text-[#665448]">{item.response}</p>
+                <h5 className="text-xs font-medium text-gold">{b.response}</h5>
+                <p className="mt-2 text-sm leading-7 text-ink/85">{item.response}</p>
               </div>
             )}
             {item.steps && (
               <ol className="mt-4 space-y-3">
                 {item.steps.map((step, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm leading-7 text-[#665448]">
+                  <li key={i} className="flex items-start gap-2.5 text-sm leading-7 text-ink/85">
                     <span
-                      className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#ddcfbb] text-[11px] text-[#86633d]"
+                      className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-[11px] text-gold"
                       aria-hidden="true"
                     >
                       {i + 1}
@@ -205,21 +228,21 @@ export function ThaiTestPage({
               </ol>
             )}
             {item.example && (
-              <div className="mt-4 rounded-lg border border-[#e4d9c8] bg-[#fffdf8] p-3.5">
-                <h5 className="text-xs font-medium text-[#96713f]">{b.example}</h5>
-                <p className="mt-2 text-sm leading-7 text-[#665448]">{item.example}</p>
+              <div className="mt-4 rounded-lg border border-line bg-panel p-3.5">
+                <h5 className="text-xs font-medium text-gold">{b.example}</h5>
+                <p className="mt-2 text-sm leading-7 text-ink/85">{item.example}</p>
               </div>
             )}
             {item.pitfall && (
-              <div className="mt-4 border-t border-[#e4d9c8] pt-4">
-                <h5 className="text-xs font-medium text-[#96713f]">{b.pitfall}</h5>
-                <p className="mt-2 text-sm leading-7 text-[#665448]">{item.pitfall}</p>
+              <div className="mt-4 border-t border-line pt-4">
+                <h5 className="text-xs font-medium text-gold">{b.pitfall}</h5>
+                <p className="mt-2 text-sm leading-7 text-ink/85">{item.pitfall}</p>
               </div>
             )}
             {item.check && (
               <div className="mt-4">
-                <h5 className="text-xs font-medium text-[#96713f]">{b.check}</h5>
-                <p className="mt-2 text-sm leading-7 text-[#665448]">{item.check}</p>
+                <h5 className="text-xs font-medium text-gold">{b.check}</h5>
+                <p className="mt-2 text-sm leading-7 text-ink/85">{item.check}</p>
               </div>
             )}
           </article>
@@ -240,48 +263,72 @@ export function ThaiTestPage({
         <p className="jy-copy mt-3">{b.intro}</p>
       </header>
       <form className="space-y-5" onSubmit={(event) => void generate(event)}>
-        <section className="jy-card space-y-5">
-          <h2 className="text-lg font-medium">{b.birth}</h2>
-          <BirthDatePicker
-            value={birth.birth_date}
-            maximum={today}
-            t={t}
-            onChange={(birth_date) => setBirth((v) => ({ ...v, birth_date }))}
-          />
-          <BirthTimeInput
-            value={birth.birth_time}
-            t={t}
-            onChange={(birth_time) => setBirth((v) => ({ ...v, birth_time }))}
-          />
-          <BirthplacePicker
-            value={birth.birthplace}
-            timezone={birth.timezone}
-            language={language}
-            t={t}
-            onChange={(birthplace, timezone) =>
-              setBirth((v) => ({
-                ...v,
-                birthplace,
-                timezone,
-                location_id: null,
-                country_code: null,
-                latitude: null,
-                longitude: null,
-              }))
-            }
-          />
-          <TimezonePicker
-            value={birth.timezone}
-            t={t}
-            onChange={(timezone) => setBirth((v) => ({ ...v, timezone }))}
-          />
-          <ThaiLocationInput
-            profile={birth}
-            t={t}
-            onChange={(patch) => setBirth((v) => ({ ...v, ...patch }))}
-          />
-          {!complete && <p className="text-xs leading-7 text-muted">{b.required}</p>}
-        </section>
+        {profile && onEditBirth ? (
+          <section className="jy-card space-y-3" data-testid="thai-birth-summary">
+            <h2 className="text-lg font-medium">{b.birth}</h2>
+            <p className="text-sm">{profile.display_name || t.brandName}</p>
+            <p className="text-xs leading-6 text-muted">
+              {profile.birth_date} · {formatBirthTime(profile.birth_time, t)}
+              <br />
+              {profile.birthplace || t.birthplace}
+            </p>
+            <p className="text-xs leading-6 text-muted">{t.ux_birthReuse}</p>
+            <button type="button" className="jy-outline !text-xs" onClick={onEditBirth}>
+              {t.j_editBirth}
+            </button>
+            {!complete && <p className="text-xs leading-7 text-gold">{b.required}</p>}
+          </section>
+        ) : (
+          <section className="jy-card space-y-5">
+            <h2 className="text-lg font-medium">{b.birth}</h2>
+            <BirthDatePicker
+              value={birth.birth_date}
+              maximum={today}
+              t={t}
+              onChange={(birth_date) => setBirth((v) => ({ ...v, birth_date }))}
+            />
+            <BirthTimeInput
+              value={birth.birth_time}
+              t={t}
+              onChange={(birth_time) => setBirth((v) => ({ ...v, birth_time }))}
+            />
+            <BirthplacePicker
+              value={birth.birthplace}
+              locationId={birth.location_id}
+              countryCode={birth.country_code}
+              timezone={birth.timezone}
+              language={language}
+              t={t}
+              onChange={(birthplace, timezone, location) =>
+                setBirth((v) => ({
+                  ...v,
+                  birthplace,
+                  timezone,
+                  location_id: location?.id || null,
+                  country_code: location?.countryCode || null,
+                  latitude: null,
+                  longitude: null,
+                }))
+              }
+            />
+            <details className="text-xs text-muted">
+              <summary className="cursor-pointer py-2">{t.ux_advancedBirth}</summary>
+              <div className="mt-3 space-y-4">
+                <TimezonePicker
+                  value={birth.timezone}
+                  t={t}
+                  onChange={(timezone) => setBirth((v) => ({ ...v, timezone }))}
+                />
+                <ThaiLocationInput
+                  profile={birth}
+                  t={t}
+                  onChange={(patch) => setBirth((v) => ({ ...v, ...patch }))}
+                />
+              </div>
+            </details>
+            {!complete && <p className="text-xs leading-7 text-muted">{b.required}</p>}
+          </section>
+        )}
         <ThaiReadingCards value={reading} language={language} onChange={setReading} />
         {reading === 'annual' && (
           <section className="jy-card space-y-3">
@@ -333,7 +380,7 @@ export function ThaiTestPage({
             <p className="text-xs text-muted">{b.results}</p>
             <p className="mt-2 text-xs leading-7 text-muted">
               {result.input.profile.birth_date} · {result.input.profile.birth_time} ·{' '}
-              {result.input.profile.timezone}
+              {result.input.profile.birthplace}
             </p>
           </section>
           <section className="jy-card" data-testid="thai-report">
@@ -350,11 +397,11 @@ export function ThaiTestPage({
             </p>
             {result.report.summary && (
               <div
-                className="mb-7 rounded-2xl border border-[#dfc594] bg-[#fcf3df] p-5"
+                className="mb-7 rounded-2xl border border-gold/35 bg-gold/10 p-5"
                 data-testid="thai-report-summary"
               >
-                <h3 className="text-xs font-medium text-[#96713f]">{b.summary}</h3>
-                <p className="mt-3 text-lg font-medium leading-8 text-[#563b2b]">
+                <h3 className="text-xs font-medium text-gold">{b.summary}</h3>
+                <p className="mt-3 text-lg font-medium leading-8 text-ink/85">
                   {result.report.summary}
                 </p>
               </div>
@@ -418,10 +465,10 @@ export function ThaiTestPage({
                       aria-label={b.lockedHint}
                       data-testid="thai-lock-badge"
                     >
-                      <span className="inline-flex h-16 w-16 items-center justify-center rounded-full border border-[#dec59c] bg-[#fffdf8]/95 text-[#a45338] shadow-lg">
+                      <span className="inline-flex h-16 w-16 items-center justify-center rounded-full border border-line bg-panel/95 text-gold shadow-lg">
                         <LockKeyhole size={30} strokeWidth={1.5} aria-hidden="true" />
                       </span>
-                      <span className="rounded-full bg-[#fffdf8]/95 px-4 py-2 text-xs leading-6 text-[#8d6d45] shadow-sm">
+                      <span className="rounded-full bg-panel/95 px-4 py-2 text-xs leading-6 text-gold shadow-sm">
                         {b.lockedHint}
                       </span>
                     </div>
