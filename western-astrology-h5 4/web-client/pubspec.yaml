@@ -32,6 +32,8 @@ flutter:
     - assets/fonts/OFL-CJK.txt
     - assets/fonts/OFL-Symbols.txt
     - assets/fonts/NotoSansSC-Regular.otf
+    - assets/fonts/FateChineseUI.otf
+    - assets/fonts/FateChineseCommon.otf
   fonts:
     - family: NotoSansThai
       fonts:
@@ -41,7 +43,7 @@ flutter:
         - asset: assets/fonts/FateLanguageLabel.otf
     - family: NotoSansSymbols
       fonts:
-        - asset: assets/fonts/NotoSansSymbols-Regular.ttf
+        - asset: assets/fonts/FateSymbols.ttf
     - family: NotoSansSymbols2
       fonts:
-        - asset: assets/fonts/NotoSansSymbols2-Regular.ttf
+        - asset: assets/fonts/FateSymbols2.ttf
