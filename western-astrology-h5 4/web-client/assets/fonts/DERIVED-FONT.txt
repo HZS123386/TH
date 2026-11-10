@@ -1,0 +1,5 @@
+FateLanguageLabel.otf is a small subset derived from Noto Sans CJK SC.
+It contains the language switch label and characters used in Thai location examples.
+The font family was renamed to FATE Language Label.
+Original copyright and SIL Open Font License: OFL-CJK.txt.
+Full Chinese report text uses the unmodified NotoSansSC-Regular.otf, loaded on demand.

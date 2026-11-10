@@ -8,6 +8,21 @@ import type { Language, Profile } from '../types';
 export type WesternCopy = typeof copy.zh;
 export const westernCopy = (language: Language): WesternCopy => copy[language];
 export const westernSystem = 'western_natal' as const;
+export function westernPlanetName(language: Language, key: WesternPlanetKey): string {
+  const labels = {
+    sun: 'pSun',
+    moon: 'pMoon',
+    mercury: 'pMercury',
+    venus: 'pVenus',
+    mars: 'pMars',
+    jupiter: 'pJupiter',
+    saturn: 'pSaturn',
+    uranus: 'pUranus',
+    neptune: 'pNeptune',
+    pluto: 'pPluto',
+  } as const;
+  return westernCopy(language)[labels[key]];
+}
 export type WesternPlanetKey =
   | 'sun'
   | 'moon'

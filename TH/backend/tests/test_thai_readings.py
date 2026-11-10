@@ -358,6 +358,11 @@ def test_ordinary_thai_action_words_do_not_become_false_planet_or_house_claims()
     assert not calculation_in_prose("ดาวน์โหลดรายการใช้จ่ายแล้วตรวจค่าใช้จ่ายในครัวเรือน")
     assert not calculation_in_prose("ทุกอาทิตย์ลองนัดคุยเรื่องงานบ้าน และทบทวนอีกครั้งในวันศุกร์")
     assert calculation_in_prose("ดาวอาทิตย์อยู่ในเรือนการงาน")
+    assert not calculation_in_prose("หากความกระตือรือร้นลดลง ลองแบ่งงานออกเป็นส่วนเล็ก")
+    assert not calculation_in_prose("คุณสามารถมีน้ำใจและบอกขอบเขตของตนเองได้พร้อมกัน")
+    assert calculation_in_prose("มกร")
+    assert calculation_in_prose("ลัคนามกรทำให้คุณเป็นแบบนี้")
+    assert calculation_in_prose("คุณมีราศีมีน")
 
 
 def test_ordinary_chinese_changes_are_not_mistaken_for_an_ascendant():

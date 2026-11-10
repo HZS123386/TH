@@ -120,8 +120,12 @@ def calculation_in_prose(text, *, allow_practical_details=False):
     # Calculations stay internal; code alone supplies verified period labels.
     labels = {label for language in ("zh", "en", "th", "vi") for group in ("planets", "signs")
               for label in (copy_for(language)[group].values() if group == "planets" else copy_for(language)[group])}
+    thai_signs = set(copy_for("th")["signs"])
     for label in labels:
         pattern = rf"(?<!\w){re.escape(label)}(?!\w)" if re.search(r"[a-zA-Z]", label) else re.escape(label)
+        if label in thai_signs:
+            # Short sign names also occur inside everyday Thai words, e.g. ความกระตือรือร้น.
+            pattern = rf"(?<![\u0e00-\u0e7f]){re.escape(label)}(?![\u0e00-\u0e7f])"
         if label == "上升":
             # Rising income or pressure is ordinary prose, not an ascendant claim.
             pattern = r"(?:本命|命盘|星盘)(?:的)?上升|上升(?:星座|点|宫位|落[在入]|位于)|^\s*上升\s*$"

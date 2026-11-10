@@ -369,12 +369,28 @@ def test_schema_correction_identifies_all_invalid_fields_without_input_values(cl
     story["actions"][0]["steps"][0] = "私人短句甲"
     story["actions"][1]["steps"][2] = "私人短句乙"
     story["stage"] = "chapter"
+    story["summary"]["text"] = "摘要" * 130
     with pytest.raises(InvalidBaziReport) as error:
         validate_life_story(json.dumps(story, ensure_ascii=False), bundle)
     assert "actions.0.steps.0" in error.value.feedback
     assert "actions.1.steps.2" in error.value.feedback
     assert "私人短句" not in error.value.feedback
     assert '"field": "stage"' in error.value.feedback and "REMOVE this unexpected key entirely" in error.value.feedback
+    assert '"field": "summary.text"' in error.value.feedback
+    assert "at most 240 characters" in error.value.feedback
+    assert "at most 120 Unicode characters" in error.value.feedback
+
+
+def test_thai_chapter_prompt_keeps_the_summary_separate_from_long_paragraphs(client):
+    http, app, calls, _ = client
+    result = preview(http)
+    http.post(f"/api/life-reports/{result['id']}/unlock", json={}, headers=HEADERS)
+    finish(http, app)
+    bundle = {**next(row for row in calls if row["stage"] == "chapter"), "language": "th"}
+    prompt = app.state.life_reports.parts_writer.prompt(bundle)
+    assert "summary.text targets 40-80 Thai Unicode characters, with a hard maximum of 240 characters" in prompt
+    assert "six point text fields target 160-240 Unicode characters each" in prompt
+    assert "ALL SIX point text fields" in prompt
 
 
 def test_long_paid_narrative_has_room_to_explain_and_remains_bounded(client):

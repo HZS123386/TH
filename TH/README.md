@@ -1,4 +1,12 @@
-# ASTRO · AI · 泰式占星与生活陪伴
+# FATE APP
+
+当前 APP 主工程已迁移到 `app/`，使用 Flutter、go_router、ViewModel、Repository、原生安全凭证存储和四语言 ARB。首版限定西洋占星、报告、Apple 内购与登录。默认 `pnpm dev` 启动 Flutter APP 和现有 FastAPI；已有后端时使用 `pnpm dev:app`。原 React 预览通过 `pnpm dev:react-preview` 在 5175 端口保留用于迁移核对。具体架构、能力边界、清理与保留项见 [APP_ARCHITECTURE.md](docs/APP_ARCHITECTURE.md)。
+
+APP 浏览器预览使用 release / WebAssembly 构建，支持的浏览器自动使用 Wasm，其他浏览器使用 Flutter 生成的 JavaScript 构建；单独构建使用 `pnpm build:app:preview`。
+
+以下为旧 React 与后端接入记录，保留供功能核对；其中旧页面入口与模拟收费说明不代表当前 Flutter APP 已完成生产接入。
+
+## 旧接入记录
 
 当前独立测算页已改为泰式占星：访问 `/thai-test`，原 `/bazi-test` 链接也进入该页面，或从右上角菜单和“我的”进入“泰式占星解读”。按本命星盘、全年运势、财富、感情、事业、家庭六个主题计算实际泰式宫位与宫主星，再生成各自的解读和行动建议。生日、准确出生时间、出生地和时区参与计算，全年主题使用所选年份逐日行运；页面和导出随系统语言切换。说明与真实接口验收见 [THAI_READING_TESTING.md](docs/THAI_READING_TESTING.md)。
 

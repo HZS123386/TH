@@ -112,6 +112,7 @@ export const ui = {
     cancel: "取消",
     cancelHint: "报告需要一点时间整理，你也可以取消后修改资料。",
     close: "关闭",
+    confirm: "确定",
     countryNames: { TH: "泰国", CN: "中国", VN: "越南", US: "美国" },
   },
   th: {
@@ -160,6 +161,7 @@ export const ui = {
     cancel: "ยกเลิก",
     cancelHint: "การจัดทำรายงานอาจใช้เวลาสักครู่ คุณยกเลิกเพื่อแก้ไขข้อมูลได้",
     close: "ปิด",
+    confirm: "ยืนยัน",
     countryNames: { TH: "ไทย", CN: "จีน", VN: "เวียดนาม", US: "สหรัฐอเมริกา" },
   },
 };

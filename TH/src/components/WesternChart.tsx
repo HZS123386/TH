@@ -7,6 +7,7 @@ import {
   westernAscendant,
   westernCopy,
   westernPlanets,
+  westernPlanetName,
   westernSymbols,
   type WesternCalculation,
   type WesternPlanetKey,
@@ -31,8 +32,7 @@ export function WesternWheel({
 }) {
   const data = contentFor(language);
   const planets = westernPlanets(result);
-  const label = (key: WesternPlanetKey) =>
-    data.ASTRO_SAMPLE.planets.find((planet) => planet.id === key)?.name || key;
+  const label = (key: WesternPlanetKey) => westernPlanetName(language, key);
   return (
     <svg
       viewBox="0 0 360 360"
@@ -203,8 +203,7 @@ export function WesternChart({
   const [tab, setTab] = useState<'planets' | 'houses' | 'aspects'>('planets');
   const planets = result ? westernPlanets(result) : [];
   const selectedPlanet = planets.find((planet) => planet.key === selected);
-  const planetName = (key: WesternPlanetKey) =>
-    data.ASTRO_SAMPLE.planets.find((planet) => planet.id === key)?.name || key;
+  const planetName = (key: WesternPlanetKey) => westernPlanetName(language, key);
   const position = (longitude: number) =>
     `${data.signs[Math.floor(longitude / 30)].name} ${Math.floor(longitude % 30)}°${String(Math.floor((longitude % 1) * 60)).padStart(2, '0')}′`;
   const ascendant = result ? westernAscendant(result) : undefined;
@@ -225,7 +224,13 @@ export function WesternChart({
         <section className="relative overflow-hidden rounded-[24px] border border-line bg-panel/60 p-5 text-center">
           <ZodiacWheel className="mx-auto h-52 w-52 text-gold/45 opacity-55" monochrome />
           <h2 className="mt-1 text-base font-medium">
-            {status === 'loading' ? a.waiting : status === 'error' ? a.error : profile ? a.unavailable : a.noChart}
+            {status === 'loading'
+              ? a.waiting
+              : status === 'error'
+                ? a.error
+                : profile
+                  ? a.unavailable
+                  : a.noChart}
           </h2>
           <p className="mx-auto mt-3 max-w-xs text-xs leading-7 text-muted">
             {profile ? a.unavailableText : a.noChartText}
@@ -309,9 +314,7 @@ export function WesternChart({
                   {position(selectedPlanet.longitude)}
                   {selectedPlanet.house ? ` · ${a.house} ${selectedPlanet.house}` : ''}
                 </p>
-                <p className="mt-2 text-xs leading-6 text-ink/75">
-                  {a[`${selected}Meaning`]}
-                </p>
+                <p className="mt-2 text-xs leading-6 text-ink/75">{a[`${selected}Meaning`]}</p>
               </div>
             </section>
           )}

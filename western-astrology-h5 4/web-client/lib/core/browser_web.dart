@@ -1,0 +1,81 @@
+import 'dart:convert';
+import 'dart:js_interop';
+import 'dart:math';
+import 'package:web/web.dart' as web;
+import 'browser_port.dart';
+import 'models.dart';
+import 'repository.dart';
+
+@JS('fateH5.today')
+external JSString _today(JSString zone);
+@JS('fateH5.exportDocument')
+external JSPromise<JSString> _export(JSString payload, JSString format);
+@JS('fateH5.postPayment')
+external void _payment(JSString action, JSString fields);
+@JS('fateH5.pageReady')
+external void _ready(JSString page);
+
+class WebBrowserPort implements BrowserPort {
+  String? _key;
+  @override
+  String ownerKey() {
+    const name = 'astro-life-report-key';
+    final stores = <web.Storage>[];
+    for (final read in [
+      () => web.window.localStorage,
+      () => web.window.sessionStorage,
+    ]) {
+      try {
+        final store = read(), saved = store.getItem(name);
+        stores.add(store);
+        if (_key == null &&
+            saved != null &&
+            RegExp(r'^[A-Za-z0-9_-]{32,128}$').hasMatch(saved)) {
+          _key = saved;
+        }
+      } catch (_) {
+        /* Another browser store may still be writable. */
+      }
+    }
+    _key ??= List.generate(
+      24,
+      (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+    var persisted = false;
+    for (final store in stores) {
+      try {
+        if (store.getItem(name) != _key) store.setItem(name, _key!);
+        persisted |= store.getItem(name) == _key;
+      } catch (_) {
+        /* Preserve a readable existing key. */
+      }
+    }
+    if (!persisted) {
+      _key = null;
+      throw const ApiFailure('storage');
+    }
+    return _key!;
+  }
+
+  @override
+  String today(String zone) => _today(zone.toJS).toDart;
+  @override
+  bool get visible => web.document.visibilityState == 'visible';
+  @override
+  void setLanguage(String language, String title) {
+    web.document.documentElement?.setAttribute('lang', language);
+    web.document.title = title;
+  }
+
+  @override
+  Future<String> exportDocument(LifeReport report, String format) async =>
+      (await _export(
+        jsonEncode(report.exportPayload()).toJS,
+        format.toJS,
+      ).toDart).toDart;
+  @override
+  void postPayment(String action, Map<String, String> fields) =>
+      _payment(action.toJS, jsonEncode(fields).toJS);
+  @override
+  void pageReady(String page) => _ready(page.toJS);
+}

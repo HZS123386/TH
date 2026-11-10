@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-10",
+  "primary_app": "app/lib/main.dart",
+  "removed_unreferenced_ui": [
+    "src/components/WanjaiPages.tsx",
+    "src/components/wanjai/WanjaiHome.tsx",
+    "src/components/wanjai/WanjaiQuestions.tsx",
+    "src/components/wanjai/WanjaiCompanion.tsx",
+    "src/components/wanjai/WanjaiReports.tsx",
+    "src/components/wanjai/WanjaiMine.tsx",
+    "src/components/wanjai/WanjaiShop.tsx",
+    "src/components/wanjai/WanjaiCards.tsx"
+  ],
+  "retained": [
+    {"path":"src/components/wanjai/WanjaiShared.tsx","reason":"Still imported by retained birth and chart components."},
+    {"path":"src/App.tsx","reason":"Western React comparison preview remains available until native device and backend acceptance."},
+    {"path":"src/lib","reason":"Shared calculations, test fixtures, input controls and data adapters still have callers."},
+    {"path":"backend","reason":"Existing API and calculation capabilities continue to serve the project; this task migrates only the APP."},
+    {"path":"data","reason":"Existing persistent data must remain intact."}
+  ],
+  "backup":"tmp/app-v1-western/removed-legacy-ui.zip",
+  "verification":"Native Flutter tests, static analysis, Web compilation and retained React build/tests. iOS device and StoreKit sandbox acceptance remain external release gates."
+}

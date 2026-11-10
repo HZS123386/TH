@@ -288,7 +288,7 @@ INTERNAL conventions: signs are zero-based Aries through Pisces. House meanings 
 If birth_time_basis.mode is estimated, the birth time is UNKNOWN and all evidence comes from a provisional local-noon calculation. Treat personal tendencies and timing as uncertain, use conditional language, and never suggest that the birth time or derived houses are confirmed. The interface displays the estimate and its limitation; do not invent missing birth data in prose.
 Read stage and return JSON ONLY with no extra keys. Every summary and point cites exactly TWO existing evidence_ids. Follow citation_rules literally: choose ONE topic/trait house ID and ONE supporting_natal_id for nonannual. Two house IDs or two planet IDs are invalid. For annual choose ONE monthly topic ID and ONE supporting natal ID; the chapter's points must cover the beginning, middle and end of the year. Do not repeat previous_points. Connect each chapter to the preview's main theme while answering its own question. Use the actual sign, ruler placement and occupants together rather than a generic house meaning.
 stage=preview: {language,reading,summary:{text,evidence_ids},traits:[{key,title,text,evidence_ids}]}. reading is life-preview. Exactly three traits with keys strength, decisions, relationships in that order. Each trait MUST select its house from citation_rules.trait_house_ids[its own key], not from another trait's houses, plus ONE supporting_natal_id. Read the selected evidence BEFORE writing the trait; if a citation is corrected, rewrite its text to match that actual factor as well. Explain natural strengths, how decisions are made, and needs when getting along with people. Each trait has a distinct short title and a substantial paragraph: roughly 110-140 Chinese characters or 260-450 Thai characters, with a recognizable conditional everyday situation, its value and when to adjust. Summary is one direct short takeaway. Do not include the paid chapters or action plans here.
-stage=chapter: {language,reading,summary:{text,evidence_ids},insights:[{title,text,example,response,evidence_ids}],watchpoints:[{title,text,signals,response,example,evidence_ids}],actions:[{title,text,steps,example,pitfall,check,evidence_ids}]}. Exactly TWO insights, TWO watchpoints, TWO actions. Write substantial connected prose directly about the selected life subject. Each text targets 160-220 Chinese characters or 400-600 Thai characters, explaining a recognizable conditional situation, personal pattern, useful strength, tradeoff and specific adjustment. Insights explain the person's style and needs. Watchpoints develop the situations where that style needs adjustment and each give TWO observable signals, a response and an example. Actions develop practical advice and each give FOUR ordered steps, an example, a pitfall and a check. Auxiliary fields must add useful detail instead of repeating the main paragraph. Steps about 25-55 Chinese characters and examples 35-70. Use direct everyday headings, not generic question headings or numbered prefixes. Topic meanings: work style and development advice; money attitude and planning; love relationship needs and communication; family needs, responsibilities and communication; annual current themes and action priorities grounded in the supplied year's actual monthly states, never event probabilities. Do not repeat earlier points or invent personal history to sound convincing.
+stage=chapter: {language,reading,summary:{text,evidence_ids},insights:[{title,text,example,response,evidence_ids}],watchpoints:[{title,text,signals,response,example,evidence_ids}],actions:[{title,text,steps,example,pitfall,check,evidence_ids}]}. Exactly TWO insights, TWO watchpoints, TWO actions. Write substantial connected prose directly about the selected life subject. Only the six point text fields target 160-220 Chinese characters or 160-240 Thai characters in two or three short sentences; the separate summary targets 30-60 Chinese or 40-80 Thai characters, explaining a recognizable conditional situation, personal pattern, useful strength, tradeoff and specific adjustment. Insights explain the person's style and needs. Watchpoints develop the situations where that style needs adjustment and each give TWO observable signals, a response and an example. Actions develop practical advice and each give FOUR ordered steps, an example, a pitfall and a check. Auxiliary fields must add useful detail instead of repeating the main paragraph. Steps about 25-55 Chinese characters and examples 35-70. Use direct everyday headings, not generic question headings or numbered prefixes. Topic meanings: work style and development advice; money attitude and planning; love relationship needs and communication; family needs, responsibilities and communication; annual current themes and action priorities grounded in the supplied year's actual monthly states, never event probabilities. Do not repeat earlier points or invent personal history to sound convincing.
 stage=plan: {language,reading,phases:[{key,title,text,action_ids}]}. reading is life-plan. Exactly THREE ordered priorities keyed observe, adjust, review in that order. Select exactly TWO EXISTING source action IDs per priority, six DIFFERENT IDs in total covering at least THREE topics. Explain why each priority matters, how to start and how it balances competing demands, using only the already grounded actions. Do not invent new personal conclusions or fixed execution dates. No evidence_ids in this plan schema. Each priority text targets 80-120 Chinese characters or natural equivalent Thai, with no calculated terms or date words.
 If correction is supplied, return the FULL corrected JSON, preserving actual evidence and the complete structure."""
 
@@ -349,7 +349,9 @@ def invalid(reason):
         f"For preview also check ALL three text lengths: {zh_min}-{zh_max} Chinese characters each or "
         f"{th_min}-{th_max} Thai characters each. Target the middle of the range, with a concrete conditional example and an adjustment. "
         "Chapter text fields need at least 60 Chinese characters each. EVERY action step, signal, example, response, pitfall "
-        "and check needs at least 12 characters, not a short slogan; target 25-55 Chinese characters per step. "
+        "and check needs at least 12 characters. Keep summary.text short: 30-60 Chinese or 120-180 Thai characters, "
+        "with a hard maximum of 240 characters; the longer paragraph targets apply only to the six point text fields. "
+        "Avoid short slogans; target 25-55 Chinese characters per step. "
         "Fix ALL steps in BOTH actions and all other errors together. Avoid abstract jargon such as 潜意识、能量场、赋能."
     )
     return error
@@ -392,10 +394,16 @@ def validate_life_story(raw, bundle):
         schema = {"preview": Preview, "chapter": Chapter, "plan": Plan}[bundle["stage"]]
         story = schema.model_validate_json(raw)
     except ValidationError as error:
-        details = [{"field": ".".join(map(str, item["loc"])) or "<root>",
-                    "error": ("REMOVE this unexpected key entirely; request metadata must not appear in the output"
-                              if item["type"] == "extra_forbidden" else item["msg"])}
-                   for item in error.errors(include_input=False, include_url=False)[:40]]
+        details = []
+        for item in error.errors(include_input=False, include_url=False)[:40]:
+            message = item["msg"]
+            if item["type"] == "extra_forbidden":
+                message = "REMOVE this unexpected key entirely; request metadata must not appear in the output"
+            elif item["type"] == "string_too_long":
+                maximum = item["ctx"]["max_length"]
+                message += (f"; REWRITE this field from scratch to at most {maximum // 2} Unicode characters, "
+                            "including spaces and combining marks; preserve the key meaning and other valid fields")
+            details.append({"field": ".".join(map(str, item["loc"])) or "<root>", "error": message})
         raise invalid("schema " + json.dumps(details, ensure_ascii=False)) from None
     except (ValueError, KeyError):
         raise invalid("schema: return valid JSON for this stage") from None
@@ -588,6 +596,12 @@ class LifeWriter(BaziReports):
         for field in ("language", "reading"):
             schema["properties"][field]["const"] = bundle[field]
         for definition in schema.get("$defs", {}).values():
+            properties = definition.get("properties", {})
+            if bundle["stage"] == "chapter" and bundle["language"] == "th" and "text" in properties:
+                if definition.get("title") == "ReadingSummary":
+                    properties["text"]["description"] = "One concise takeaway: 40-80 Thai characters or 30-60 Chinese characters; never more than 240 Unicode characters."
+                else:
+                    properties["text"]["description"] = "Two or three short Thai sentences of 160-240 Unicode characters, including spaces and combining marks; hard maximum 700."
             for field, values in (("evidence_ids", bundle.get("evidence", {})), ("action_ids", bundle.get("source_actions", {}))):
                 if field in definition.get("properties", {}):
                     definition["properties"][field].update(minItems=2, maxItems=2, items={"type": "string", "enum": list(values)})
@@ -614,7 +628,8 @@ class LifeWriter(BaziReports):
         else:
             contract += "\nเขียนทุกหัวข้อและเนื้อหาเป็นภาษาไทยที่เป็นธรรมชาติ ใช้คำที่เข้าใจง่าย ตรวจทุกช่องและรหัสหลักฐานตามข้อมูลของคำขอนี้ก่อนตอบ"
             if stage == "chapter":
-                contract += " แต่ละ text เขียนเป็นย่อหน้าราวสี่ร้อยถึงหกร้อยตัวอักษร สูงสุดเจ็ดร้อย อธิบายนิสัยในเรื่องนี้ผ่านสถานการณ์ที่อาจพบ จุดแข็ง ข้อจำกัด และวิธีปรับอย่างต่อเนื่อง ใช้หัวข้อที่บอกเนื้อหาโดยตรง ไม่ใช้หัวข้อสำเร็จรูปหรือกล่าวอ้างว่ารู้ประวัติชีวิต"
+                # The six long point paragraphs must not inflate ReadingSummary's 240-character field.
+                contract += " summary.text targets 40-80 Thai Unicode characters, with a hard maximum of 240 characters. The six point text fields target 160-240 Unicode characters each in two or three short sentences (hard maximum 700), counting spaces and combining marks; these precise Thai targets supersede the general length guidance. All auxiliary fields target 60-140 characters (hard maximum 420). สรุป summary.text ให้สั้นและตรงประเด็น ส่วน insights, watchpoints และ actions อธิบายแต่ละประเด็นอย่างกระชับด้วยสถานการณ์ จุดแข็ง ข้อจำกัด และวิธีปรับ ใช้หัวข้อที่บอกเนื้อหาโดยตรงและภาษาไทยเท่านั้น"
         if stage == "chapter":
             topics = {"work": "work style, collaboration and development advice", "money": "attitude to money and practical planning", "love": "relationship needs and communication", "family": "family needs, responsibilities and communication", "annual": "current themes and practical action priorities using the supplied year's evidence"}
             subject = FORTUNE_TOPICS[bundle["reading"]]["scope"] if bundle.get("report_kind") == "fortune" else topics[bundle["reading"]]

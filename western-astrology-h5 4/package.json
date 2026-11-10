@@ -5,26 +5,20 @@
   "type": "module",
   "packageManager": "pnpm@11.19.0",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 8765 --strictPort",
-    "build": "tsc --noEmit && vite build",
-    "test": "vitest run",
-    "test:e2e": "playwright test"
+    "dev": "node scripts/serve-flutter.mjs",
+    "build": "node scripts/build-flutter.mjs",
+    "check": "pnpm check:documents && node scripts/build-flutter.mjs analyze",
+    "check:documents": "tsc --noEmit",
+    "test": "pnpm test:contracts && pnpm test:flutter",
+    "test:contracts": "vitest run",
+    "test:flutter": "node scripts/build-flutter.mjs test"
   },
   "dependencies": {
-    "lucide-react": "^0.468.0",
-    "pdfmake": "0.3.13",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "pdfmake": "0.3.13"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1",
     "@types/pdfmake": "0.3.3",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17",
+    "esbuild": "0.25.12",
     "typescript": "~5.7.2",
     "vite": "^6.4.1",
     "vitest": "^4.1.12"

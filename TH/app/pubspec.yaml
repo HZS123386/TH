@@ -1,0 +1,37 @@
+name: fate_app
+description: FATE Western astrology mobile application.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  go_router: ^18.1.4
+  http: ^1.6.0
+  shared_preferences: ^2.5.6
+  flutter_secure_storage: ^11.2.0
+  in_app_purchase: ^3.3.1
+  in_app_purchase_storekit: ^0.4.17
+  sign_in_with_apple: ^8.2.0
+  crypto: ^3.0.8
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/images/
+    - assets/fonts/OFL.txt
+    - assets/fonts/OFL-CJK.txt
+  fonts:
+    - family: NotoSansThai
+      fonts:
+        - asset: assets/fonts/NotoSansThai.ttf
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Regular.otf

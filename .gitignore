@@ -25,3 +25,24 @@
 *.key
 id_rsa
 id_ed25519
+
+# Flutter sources are versioned; generated builds and local signing settings stay local.
+**/.dart_tool/
+**/build/
+**/.gradle/
+**/.idea/
+**/.flutter-plugins*
+**/Pods/
+**/ephemeral/
+**/.symlinks/
+**/.plugin_symlinks/
+**/xcuserdata/
+**/coverage/
+**/local.properties
+**/key.properties
+**/Generated.xcconfig
+**/flutter_export_environment.sh
+*.jks
+*.keystore
+*.p12
+*.mobileprovision

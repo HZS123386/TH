@@ -23,8 +23,9 @@ const children = [
     ],
     { stdio: 'inherit' },
   ),
-  spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port', webPort], {
+  spawn(process.execPath, ['scripts/serve-app.mjs'], {
     stdio: 'inherit',
+    env: { ...process.env, FATE_APP_PORT: webPort },
   }),
 ];
 let closing = false;
