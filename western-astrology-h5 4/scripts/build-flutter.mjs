@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, rename, stat } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rename, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +30,12 @@ export async function buildLanding(){
   const previous=path.join(temporary,`site-previous-${Date.now()}`);
   if(!generated.startsWith(temporary+path.sep)||!previous.startsWith(temporary+path.sep)||destination!==path.join(projectRoot,'site'))throw Error('Unexpected build directory');
   await flutter(['build','web','--release','--wasm','--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
+  const bootstrap=await readFile(path.join(generated,'flutter_bootstrap.js'),'utf8');
+  const engineRevision=/"engineRevision":"([a-f0-9]{40})"/.exec(bootstrap)?.[1];
+  if(!engineRevision)throw Error('Missing Flutter engine revision');
+  // Engine URLs carry their SDK revision, so browsers can safely retain them.
+  await mkdir(path.join(generated,'engine'),{recursive:true});
+  await rename(path.join(generated,'canvaskit'),path.join(generated,'engine',engineRevision));
   // Preserve the existing report.html deep links, including saved report IDs.
   for (const page of ['report.html','privacy.html','support.html']) {
     await cp(path.join(generated,'index.html'),path.join(generated,page));

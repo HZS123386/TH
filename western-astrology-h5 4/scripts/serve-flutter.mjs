@@ -32,7 +32,8 @@ const server=createServer(async(req,res)=>{
  try{
   if((await stat(file)).isDirectory())file=path.join(file,'index.html');
   const info=await stat(file),etag=`W/"${info.size.toString(16)}-${info.mtimeMs.toString(16)}"`;
-  const headers={'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':'no-cache',ETag:etag};
+  const versionedEngine=/^engine\/[a-f0-9]{40}\//.test(path.relative(root,file).split(path.sep).join('/'));
+  const headers={'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':versionedEngine?'public, max-age=31536000, immutable':'no-cache',ETag:etag};
   if(req.headers['if-none-match']===etag){res.writeHead(304,headers).end();return;}
   const range=req.headers.range;
   if(range&&path.extname(file)==='.mp4'){

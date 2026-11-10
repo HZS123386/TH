@@ -4,6 +4,8 @@ const h5FontFamily = 'NotoSansThai';
 const h5FontFallback = [
   'FateLanguageLabel',
   'NotoSansSC',
+  'NotoSansSCCommon',
+  'NotoSansSCFull',
   'NotoSansSymbols',
   'NotoSansSymbols2',
 ];

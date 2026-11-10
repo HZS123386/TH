@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -149,6 +150,10 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
           state.update(report, percent, phase);
           unawaited(h5.trackReport(report.id, 'submitted'));
         });
+        await h5.prepareText(
+          jsonEncode(report.json),
+          language: report.language,
+        );
         if (mounted && !token.cancelled) state.ready(report);
       } catch (error) {
         if (mounted && !token.cancelled) state.fail(h5.message(error));

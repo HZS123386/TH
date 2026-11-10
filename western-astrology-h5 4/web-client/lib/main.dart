@@ -41,7 +41,8 @@ Future<void> main() async {
     repository,
     browser,
     language: language,
-    ensureFont: fonts.ensure,
+    ensureFont: fonts.ensureCommon,
+    ensureTextFont: fonts.ensureText,
   );
   browser.setLanguage(
     language,

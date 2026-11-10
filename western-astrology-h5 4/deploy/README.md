@@ -39,13 +39,13 @@ sudo docker compose logs --tail 80 app
 
 本地构建现已切换为 Flutter Web。发布时继续复制 `site/`，不需要在服务器安装 Flutter；后端挂载 `/thai-landing/` 的方式和报告数据库位置保持一致。构建必须使用相同的 base 路径。`.mjs` 应返回 JavaScript MIME，`.wasm` 应返回 `application/wasm`，字体和视频须能从同源访问。下述旧版响应式图片方案仅适用于历史 React 构建；新版使用本地 Flutter 渲染引擎与字体，实际校验记录见 `../docs/FLUTTER_H5_MIGRATION.md`。
 
-Flutter 版预加载本地 WebP 主图，首帧等待主图解码完成，避免先显示缺少主图的页面。原始图片及其他分辨率素材继续保留。
+Flutter 版并行预加载两个首屏 WebP 主图，图片等待最多 700ms，避免渲染路径与图片加载相互等待。HTML 入口先显示加载状态，由应用实际完成首帧后移除；失败或慢网时提供重试。
 
-Flutter 版使用本地 Noto Sans Thai；完整中文字体只在中文页面和切换中文时加载。泰文首页仅使用小型语言标签补充字库。字体授权和 Flutter 渲染资源随构建提供，不请求 Google Fonts 或 Flutter 公共 CDN。PDF 使用独立字体。
+中文首屏使用 348 KB 精简 OTF；常用字库在进入表单后预备，完整字库只在后续文本需要时读取。符号字体约 24 KB，泰文首页不加载中文字库。Python 静态服务显式注册 font/otf、font/ttf、font/woff2 MIME，让网关可以压缩字体响应。PDF 字体独立保留。
 
-Flutter 的 `main.dart.mjs`、`main.dart.wasm`、引导文件和资源清单使用稳定名称，当前网关模板统一设置 `Cache-Control: no-cache`，通过 ETag 重新验证，避免发布后混用旧脚本或字体。报告接口继续禁止缓存。网关保留 zstd/gzip 压缩；本次仅更新本地部署模板，未更改服务器入口。
+Flutter 的入口、业务文件和资源清单继续使用 no-cache 与 ETag 验证。引擎资源改用 /thai-landing/engine/<40位SDK revision>/，该地址可以缓存一年并标记 immutable；升级 SDK 会更换目录。构建脚本移动原引擎目录，必须部署整个 site。网关继续保留 zstd/gzip 压缩，报告接口使用 no-store。
 
-报告动画不参与首页下载。点击生成立即显示静态首帧和文字，视频就绪后静音循环。视频约 1.67 MB，进度由服务端真实快照更新，尊重减少动态效果设置。静态服务器需要支持视频 Range 请求。
+报告动画不参与首页下载。生成页显示 JY 三阶段和实际生成进度，完成后静音播放一次约 3.02 MB 的原版结束动画。减少动态效果时使用静态画面。静态服务器继续支持视频 Range 请求。
 
 ## 原站点与回退
 

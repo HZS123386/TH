@@ -149,3 +149,29 @@ def test_estimated_chart_does_not_present_time_sensitive_houses_as_exact(client)
     chart = response.json()["chart"]
     assert chart["precision"] == "estimated" and chart["houses"] == [] and chart["aspects"] == []
     assert all(p["house"] is None and p["id"] != "ascendant" for p in chart["planets"])
+
+
+def test_minimal_server_serves_font_mime_types_for_gateway_compression(tmp_path, monkeypatch):
+    import mimetypes
+    from fastapi.testclient import TestClient
+    from backend.app.config import Settings
+    from backend.app.main import create_app
+
+    static = tmp_path / "landing"
+    static.mkdir()
+    fonts = {"initial.otf": "font/otf", "symbols.ttf": "font/ttf", "extra.woff2": "font/woff2"}
+    for name in fonts:
+        (static / name).write_bytes(b"font-content")
+    # Reproduce the MIME database in the production slim image on every OS.
+    database = mimetypes.MimeTypes()
+    monkeypatch.setattr(mimetypes, "_db", database)
+    monkeypatch.setattr(mimetypes, "types_map", database.types_map[True])
+    for extension in (".otf", ".ttf", ".woff2"):
+        mimetypes.add_type("application/octet-stream", extension)
+    settings = Settings(database_path=str(tmp_path / "font-test.db"), thai_landing_dir=str(static))
+    with TestClient(create_app(settings)) as http:
+        for name, expected in fonts.items():
+            response = http.get("/thai-landing/" + name)
+            assert response.status_code == 200
+            assert response.headers["content-type"] == expected
+            assert response.content == b"font-content"

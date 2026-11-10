@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../app/controller.dart';
@@ -139,6 +140,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                 token,
                 state.update,
               );
+        await widget.h5.prepareText(
+          jsonEncode(result.json),
+          language: result.language,
+        );
         if (mounted && !token.cancelled) state.ready(result);
       } catch (error) {
         if (mounted && !token.cancelled) state.fail(widget.h5.message(error));

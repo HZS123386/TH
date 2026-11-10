@@ -8,9 +8,14 @@ http://129.226.126.212 {
     redir / /thai-landing/?lang=zh 302
 
     @landing path /thai-landing /thai-landing/*
+    @engineAssets path_regexp engine ^/thai-landing/engine/[a-f0-9]{40}/
+    @unversionedAssets {
+        not path /thai-landing/engine/*
+    }
     handle @landing {
-        # Flutter entry points and fonts use stable names; revalidate after releases.
-        header Cache-Control "no-cache"
+        # SDK-revision URLs are immutable; entry points still revalidate.
+        header @unversionedAssets Cache-Control "no-cache"
+        header @engineAssets Cache-Control "public, max-age=31536000, immutable"
         reverse_proxy astro-life-report:8000
     }
     @reportApi path /api/life-reports /api/life-reports/* /api/thai-locations /api/landing/*

@@ -395,6 +395,10 @@ class _PlacePickerState extends State<PlacePicker> {
         total = (result['total'] as num?)?.toInt() ?? items.length;
       }
       if (!mounted || token.cancelled) return;
+      await widget.h5.prepareText(
+        items.map((place) => place.name(c.language)).join(),
+      );
+      if (!mounted || token.cancelled) return;
       setState(() {
         _items = more ? [..._items, ...items] : items;
         _offset = _items.length;

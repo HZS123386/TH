@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import mimetypes
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -42,6 +43,9 @@ def event(name: str, data: dict) -> str:
 
 
 def create_app(settings: Settings | None = None):
+    # Minimal Linux images do not ship a complete MIME database for fonts.
+    for extension, kind in (('.otf', 'font/otf'), ('.ttf', 'font/ttf'), ('.woff2', 'font/woff2')):
+        mimetypes.add_type(kind, extension)
     settings = settings or Settings.from_env()
     if settings.app_env not in ("development", "production"):
         raise RuntimeError("APP_ENV must be development or production")

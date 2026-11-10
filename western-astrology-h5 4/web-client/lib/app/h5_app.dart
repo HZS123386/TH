@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,7 @@ class H5App extends StatefulWidget {
 
 class _H5AppState extends State<H5App> {
   bool _deferred = true;
+  Timer? _firstFrameLimit;
   late final _router = GoRouter(
     initialLocation: widget.initialLocation,
     routes: [
@@ -63,6 +65,8 @@ class _H5AppState extends State<H5App> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.deferFirstFrame();
+    // A delayed image must not keep the entire application invisible.
+    _firstFrameLimit = Timer(const Duration(milliseconds: 700), _allowFrame);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         if (mounted &&
@@ -84,7 +88,13 @@ class _H5AppState extends State<H5App> {
   void _allowFrame() {
     if (!_deferred) return;
     _deferred = false;
+    _firstFrameLimit?.cancel();
     WidgetsBinding.instance.allowFirstFrame();
+    unawaited(
+      WidgetsBinding.instance.waitUntilFirstFrameRasterized.then((_) {
+        if (mounted) widget.controller.browser.pageReady('app-ready');
+      }),
+    );
   }
 
   @override

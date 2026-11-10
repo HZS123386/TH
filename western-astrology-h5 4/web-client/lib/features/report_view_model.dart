@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
@@ -32,6 +33,10 @@ class ReportViewModel extends ChangeNotifier {
       if (_disposed || token.cancelled) return;
       if (!await h5.changeLanguage(next.language)) {
         throw const ApiFailure('network');
+      }
+      if (_disposed || token.cancelled) return;
+      if (next.full) {
+        await h5.prepareText(jsonEncode(next.json), language: next.language);
       }
       if (_disposed || token.cancelled) return;
       report = next;

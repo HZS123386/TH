@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { mkdir, readFile, writeFile, cp } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile, cp } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,6 +20,12 @@ copy.jyThemes = jy.jyThemes;
 await mkdir(path.join(target,'assets','images'),{recursive:true});
 await mkdir(path.join(target,'assets','fonts'),{recursive:true});
 await writeFile(path.join(target,'assets','copy.json'),JSON.stringify(copy));
+const fontSubset=JSON.parse(await readFile(path.join(target,'assets','fonts','subsets.json'),'utf8'));
+const supported=new Set([...fontSubset.ui]);
+const dartFiles=(await readdir(path.join(target,'lib'),{recursive:true})).filter(name=>name.endsWith('.dart')&&!name.endsWith('chinese_coverage.dart'));
+const uiSource=JSON.stringify(copy)+(await Promise.all(dartFiles.map(name=>readFile(path.join(target,'lib',name),'utf8')))).join('');
+const chinese=code=>code>=0x2e80&&code<=0x9fff||code>=0xf900&&code<=0xfaff||code>=0xff00&&code<=0xffef||code>=0x20000&&code<=0x323af;
+if([...uiSource].some(char=>chinese(char.codePointAt(0))&&!supported.has(char)))throw Error('Chinese UI font is stale; run scripts/prepare-fonts.py');
 for(const name of ['NotoSansThai.ttf','NotoSansSC-Regular.otf','OFL.txt','OFL-CJK.txt']) {
  await cp(path.join(root,'..','TH','app','assets','fonts',name),path.join(target,'assets','fonts',name));
 }

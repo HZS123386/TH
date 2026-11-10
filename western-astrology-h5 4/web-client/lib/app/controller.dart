@@ -11,6 +11,7 @@ class H5Controller extends ChangeNotifier {
     this.browser, {
     String language = 'th',
     this.ensureFont,
+    this.ensureTextFont,
   }) : _language = language {
     repository.language = language;
     welcomeOpen = true;
@@ -23,6 +24,7 @@ class H5Controller extends ChangeNotifier {
   final ReportRepository repository;
   final BrowserPort browser;
   final Future<void> Function(String)? ensureFont;
+  final Future<void> Function(String, String)? ensureTextFont;
   static const noticeVersion = 'h5-data-use-1';
   late bool welcomeOpen, noticeAccepted;
   late final bool returningVisitor;
@@ -38,6 +40,12 @@ class H5Controller extends ChangeNotifier {
     welcomePortraitRevealed = true;
     notifyListeners();
     unawaited(recordVisit());
+    // Warm later place/report text after the welcome is already visible.
+    unawaited(ensureFont?.call(language).catchError((_) {}));
+  }
+
+  Future<void> prepareText(String value, {String? language}) async {
+    await ensureTextFont?.call(language ?? this.language, value);
   }
 
   void revealLandingPortrait() {
