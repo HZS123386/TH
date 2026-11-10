@@ -155,6 +155,46 @@ def test_fortune_retry_keeps_the_six_successful_topics(client):
     full = http.get(f"/api/life-reports/{report['id']}", headers=HEADERS).json()
     assert full["full_state"] == "ready" and len(full["chapters"]) == 7
     assert all(sum(bundle["reading"] == key for bundle in calls) == count for key, count in done.items())
+@pytest.mark.parametrize("report_kind", ("life", "fortune"))
+def test_payso_demo_only_unlocks_the_order_verified_by_inquiry(client, monkeypatch, report_kind):
+    http, app, _, _ = client
+    payments = app.state.life_reports.card_payments
+    monkeypatch.setattr(payments, "enabled", True)
+    monkeypatch.setattr(payments, "merchant", "12345678")
+    response = http.post("/api/life-reports", json={"profile": PROFILE, "year": 2027, "report_kind": report_kind}, headers=HEADERS)
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["price"] == {"amount": 5000, "currency": "THB", "display": "฿50", "mode": "payso_test"}
+    path = f"/api/life-reports/{report['id']}"
+    checkout = http.post(f"{path}/payment", headers=HEADERS).json()
+    reference = checkout["fields"]["refno"]
+    assert checkout["fields"]["total"] == "50.00"
+    assert http.post(f"{path}/payment", headers=HEADERS).json() == checkout
+    assert http.post(f"{path}/payment/check", headers={"X-Report-Key": "z" * 48}).status_code == 404
+    assert http.post(f"{path}/unlock", headers=HEADERS).status_code == 402
+
+    result = []
+
+    async def inquiry(ref):
+        assert ref == reference
+        return result
+
+    monkeypatch.setattr(payments, "inquiry", inquiry)
+    postback = "/api/life-reports/payment/payso/postback"
+    notice = {"refno": reference, "total": "50", "completed": "true"}
+    assert http.post(postback, data=notice).status_code == 409
+    result.append({"ReferenceNo": reference, "MerchantID": "12345678", "Total": "49.00",
+                   "CurrencyCode": "00", "Status": "CP", "OrderNo": "123456", "CardType": "V"})
+    assert http.post(f"{path}/payment/check", headers=HEADERS).json() == {"paid": False}
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+    result[0]["Total"] = "50.00"
+    assert http.post(f"{path}/payment/check", headers=HEADERS).json() == {"paid": True}
+    assert http.post(postback, data=notice).status_code == 200
+    finish(http, app)
+    paid = http.get(path, headers=HEADERS).json()
+    assert paid["access"] == "full" and paid["full_state"] == "ready"
+    assert len(paid["chapters"]) == (7 if report_kind == "fortune" else 5)
 
 
 def test_career_stage_is_persisted_and_unlock_uses_the_same_30_day_window(client):

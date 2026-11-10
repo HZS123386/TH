@@ -1,4 +1,4 @@
-"""Persisted life-report snapshots and the explicitly requested direct unlock."""
+"""Persisted life-report snapshots, access, and generation."""
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
@@ -8,13 +8,16 @@ import logging
 import secrets
 import time
 from typing import Annotated, Literal
+from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import Field, model_validator
 
 from . import thai
 from .bazi_reports import report_progress_context, report_usage_context
+from .life_card_payments import CARD_AMOUNT, LifeCardPayments
 from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
 from .schemas import Input, ProfileInput, ThaiReadingInput
 from .thai_readings import HOUSES, copy_for, grounding
@@ -140,6 +143,7 @@ class LifeReports:
             """)
             if "generation_progress" not in {row["name"] for row in db.execute("PRAGMA table_info(life_reports)")}:
                 db.execute("ALTER TABLE life_reports ADD COLUMN generation_progress TEXT NOT NULL DEFAULT '{}'")
+        self.card_payments = LifeCardPayments(store, settings)
 
     def row(self, report_id, owner):
         with self.store.connect() as db:
@@ -355,7 +359,8 @@ class LifeReports:
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
                               "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
             "price": {"amount": 9900, "currency": "THB", "display": "฿99", "mode": "direct"} if career
-                     else {"amount": 5000, "currency": "THB", "display": "฿50", "mode": "direct"},
+                     else {"amount": CARD_AMOUNT, "currency": "THB", "display": "฿50",
+                           "mode": "payso_test" if self.card_payments.enabled else "direct"},
             "preview_state": row["preview_state"], "access": "full" if row["unlocked"] else "preview",
             "full_state": row["full_state"], "progress": {"completed": completed, "total": len(sections)},
             "generation_progress": {"percent": percent, "sections": sections},
@@ -414,9 +419,29 @@ class LifeReports:
         row = self.row(report_id, owner)
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
-        self.update(report_id, unlocked=1)
+        if not row["unlocked"]:
+            if not json.loads(row["input"]).get("career") and (
+                self.card_payments.enabled or self.card_payments.order_for(report_id)
+            ):
+                raise HTTPException(402, "life_payment_required")
+            self.update(report_id, unlocked=1)
         await self.start_full_generation(report_id, owner, network)
         return self.get(report_id, owner)
+
+    def create_card_order(self, report_id, owner, network):
+        row = self.row(report_id, owner)
+        body = json.loads(row["input"])
+        if not self.card_payments.enabled or body.get("career") or row["unlocked"]:
+            raise HTTPException(409, "life_payment_unavailable")
+        if not row["preview"]:
+            raise HTTPException(409, "life_preview_required")
+        return self.card_payments.create(report_id, network, body["profile"]["language"])
+
+    async def confirm_card_order(self, order, owner):
+        if not await self.card_payments.confirm(order):
+            return False
+        await self.start_full_generation(order["report_id"], owner, order["network"])
+        return True
 
     async def start_full_generation(self, report_id, owner, network):
         row = self.row(report_id, owner)
@@ -561,6 +586,29 @@ def life_report_router(service):
     async def unlock(report_id: str, request: Request, key: key_header):
         owner, network = scopes(key, request)
         return await service.unlock(report_id, owner, network)
+
+    @router.post("/{report_id}/payment")
+    async def create_payment(report_id: str, request: Request, key: key_header):
+        return service.create_card_order(report_id, *scopes(key, request))
+
+    @router.post("/{report_id}/payment/check")
+    async def check_payment(report_id: str, request: Request, key: key_header):
+        owner, _ = scopes(key, request)
+        row = service.row(report_id, owner)
+        if row["unlocked"]:
+            return {"paid": True}
+        return {"paid": await service.confirm_card_order(service.card_payments.order_for(report_id), owner)}
+
+    @router.post("/payment/payso/postback")
+    async def payso_postback(request: Request):
+        if not service.card_payments.enabled:
+            raise HTTPException(404)
+        params = parse_qs((await request.body()).decode("utf-8", errors="replace"))
+        reference = params.get("refno", [""])[0]
+        order = service.card_payments.from_reference(reference)
+        if not order or not await service.confirm_card_order(order, order["owner"]):
+            raise HTTPException(409, "life_payment_required")
+        return PlainTextResponse("OK")
 
     @router.post("/{report_id}/feedback")
     async def feedback(report_id: str, body: Feedback, request: Request, key: key_header):

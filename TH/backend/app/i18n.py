@@ -185,6 +185,8 @@ MESSAGES.update({'roxy_unconfigured': ('Roxy 尚未配置', 'ยังไม่�
 MESSAGES.update({
     "life_report_not_found": ("找不到这份报告，请从本设备的报告列表重新打开。", "ไม่พบรายงานนี้ กรุณาเปิดจากรายการรายงานในอุปกรณ์นี้", "Không tìm thấy báo cáo này.", "This report was not found on this device."),
     "life_preview_required": ("请先完成免费试读，再查看完整报告。", "กรุณาสร้างคำอ่านเบื้องต้นก่อนเปิดรายงานฉบับเต็ม", "Hãy tạo bản đọc thử trước.", "Create the preview before unlocking the full report."),
+    "life_payment_required": ("付款尚未确认，报告仍处于锁定状态。", "ยังไม่ได้รับการยืนยันการชำระเงิน รายงานยังล็อกอยู่", "Thanh toán chưa được xác nhận.", "Payment has not been confirmed."),
+    "life_payment_unavailable": ("暂时无法连接测试支付，请稍后重试。", "ขณะนี้ระบบทดสอบการชำระเงินไม่พร้อมใช้งาน กรุณาลองอีกครั้ง", "Chưa thể kết nối thanh toán thử.", "Test payment is unavailable. Try again shortly."),
 })
 
 
