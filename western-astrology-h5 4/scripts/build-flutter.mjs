@@ -31,7 +31,9 @@ export async function buildLanding(){
   if(!generated.startsWith(temporary+path.sep)||!previous.startsWith(temporary+path.sep)||destination!==path.join(projectRoot,'site'))throw Error('Unexpected build directory');
   await flutter(['build','web','--release','--wasm','--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
   // Preserve the existing report.html deep links, including saved report IDs.
-  await cp(path.join(generated,'index.html'),path.join(generated,'report.html'));
+  for (const page of ['report.html','privacy.html','support.html']) {
+    await cp(path.join(generated,'index.html'),path.join(generated,page));
+  }
   for(const file of ['main.dart.wasm','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
   const hadPrevious=existsSync(destination);
   if(hadPrevious)await moveBuild(destination,previous);

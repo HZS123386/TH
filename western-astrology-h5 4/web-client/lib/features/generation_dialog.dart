@@ -45,11 +45,13 @@ class GenerationDialog extends StatefulWidget {
     required this.onCancel,
     required this.onRetry,
     required this.onComplete,
+    this.input,
     super.key,
   });
   final H5Controller h5;
   final GenerationState state;
   final bool full;
+  final Json? input;
   final VoidCallback onCancel, onRetry;
   final void Function(LifeReport) onComplete;
   @override
@@ -164,6 +166,14 @@ class _GenerationDialogState extends State<GenerationDialog>
                         ),
                       ),
                       const SizedBox(height: 18),
+                      if (widget.input != null || report != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 18),
+                          child: _BirthSummary(
+                            input: widget.input ?? report!.input,
+                            c: c,
+                          ),
+                        ),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(18),
                         child: AspectRatio(
@@ -250,6 +260,48 @@ class _GenerationDialogState extends State<GenerationDialog>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _BirthSummary extends StatelessWidget {
+  const _BirthSummary({required this.input, required this.c});
+  final Json input;
+  final Copy c;
+  @override
+  Widget build(BuildContext context) {
+    final p = object(input['profile']);
+    final career = object(input['career_question']);
+    final question = text(input['user_question']).isNotEmpty
+        ? text(input['user_question'])
+        : career.isEmpty
+        ? ''
+        : c.t('career', 'situations.${career['stage']}.question');
+    return Panel(
+      padding: const EdgeInsets.all(13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            c.t('experience', 'birthSummary'),
+            style: const TextStyle(color: gold, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${text(p['birth_date'])} · ${text(p['birth_time']).isEmpty ? c.t('ui', 'unknown') : text(p['birth_time'])}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          Text(
+            text(p['birthplace']),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (question.isNotEmpty)
+            Text(
+              '${c.t('experience', 'question')}：$question',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+        ],
       ),
     );
   }

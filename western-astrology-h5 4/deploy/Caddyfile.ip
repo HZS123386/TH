@@ -13,7 +13,7 @@ http://129.226.126.212 {
         header Cache-Control "no-cache"
         reverse_proxy astro-life-report:8000
     }
-    @reportApi path /api/life-reports /api/life-reports/* /api/thai-locations
+    @reportApi path /api/life-reports /api/life-reports/* /api/thai-locations /api/landing/*
     handle @reportApi {
         header Cache-Control "no-store"
         reverse_proxy astro-life-report:8000 {

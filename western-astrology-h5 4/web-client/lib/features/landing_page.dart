@@ -9,6 +9,7 @@ import '../ui/theme.dart';
 import 'birth_date_dialog.dart';
 import 'generation_dialog.dart';
 import 'history_dialog.dart';
+import 'information_page.dart';
 import 'place_picker.dart';
 
 const heroImage = AssetImage('assets/images/astrologer.webp');
@@ -22,7 +23,7 @@ class LandingPage extends StatefulWidget {
 
 class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   String _date = '', _time = '', _country = '', _error = '';
-  bool _unknown = false, _custom = false;
+  bool _unknown = false, _custom = false, _confirming = false;
   Place? _province, _place;
   String? _question;
   final _questionText = TextEditingController(),
@@ -41,6 +42,12 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       const Duration(milliseconds: 3800),
       (_) => _rotate(),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    unawaited(H5Scope.of(context).recordVisit());
   }
 
   void _rotate() {
@@ -177,7 +184,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   }
 
   Future<void> _generate(H5Controller h5) async {
-    if (_generation != null) return;
+    if (_generation != null || _confirming) return;
     final c = h5.copy;
     if (!validBirthDate(
       _date,
@@ -195,6 +202,14 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       return;
     }
     setState(() => _error = '');
+    _confirming = true;
+    var accepted = false;
+    try {
+      accepted = await confirmDataUse(context, h5);
+    } finally {
+      _confirming = false;
+    }
+    if (!mounted || !accepted) return;
     final input = _input(h5);
     final state = GenerationState();
     _generation = state;
@@ -204,7 +219,14 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       _request = token;
       state.retry();
       try {
-        final report = await h5.repository.generate(input, token, state.update);
+        final report = await h5.repository.generate(input, token, (
+          report,
+          percent,
+          phase,
+        ) {
+          state.update(report, percent, phase);
+          unawaited(h5.trackReport(report.id, 'submitted'));
+        });
         if (mounted && !token.cancelled) state.ready(report);
       } catch (error) {
         if (mounted && !token.cancelled) state.fail(h5.message(error));
@@ -220,6 +242,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         h5: h5,
         state: state,
         full: false,
+        input: input,
         onCancel: () {
           _request?.cancel();
           Navigator.of(context, rootNavigator: true).pop();
@@ -597,7 +620,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                 ),
                 errorMessage(_error),
                 FilledButton.icon(
-                  onPressed: h5.languageLoading ? null : () => _generate(h5),
+                  onPressed: h5.languageLoading || _confirming
+                      ? null
+                      : () => _generate(h5),
                   icon: const Icon(Icons.menu_book_outlined, size: 20),
                   label: Text(c.t('life', 'generate')),
                 ),
@@ -642,6 +667,21 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 24),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () =>
+                          context.go('/privacy.html?lang=${h5.language}'),
+                      child: Text(c.t('experience', 'privacy')),
+                    ),
+                    TextButton(
+                      onPressed: () =>
+                          context.go('/support.html?lang=${h5.language}'),
+                      child: Text(c.t('experience', 'support')),
+                    ),
+                  ],
+                ),
                 Text(
                   zh
                       ? '解读由 AI 生成，仅供娱乐与自我探索'

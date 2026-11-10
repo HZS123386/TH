@@ -14,6 +14,19 @@ Json translations() =>
     object(jsonDecode(File('assets/copy.json').readAsStringSync()));
 
 class TestBrowser implements BrowserPort {
+  final settings = <String, String>{
+    'session:fate-welcome-dismissed': '1',
+    'fate-data-use-version': 'h5-data-use-1',
+  };
+  Json visit = {};
+  @override
+  String? readSetting(String key, {bool session = false}) =>
+      settings[session ? 'session:$key' : key];
+  @override
+  void writeSetting(String key, String value, {bool session = false}) =>
+      settings[session ? 'session:$key' : key] = value;
+  @override
+  Json visitContext() => visit;
   String key = List.filled(48, 'a').join();
   String title = '', locale = '';
   Json? exported;

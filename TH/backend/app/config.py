@@ -42,6 +42,7 @@ class Settings:
     payso_test_merchant_id: str = ""
     payso_test_api_key: str = field(default="", repr=False)
     payso_test_secret_key: str = field(default="", repr=False)
+    support_email: str = ""
 
     @classmethod
     def from_env(cls):
@@ -77,4 +78,5 @@ class Settings:
             payso_test_merchant_id=os.getenv("PAYSO_TEST_MERCHANT_ID", ""),
             payso_test_api_key=os.getenv("PAYSO_TEST_API_KEY", ""),
             payso_test_secret_key=os.getenv("PAYSO_TEST_SECRET_KEY", ""),
+            support_email=os.getenv("FATE_SUPPORT_EMAIL", ""),
         )

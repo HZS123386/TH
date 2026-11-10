@@ -14,6 +14,10 @@ external JSPromise<JSString> _export(JSString payload, JSString format);
 external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
+@JS('navigator.globalPrivacyControl')
+external JSBoolean? get _privacyControl;
+@JS('navigator.doNotTrack')
+external JSString? get _doNotTrack;
 
 class WebBrowserPort implements BrowserPort {
   String? _key;
@@ -78,4 +82,53 @@ class WebBrowserPort implements BrowserPort {
       _payment(action.toJS, jsonEncode(fields).toJS);
   @override
   void pageReady(String page) => _ready(page.toJS);
+
+  @override
+  String? readSetting(String key, {bool session = false}) {
+    try {
+      return (session ? web.window.sessionStorage : web.window.localStorage)
+          .getItem(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  void writeSetting(String key, String value, {bool session = false}) {
+    try {
+      (session ? web.window.sessionStorage : web.window.localStorage).setItem(
+        key,
+        value,
+      );
+    } catch (_) {
+      // Optional preferences must not block the report's existing storage check.
+    }
+  }
+
+  @override
+  Json visitContext() {
+    if (_privacyControl?.toDart == true || _doNotTrack?.toDart == '1') {
+      return {};
+    }
+    var id = readSetting('fate-visit', session: true);
+    if (id == null) {
+      final bytes = List.generate(16, (_) => Random.secure().nextInt(256));
+      bytes[6] = (bytes[6] & 15) | 64;
+      bytes[8] = (bytes[8] & 63) | 128;
+      final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+      id =
+          '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+    }
+    writeSetting('fate-visit', id, session: true);
+    String tag(String name) => (Uri.base.queryParameters[name] ?? '')
+        .replaceAll(RegExp(r'[^A-Za-z0-9_.~-]'), '')
+        .split('')
+        .take(64)
+        .join();
+    return {
+      'id': id,
+      'source': tag('utm_source'),
+      'campaign': tag('utm_campaign'),
+    };
+  }
 }

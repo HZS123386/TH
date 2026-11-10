@@ -56,6 +56,7 @@ class ReportRepository {
     CancelToken token, {
     Json? body,
     bool owned = true,
+    String? method,
   }) async {
     token.check();
     final headers = {
@@ -64,7 +65,7 @@ class ReportRepository {
       if (owned) 'X-Report-Key': store.ownerKey(),
     };
     final request = http.AbortableRequest(
-      body == null ? 'GET' : 'POST',
+      method ?? (body == null ? 'GET' : 'POST'),
       Uri.parse('$baseUrl$path'),
       abortTrigger: token.future,
     )..headers.addAll(headers);
@@ -77,6 +78,7 @@ class ReportRepository {
       throw const ApiFailure('network');
     }
     token.check();
+    if (response.statusCode == 204) return null;
     dynamic data;
     try {
       data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -100,7 +102,9 @@ class ReportRepository {
             )
           : retryDate?.difference(DateTime.now());
       throw ApiFailure(
-        text(object(data)['detail']).isNotEmpty
+        text(object(data)['code']).isNotEmpty
+            ? text(object(data)['code'])
+            : text(object(data)['detail']).isNotEmpty
             ? text(object(data)['detail'])
             : 'network',
         status: response.statusCode,

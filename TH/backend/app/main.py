@@ -32,6 +32,7 @@ from .bazi_testing import generate_bazi_test
 from .bazi_reports import BaziReports
 from .thai_readings import ThaiReports, generate_reading
 from .life_reports import LifeReports, life_report_router
+from .landing_features import LandingFeatures, landing_router
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ def create_app(settings: Settings | None = None):
     life_reports = LifeReports(store, settings, model_slots, thai_slots)
     app.state.life_reports = life_reports
     app.include_router(life_report_router(life_reports))
+    app.include_router(landing_router(LandingFeatures(store, settings, life_reports)))
 
     async def load_thai(user_id: str, current: dict):
         profile = current["profile"]

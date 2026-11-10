@@ -415,6 +415,18 @@ class LifeReports:
         return [{"id": row["id"], "input": json.loads(row["input"]), "created_at": stamp(row["created"]),
                  "access": "full" if row["unlocked"] else "preview", "full_state": row["full_state"]} for row in rows]
 
+    def delete(self, report_id, owner):
+        # Verify ownership and generation state inside the same write transaction.
+        with self.store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM life_reports WHERE id=? AND owner=?", (report_id, owner)).fetchone()
+            if row is None:
+                raise HTTPException(404, "life_report_not_found")
+            if row["preview_state"] in ("pending", "generating") or row["full_state"] == "generating":
+                raise HTTPException(409, "life_report_generating")
+            db.execute("DELETE FROM life_card_payments WHERE report_id=?", (report_id,))
+            db.execute("DELETE FROM life_reports WHERE id=? AND owner=?", (report_id, owner))
+
     async def unlock(self, report_id, owner, network):
         row = self.row(report_id, owner)
         if not row["preview"]:
@@ -581,6 +593,10 @@ def life_report_router(service):
     @router.get("/{report_id}")
     async def get(report_id: str, request: Request, key: key_header):
         return service.get(report_id, scopes(key, request)[0])
+
+    @router.delete("/{report_id}", status_code=204)
+    async def delete(report_id: str, request: Request, key: key_header):
+        service.delete(report_id, scopes(key, request)[0])
 
     @router.post("/{report_id}/unlock")
     async def unlock(report_id: str, request: Request, key: key_header):

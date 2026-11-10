@@ -48,7 +48,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     if (!_reported && r.preview.isNotEmpty) {
       _reported = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.h5.browser.pageReady('report-content');
+        if (mounted) {
+          widget.h5.browser.pageReady('report-content');
+          unawaited(widget.h5.trackReport(r.id, 'seen'));
+        }
       });
     }
     if (!_reportedFull && r.ready) {
@@ -130,6 +133,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         h5: widget.h5,
         state: state,
         full: full,
+        input: initial.input,
         onCancel: () {
           _generationRequest?.cancel();
           Navigator.of(context, rootNavigator: true).pop();

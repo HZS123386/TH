@@ -55,6 +55,7 @@ def main():
         'ROXY_ENABLED': 'false',
         'BAZI_PROVIDER': 'github',
         'THAI_LANDING_DIR': '/app/western-astrology-h5 4/site',
+        'FATE_SUPPORT_EMAIL': env.get('FATE_SUPPORT_EMAIL', ''),
     }
     # This file is transferred separately and never enters the Docker build context.
     (release / 'runtime.env').write_text(''.join(f'{key}={value}\n' for key, value in config.items()), encoding='utf-8', newline='\n')

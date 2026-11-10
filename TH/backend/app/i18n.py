@@ -5,6 +5,9 @@ LOCALES = {"zh": "zh-CN", "th": "th-TH", "vi": "vi-VN", "en": "en-US"}
 
 # API messages live on the server; user content and previous messages are never rewritten.
 MESSAGES = {
+    "life_report_generating": ("报告仍在生成，请完成后再删除。", "รายงานยังสร้างอยู่ กรุณารอให้เสร็จก่อนลบ", "Báo cáo đang được tạo. Vui lòng đợi trước khi xóa.", "The report is still being generated. Wait until it finishes before deleting."),
+    "landing_visit_not_found": ("暂时无法记录本次访问。", "ยังบันทึกการเข้าชมครั้งนี้ไม่ได้", "Chưa thể ghi nhận lượt truy cập này.", "This visit could not be recorded."),
+    "landing_consent_required": ("请先确认资料使用说明。", "กรุณายืนยันการใช้ข้อมูลก่อน", "Vui lòng xác nhận việc sử dụng dữ liệu.", "Confirm the data-use notice first."),
     "thai_reading_details_required": ("请补充出生日期、准确时间和可识别的出生地点，再生成泰式解读", "กรุณาระบุวันเกิด เวลาเกิดที่แน่นอน และสถานที่เกิดที่ค้นหาได้ก่อนสร้างคำอ่าน", "Hãy bổ sung ngày sinh, giờ sinh chính xác và nơi sinh có thể xác định trước khi tạo luận giải Thái.", "Add your birth date, exact time and a recognized birthplace before creating a Thai reading."),
     "model_rate_limit": ("模型服务达到调用限额，请稍等片刻后再试", "บริการโมเดลถึงขีดจำกัด กรุณารอสักครู่แล้วลองใหม่", "Dịch vụ mô hình đã chạm hạn mức. Hãy đợi một chút rồi thử lại.", "The model service rate limit was reached. Please pause and retry."),
     "model_auth_failed": ("模型密钥验证失败，请检查服务端配置", "ตรวจสอบคีย์โมเดลไม่ผ่าน กรุณาตรวจการตั้งค่าฝั่งเซิร์ฟเวอร์", "Xác thực khóa mô hình thất bại. Hãy kiểm tra cấu hình máy chủ.", "Model authentication failed. Check the server configuration."),

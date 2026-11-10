@@ -5,7 +5,10 @@ from fastapi.testclient import TestClient
 
 from backend.app.config import Settings
 from backend.app.main import create_app
-from backend.tests.test_app import PROFILE
+from backend.tests.test_app import PROFILE as BASE_PROFILE
+
+# Profile has supported optional gender since the local native-app update.
+PROFILE = {**BASE_PROFILE, "gender": None}
 
 
 @pytest.fixture

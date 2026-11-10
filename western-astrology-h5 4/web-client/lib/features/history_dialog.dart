@@ -22,6 +22,52 @@ class _HistoryDialogState extends State<HistoryDialog> {
   final _token = CancelToken();
   List<Json>? _items;
   String _error = '';
+  String? _deleting;
+
+  Future<void> _delete(Json item) async {
+    if (_deleting != null) return;
+    final c = widget.h5.copy;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(c.t('experience', 'deleteTitle')),
+        content: Text(c.t('experience', 'deleteNotice')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(c.t('experience', 'keep')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(c.t('experience', 'delete')),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+    final id = text(item['id']);
+    setState(() {
+      _deleting = id;
+      _error = '';
+    });
+    try {
+      await widget.h5.repository.request(
+        '/api/life-reports/${Uri.encodeComponent(id)}',
+        _token,
+        method: 'DELETE',
+      );
+      if (mounted) {
+        setState(() => _items!.removeWhere((row) => row['id'] == id));
+      }
+    } catch (error) {
+      if (mounted && !_token.cancelled) {
+        setState(() => _error = widget.h5.message(error));
+      }
+    } finally {
+      if (mounted) setState(() => _deleting = null);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -113,9 +159,24 @@ class _HistoryDialogState extends State<HistoryDialog> {
                               subtitle: Text(
                                 '${object(object(item['input'])['profile'])['birthplace']}\n${c.t('life', item['access'] == 'full' ? 'fullVersion' : 'previewVersion')} · ${c.t('life', 'open')}',
                               ),
-                              trailing: const Icon(
-                                Icons.chevron_right,
-                                color: gold,
+                              trailing: IconButton(
+                                tooltip: c.t('experience', 'delete'),
+                                onPressed: _deleting == null
+                                    ? () => unawaited(_delete(item))
+                                    : null,
+                                icon: _deleting == item['id']
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.delete_outline,
+                                        size: 21,
+                                        color: lavender,
+                                      ),
                               ),
                               onTap: () {
                                 final language = text(
