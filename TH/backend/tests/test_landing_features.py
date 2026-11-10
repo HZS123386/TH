@@ -106,10 +106,17 @@ def test_delete_enforces_ownership_and_removes_payment_reference(client):
 def test_active_report_cannot_be_deleted(client, field, state):
     http, app, _, _ = client
     report_id = preview(http)["id"]
-    app.state.life_reports.update(report_id, **{field: state})
+    app.state.life_reports.update(report_id, **{field: state, "lease_until": time.time() + 300})
     result = http.delete(f"/api/life-reports/{report_id}", headers=HEADERS)
     assert result.status_code == 409 and result.json()["code"] == "life_report_generating"
     assert app.state.life_reports.row(report_id, "life:" + app.state.life_reports.store.hash(HEADERS["X-Report-Key"]))
+
+
+def test_stale_interrupted_report_with_no_live_task_can_be_deleted(client):
+    http, app, _, _ = client
+    report_id = preview(http)["id"]
+    app.state.life_reports.update(report_id, preview=None, preview_state="pending", lease_until=0)
+    assert http.delete(f"/api/life-reports/{report_id}", headers=HEADERS).status_code == 204
 
 
 def test_metrics_are_read_only_aggregates_without_report_or_device_data(client):

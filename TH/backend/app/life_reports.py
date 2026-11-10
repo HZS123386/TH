@@ -422,7 +422,10 @@ class LifeReports:
             row = db.execute("SELECT * FROM life_reports WHERE id=? AND owner=?", (report_id, owner)).fetchone()
             if row is None:
                 raise HTTPException(404, "life_report_not_found")
-            if row["preview_state"] in ("pending", "generating") or row["full_state"] == "generating":
+            active_task = any(task is not None and not task.done()
+                              for task in (self.preview_tasks.get(report_id), self.tasks.get(report_id)))
+            claimed = (row["preview_state"] in ("pending", "generating") or row["full_state"] == "generating")
+            if active_task or (claimed and row["lease_until"] > time.time()):
                 raise HTTPException(409, "life_report_generating")
             db.execute("DELETE FROM life_card_payments WHERE report_id=?", (report_id,))
             db.execute("DELETE FROM life_reports WHERE id=? AND owner=?", (report_id, owner))
