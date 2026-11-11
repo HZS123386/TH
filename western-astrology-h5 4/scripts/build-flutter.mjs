@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, rename, stat } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +36,12 @@ export async function buildLanding(){
   // Engine URLs carry their SDK revision, so browsers can safely retain them.
   await mkdir(path.join(generated,'engine'),{recursive:true});
   await rename(path.join(generated,'canvaskit'),path.join(generated,'engine',engineRevision));
+  // Ship the existing browser bridge with the bootstrap so it cannot fail as a separate startup request.
+  const browserSource=await readFile(path.join(flutterRoot,'web','browser.js'),'utf8');
+  const indexPath=path.join(generated,'index.html');
+  const index=await readFile(indexPath,'utf8');
+  if(!index.includes('<script src="browser.js"></script>'))throw Error('Missing browser bootstrap slot');
+  await writeFile(indexPath,index.replace('<script src="browser.js"></script>',`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`));
   // Preserve the existing report.html deep links, including saved report IDs.
   for (const page of ['report.html','privacy.html','support.html']) {
     await cp(path.join(generated,'index.html'),path.join(generated,page));

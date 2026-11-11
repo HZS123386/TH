@@ -15,8 +15,6 @@ import 'history_dialog.dart';
 import 'information_page.dart';
 import 'place_picker.dart';
 
-const heroImage = AssetImage('assets/images/astrologer.webp');
-
 class LandingPage extends StatefulWidget {
   const LandingPage({this.topic = 'life', super.key});
   final String topic;
@@ -252,9 +250,12 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                         opacity: h5.welcomeOpen && !h5.welcomePortraitRevealed
                             ? 0
                             : 1,
-                        child: const Image(
-                          image: heroImage,
-                          fit: BoxFit.fitWidth,
+                        child: const AspectRatio(
+                          aspectRatio: 1199 / 1312,
+                          child: FateImage(
+                            'assets/images/astrologer-900.webp',
+                            fit: BoxFit.fitWidth,
+                          ),
                         ),
                       ),
                     ),

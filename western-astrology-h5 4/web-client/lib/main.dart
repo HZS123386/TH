@@ -12,12 +12,35 @@ import 'ui/language_fonts.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  usePathUrlStrategy();
   final browser = WebBrowserPort();
+  try {
+    await _startApp(browser);
+  } catch (error, stack) {
+    browser.startupFailed();
+    Error.throwWithStackTrace(error, stack);
+  }
+}
+
+Future<Json> _loadTranslations() async {
+  for (var attempt = 0; ; attempt++) {
+    try {
+      // Do not reuse a failed loadString future from the asset bundle cache.
+      return object(
+        jsonDecode(
+          await rootBundle.loadString('assets/copy.json', cache: false),
+        ),
+      );
+    } catch (_) {
+      if (attempt == 2) rethrow;
+      await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+    }
+  }
+}
+
+Future<void> _startApp(WebBrowserPort browser) async {
+  usePathUrlStrategy();
   final language = Uri.base.queryParameters['lang'] == 'zh' ? 'zh' : 'th';
-  final translations = object(
-    jsonDecode(await rootBundle.loadString('assets/copy.json')),
-  );
+  final translations = await _loadTranslations();
   final fonts = LanguageFonts();
   await fonts.ensure(language);
   LicenseRegistry.addLicense(() async* {

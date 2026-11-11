@@ -9,7 +9,7 @@ const port=Number(process.env.FATE_H5_PORT||8765),upstream=new URL(process.env.F
 if(!Number.isInteger(port)||port<1||port>65535||!['http:','https:'].includes(upstream.protocol))throw Error('Invalid local server settings');
 if(!process.argv.includes('--skip-build'))await buildLanding();
 const root=path.resolve(projectRoot,'site');
-const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.wasm':'application/wasm','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.ttf':'font/ttf','.otf':'font/otf','.woff2':'font/woff2','.mp4':'video/mp4'};
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.wasm':'application/wasm','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.webp':'image/webp','.ttf':'font/ttf','.otf':'font/otf','.woff2':'font/woff2','.mp4':'video/mp4'};
 const compressible=new Set(['.html','.js','.mjs','.css','.json','.wasm','.svg','.ttf','.otf']);
 function acceptsGzip(header){
  let gzip,wildcard=0;

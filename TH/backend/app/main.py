@@ -43,8 +43,8 @@ def event(name: str, data: dict) -> str:
 
 
 def create_app(settings: Settings | None = None):
-    # Minimal Linux images do not ship a complete MIME database for fonts.
-    for extension, kind in (('.otf', 'font/otf'), ('.ttf', 'font/ttf'), ('.woff2', 'font/woff2')):
+    # Minimal Linux images may lack the MIME entries needed by web fonts and image decoders.
+    for extension, kind in (('.otf', 'font/otf'), ('.ttf', 'font/ttf'), ('.woff2', 'font/woff2'), ('.webp', 'image/webp')):
         mimetypes.add_type(kind, extension)
     settings = settings or Settings.from_env()
     if settings.app_env not in ("development", "production"):

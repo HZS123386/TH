@@ -83,3 +83,9 @@ it("keeps the video byte-range response uncompressed for mobile playback", async
   expect(response.headers["content-range"]).toMatch(/^bytes 0-127\//);
   expect(response.body).toEqual((await readFile("site/media/report-loading-web.mp4")).subarray(0, 128));
 });
+
+it("serves the landing artwork with the browser image MIME type", async () => {
+  const response = await get("assets/assets/images/theme-thai-artwork.jpg", {}, "HEAD");
+  expect(response.status).toBe(200);
+  expect(response.headers["content-type"]).toBe("image/jpeg");
+});

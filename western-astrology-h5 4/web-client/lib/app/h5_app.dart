@@ -101,7 +101,18 @@ class _H5AppState extends State<H5App> {
     unawaited(
       WidgetsBinding.instance.waitUntilFirstFrameRasterized.then((_) {
         _timingFrame?.cancel();
-        if (mounted) widget.controller.browser.pageReady('app-ready');
+        if (!mounted) return;
+        widget.controller.browser.pageReady('app-ready');
+        // Warm the form artwork after the welcome is visible, without blocking it.
+        if (!(widget.initialLocation ?? Uri.base.path).contains('.html')) {
+          unawaited(
+            precacheImage(
+              const AssetImage('assets/images/theme-thai-artwork.jpg'),
+              context,
+              onError: (error, stack) {},
+            ),
+          );
+        }
       }),
     );
   }

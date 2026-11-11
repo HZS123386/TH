@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../ui/jy_components.dart';
 
 /// Poster renderer for environments without an HTML video surface.
 class GenerationVideo extends StatefulWidget {
@@ -83,7 +84,7 @@ class GenerationPoster extends StatelessWidget {
           ],
           stops: [.03, .18, .82, .97],
         ).createShader(rect),
-        child: Image.asset(
+        child: FateImage(
           'assets/images/report-loading-poster.webp',
           fit: BoxFit.contain,
         ),

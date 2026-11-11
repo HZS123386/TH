@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../app/controller.dart';
+import '../ui/jy_components.dart';
 import '../ui/theme.dart';
 
 /// JY's welcome interaction rendered by the existing Flutter application.
@@ -133,10 +134,8 @@ class _WelcomePageState extends State<WelcomePage>
                               (to.height - heroHeight - 11).clamp(0.0, 1000.0) *
                                   t,
                             ),
-                            child: const Image(
-                              image: AssetImage(
-                                'assets/images/astrologer-900.webp',
-                              ),
+                            child: const FateImage(
+                              'assets/images/astrologer-900.webp',
                               fit: BoxFit.fill,
                             ),
                           ),
