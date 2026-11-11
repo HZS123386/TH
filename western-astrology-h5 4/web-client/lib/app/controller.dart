@@ -29,6 +29,7 @@ class H5Controller extends ChangeNotifier {
   late bool welcomeOpen, noticeAccepted;
   late final bool returningVisitor;
   bool welcomePortraitRevealed = false;
+  bool landingPrepared = false;
   Future<void>? _visitRequest;
   Json _visit = {};
   final _events = <String>{};
@@ -36,12 +37,19 @@ class H5Controller extends ChangeNotifier {
   final _background = CancelToken();
 
   void enterLanding() {
+    landingPrepared = true;
     welcomeOpen = false;
     welcomePortraitRevealed = true;
     notifyListeners();
     unawaited(recordVisit());
     // Warm later place/report text after the welcome is already visible.
     unawaited(ensureFont?.call(language).catchError((_) {}));
+  }
+
+  void prepareLanding() {
+    if (landingPrepared) return;
+    landingPrepared = true;
+    notifyListeners();
   }
 
   Future<void> prepareText(String value, {String? language}) async {

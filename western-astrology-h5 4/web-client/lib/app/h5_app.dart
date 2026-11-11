@@ -20,6 +20,7 @@ class H5App extends StatefulWidget {
 class _H5AppState extends State<H5App> {
   bool _deferred = true;
   Timer? _firstFrameLimit;
+  Timer? _timingFrame;
   late final _router = GoRouter(
     initialLocation: widget.initialLocation,
     routes: [
@@ -72,7 +73,6 @@ class _H5AppState extends State<H5App> {
         if (mounted &&
             !(widget.initialLocation ?? Uri.base.path).contains('.html')) {
           await Future.wait([
-            precacheImage(heroImage, context),
             precacheImage(
               const AssetImage('assets/images/astrologer-900.webp'),
               context,
@@ -90,8 +90,17 @@ class _H5AppState extends State<H5App> {
     _deferred = false;
     _firstFrameLimit?.cancel();
     WidgetsBinding.instance.allowFirstFrame();
+    // Web batches raster timings for 100ms; a static welcome needs a later frame.
+    _timingFrame = Timer.periodic(const Duration(milliseconds: 160), (timer) {
+      if (!mounted || WidgetsBinding.instance.firstFrameRasterized) {
+        timer.cancel();
+        return;
+      }
+      WidgetsBinding.instance.scheduleFrame();
+    });
     unawaited(
       WidgetsBinding.instance.waitUntilFirstFrameRasterized.then((_) {
+        _timingFrame?.cancel();
         if (mounted) widget.controller.browser.pageReady('app-ready');
       }),
     );
@@ -100,6 +109,7 @@ class _H5AppState extends State<H5App> {
   @override
   void dispose() {
     _allowFrame();
+    _timingFrame?.cancel();
     _router.dispose();
     super.dispose();
   }
@@ -150,7 +160,12 @@ class _Shell extends StatelessWidget {
                   excluding: showWelcome,
                   child: IgnorePointer(
                     ignoring: showWelcome,
-                    child: Scaffold(body: child),
+                    // Build the hidden form when the welcome transition begins.
+                    child: Scaffold(
+                      body: showWelcome && !h5.landingPrepared
+                          ? const SizedBox.expand()
+                          : child,
+                    ),
                   ),
                 ),
                 if (showWelcome) Positioned.fill(child: WelcomePage(h5: h5)),

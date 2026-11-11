@@ -7,9 +7,10 @@ class GenerationVideo extends StatefulWidget {
     required this.active,
     required this.reduced,
     required this.onFinished,
+    this.finishing = false,
     super.key,
   });
-  final bool active, reduced;
+  final bool active, reduced, finishing;
   final VoidCallback onFinished;
   @override
   State<GenerationVideo> createState() => _GenerationVideoState();
@@ -26,12 +27,15 @@ class _GenerationVideoState extends State<GenerationVideo> {
   @override
   void didUpdateWidget(covariant GenerationVideo oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.active != widget.active) _update();
+    if (oldWidget.active != widget.active ||
+        oldWidget.finishing != widget.finishing) {
+      _update();
+    }
   }
 
   void _update() {
     _timer?.cancel();
-    if (widget.active) {
+    if (widget.active && widget.finishing) {
       _timer = Timer(const Duration(milliseconds: 550), () {
         if (mounted) widget.onFinished();
       });
@@ -54,7 +58,7 @@ class GenerationPoster extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Transform.scale(
     scaleX: 1.06,
-    scaleY: 1.52,
+    scaleY: 1.06,
     child: ShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (rect) => const LinearGradient(

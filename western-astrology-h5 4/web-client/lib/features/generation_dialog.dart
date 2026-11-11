@@ -230,6 +230,23 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                       ),
                                     ),
                                     const SizedBox(height: 15),
+                                    SizedBox(
+                                      height: (box.maxHeight * .21).clamp(
+                                        140.0,
+                                        190.0,
+                                      ),
+                                      child: IgnorePointer(
+                                        child: GenerationVideo(
+                                          active: true,
+                                          finishing:
+                                              _loading &&
+                                              (_reduced || _playbackStarted),
+                                          reduced: _reduced,
+                                          onFinished: _finish,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
                                     AnimatedSwitcher(
                                       duration: Duration(
                                         milliseconds: _reduced ? 0 : 380,
@@ -464,31 +481,9 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                           ),
                                         ),
                                       ),
-                                    if (_loading)
-                                      SizedBox(height: box.maxHeight * .4),
                                   ],
                                 );
                               },
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          top: box.maxHeight * .5 + 140 - box.maxHeight * .33,
-                          height: box.maxHeight * .66,
-                          child: IgnorePointer(
-                            child: Center(
-                              child: AspectRatio(
-                                aspectRatio: 1.5,
-                                child: GenerationVideo(
-                                  active:
-                                      _loading &&
-                                      (_reduced || _playbackStarted),
-                                  reduced: _reduced,
-                                  onFinished: _finish,
-                                ),
-                              ),
                             ),
                           ),
                         ),

@@ -10,9 +10,10 @@ class GenerationVideo extends StatefulWidget {
     required this.active,
     required this.reduced,
     required this.onFinished,
+    this.finishing = false,
     super.key,
   });
-  final bool active, reduced;
+  final bool active, reduced, finishing;
   final VoidCallback onFinished;
   @override
   State<GenerationVideo> createState() => _GenerationVideoState();
@@ -42,16 +43,19 @@ class _GenerationVideoState extends State<GenerationVideo>
           .toString()
       ..muted = true
       ..playsInline = true
-      ..loop = false
+      ..autoplay = widget.active
+      ..loop = !widget.finishing
       ..preload = 'auto';
     video.setAttribute('aria-hidden', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('x5-playsinline', 'true');
     final style = video.style;
     style
       ..width = '100%'
       ..height = '100%'
       ..objectFit = 'contain'
       ..pointerEvents = 'none'
-      ..transform = 'scale(1.06,1.52)'
+      ..transform = 'scale(1.06)'
       ..background = 'transparent'
       ..opacity = '0'
       ..visibility = 'hidden'
@@ -62,11 +66,18 @@ class _GenerationVideoState extends State<GenerationVideo>
     style.setProperty('mask-composite', 'intersect');
     style.setProperty('-webkit-mask-image', mask);
     style.setProperty('-webkit-mask-composite', 'source-in');
-    _events.add(video.onEnded.listen((_) => _finish()));
+    _events.add(
+      video.onEnded.listen((_) {
+        if (widget.finishing) {
+          _finish();
+        } else if (widget.active) {
+          unawaited(_play());
+        }
+      }),
+    );
     _events.add(
       video.onError.listen((_) {
-        _failed = true;
-        if (widget.active) _finishSoon();
+        _playbackFailed();
       }),
     );
     _events.add(
@@ -85,6 +96,8 @@ class _GenerationVideoState extends State<GenerationVideo>
   @override
   void didUpdateWidget(covariant GenerationVideo oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _video?.loop = !widget.finishing;
+    if (widget.finishing && !oldWidget.finishing && _failed) _finishSoon();
     if (oldWidget.active != widget.active) {
       if (widget.active) {
         _start();
@@ -103,7 +116,7 @@ class _GenerationVideoState extends State<GenerationVideo>
     video.style.opacity = '1';
     _advanced = DateTime.now();
     if (_failed) {
-      _finishSoon();
+      if (widget.finishing) _finishSoon();
       return;
     }
     unawaited(_play());
@@ -115,12 +128,12 @@ class _GenerationVideoState extends State<GenerationVideo>
         return;
       }
       final position = video.currentTime.toDouble();
-      if (position > _lastTime) {
+      if ((position - _lastTime).abs() > .01) {
         _lastTime = position;
         _advanced = DateTime.now();
       } else if (DateTime.now().difference(_advanced) >=
           const Duration(seconds: 8)) {
-        _finish();
+        _playbackFailed();
       }
     });
   }
@@ -129,8 +142,17 @@ class _GenerationVideoState extends State<GenerationVideo>
     try {
       await _video?.play().toDart;
     } catch (_) {
-      if (mounted && widget.active) _finishSoon();
+      if (mounted && widget.active) _playbackFailed();
     }
+  }
+
+  void _playbackFailed() {
+    if (!mounted) return;
+    _watchdog?.cancel();
+    _video?.pause();
+    _video?.style.visibility = 'hidden';
+    if (!_failed) setState(() => _failed = true);
+    if (widget.finishing) _finishSoon();
   }
 
   void _finishSoon() {
@@ -138,7 +160,7 @@ class _GenerationVideoState extends State<GenerationVideo>
   }
 
   void _finish() {
-    if (!mounted || !widget.active || _finished) return;
+    if (!mounted || !widget.active || !widget.finishing || _finished) return;
     _finished = true;
     _watchdog?.cancel();
     widget.onFinished();
@@ -170,7 +192,7 @@ class _GenerationVideoState extends State<GenerationVideo>
   }
 
   @override
-  Widget build(BuildContext context) => widget.reduced
+  Widget build(BuildContext context) => widget.reduced || _failed
       ? Opacity(opacity: widget.active ? 1 : 0, child: const GenerationPoster())
       : HtmlElementView.fromTagName(
           tagName: 'video',

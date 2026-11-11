@@ -1,6 +1,8 @@
 # Add this site alongside the existing domain sites in the shared Caddyfile.
 http://129.226.126.212 {
-    encode zstd gzip
+    encode zstd gzip {
+        gzip 6
+    }
     header {
         X-Content-Type-Options nosniff
         Referrer-Policy same-origin

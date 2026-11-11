@@ -24,6 +24,7 @@ class _WelcomePageState extends State<WelcomePage>
   @override
   void initState() {
     super.initState();
+    unawaited(widget.h5.recordVisit());
     _motion.addListener(() {
       if (_motion.value >= 650 / 820) widget.h5.revealLandingPortrait();
     });
@@ -31,6 +32,7 @@ class _WelcomePageState extends State<WelcomePage>
 
   Future<void> _enter() async {
     if (_leaving) return;
+    widget.h5.prepareLanding();
     setState(() => _leaving = true);
     if (!MediaQuery.disableAnimationsOf(context)) {
       try {

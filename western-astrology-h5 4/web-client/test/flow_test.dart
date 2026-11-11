@@ -11,6 +11,7 @@ import 'package:fate_h5/core/models.dart';
 import 'package:fate_h5/core/repository.dart';
 import 'package:fate_h5/features/birth_date_dialog.dart';
 import 'package:fate_h5/features/generation_dialog.dart';
+import 'package:fate_h5/features/generation_video.dart';
 import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/report_view_model.dart';
 import 'package:fate_h5/features/place_picker.dart';
@@ -53,6 +54,58 @@ Future<void> click(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  testWidgets(
+    'generation keeps the same visible wheel across stages until the report is ready',
+    (tester) async {
+      phone(tester);
+      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: false);
+      final browser = TestBrowser();
+      final h5 = H5Controller(
+        translations(),
+        ReportRepository(browser),
+        browser,
+        language: 'zh',
+      );
+      final report = LifeReport.parse(fixture());
+      final state = GenerationState()..update(report, 19, 'preview');
+      var completed = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GenerationDialog(
+            h5: h5,
+            state: state,
+            full: false,
+            onCancel: () {},
+            onRetry: () {},
+            onComplete: (_) => completed++,
+          ),
+        ),
+      );
+      final wheel = find.byType(GenerationVideo);
+      final wheelState = tester.state(wheel);
+      expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
+      await tester.pump(const Duration(milliseconds: 2100));
+      await tester.pump(const Duration(milliseconds: 2600));
+      state.update(report, 99, 'preview');
+      await tester.pump(const Duration(seconds: 12));
+      expect(tester.state(wheel), same(wheelState));
+      expect(tester.widget<GenerationVideo>(wheel).finishing, isFalse);
+      expect(completed, 0);
+      state.ready(report);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+      expect(tester.widget<GenerationVideo>(wheel).finishing, isTrue);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+      expect(completed, 1);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      state.dispose();
+      h5.dispose();
+    },
+  );
+
   testWidgets(
     'Thai birth picker fits a small phone and language switching preserves the entry URL',
     (tester) async {

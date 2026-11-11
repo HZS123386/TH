@@ -35,9 +35,11 @@ void phone(WidgetTester tester) {
 
 void main() {
   testWidgets(
-    'welcome enters the existing landing and preserves deep-link parameters',
+    'welcome delays hidden form work until entering and preserves its state and URL',
     (tester) async {
       phone(tester);
+      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: false);
       final browser = TestBrowser()..settings.clear();
       final h5 = H5Controller(
         translations(),
@@ -53,9 +55,12 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('很高兴你来了'), findsOneWidget);
-      final landingState = tester.state(find.byType(LandingPage));
+      expect(find.byType(LandingPage), findsNothing);
       await tester.tap(find.byKey(const ValueKey('welcome-start')));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      final landingState = tester.state(find.byType(LandingPage));
+      await tester.pump(const Duration(milliseconds: 850));
+      await tester.pump();
       expect(find.byType(WelcomePage), findsNothing);
       expect(tester.state(find.byType(LandingPage)), same(landingState));
       final uri = GoRouter.of(

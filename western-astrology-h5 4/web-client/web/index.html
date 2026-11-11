@@ -25,9 +25,12 @@
   <link rel="preload" href="assets/assets/fonts/NotoSansThai.ttf" as="fetch" crossorigin>
   <script>
     document.documentElement.lang=new URLSearchParams(location.search).get('lang')==='zh'?'zh':'th';
-    const fatePreload=(href)=>{const link=document.createElement('link');link.rel='preload';link.href=href;link.as='fetch';link.crossOrigin='anonymous';document.head.append(link);};
+    const fatePreload=(href,priority='high')=>{const link=document.createElement('link');link.rel='preload';link.href=href;link.as='fetch';link.crossOrigin='anonymous';link.fetchPriority=priority;document.head.append(link);};
     if(document.documentElement.lang==='zh')fatePreload('assets/assets/fonts/FateChineseUI.otf');
-    if(!/(report|privacy|support)\.html$/.test(location.pathname)){fatePreload('assets/assets/images/astrologer.webp');fatePreload('assets/assets/images/astrologer-900.webp');}
+    fatePreload('assets/FontManifest.json','low');
+    fatePreload('assets/AssetManifest.bin.json','low');
+    fatePreload('assets/assets/copy.json','low');
+    if(!/(report|privacy|support)\.html$/.test(location.pathname))fatePreload('assets/assets/images/astrologer-900.webp');
   </script>
 </head>
 <body>

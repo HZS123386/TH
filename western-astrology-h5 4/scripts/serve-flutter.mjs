@@ -1,6 +1,7 @@
 import { createServer, request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { createReadStream } from 'node:fs';
+import { createGzip } from 'node:zlib';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { projectRoot,basePath,buildLanding } from './build-flutter.mjs';
@@ -9,12 +10,27 @@ if(!Number.isInteger(port)||port<1||port>65535||!['http:','https:'].includes(ups
 if(!process.argv.includes('--skip-build'))await buildLanding();
 const root=path.resolve(projectRoot,'site');
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.wasm':'application/wasm','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.ttf':'font/ttf','.otf':'font/otf','.woff2':'font/woff2','.mp4':'video/mp4'};
+const compressible=new Set(['.html','.js','.mjs','.css','.json','.wasm','.svg','.ttf','.otf']);
+function acceptsGzip(header){
+ let gzip,wildcard=0;
+ for(const part of String(header||'').toLowerCase().split(',')){
+  const [name,...params]=part.trim().split(';');
+  const quality=params.map(value=>value.trim()).find(value=>value.startsWith('q='));
+  const parsed=quality===undefined?1:Number(quality.slice(2));
+  const weight=Number.isFinite(parsed)&&parsed>=0&&parsed<=1?parsed:0;
+  if(name==='gzip')gzip=weight;
+  else if(name==='*')wildcard=weight;
+ }
+ return (gzip??wildcard)>0;
+}
 // Cancelled font/video requests must release Windows file handles before a rebuild.
-function sendFile(file,res,options){
+function sendFile(file,res,options,gzip=false){
  const stream=createReadStream(file,options);
- res.once('close',()=>stream.destroy());
+ const encoder=gzip?createGzip({level:6}):null;
+ res.once('close',()=>{stream.destroy();encoder?.destroy();});
  stream.once('error',()=>res.destroy());
- stream.pipe(res);
+ if(encoder){encoder.once('error',()=>res.destroy());stream.pipe(encoder).pipe(res);}
+ else stream.pipe(res);
 }
 const server=createServer(async(req,res)=>{
  let url;try{url=new URL(req.url,'http://localhost');}catch{res.writeHead(400).end();return;}
@@ -34,6 +50,10 @@ const server=createServer(async(req,res)=>{
   const info=await stat(file),etag=`W/"${info.size.toString(16)}-${info.mtimeMs.toString(16)}"`;
   const versionedEngine=/^engine\/[a-f0-9]{40}\//.test(path.relative(root,file).split(path.sep).join('/'));
   const headers={'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':versionedEngine?'public, max-age=31536000, immutable':'no-cache',ETag:etag};
+  const canCompress=compressible.has(path.extname(file))&&info.size>=1024;
+  const gzip=canCompress&&!req.headers.range&&acceptsGzip(req.headers['accept-encoding']);
+  if(canCompress)headers.Vary='Accept-Encoding';
+  if(gzip)headers['Content-Encoding']='gzip';
   if(req.headers['if-none-match']===etag){res.writeHead(304,headers).end();return;}
   const range=req.headers.range;
   if(range&&path.extname(file)==='.mp4'){
@@ -42,7 +62,7 @@ const server=createServer(async(req,res)=>{
    if(!match||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=info.size||end<start){res.writeHead(416,{'Content-Range':`bytes */${info.size}`}).end();return;}
    res.writeHead(206,{...headers,'Accept-Ranges':'bytes','Content-Range':`bytes ${start}-${end}/${info.size}`,'Content-Length':end-start+1});if(req.method==='HEAD')res.end();else sendFile(file,res,{start,end});return;
   }
-  res.writeHead(200,{...headers,'Content-Length':info.size,...(path.extname(file)==='.mp4'?{'Accept-Ranges':'bytes'}:{})});if(req.method==='HEAD')res.end();else sendFile(file,res);
+  res.writeHead(200,{...headers,...(gzip?{}:{'Content-Length':info.size}),...(path.extname(file)==='.mp4'?{'Accept-Ranges':'bytes'}:{})});if(req.method==='HEAD')res.end();else sendFile(file,res,undefined,gzip);
  }catch{if(!res.headersSent)res.writeHead(404).end();else res.destroy();}
 });
 server.listen(port,'127.0.0.1',()=>console.log(`FATE Flutter H5: http://127.0.0.1:${port}${basePath}`));
