@@ -193,6 +193,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                 child: LayoutBuilder(
                   builder: (context, box) {
                     final pad = (box.maxWidth * .05).clamp(14.0, 24.0);
+                    final shortScreen = box.maxHeight < 720;
                     return Stack(
                       children: [
                         SingleChildScrollView(
@@ -450,20 +451,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                         ],
                                       ),
                                     ),
-                                    if (!_loading)
-                                      Align(
-                                        alignment: Alignment.center,
-                                        child: TextButton(
-                                          onPressed: widget.onCancel,
-                                          child: Text(
-                                            c.t('generation', 'cancel'),
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: lavender,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 );
                               },
@@ -473,11 +460,12 @@ class _GenerationDialogState extends State<GenerationDialog> {
                         Positioned(
                           left: 0,
                           right: 0,
-                          top: box.maxHeight * .52,
-                          height: (box.maxHeight * .4).clamp(180.0, 340.0),
+                          top: box.maxHeight * (shortScreen ? .66 : .52),
+                          height: (box.maxHeight * (shortScreen ? .30 : .4))
+                              .clamp(160.0, 340.0),
                           child: IgnorePointer(
                             child: Opacity(
-                              opacity: .78,
+                              opacity: shortScreen ? .66 : .78,
                               child: GenerationVideo(
                                 active: true,
                                 finishing:
@@ -488,6 +476,27 @@ class _GenerationDialogState extends State<GenerationDialog> {
                             ),
                           ),
                         ),
+                        if (!_loading)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 12 + MediaQuery.paddingOf(context).bottom,
+                            child: Center(
+                              child: TextButton(
+                                onPressed: widget.onCancel,
+                                style: TextButton.styleFrom(
+                                  backgroundColor: const Color(0xB30B0715),
+                                ),
+                                child: Text(
+                                  c.t('generation', 'cancel'),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: lavender,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     );
                   },
