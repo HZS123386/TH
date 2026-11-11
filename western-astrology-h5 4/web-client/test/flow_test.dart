@@ -62,6 +62,9 @@ void main() {
         phone(tester);
         final browser = TestBrowser();
         var current = fixture();
+        final paid = fixture(full: true);
+        current['chapters'] = paid['chapters'];
+        current['plan'] = paid['plan'];
         final gate = Completer<void>();
         var unlocks = 0;
         final posts = <String>[];
@@ -95,6 +98,25 @@ void main() {
         await tester.pumpAndSettle();
         expect(posts, isEmpty);
         expect(find.byType(ReportCheckout), findsOneWidget);
+        expect(find.text(h5.copy.t('jy', 'report.freeTitle')), findsOneWidget);
+        final preview = object(current['preview']);
+        expect(
+          find.text(text(object(preview['summary'])['text'])),
+          findsOneWidget,
+        );
+        final traits = objects(preview['traits']);
+        for (final trait in traits) {
+          expect(find.text(text(trait['title'])), findsOneWidget);
+        }
+        for (final body in traits.map((trait) => text(trait['text'])).toSet()) {
+          expect(
+            find.text(body),
+            findsNWidgets(
+              traits.where((trait) => text(trait['text']) == body).length,
+            ),
+          );
+        }
+        expect(find.textContaining('付费专属分析正文'), findsNothing);
         for (final key in ['jy-unlock-report', 'jy-app-download']) {
           expect(
             tester.widget<JYButton>(find.byKey(ValueKey(key))).onPressed,
@@ -147,7 +169,7 @@ void main() {
         language: 'zh',
       );
       final report = LifeReport.parse(fixture());
-      final state = GenerationState()..update(report, 19, 'preview');
+      final state = GenerationState()..update(report, 0, 'preview');
       var completed = 0, cancelled = 0;
       await tester.pumpWidget(
         MaterialApp(
@@ -165,6 +187,12 @@ void main() {
       final wheelState = tester.state(wheel);
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(tester.getTopLeft(wheel).dy, greaterThanOrEqualTo(320));
+      expect(find.text('准备中'), findsOneWidget);
+      expect(find.text('0%'), findsNothing);
+      state.update(report, 19, 'preview');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('19%'), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 2100));
       await tester.pump(const Duration(milliseconds: 2600));
       state.update(report, 99, 'preview');
@@ -172,6 +200,14 @@ void main() {
       expect(tester.state(wheel), same(wheelState));
       expect(tester.widget<GenerationVideo>(wheel).finishing, isFalse);
       expect(completed, 0);
+      expect(find.text('正在校验并保存解读内容'), findsOneWidget);
+      state.fail('连接中断');
+      await tester.pump();
+      expect(find.text('本次生成暂未完成，请重试'), findsOneWidget);
+      expect(tester.widget<GenerationVideo>(wheel).active, isFalse);
+      state.retry();
+      await tester.pump();
+      expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       await tester.tap(find.widgetWithText(TextButton, '取消等待'));
       expect(cancelled, 1);
       state.ready(report);
@@ -247,8 +283,14 @@ void main() {
                   : 0,
             });
           }
+          if (request.url.path == '/api/landing/config') {
+            return response({'notice_version': H5Controller.noticeVersion});
+          }
           if (request.url.path == '/api/landing/consents') {
-            return response({'accepted': true});
+            return response({
+              'accepted': true,
+              'notice_version': H5Controller.noticeVersion,
+            });
           }
           if (request.method == 'POST') {
             input = object(jsonDecode(request.body));
@@ -307,6 +349,12 @@ void main() {
       await click(tester, find.byKey(const ValueKey('generate-report')));
       expect(input, isNull);
       expect(find.text('确认使用出生资料'), findsOneWidget);
+      await click(tester, find.text('取消'));
+      expect(input, isNull);
+      expect(find.text('确认使用出生资料'), findsNothing);
+      await click(tester, find.byKey(const ValueKey('generate-report')));
+      expect(find.text('确认使用出生资料'), findsOneWidget);
+      expect(input, isNull);
       await click(tester, find.byKey(const ValueKey('data-use-agree')));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 600));
@@ -322,7 +370,7 @@ void main() {
       expect(find.byType(ReportCheckout), findsOneWidget);
       expect(find.text('解锁您的运程'), findsOneWidget);
       expect(find.text('฿39'), findsOneWidget);
-      expect(find.textContaining('先看清自己的判断习惯'), findsNothing);
+      expect(find.textContaining('先看清自己的判断习惯'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -350,6 +398,9 @@ void main() {
       expect(find.text('你的专属星盘报告'), findsOneWidget);
       expect(find.byType(ReportCheckout), findsNothing);
       expect(find.textContaining('付费章节重点'), findsWidgets);
+      for (final label in ['这对你意味着什么', '需要留意的地方', '你可以这样做']) {
+        expect(find.text(label), findsNothing);
+      }
       expect(find.text('先观察当前的习惯'), findsOneWidget);
       await click(tester, find.byTooltip(h5.copy.t('life', 'exportPdf')));
       expect(browser.exported!['access'], 'full');
@@ -364,9 +415,10 @@ void main() {
     },
   );
   test(
-    'saved report waits for its language font before showing its contents',
+    'saved free report waits for its language and body fonts before showing its contents',
     () async {
       final gate = Completer<void>();
+      final bodyFonts = Completer<void>();
       final browser = TestBrowser();
       final repo = ReportRepository(
         browser,
@@ -379,12 +431,16 @@ void main() {
         browser,
         language: 'th',
         ensureFont: (_) => gate.future,
+        ensureTextFont: (_, _) => bodyFonts.future,
       );
       final model = ReportViewModel(h5, fixture()['id']);
       final pending = model.load();
       await Future<void>.delayed(Duration.zero);
       expect(model.report, isNull);
       gate.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(model.report, isNull);
+      bodyFonts.complete();
       await pending;
       expect(model.report!.language, 'zh');
       expect(h5.language, 'zh');

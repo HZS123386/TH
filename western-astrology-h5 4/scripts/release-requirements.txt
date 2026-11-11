@@ -1,0 +1,2 @@
+# Build-time only; browsers negotiate Brotli or the gzip compatibility files.
+zopfli==0.4.3

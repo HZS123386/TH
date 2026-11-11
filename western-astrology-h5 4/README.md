@@ -2,6 +2,8 @@
 
 本地 H5 已迁移为 **Flutter Web**。当前页面入口为 `web-client/lib/main.dart`，页面、表单、报告、收银台和路由均由 Dart 实现，构建产物仍输出到 `site/`，继续使用相邻 TH 项目的原有 Python 后端。APP 工程在 `../TH/app`，本次 H5 迁移没有改变其业务范围。
 
+公网推荐入口为 `https://129.226.126.212/thai-landing/?lang=zh`。免费 IP 证书由现有 Caddy 自动申请及续期，未接付费 CDN。HTTPS 下仍由 Flutter 原加载器自动选择适合浏览器的引擎，保留 JavaScript/CanvasKit 兼容构建。构建同时生成 Brotli 与 gzip 文件；`pnpm build:release` 使用 Brotli 最高压缩级别，并继续优化 gzip 回退文件。压缩只改变传输表示，不改变解压后的应用、字体或页面。
+
 原 React 页面、旧样式、Vite 页面配置与旧 DOM 浏览器脚本已经移入 `tmp/retired-react-ui-20261110/`；迁移前还保留完整 ZIP 备份。仍使用的 `src/lib` 类型、双语目录、HTML/PDF 文档生成函数及相应检查继续保留，作为无界面的文档工具；页面运行不加载 React。当前架构与验收结果见 `docs/FLUTTER_H5_MIGRATION.md`。
 
 整个落地页的排版、页面效果、交互和动画以 JY 分支为主，框架保留本地 Flutter Web、GoRouter 及原 Python 后端。当前包含 JY 欢迎页、人物过渡、紧凑出生资料表单、浮动地点候选、预设及自填问题、两块泰式主题图板、三阶段生成和完整解锁页。默认泰语，右上角可以切换中文，品牌标识为 FATE。具体取舍及验证见 [JY 页面合并记录](docs/JY_UI_MERGE_20261111.md)。
@@ -83,4 +85,13 @@ JY 原版报告视频约 3.02 MB，只在生成页下载。生成开始即在屏
 Flutter 自动检查使用合成报告；真实链路另在隔离数据库上验证，不修改已有用户报告。报告生成时间与页面加载时间分开统计，打开链接可附加 `startup=1` 输出不含凭据的首屏、报告正文及资源计时。服务器构建、缓存、数据保留与更新步骤见 [部署说明](deploy/README.md)。公网版本使用相同构建产物，实际部署及验证记录保存在忽略的 output/deploy/ 目录。
 
 
-首屏加载状态直接位于原 HTML 入口中，实际 Flutter 页面完成首帧绘制后移除；图片预加载最多阻塞 700ms，避免 HTTP 渲染路径长时间空白。欢迎页背后的表单在进入时才构建，避免隐藏页面的初始化和图片下载占用首屏。静态欢迎页会继续请求帧直到收到真实绘制通知，避免加载层在页面已经显示后仍不消失。本地预览对引擎、脚本和字体启用 gzip。渲染引擎位于 `site/engine/<SDK revision>/`，部署时可长期缓存；入口和业务资源仍重新验证。测量与验证记录见 [首屏优化](docs/STARTUP_PERFORMANCE_20261111.md)。
+首屏加载状态直接位于原 HTML 入口中，实际 Flutter 页面完成首帧绘制后移除。人物图片自行加载，不再挂起整页首帧。欢迎页背后的表单在进入时才构建，避免隐藏页面的初始化和图片下载占用首屏。欢迎页会继续请求帧直到收到真实绘制通知，避免加载层在页面已经显示后仍不消失。渲染引擎位于 `site/engine/<SDK revision>/`，部署时可长期缓存；入口和业务资源仍重新验证。测量与验证记录见 [首屏优化](docs/STARTUP_PERFORMANCE_20261111.md)。
+
+普通构建会预生成 gzip 文件。本地预览和原后端静态挂载直接发送这些文件，保留 HEAD、条件缓存和视频 Range 行为；API 响应不使用这套静态文件处理。生产发布可先安装仅用于构建的压缩工具，再使用更紧凑的 gzip 构建，浏览器解码方式保持不变：
+
+```powershell
+python -m pip install -r scripts/release-requirements.txt
+pnpm build:release
+```
+
+更新字库时安装 `scripts/font-requirements.txt` 后运行 `python scripts/prepare-fonts.py`，更新字体子集与覆盖记录。

@@ -26,15 +26,23 @@ def event(http, visit_id, report_id, name, headers=HEADERS):
 
 def test_config_exposes_only_public_support_and_notice_version(client):
     http, _, _, _ = client
-    assert http.get("/api/landing/config").json() == {"support_email": "", "notice_version": "h5-data-use-1"}
+    response = http.get("/api/landing/config")
+    assert response.json() == {"support_email": "", "notice_version": "h5-data-use-2"}
+    assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_confirmation_is_owned_versioned_strict_and_idempotent(client):
     http, app, _, _ = client
-    body = {"notice_version": "h5-data-use-1", "granted": True}
+    body = {"notice_version": "h5-data-use-2", "granted": True}
     assert http.post("/api/landing/consents", json=body).status_code == 422
-    for bad in [{**body, "granted": False}, {**body, "granted": "true"}, {**body, "notice_version": "old"}]:
+    for bad in [{**body, "granted": False}, {**body, "granted": "true"}, {**body, "notice_version": ""}, {**body, "notice_version": 2}]:
         assert http.post("/api/landing/consents", json=bad, headers=HEADERS).status_code == 422
+    for version in ("h5-data-use-1", "old"):
+        result = http.post("/api/landing/consents", json={**body, "notice_version": version}, headers=HEADERS)
+        assert result.status_code == 409
+        assert result.json()["code"] == "landing_notice_outdated"
+    with app.state.life_reports.store.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM landing_consents").fetchone()[0] == 0
     for _ in range(2):
         assert http.post("/api/landing/consents", json=body, headers=HEADERS).status_code == 200
     with app.state.life_reports.store.connect() as db:

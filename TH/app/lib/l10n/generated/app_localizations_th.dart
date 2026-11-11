@@ -381,7 +381,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get accountText => 'เก็บข้อมูลและรายงาน แล้วกลับมาสำรวจตัวเองต่อ';
 
   @override
-  String get deviceProfile => 'ข้อมูลเกิดในอุปกรณ์นี้';
+  String get deviceProfile => 'ข้อมูลเกิด';
 
   @override
   String get language => 'ภาษา';
@@ -394,7 +394,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get privacyText =>
-      'ตัวอย่างนี้เก็บข้อมูลเกิดในอุปกรณ์ปัจจุบัน ผลดวงและสิทธิ์รายงานยึดตามบริการที่ยืนยัน คุณลบข้อมูลเกิดในเครื่องได้';
+      'ฉบับร่างและข้อมูลเข้าถึงเก็บในอุปกรณ์ ข้อมูลเกิด ดวงและรายงานผูกกับการใช้งานแบบผู้เยี่ยมชมหรือบัญชีปัจจุบัน RoxyAPI คำนวณดวง ส่วนบริการปัญญาประดิษฐ์รับเฉพาะข้อเท็จจริงของดวงโดยไม่รับชื่อ ข้อความชื่อเมือง หรือประวัติแชต การลบข้อมูลในเครื่องไม่ลบข้อมูลบนเซิร์ฟเวอร์';
 
   @override
   String get clearBirth => 'ลบข้อมูลเกิดในเครื่อง';
@@ -412,12 +412,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get saveBirth => 'บันทึกและดูดวง';
 
   @override
-  String get nickname => 'ชื่อที่ต้องการให้เรียก ไม่จำเป็น';
-
-  @override
-  String get nicknamePlaceholder => 'อยากให้เรียกคุณว่าอะไร';
-
-  @override
   String get placeRequired => 'กรุณาเลือกหรือกรอกสถานที่เกิด';
 
   @override
@@ -430,7 +424,8 @@ class AppLocalizationsTh extends AppLocalizations {
   String get back => 'กลับ';
 
   @override
-  String get birthStorage => 'เก็บในอุปกรณ์นี้ แก้ไขหรือลบได้เสมอ';
+  String get birthStorage =>
+      'สร้างดวงและอ่านรายงานได้โดยไม่ต้องเข้าสู่ระบบ กลับมาดูผลต่อในอุปกรณ์นี้ได้';
 
   @override
   String get profileMissing => 'ยังไม่ได้กรอกข้อมูลเกิด';
@@ -562,9 +557,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get calendarGregorian => 'คริสต์ศักราช';
 
   @override
-  String get calendarBuddhist => 'พุทธศักราช';
-
-  @override
   String get timeUnknown => 'ไม่ทราบเวลาเกิดที่แน่นอน';
 
   @override
@@ -604,7 +596,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get aiConsent =>
-      'ก่อนสร้างรายงาน กรุณายินยอมให้ใช้ข้อมูลเกิดสร้างคำอ่านด้วย AI';
+      'เพื่อเรียบเรียงคำอ่าน ระบบจะส่งข้อเท็จจริงของดวงที่คำนวณแล้วให้บริการปัญญาประดิษฐ์ โดยไม่ส่งชื่อ ข้อความชื่อเมือง หรือประวัติแชต คุณยินยอมหรือไม่';
 
   @override
   String get consentGenerate => 'ยินยอมและสร้าง';
@@ -693,4 +685,101 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get zPisces => 'ราศีมีน';
+
+  @override
+  String get chartRules => 'จักรราศีสายนะ · เรือนพลาซิดัส · โหนดจริง';
+
+  @override
+  String get chartSource => 'คำนวณโดย RoxyAPI จากข้อมูลเกิดของคุณ';
+
+  @override
+  String get dateOnlyRules =>
+      'ไม่ทราบเวลาเกิด: ตำแหน่งดาวประมาณจากเวลาเที่ยง จึงไม่แสดงดวงจันทร์ ลัคนา เรือน มุมสัมพันธ์ และราศีที่ยังไม่แน่นอน';
+
+  @override
+  String get calculateChart => 'คำนวณดวงของฉัน';
+
+  @override
+  String get saveForChart =>
+      'กรุณายืนยันและบันทึกข้อมูลเกิดก่อนสร้างดวงส่วนตัว';
+
+  @override
+  String get retrograde => 'ถอยหลัง';
+
+  @override
+  String get orb => 'ระยะคลาดเคลื่อน';
+
+  @override
+  String get aspectConjunction => 'มุมกุม';
+
+  @override
+  String get aspectSextile => 'มุมหกสิบองศา';
+
+  @override
+  String get aspectSquare => 'มุมฉาก';
+
+  @override
+  String get aspectTrine => 'มุมตรีโกณ';
+
+  @override
+  String get aspectOpposition => 'มุมเล็ง';
+
+  @override
+  String get fullReading => 'คำอ่านฉบับเต็มของคุณ';
+
+  @override
+  String get developmentReport =>
+      'ตัวอย่างสำหรับพัฒนาในเครื่อง: แสดงรายงานฉบับเต็มฟรี ยังไม่มีการซื้อหรือชำระเงิน';
+
+  @override
+  String get reportGeneratingText =>
+      'กำลังเรียบเรียงคำอ่านจากดาว เรือน และมุมสัมพันธ์ของคุณ เมื่อเสร็จแล้วจะแสดงอัตโนมัติ คุณออกจากหน้านี้และกลับมาดูต่อได้';
+
+  @override
+  String get reportFailedText =>
+      'ยังสร้างคำอ่านนี้ไม่สำเร็จ กรุณากลับไปหน้ารายงานแล้วลองใหม่ ระบบจะไม่ใช้คำอ่านตัวอย่างแทนผลของคุณ';
+
+  @override
+  String get roxyUnavailable => 'บริการคำนวณดวงยังไม่พร้อม กรุณาลองใหม่ภายหลัง';
+
+  @override
+  String get roxyQuota => 'ขณะนี้มีคำขอคำนวณจำนวนมาก กรุณาลองใหม่ภายหลัง';
+
+  @override
+  String get profileChanged =>
+      'ข้อมูลเกิดมีการเปลี่ยนแปลง กรุณาเปิดหน้าข้อมูลเกิด ยืนยันและบันทึกอีกครั้ง';
+
+  @override
+  String get birthRegion => 'จังหวัด / เขต';
+
+  @override
+  String get selectCountry => 'เลือกหรือค้นหาประเทศ';
+
+  @override
+  String get selectRegion => 'เลือกหรือค้นหาจังหวัด';
+
+  @override
+  String get selectBirthCity => 'กรุณาเลือกเมืองเกิดจากรายการ';
+
+  @override
+  String get countryFirst => 'กรุณาเลือกประเทศก่อน';
+
+  @override
+  String get regionFirst => 'กรุณาเลือกจังหวัดก่อน';
+
+  @override
+  String get regionNotNeeded => 'ไม่ต้องเลือก';
+
+  @override
+  String get birthLocationHint =>
+      'พิมพ์เพื่อค้นหาหรือเปิดรายการเพื่อเลือก ระบบจะใช้ข้อมูลสถานที่ของเมืองที่เลือกให้อัตโนมัติ';
+
+  @override
+  String get moreLocations => 'แสดงสถานที่เพิ่มเติม';
+
+  @override
+  String get guestReading => 'ดูดวงและรายงานส่วนตัวได้โดยไม่ต้องเข้าสู่ระบบ';
+
+  @override
+  String get optionalLogin => 'เข้าสู่ระบบหรือสมัครบัญชี (ไม่บังคับ)';
 }

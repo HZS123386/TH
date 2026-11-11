@@ -385,7 +385,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Keep your details and reports, and return to your exploration.';
 
   @override
-  String get deviceProfile => 'Birth details on this device';
+  String get deviceProfile => 'Birth details';
 
   @override
   String get language => 'Language';
@@ -398,7 +398,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyText =>
-      'This preview saves birth details on this device. Calculation results and report access depend on the service response. You can clear local birth details.';
+      'Drafts and access credentials stay on this device. Birth details, charts and reports belong to your current guest session or account. RoxyAPI calculates charts; the AI service receives chart facts without your name, city text or chat history. Clearing local details does not delete server records.';
 
   @override
   String get clearBirth => 'Clear local birth details';
@@ -416,12 +416,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get saveBirth => 'Save and view my chart';
 
   @override
-  String get nickname => 'Preferred name (optional)';
-
-  @override
-  String get nicknamePlaceholder => 'What should we call you?';
-
-  @override
   String get placeRequired => 'Choose or enter your birth location';
 
   @override
@@ -434,7 +428,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get back => 'Back';
 
   @override
-  String get birthStorage => 'Saved on this device. Edit or clear anytime.';
+  String get birthStorage =>
+      'Create your chart and read your report without signing in. You can return to your results on this device.';
 
   @override
   String get profileMissing => 'No birth details yet';
@@ -567,9 +562,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendarGregorian => 'Gregorian';
 
   @override
-  String get calendarBuddhist => 'Buddhist Era';
-
-  @override
   String get timeUnknown => 'I do not know the exact time';
 
   @override
@@ -610,7 +602,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiConsent =>
-      'Before generating a report, confirm that you agree to use your birth details for an AI reading.';
+      'To prepare the report, calculated chart facts will be sent to the AI service without your name, city text or chat history. Do you agree?';
 
   @override
   String get consentGenerate => 'Agree and generate';
@@ -701,4 +693,103 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get zPisces => 'Pisces';
+
+  @override
+  String get chartRules => 'Tropical zodiac · Placidus houses · True node';
+
+  @override
+  String get chartSource => 'Calculated by RoxyAPI from your birth details';
+
+  @override
+  String get dateOnlyRules =>
+      'Birth time unknown: planetary positions are noon estimates. Moon, angles, houses, aspects and uncertain sign placements are omitted.';
+
+  @override
+  String get calculateChart => 'Calculate my chart';
+
+  @override
+  String get saveForChart =>
+      'Confirm and save your birth details before creating your personal chart.';
+
+  @override
+  String get retrograde => 'Retrograde';
+
+  @override
+  String get orb => 'Orb';
+
+  @override
+  String get aspectConjunction => 'Conjunction';
+
+  @override
+  String get aspectSextile => 'Sextile';
+
+  @override
+  String get aspectSquare => 'Square';
+
+  @override
+  String get aspectTrine => 'Trine';
+
+  @override
+  String get aspectOpposition => 'Opposition';
+
+  @override
+  String get fullReading => 'Your full reading';
+
+  @override
+  String get developmentReport =>
+      'Local development preview: the full report is free here. No purchase or payment has taken place.';
+
+  @override
+  String get reportGeneratingText =>
+      'We are preparing your reading from your planets, houses and aspects. It will appear automatically. You can leave and return to it later.';
+
+  @override
+  String get reportFailedText =>
+      'This reading could not be completed. Return to Reports and generate it again. Sample content will never replace your result.';
+
+  @override
+  String get roxyUnavailable =>
+      'The chart service is unavailable. Please try again later.';
+
+  @override
+  String get roxyQuota =>
+      'There are too many chart requests. Please try again later.';
+
+  @override
+  String get profileChanged =>
+      'Your birth details changed. Open the birth details page, confirm and save them again.';
+
+  @override
+  String get birthRegion => 'Province / region';
+
+  @override
+  String get selectCountry => 'Choose or search a country';
+
+  @override
+  String get selectRegion => 'Choose or search a region';
+
+  @override
+  String get selectBirthCity => 'Select your birth city from the suggestions';
+
+  @override
+  String get countryFirst => 'Choose a country first';
+
+  @override
+  String get regionFirst => 'Choose a region first';
+
+  @override
+  String get regionNotNeeded => 'Not required';
+
+  @override
+  String get birthLocationHint =>
+      'Type to search or open the list to choose. Location details are matched automatically.';
+
+  @override
+  String get moreLocations => 'Load more places';
+
+  @override
+  String get guestReading => 'View your chart and report without signing in.';
+
+  @override
+  String get optionalLogin => 'Sign in or register (optional)';
 }

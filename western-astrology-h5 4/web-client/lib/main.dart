@@ -40,9 +40,12 @@ Future<Json> _loadTranslations() async {
 Future<void> _startApp(WebBrowserPort browser) async {
   usePathUrlStrategy();
   final language = Uri.base.queryParameters['lang'] == 'zh' ? 'zh' : 'th';
-  final translations = await _loadTranslations();
   final fonts = LanguageFonts();
-  await fonts.ensure(language);
+  // Both are required before runApp, but neither depends on the other's result.
+  final (translations, _) = await (
+    _loadTranslations(),
+    fonts.ensure(language),
+  ).wait;
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([
       'Noto Sans Thai',

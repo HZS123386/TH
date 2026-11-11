@@ -123,6 +123,8 @@ class ApiClient {
       throw ApiFailure(
         error is Map && error['code'] is String
             ? error['code'] as String
+            : decoded is Map && decoded['code'] is String
+            ? decoded['code'] as String
             : 'request_failed',
         status: response.statusCode,
         retryable: error is Map

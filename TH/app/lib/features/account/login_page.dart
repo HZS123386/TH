@@ -87,7 +87,8 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
             ),
-            if (kDebugMode && d.session.capabilities.developmentLogin) ...[
+            if (d.auth.canUseDevelopmentLogin &&
+                d.session.capabilities.developmentLogin) ...[
               const SizedBox(height: 22),
               FateCard(
                 child: Column(

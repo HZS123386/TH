@@ -122,13 +122,15 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       setState(() => _error = c.t('ui', 'invalidPlace'));
       return;
     }
-    setState(() => _error = '');
-    _confirming = true;
+    setState(() {
+      _error = '';
+      _confirming = true;
+    });
     var accepted = false;
     try {
       accepted = await confirmDataUse(context, h5);
     } finally {
-      _confirming = false;
+      if (mounted) setState(() => _confirming = false);
     }
     if (!mounted || !accepted) return;
     final input = _input(h5);

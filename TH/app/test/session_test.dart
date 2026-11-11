@@ -46,7 +46,7 @@ void main() {
         api,
         LocalDraftStore(await SharedPreferences.getInstance()),
       ).locations('New York', 'en', country: 'US');
-      expect(rows.single['timezone'], 'America/New_York');
+      expect(rows.items.single['timezone'], 'America/New_York');
       api.close();
     },
   );
@@ -81,8 +81,8 @@ void main() {
         LocalDraftStore(await SharedPreferences.getInstance()),
       );
       final locations = await repo.locations('Bangkok', 'en');
-      expect(locations.single['label'], 'Bangkok');
-      expect(locations.single['timezone'], 'Asia/Bangkok');
+      expect(locations.items.single['label'], 'Bangkok');
+      expect(locations.items.single['timezone'], 'Asia/Bangkok');
       api.close();
     },
   );

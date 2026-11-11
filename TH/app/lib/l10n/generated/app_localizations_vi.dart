@@ -385,7 +385,7 @@ class AppLocalizationsVi extends AppLocalizations {
       'Lưu thông tin và báo cáo để tiếp tục khám phá bản thân.';
 
   @override
-  String get deviceProfile => 'Thông tin sinh trên thiết bị';
+  String get deviceProfile => 'Thông tin sinh';
 
   @override
   String get language => 'Ngôn ngữ';
@@ -398,7 +398,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get privacyText =>
-      'Bản xem trước lưu thông tin sinh trên thiết bị này. Kết quả và quyền báo cáo dựa trên phản hồi dịch vụ. Bạn có thể xóa thông tin sinh trong máy.';
+      'Bản nháp và thông tin truy cập được lưu trên thiết bị. Thông tin sinh, bản đồ sao và báo cáo thuộc phiên khách hoặc tài khoản hiện tại. RoxyAPI tính bản đồ sao; dịch vụ trí tuệ nhân tạo chỉ nhận dữ kiện bản đồ sao, không nhận tên, tên thành phố hay lịch sử trò chuyện. Xóa dữ liệu cục bộ không xóa bản ghi trên máy chủ.';
 
   @override
   String get clearBirth => 'Xóa thông tin sinh trong máy';
@@ -416,12 +416,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get saveBirth => 'Lưu và xem bản đồ sao';
 
   @override
-  String get nickname => 'Tên muốn được gọi không bắt buộc';
-
-  @override
-  String get nicknamePlaceholder => 'Bạn muốn được gọi thế nào?';
-
-  @override
   String get placeRequired => 'Chọn hoặc nhập nơi sinh';
 
   @override
@@ -435,7 +429,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get birthStorage =>
-      'Lưu trên thiết bị này, có thể sửa hoặc xóa bất cứ lúc nào.';
+      'Tạo bản đồ sao và đọc báo cáo mà không cần đăng nhập. Bạn có thể xem lại kết quả trên thiết bị này.';
 
   @override
   String get profileMissing => 'Chưa có thông tin sinh';
@@ -568,9 +562,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get calendarGregorian => 'Dương lịch';
 
   @override
-  String get calendarBuddhist => 'Phật lịch';
-
-  @override
   String get timeUnknown => 'Không nhớ giờ sinh chính xác';
 
   @override
@@ -611,7 +602,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get aiConsent =>
-      'Trước khi tạo báo cáo, hãy đồng ý sử dụng thông tin sinh để tạo bài đọc AI.';
+      'Để soạn luận giải, dữ kiện bản đồ sao đã tính sẽ được gửi đến dịch vụ trí tuệ nhân tạo, không kèm tên, tên thành phố hoặc lịch sử trò chuyện. Bạn đồng ý chứ?';
 
   @override
   String get consentGenerate => 'Đồng ý và tạo';
@@ -701,4 +692,105 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get zPisces => 'Song Ngư';
+
+  @override
+  String get chartRules =>
+      'Hoàng đạo nhiệt đới · Nhà Placidus · Nút Mặt Trăng thực';
+
+  @override
+  String get chartSource => 'RoxyAPI tính toán từ thông tin sinh của bạn';
+
+  @override
+  String get dateOnlyRules =>
+      'Chưa rõ giờ sinh: vị trí hành tinh được ước tính lúc giữa trưa. Không hiển thị Mặt Trăng, cung Mọc, nhà, góc chiếu và cung chưa xác định chắc chắn.';
+
+  @override
+  String get calculateChart => 'Tính bản đồ sao của tôi';
+
+  @override
+  String get saveForChart =>
+      'Hãy xác nhận và lưu thông tin sinh trước khi tạo bản đồ sao cá nhân.';
+
+  @override
+  String get retrograde => 'Nghịch hành';
+
+  @override
+  String get orb => 'Độ lệch góc';
+
+  @override
+  String get aspectConjunction => 'Góc trùng tụ';
+
+  @override
+  String get aspectSextile => 'Góc lục hợp';
+
+  @override
+  String get aspectSquare => 'Góc vuông';
+
+  @override
+  String get aspectTrine => 'Góc tam hợp';
+
+  @override
+  String get aspectOpposition => 'Góc đối đỉnh';
+
+  @override
+  String get fullReading => 'Bản luận giải đầy đủ của bạn';
+
+  @override
+  String get developmentReport =>
+      'Bản xem thử khi phát triển cục bộ: báo cáo đầy đủ được mở miễn phí. Chưa phát sinh mua hàng hoặc thanh toán.';
+
+  @override
+  String get reportGeneratingText =>
+      'Đang soạn luận giải từ hành tinh, nhà và góc chiếu của bạn. Kết quả sẽ tự hiện khi hoàn tất. Bạn có thể rời trang rồi quay lại xem tiếp.';
+
+  @override
+  String get reportFailedText =>
+      'Chưa thể hoàn tất luận giải. Hãy trở về trang Báo cáo và tạo lại. Nội dung mẫu sẽ không thay thế kết quả của bạn.';
+
+  @override
+  String get roxyUnavailable =>
+      'Dịch vụ tính bản đồ sao chưa sẵn sàng. Hãy thử lại sau.';
+
+  @override
+  String get roxyQuota =>
+      'Hiện có quá nhiều yêu cầu tính toán. Hãy thử lại sau.';
+
+  @override
+  String get profileChanged =>
+      'Thông tin sinh đã thay đổi. Hãy mở trang thông tin sinh, xác nhận và lưu lại.';
+
+  @override
+  String get birthRegion => 'Tỉnh / vùng';
+
+  @override
+  String get selectCountry => 'Chọn hoặc tìm quốc gia';
+
+  @override
+  String get selectRegion => 'Chọn hoặc tìm tỉnh';
+
+  @override
+  String get selectBirthCity => 'Chọn thành phố sinh từ danh sách gợi ý';
+
+  @override
+  String get countryFirst => 'Hãy chọn quốc gia trước';
+
+  @override
+  String get regionFirst => 'Hãy chọn tỉnh trước';
+
+  @override
+  String get regionNotNeeded => 'Không cần chọn';
+
+  @override
+  String get birthLocationHint =>
+      'Nhập để tìm hoặc mở danh sách để chọn. Thông tin nơi sinh được xác định tự động.';
+
+  @override
+  String get moreLocations => 'Xem thêm địa điểm';
+
+  @override
+  String get guestReading =>
+      'Xem bản đồ sao và báo cáo cá nhân mà không cần đăng nhập.';
+
+  @override
+  String get optionalLogin => 'Đăng nhập hoặc đăng ký (không bắt buộc)';
 }

@@ -1,8 +1,14 @@
 class ChartPlanet {
-  const ChartPlanet(this.key, this.longitude, {this.house});
+  const ChartPlanet(
+    this.key,
+    this.longitude, {
+    this.house,
+    this.retrograde = false,
+  });
   final String key;
   final double longitude;
   final int? house;
+  final bool retrograde;
   static const keys = [
     'sun',
     'moon',
@@ -20,9 +26,11 @@ class ChartPlanet {
 }
 
 class ChartAspect {
-  const ChartAspect(this.from, this.to, this.angle);
+  const ChartAspect(this.from, this.to, this.angle, {this.orb, this.type});
   final String from, to;
   final double angle;
+  final double? orb;
+  final String? type;
 }
 
 class CalculationSnapshot {
@@ -33,6 +41,7 @@ class CalculationSnapshot {
     required this.exactTime,
     required this.planets,
     this.ascendant,
+    this.midheaven,
     this.houses = const {},
     this.aspects = const [],
     this.missingFields = const [],
@@ -41,7 +50,7 @@ class CalculationSnapshot {
   final String id, engineVersion, rulesetVersion;
   final bool exactTime, example;
   final List<ChartPlanet> planets;
-  final double? ascendant;
+  final double? ascendant, midheaven;
   final Map<int, double> houses;
   final List<ChartAspect> aspects;
   final List<String> missingFields;
@@ -58,7 +67,7 @@ class CalculationSnapshot {
     final exact = json['input_precision'] == 'exact_time';
     final planets = <ChartPlanet>[], aspects = <ChartAspect>[];
     final houses = <int, double>{}, ids = <String>{};
-    double? ascendant;
+    double? ascendant, midheaven;
     double longitude(dynamic value) {
       if (value is! num || !value.isFinite || value < 0 || value >= 360) {
         throw const FormatException('invalid_longitude');
@@ -78,7 +87,12 @@ class CalculationSnapshot {
       }
       final value = raw['value'] as Map;
       if (!exact &&
-          (['ascendant', 'house'].contains(raw['kind']) ||
+          ([
+                'ascendant',
+                'midheaven',
+                'house',
+                'aspect',
+              ].contains(raw['kind']) ||
               value['house'] != null)) {
         throw const FormatException('time_required');
       }
@@ -96,6 +110,7 @@ class CalculationSnapshot {
               key as String,
               longitude(value['longitude']),
               house: house as int?,
+              retrograde: value['retrograde'] == true,
             ),
           );
         case 'ascendant':
@@ -103,6 +118,11 @@ class CalculationSnapshot {
             throw const FormatException('duplicate_ascendant');
           }
           ascendant = longitude(value['longitude']);
+        case 'midheaven':
+          if (midheaven != null) {
+            throw const FormatException('duplicate_midheaven');
+          }
+          midheaven = longitude(value['longitude']);
         case 'house':
           final number = value['number'];
           if (number is! int ||
@@ -114,12 +134,15 @@ class CalculationSnapshot {
           houses[number] = longitude(value['longitude']);
         case 'aspect':
           final angle = value['angle'];
+          final orb = value['orb'];
           if (!ChartPlanet.keys.contains(value['from']) ||
               !ChartPlanet.keys.contains(value['to']) ||
+              value['from'] == value['to'] ||
               angle is! num ||
               !angle.isFinite ||
-              angle < 0 ||
-              angle > 180) {
+              ![0, 60, 90, 120, 180].contains(angle) ||
+              (orb != null &&
+                  (orb is! num || !orb.isFinite || orb < 0 || orb > 6))) {
             throw const FormatException('invalid_aspect');
           }
           aspects.add(
@@ -127,11 +150,22 @@ class CalculationSnapshot {
               value['from'] as String,
               value['to'] as String,
               angle.toDouble(),
+              orb: value['orb'] is num
+                  ? (value['orb'] as num).toDouble()
+                  : null,
+              type: value['type'] as String?,
             ),
           );
         default:
           throw const FormatException('invalid_fact_kind');
       }
+    }
+    if (aspects.any(
+      (a) =>
+          !planets.any((p) => p.key == a.from) ||
+          !planets.any((p) => p.key == a.to),
+    )) {
+      throw const FormatException('missing_aspect_planet');
     }
     return CalculationSnapshot(
       id: json['result_id'] as String,
@@ -140,6 +174,7 @@ class CalculationSnapshot {
       exactTime: exact,
       planets: List.unmodifiable(planets),
       ascendant: ascendant,
+      midheaven: midheaven,
       houses: Map.unmodifiable(houses),
       aspects: List.unmodifiable(aspects),
       missingFields: List<String>.from(json['missing_fields'] as List? ?? []),

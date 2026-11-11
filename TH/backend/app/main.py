@@ -34,6 +34,8 @@ from .bazi_reports import BaziReports
 from .thai_readings import ThaiReports, generate_reading
 from .life_reports import LifeReports, life_report_router
 from .landing_features import LandingFeatures, landing_router
+from .western_app import NOTICE as WESTERN_NOTICE, WesternApp, WesternProfileInput, western_router
+from .static_assets import LandingStaticFiles
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +60,9 @@ def create_app(settings: Settings | None = None):
     app.state.roxy = roxy
     def module_catalog():
         return [{**module, **({"method": "RoxyAPI / split-zi / li-chun / civil time", "calculation_version": "roxy-bazi-1"}
-                             if module["id"] == "bazi" and settings.bazi_provider == "roxy" else {})} for module in MODULES]
+                             if module["id"] == "bazi" and settings.bazi_provider == "roxy" else
+                             {"status": "ready" if roxy.enabled else "planned", "method": "Western tropical / Placidus / true node",
+                              "calculation_version": "fate-western-tropical-placidus-1"} if module["id"] == "western_astrology" else {})} for module in MODULES]
     memory = CompanionMemory(store, settings.embeddings)
     app.state.memory = memory
     app.state.store, app.state.registry = store, registry
@@ -105,7 +109,9 @@ def create_app(settings: Settings | None = None):
 
     @app.exception_handler(RoxyError)
     async def roxy_error(request: Request, error: RoxyError):
-        return error_response(error.code, 429 if error.code in ("roxy_quota", "roxy_local_limit") else 503, request)
+        status = (429 if error.code in ("roxy_quota", "roxy_local_limit") else
+                  422 if error.code == "roxy_input_rejected" else 503)
+        return error_response(error.code, status, request)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, error: RequestValidationError):
@@ -166,13 +172,20 @@ def create_app(settings: Settings | None = None):
             raise HTTPException(401, "login_required")
         return authorization[7:]
 
-    def user(authorization: str | None = Header(default=None)):
-        if settings.app_env == "production":
-            raise HTTPException(403, "production_disabled")
+    def visitor(authorization: str | None = Header(default=None)):
         user_id = store.authenticate(token_value(authorization))
         if not user_id:
             raise HTTPException(401, "session_expired")
         return user_id
+
+    def user(authorization: str | None = Header(default=None)):
+        if settings.app_env == "production":
+            raise HTTPException(403, "production_disabled")
+        return visitor(authorization)
+
+    western_app = WesternApp(store, settings, model_slots, life_reports.adapters["astrology"])
+    app.state.western_app = western_app
+    app.include_router(western_router(western_app, visitor))
 
     def require_idle(user_id: str):
         if user_id in busy:
@@ -203,9 +216,14 @@ def create_app(settings: Settings | None = None):
             "default_provider": settings.default_provider,
             "demo_login": settings.app_env == "development",
             "account_login": settings.app_env == "development",
+            "guest_reading": True,
             "liff_id": None,
             "modules": module_catalog(),
             "roxy": roxy.public(),
+            "app_capabilities": {"western_reports": roxy.enabled and western_app.writer.enabled,
+                                 "apple_login": False, "apple_iap": False,
+                                 "ai_notice_version": WESTERN_NOTICE,
+                                 "development_full_reports": settings.app_env == "development"},
             "companion": {
                 "source": "RoxyAPI/ai-spiritual-companion",
                 "commit": "3b313e6972b92aecf94dad2aecbe822e1599fa4a",
@@ -242,13 +260,18 @@ def create_app(settings: Settings | None = None):
             raise HTTPException(403, "production_disabled")
         return store.login(settings.session_hours)
 
+    @app.post("/api/auth/guest", status_code=201)
+    async def guest():
+        # A private anonymous session uses the same owner checks as an account.
+        return store.login(settings.session_hours)
+
     @app.post("/api/auth/logout", status_code=204)
-    async def logout(authorization: str | None = Header(default=None), user_id: str = Depends(user)):
+    async def logout(authorization: str | None = Header(default=None), user_id: str = Depends(visitor)):
         require_idle(user_id)
         store.logout(token_value(authorization))
 
     @app.get("/api/auth/me")
-    async def me(user_id: str = Depends(user)):
+    async def me(user_id: str = Depends(visitor)):
         return store.account(user_id)
 
     @app.post("/api/auth/register", status_code=201)
@@ -273,7 +296,7 @@ def create_app(settings: Settings | None = None):
         return result
 
     @app.get("/api/profile")
-    async def profile(user_id: str = Depends(user)):
+    async def profile(user_id: str = Depends(visitor)):
         return store.profile(user_id)
 
     @app.get("/api/thai-locations")
@@ -361,10 +384,18 @@ def create_app(settings: Settings | None = None):
         return store.save_companion(user_id, body.model_dump(mode="json"))
 
     @app.put("/api/profile")
-    async def save_profile(body: ProfileInput, request: Request, user_id: str = Depends(user)):
+    async def save_profile(body: ProfileInput | WesternProfileInput, request: Request, user_id: str = Depends(visitor)):
+        if settings.app_env == "production" and not isinstance(body, WesternProfileInput):
+            raise HTTPException(403, "production_disabled")
         require_idle(user_id)
         busy.add(user_id)
         try:
+            if isinstance(body, WesternProfileInput):
+                place = await western_app.adapter.resolve_place(body)
+                payload = body.model_dump(mode="json", exclude={"system", "expected_revision"})
+                payload.update(latitude=place["latitude"], longitude=place["longitude"])
+                return store.save_profile(user_id, payload, {"system": "western_natal", "status": "not_calculated"},
+                                          expected_revision=body.expected_revision)
             chart = (await roxy.profile_chart(body, "account:" + store.hash(user_id), "network:" + store.hash(request.client.host if request.client else "unknown"))
                      if settings.bazi_provider == "roxy" else calculate(body))
             payload = body.model_dump(mode="json")
@@ -373,7 +404,7 @@ def create_app(settings: Settings | None = None):
                     payload.pop(field)
             return store.save_profile(user_id, payload, chart)
         except ValueError as error:
-            raise HTTPException(422, str(error)) from None
+            raise HTTPException(409 if str(error) == "profile_changed" else 422, str(error)) from None
         finally:
             busy.discard(user_id)
 
@@ -529,7 +560,7 @@ def create_app(settings: Settings | None = None):
 
     # Serve the landing build alongside its existing calculation API, on one origin.
     if settings.thai_landing_dir and Path(settings.thai_landing_dir).is_dir():
-        app.mount("/thai-landing", StaticFiles(directory=settings.thai_landing_dir, html=True), name="thai-landing")
+        app.mount("/thai-landing", LandingStaticFiles(directory=settings.thai_landing_dir, html=True), name="thai-landing")
     dist = Path(__file__).resolve().parents[2] / "dist"
     if dist.is_dir():
         app.mount("/", StaticFiles(directory=dist, html=True), name="web")

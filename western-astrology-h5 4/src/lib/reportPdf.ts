@@ -101,6 +101,7 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
   const document = new DOMParser().parseFromString(reportHtml(report, labels), "text/html");
   const full = report.access === "full" && report.full_state === "ready";
   const sections = reportContent(report);
+  const compact = report.format === "western-compact";
   const paidTitles = new Set(sections.filter(section => section.paid).map(section => section.title));
   let evidenceNoteShown = false;
   function blocks(element: Element, evidence = false): Content[] {
@@ -175,7 +176,21 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
     if (tag === "SECTION") {
       const title = element.querySelector(":scope > h2")?.textContent || "";
       if (!full && title === labels.catalog) return [];
-      const pageBreak = full && (paidTitles.has(title) || title === labels.catalog) ? "before" as const : undefined;
+      if (compact && title === labels.catalog) {
+        return [{ stack: [
+          { text: textRuns(title), fontSize: 19, color: palette.purple, margin: [0, 0, 0, 18] },
+          ...sections.map((section, index): Content => ({ columns: [
+            { text: String(index + 1).padStart(2, "0"), width: 26, color: palette.gold, fontSize: 11 },
+            { stack: [
+              { text: textRuns(section.title), fontSize: 12, color: palette.ink },
+              { text: textRuns(section.description), fontSize: 9, color: palette.muted, margin: [0, 4, 0, 0] },
+            ] },
+          ], columnGap: 8, margin: [0, 0, 0, 14] })),
+        ], pageBreak: "before" }];
+      }
+      // Short Western sections flow together so a brief chapter tail cannot occupy a whole page.
+      const firstPaid = sections.find(section => section.paid)?.title;
+      const pageBreak = full && (compact ? title === firstPaid : paidTitles.has(title) || title === labels.catalog) ? "before" as const : undefined;
       return [{ stack: children(), pageBreak, margin: [0, 4, 0, 0] }];
     }
     if (tag === "DETAILS") {

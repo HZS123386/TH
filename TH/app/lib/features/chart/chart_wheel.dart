@@ -22,7 +22,8 @@ class ChartWheel extends StatelessWidget {
           final center = Offset(box.maxWidth / 2, box.maxWidth / 2),
               radius = box.maxWidth * .32;
           for (var i = 0; i < result.planets.length; i++) {
-            final p = result.planets[i], a = (p.longitude - 90) * pi / 180;
+            final p = result.planets[i],
+                a = (180 + (result.ascendant ?? 0) - p.longitude) * pi / 180;
             final point =
                 center +
                 Offset(cos(a), sin(a)) *
@@ -55,7 +56,10 @@ class _WheelPainter extends CustomPainter {
     }
     Offset point(double angle, double radius) =>
         c +
-        Offset(cos((angle - 90) * pi / 180), sin((angle - 90) * pi / 180)) *
+        Offset(
+              cos((180 + (result.ascendant ?? 0) - angle) * pi / 180),
+              sin((180 + (result.ascendant ?? 0) - angle) * pi / 180),
+            ) *
             radius;
     for (var i = 0; i < 72; i++) {
       canvas.drawLine(
@@ -78,6 +82,26 @@ class _WheelPainter extends CustomPainter {
     const signs = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
     for (var i = 0; i < 12; i++) {
       text(signs[i], point(i * 30 + 15, r * .89), goldColor, 17);
+    }
+    // House cusps use the provider's longitudes, never twelve equal wedges.
+    for (final house in result.houses.entries) {
+      paint.color = goldColor.withValues(alpha: .38);
+      canvas.drawLine(
+        point(house.value, r * .49),
+        point(house.value, r * .81),
+        paint,
+      );
+      text('${house.key}', point(house.value + 3, r * .53), mutedColor, 9);
+    }
+    for (final angle in [('ASC', result.ascendant), ('MC', result.midheaven)]) {
+      if (angle.$2 == null) continue;
+      paint.color = goldColor;
+      canvas.drawLine(
+        point(angle.$2!, r * .66),
+        point(angle.$2!, r * .97),
+        paint,
+      );
+      text(angle.$1, point(angle.$2!, r * .73), goldColor, 9);
     }
     for (final aspect in result.aspects) {
       final from = result.planets.where((p) => p.key == aspect.from),

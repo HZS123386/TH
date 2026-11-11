@@ -10,6 +10,8 @@
   <meta property="og:title" content="FATE · วิเคราะห์ดวงชะตา">
   <meta property="og:description" content="อ่านลักษณะส่วนตัวฟรี แล้วเปิดอ่านดวงเจ็ดหัวข้อ">
   <title>FATE</title>
+  <script>document.documentElement.lang=new URLSearchParams(location.search).get('lang')==='zh'?'zh':'th';</script>
+  <script src="browser.js"></script>
   <style>
     html,body{margin:0;background:#130c24;color-scheme:dark}
     #fate-startup{position:fixed;inset:0;z-index:1;display:grid;place-content:center;justify-items:center;gap:22px;background:radial-gradient(ellipse at 50% 28%,#352046,#130c24 65%);color:#e4bc78;font:14px/1.6 system-ui,sans-serif;text-align:center;padding:24px}
@@ -23,8 +25,8 @@
     @media(prefers-reduced-motion:reduce){.fate-startup-track:after{animation:none}}
   </style>
   <link rel="preload" href="assets/assets/fonts/NotoSansThai.ttf" as="fetch" crossorigin>
+  <!-- FATE_FONT_PRELOADS -->
   <script>
-    document.documentElement.lang=new URLSearchParams(location.search).get('lang')==='zh'?'zh':'th';
     const fatePreload=(href,priority='high')=>{const link=document.createElement('link');link.rel='preload';link.href=href;link.as='fetch';link.crossOrigin='anonymous';link.fetchPriority=priority;document.head.append(link);};
     if(document.documentElement.lang==='zh')fatePreload('assets/assets/fonts/FateChineseUI.otf');
     fatePreload('assets/FontManifest.json','low');
@@ -40,7 +42,6 @@
     <p id="fate-startup-status"><span class="fate-startup-zh">正在开启你的星空</span><span class="fate-startup-th">กำลังเปิดท้องฟ้าของคุณ</span></p>
     <button id="fate-startup-retry" type="button" hidden><span class="fate-startup-zh">重新加载</span><span class="fate-startup-th">ลองโหลดใหม่</span></button>
   </div>
-  <script src="browser.js"></script>
   <script>{{flutter_bootstrap_js}}</script>
 </body>
 </html>

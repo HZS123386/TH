@@ -57,6 +57,7 @@ class ReportRepository {
     Json? body,
     bool owned = true,
     String? method,
+    Duration? timeout,
   }) async {
     token.check();
     final headers = {
@@ -64,15 +65,26 @@ class ReportRepository {
       if (body != null) 'Content-Type': 'application/json',
       if (owned) 'X-Report-Key': store.ownerKey(),
     };
+    final deadline = Completer<void>();
     final request = http.AbortableRequest(
       method ?? (body == null ? 'GET' : 'POST'),
       Uri.parse('$baseUrl$path'),
-      abortTrigger: token.future,
+      abortTrigger: Future.any([token.future, deadline.future]),
     )..headers.addAll(headers);
     if (body != null) request.body = jsonEncode(body);
     http.Response response;
     try {
-      response = await http.Response.fromStream(await client.send(request));
+      Future<http.Response> receive() async =>
+          http.Response.fromStream(await client.send(request));
+      response = timeout == null
+          ? await receive()
+          : await receive().timeout(
+              timeout,
+              onTimeout: () {
+                deadline.complete();
+                throw const ApiFailure('network');
+              },
+            );
     } catch (_) {
       token.check();
       throw const ApiFailure('network');
@@ -120,7 +132,11 @@ class ReportRepository {
       throw const ApiFailure('missing');
     }
     return LifeReport.parse(
-      await request('/api/life-reports/$id', token),
+      await request(
+        '/api/life-reports/$id',
+        token,
+        timeout: const Duration(seconds: 15),
+      ),
       id: id,
     );
   }

@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node scripts/serve-flutter.mjs",
     "build": "node scripts/build-flutter.mjs",
+    "build:release": "node scripts/build-flutter.mjs release",
     "check": "pnpm check:documents && node scripts/build-flutter.mjs analyze",
     "check:documents": "tsc --noEmit",
     "test": "pnpm test:contracts && pnpm test:flutter",

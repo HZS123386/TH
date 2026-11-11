@@ -23,10 +23,17 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
   String _scope = '', _requestKey = newRequestKey();
   int _generation = 0, _failures = 0;
   bool _active = false, _foreground = true;
+  Object? _activeView;
   Timer? _poll;
   bool get exampleSaved => repository.exampleSaved(session.owner);
-  bool get hasResumable =>
-      repository.active(session.owner)?.locale == session.locale.languageCode;
+  bool get hasResumable {
+    final saved = repository.active(session.owner);
+    return saved != null &&
+        saved.locale == session.locale.languageCode &&
+        saved.profileRevision != null &&
+        saved.profileRevision == session.profile?.revision;
+  }
+
   Future<void> saveExample() async {
     await repository.saveExample(session.owner);
     notifyListeners();
@@ -49,10 +56,16 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
     loading = false;
     error = null;
     notifyListeners();
+    if (_active && _foreground && session.auth.hasSession && hasResumable) {
+      unawaited(resume());
+    }
   }
 
-  void setActive(bool value) {
+  void setActive(bool value, {Object? view}) {
+    // An outgoing route must not stop polling for the newly displayed report.
+    if (!value && view != null && view != _activeView) return;
     _active = value;
+    _activeView = value ? view : null;
     _poll?.cancel();
     if (value && reference != null) {
       unawaited(refresh());
@@ -99,9 +112,14 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> resume([ReportReference? selected]) async {
     final next = selected ?? repository.active(session.owner);
     if (next == null || next.locale != session.locale.languageCode) return;
+    final generation = ++_generation, owner = session.owner;
+    _poll?.cancel();
     reference = next;
     report = null;
+    loading = false;
     _failures = 0;
+    await repository.remember(owner, next);
+    if (generation != _generation || owner != session.owner) return;
     await refresh();
   }
 
@@ -137,7 +155,7 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> loadHistory() async {
-    if (!session.auth.signedIn || !session.capabilities.reports) return;
+    if (!session.auth.hasSession || !session.capabilities.reports) return;
     final generation = _generation;
     try {
       final rows = await repository.list();

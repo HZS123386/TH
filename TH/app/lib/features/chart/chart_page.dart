@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../ui/strings.dart';
 import '../../ui/theme.dart';
 import 'chart_wheel.dart';
+import '../account/birth_page.dart';
 
 class ChartPage extends StatefulWidget {
   const ChartPage({this.example = false, super.key});
@@ -16,6 +17,7 @@ class ChartPage extends StatefulWidget {
 
 class _ChartPageState extends State<ChartPage> {
   String selected = 'sun';
+  String? requestedScope;
   int tab = 0;
   @override
   Widget build(BuildContext context) {
@@ -23,7 +25,21 @@ class _ChartPageState extends State<ChartPage> {
     return ListenableBuilder(
       listenable: Listenable.merge([d.chart, d.session]),
       builder: (context, _) {
+        if (!widget.example && d.session.profile?.isServerRevision != true) {
+          return const BirthPage();
+        }
         final result = widget.example ? teachingChart : d.chart.result;
+        if (!widget.example &&
+            result == null &&
+            !d.chart.loading &&
+            d.session.capabilities.western &&
+            d.session.profile?.isServerRevision == true &&
+            requestedScope != d.session.scope) {
+          requestedScope = d.session.scope;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) d.chart.calculate();
+          });
+        }
         final chosen = result?.planets.where((p) => p.key == selected);
         final planet = chosen != null && chosen.isNotEmpty
             ? chosen.first
@@ -62,33 +78,21 @@ class _ChartPageState extends State<ChartPage> {
                         ),
                       ),
                       Text(
-                        d.chart.loading
-                            ? s.waiting
-                            : d.session.profile == null
-                            ? s.noChart
-                            : s.unavailable,
+                        d.chart.loading ? s.waiting : s.calculateChart,
                         style: const TextStyle(fontSize: 18),
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        d.session.profile == null
-                            ? s.noChartText
-                            : s.unavailableText,
+                        d.chart.error != null
+                            ? s.chartError(d.chart.error)
+                            : s.myChartText,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       const SizedBox(height: 20),
                       FilledButton(
-                        onPressed: d.chart.loading
-                            ? null
-                            : () => d.session.profile == null
-                                  ? context.go('/birth')
-                                  : d.chart.calculate(),
+                        onPressed: d.chart.loading ? null : d.chart.calculate,
                         child: Text(
-                          d.chart.loading
-                              ? s.waiting
-                              : d.session.profile == null
-                              ? s.start
-                              : s.retry,
+                          d.chart.loading ? s.waiting : s.calculateChart,
                         ),
                       ),
                       TextButton(
@@ -99,6 +103,18 @@ class _ChartPageState extends State<ChartPage> {
                   ),
                 )
               else ...[
+                if (!widget.example) ...[
+                  Text(
+                    s.chartSource,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    s.chartRules,
+                    style: const TextStyle(color: goldColor, fontSize: 11),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 FateCard(
                   gold: true,
                   padding: const EdgeInsets.all(12),
@@ -192,7 +208,7 @@ class _ChartPageState extends State<ChartPage> {
                     result.ascendant == null ||
                     result.houses.isEmpty)
                   Text(
-                    result.exactTime ? s.missingAngles : s.unknownTime,
+                    result.exactTime ? s.missingAngles : s.dateOnlyRules,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 const SizedBox(height: 18),
@@ -244,11 +260,12 @@ class _ChartPageState extends State<ChartPage> {
                               ),
                             ),
                             title: Text(
-                              s.planetName(p.key),
+                              '${s.planetName(p.key)}${p.retrograde ? ' · ${s.retrograde}' : ''}',
                               style: const TextStyle(fontSize: 13),
                             ),
                             trailing: Text(
-                              s.position(p.longitude),
+                              '${s.position(p.longitude)}${p.house == null ? '' : '\n${s.house} ${p.house}'}',
+                              textAlign: TextAlign.end,
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: mutedColor,
@@ -283,8 +300,12 @@ class _ChartPageState extends State<ChartPage> {
                                 style: const TextStyle(fontSize: 12),
                               ),
                               trailing: Text(
-                                '${a.angle.toInt()}°',
-                                style: const TextStyle(color: goldColor),
+                                '${s.aspectName(a.angle)}\n${a.orb == null ? '${a.angle.toInt()}°' : '${s.orb} ${a.orb!.toStringAsFixed(2)}°'}',
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  color: goldColor,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                     ],

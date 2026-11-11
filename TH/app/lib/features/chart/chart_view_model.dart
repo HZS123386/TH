@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../../app/session_view_model.dart';
 import '../../core/models/calculation.dart';
+import '../../core/network/api_client.dart';
 import '../../data/western_repository.dart';
 
 String newRequestKey() => List.generate(
@@ -51,6 +52,8 @@ class ChartViewModel extends ChangeNotifier {
     try {
       final next = await repository.calculate(profile, _requestKey);
       if (generation == _generation) result = next;
+    } on ApiFailure catch (failure) {
+      if (generation == _generation) error = failure.code;
     } catch (_) {
       if (generation == _generation) error = 'calculation_failed';
     } finally {

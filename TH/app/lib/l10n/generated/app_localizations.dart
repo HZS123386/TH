@@ -789,7 +789,7 @@ abstract class AppLocalizations {
   /// No description provided for @deviceProfile.
   ///
   /// In en, this message translates to:
-  /// **'Birth details on this device'**
+  /// **'Birth details'**
   String get deviceProfile;
 
   /// No description provided for @language.
@@ -813,7 +813,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyText.
   ///
   /// In en, this message translates to:
-  /// **'This preview saves birth details on this device. Calculation results and report access depend on the service response. You can clear local birth details.'**
+  /// **'Drafts and access credentials stay on this device. Birth details, charts and reports belong to your current guest session or account. RoxyAPI calculates charts; the AI service receives chart facts without your name, city text or chat history. Clearing local details does not delete server records.'**
   String get privacyText;
 
   /// No description provided for @clearBirth.
@@ -846,18 +846,6 @@ abstract class AppLocalizations {
   /// **'Save and view my chart'**
   String get saveBirth;
 
-  /// No description provided for @nickname.
-  ///
-  /// In en, this message translates to:
-  /// **'Preferred name (optional)'**
-  String get nickname;
-
-  /// No description provided for @nicknamePlaceholder.
-  ///
-  /// In en, this message translates to:
-  /// **'What should we call you?'**
-  String get nicknamePlaceholder;
-
   /// No description provided for @placeRequired.
   ///
   /// In en, this message translates to:
@@ -885,7 +873,7 @@ abstract class AppLocalizations {
   /// No description provided for @birthStorage.
   ///
   /// In en, this message translates to:
-  /// **'Saved on this device. Edit or clear anytime.'**
+  /// **'Create your chart and read your report without signing in. You can return to your results on this device.'**
   String get birthStorage;
 
   /// No description provided for @profileMissing.
@@ -1128,12 +1116,6 @@ abstract class AppLocalizations {
   /// **'Gregorian'**
   String get calendarGregorian;
 
-  /// No description provided for @calendarBuddhist.
-  ///
-  /// In en, this message translates to:
-  /// **'Buddhist Era'**
-  String get calendarBuddhist;
-
   /// No description provided for @timeUnknown.
   ///
   /// In en, this message translates to:
@@ -1209,7 +1191,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiConsent.
   ///
   /// In en, this message translates to:
-  /// **'Before generating a report, confirm that you agree to use your birth details for an AI reading.'**
+  /// **'To prepare the report, calculated chart facts will be sent to the AI service without your name, city text or chat history. Do you agree?'**
   String get aiConsent;
 
   /// No description provided for @consentGenerate.
@@ -1385,6 +1367,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pisces'**
   String get zPisces;
+
+  /// No description provided for @chartRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Tropical zodiac · Placidus houses · True node'**
+  String get chartRules;
+
+  /// No description provided for @chartSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated by RoxyAPI from your birth details'**
+  String get chartSource;
+
+  /// No description provided for @dateOnlyRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Birth time unknown: planetary positions are noon estimates. Moon, angles, houses, aspects and uncertain sign placements are omitted.'**
+  String get dateOnlyRules;
+
+  /// No description provided for @calculateChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate my chart'**
+  String get calculateChart;
+
+  /// No description provided for @saveForChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm and save your birth details before creating your personal chart.'**
+  String get saveForChart;
+
+  /// No description provided for @retrograde.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrograde'**
+  String get retrograde;
+
+  /// No description provided for @orb.
+  ///
+  /// In en, this message translates to:
+  /// **'Orb'**
+  String get orb;
+
+  /// No description provided for @aspectConjunction.
+  ///
+  /// In en, this message translates to:
+  /// **'Conjunction'**
+  String get aspectConjunction;
+
+  /// No description provided for @aspectSextile.
+  ///
+  /// In en, this message translates to:
+  /// **'Sextile'**
+  String get aspectSextile;
+
+  /// No description provided for @aspectSquare.
+  ///
+  /// In en, this message translates to:
+  /// **'Square'**
+  String get aspectSquare;
+
+  /// No description provided for @aspectTrine.
+  ///
+  /// In en, this message translates to:
+  /// **'Trine'**
+  String get aspectTrine;
+
+  /// No description provided for @aspectOpposition.
+  ///
+  /// In en, this message translates to:
+  /// **'Opposition'**
+  String get aspectOpposition;
+
+  /// No description provided for @fullReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Your full reading'**
+  String get fullReading;
+
+  /// No description provided for @developmentReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Local development preview: the full report is free here. No purchase or payment has taken place.'**
+  String get developmentReport;
+
+  /// No description provided for @reportGeneratingText.
+  ///
+  /// In en, this message translates to:
+  /// **'We are preparing your reading from your planets, houses and aspects. It will appear automatically. You can leave and return to it later.'**
+  String get reportGeneratingText;
+
+  /// No description provided for @reportFailedText.
+  ///
+  /// In en, this message translates to:
+  /// **'This reading could not be completed. Return to Reports and generate it again. Sample content will never replace your result.'**
+  String get reportFailedText;
+
+  /// No description provided for @roxyUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The chart service is unavailable. Please try again later.'**
+  String get roxyUnavailable;
+
+  /// No description provided for @roxyQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'There are too many chart requests. Please try again later.'**
+  String get roxyQuota;
+
+  /// No description provided for @profileChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Your birth details changed. Open the birth details page, confirm and save them again.'**
+  String get profileChanged;
+
+  /// No description provided for @birthRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Province / region'**
+  String get birthRegion;
+
+  /// No description provided for @selectCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose or search a country'**
+  String get selectCountry;
+
+  /// No description provided for @selectRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose or search a region'**
+  String get selectRegion;
+
+  /// No description provided for @selectBirthCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Select your birth city from the suggestions'**
+  String get selectBirthCity;
+
+  /// No description provided for @countryFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a country first'**
+  String get countryFirst;
+
+  /// No description provided for @regionFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a region first'**
+  String get regionFirst;
+
+  /// No description provided for @regionNotNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not required'**
+  String get regionNotNeeded;
+
+  /// No description provided for @birthLocationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type to search or open the list to choose. Location details are matched automatically.'**
+  String get birthLocationHint;
+
+  /// No description provided for @moreLocations.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more places'**
+  String get moreLocations;
+
+  /// No description provided for @guestReading.
+  ///
+  /// In en, this message translates to:
+  /// **'View your chart and report without signing in.'**
+  String get guestReading;
+
+  /// No description provided for @optionalLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in or register (optional)'**
+  String get optionalLogin;
 }
 
 class _AppLocalizationsDelegate

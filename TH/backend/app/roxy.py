@@ -1,4 +1,4 @@
-"""Server-only Roxy BaZi adapter with explicit conventions and bounded paid calls."""
+"""Server-only Roxy transport and BaZi adapter with bounded paid calls."""
 import asyncio
 from collections import OrderedDict
 from copy import deepcopy
@@ -162,9 +162,12 @@ def chart_for_app(profile: ProfileInput, raw: dict | None, status="ready", insta
     }
 
 
-class RoxyBazi:
-    def __init__(self, settings: Settings, store: Storage):
+class RoxyClient:
+    """Shared bounded transport; each domain owns its endpoints and validation."""
+
+    def __init__(self, settings: Settings, store: Storage, *, paths, validator):
         self.settings, self.store = settings, store
+        self.paths, self.validator = paths, validator
         self.cache = OrderedDict()
         self.inflight = {}
         self.failures = OrderedDict()
@@ -174,14 +177,10 @@ class RoxyBazi:
     def enabled(self):
         return bool(self.settings.roxy_enabled and self.settings.roxy_api_key)
 
-    def public(self):
-        return {"enabled": self.enabled, "bazi_provider": self.settings.bazi_provider,
-                "operations": list(PATHS), "per_minute": self.settings.roxy_per_minute, "per_day": self.settings.roxy_per_day}
-
     async def request(self, operation: str, body: dict, language: str, owner: str, network: str):
         if not self.enabled:
             raise RoxyError("roxy_unconfigured")
-        if operation not in PATHS:
+        if operation not in self.paths:
             raise RoxyError("validation_failed")
         lang = "zh-Hans" if language == "zh" else "en"
         signature = json.dumps([operation, body, lang, owner], sort_keys=True)
@@ -206,7 +205,7 @@ class RoxyBazi:
                 raise RoxyError("roxy_local_limit")
             async with asyncio.timeout(30), self.slots:
                 async with httpx.AsyncClient(timeout=25, follow_redirects=False) as client:
-                    async with client.stream("POST", BASE_URL + "/chinese-astrology/bazi/" + PATHS[operation],
+                    async with client.stream("POST", BASE_URL + self.paths[operation],
                                              headers={"X-API-Key": self.settings.roxy_api_key}, params={"lang": lang}, json=body) as response:
                         if response.status_code != 200:
                             code = {401: "roxy_auth_failed", 403: "roxy_auth_failed", 429: "roxy_quota", 400: "roxy_input_rejected", 422: "roxy_input_rejected"}.get(response.status_code, "roxy_unavailable")
@@ -219,7 +218,7 @@ class RoxyBazi:
                 if self.settings.roxy_api_key.encode() in content:
                     raise RoxyError("roxy_invalid_response")
                 value = json.loads(content)
-                validate_result(operation, value, body)
+                self.validator(operation, value, body)
             self.cache[key] = (monotonic() + 86400, value)
             while len(self.cache) > 128:
                 self.cache.popitem(last=False)
@@ -234,6 +233,16 @@ class RoxyBazi:
         while len(self.failures) > 128:
             self.failures.popitem(last=False)
         raise error
+
+class RoxyBazi(RoxyClient):
+    def __init__(self, settings: Settings, store: Storage):
+        super().__init__(settings, store,
+                         paths={key: "/chinese-astrology/bazi/" + path for key, path in PATHS.items()},
+                         validator=validate_result)
+
+    def public(self):
+        return {"enabled": self.enabled, "bazi_provider": self.settings.bazi_provider,
+                "operations": list(PATHS), "per_minute": self.settings.roxy_per_minute, "per_day": self.settings.roxy_per_day}
 
     async def profile_chart(self, profile: ProfileInput, owner: str, network: str):
         instant = calculation_instant(profile, "beijing")

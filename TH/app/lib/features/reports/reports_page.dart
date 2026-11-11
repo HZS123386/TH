@@ -24,7 +24,7 @@ class _ReportsPageState extends State<ReportsPage> {
     model = DependencyScope.of(context).reports;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      model!.setActive(widget.detail && !widget.example);
+      model!.setActive(widget.detail && !widget.example, view: this);
       if (!widget.detail) model!.loadHistory();
       if (widget.detail && !widget.example && model!.reference == null) {
         model!.resume();
@@ -245,6 +245,35 @@ class _ReportsPageState extends State<ReportsPage> {
             ),
           );
         }
+        if (!widget.example && (report!.generating || report.failed)) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (report.generating) const CircularProgressIndicator(),
+                  const SizedBox(height: 24),
+                  Text(
+                    report.generating ? s.reportPending : s.reportFailedText,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  if (report.generating)
+                    Text(
+                      s.reportGeneratingText,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  TextButton(
+                    onPressed: () => context.go('/reports'),
+                    child: Text(s.reports),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         return Stack(
           children: [
             Positioned.fill(
@@ -308,6 +337,13 @@ class _ReportsPageState extends State<ReportsPage> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           const SizedBox(height: 24),
+                          if (report?.developmentPreview == true) ...[
+                            Text(
+                              s.developmentReport,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(20),
@@ -367,7 +403,7 @@ class _ReportsPageState extends State<ReportsPage> {
                               ),
                           const Divider(),
                           Text(
-                            s.watch,
+                            widget.example ? s.watch : s.fullReading,
                             style: const TextStyle(
                               fontSize: 19,
                               fontWeight: FontWeight.w600,
@@ -502,7 +538,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
   @override
   void dispose() {
-    model?.setActive(false);
+    model?.setActive(false, view: this);
     super.dispose();
   }
 }

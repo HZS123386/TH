@@ -357,7 +357,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountText => '保留你的资料与报告，继续每一次探索。';
 
   @override
-  String get deviceProfile => '当前设备的出生资料';
+  String get deviceProfile => '出生资料';
 
   @override
   String get language => '语言';
@@ -369,7 +369,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get privacy => '资料与隐私';
 
   @override
-  String get privacyText => '本次预览将出生资料保存在当前设备。星盘结果与报告权益以服务返回为准。你可以清除本机出生资料。';
+  String get privacyText =>
+      '草稿与访问凭证保存在本机。测算资料、星盘和报告保存在当前游客会话或账号下。排盘由 RoxyAPI 计算，AI 解读仅使用星盘事实，不发送姓名、城市文字或聊天记录。清除本机资料不会删除服务端记录。';
 
   @override
   String get clearBirth => '清除本机出生资料';
@@ -387,12 +388,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get saveBirth => '保存并查看星盘';
 
   @override
-  String get nickname => '称呼（选填）';
-
-  @override
-  String get nicknamePlaceholder => '希望怎么称呼你';
-
-  @override
   String get placeRequired => '请选择或填写出生地点';
 
   @override
@@ -405,7 +400,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get back => '返回';
 
   @override
-  String get birthStorage => '保存在当前设备，可随时修改或清除。';
+  String get birthStorage => '无需登录即可排盘和阅读报告，当前设备可继续查看本次结果。';
 
   @override
   String get profileMissing => '尚未填写出生资料';
@@ -536,9 +531,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get calendarGregorian => '公历';
 
   @override
-  String get calendarBuddhist => '佛历';
-
-  @override
   String get timeUnknown => '不记得准确时间';
 
   @override
@@ -575,7 +567,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deletionSetup => '需要服务端开启账号删除接口后，才能提交删除请求。';
 
   @override
-  String get aiConsent => '开始生成前，请确认同意使用出生资料生成 AI 解读。';
+  String get aiConsent =>
+      '生成报告时，会把已计算的星盘事实发送给 AI 服务来整理解读，不发送姓名、城市文字或聊天记录。是否同意？';
 
   @override
   String get consentGenerate => '同意并生成';
@@ -663,4 +656,96 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get zPisces => '双鱼座';
+
+  @override
+  String get chartRules => '热带黄道 · Placidus 宫制 · 真实交点';
+
+  @override
+  String get chartSource => '根据你的出生资料，由 RoxyAPI 实际排盘';
+
+  @override
+  String get dateOnlyRules =>
+      '出生时间未知：以当地中午估算行星位置，不展示月亮、上升、宫位及相位。接近星座交界的位置也会隐藏。';
+
+  @override
+  String get calculateChart => '生成我的星盘';
+
+  @override
+  String get saveForChart => '请先确认并保存出生资料，再生成个人星盘。';
+
+  @override
+  String get retrograde => '逆行';
+
+  @override
+  String get orb => '容许度';
+
+  @override
+  String get aspectConjunction => '合相';
+
+  @override
+  String get aspectSextile => '六分相';
+
+  @override
+  String get aspectSquare => '四分相';
+
+  @override
+  String get aspectTrine => '三分相';
+
+  @override
+  String get aspectOpposition => '对分相';
+
+  @override
+  String get fullReading => '你的完整解读';
+
+  @override
+  String get developmentReport => '本地开发预览：本报告免费展示完整内容，未产生内购或付款。';
+
+  @override
+  String get reportGeneratingText =>
+      '正在结合你的行星、宫位与相位整理个人解读。生成后会自动显示，离开页面后也可以回来继续查看。';
+
+  @override
+  String get reportFailedText => '本次解读未能完成。请返回报告页重新生成，系统不会使用示例内容替代你的结果。';
+
+  @override
+  String get roxyUnavailable => '排盘服务暂时不可用，请稍后重试。';
+
+  @override
+  String get roxyQuota => '当前排盘请求较多，请稍后重试。';
+
+  @override
+  String get profileChanged => '出生资料已更新，请重新打开资料页确认并保存。';
+
+  @override
+  String get birthRegion => '省／府';
+
+  @override
+  String get selectCountry => '选择或输入国家';
+
+  @override
+  String get selectRegion => '选择或搜索省／府';
+
+  @override
+  String get selectBirthCity => '请从候选列表中选择出生城市';
+
+  @override
+  String get countryFirst => '请先选择国家';
+
+  @override
+  String get regionFirst => '请先选择省／府';
+
+  @override
+  String get regionNotNeeded => '无需选择';
+
+  @override
+  String get birthLocationHint => '可输入搜索，也可展开列表选择。选定城市后自动匹配出生地信息。';
+
+  @override
+  String get moreLocations => '加载更多地点';
+
+  @override
+  String get guestReading => '无需登录也能查看个人星盘与报告。';
+
+  @override
+  String get optionalLogin => '登录／注册（可选）';
 }

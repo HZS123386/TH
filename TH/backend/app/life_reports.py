@@ -16,6 +16,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import Field, model_validator
 
 from . import thai
+from .astrology import CHAPTERS as WESTERN_CHAPTERS, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
 from .bazi_reports import report_progress_context, report_usage_context
 from .life_card_payments import CARD_AMOUNT, LifeCardPayments
 from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
@@ -83,6 +84,8 @@ def explain(identifier, fact, language):
     def sign(index):
         return labels["signs"][index % 12]
     zh = language == "zh"
+    if fact.get("provider") == "roxy":
+        return {"id": identifier, "title": fact["title"], "detail": fact["detail"]}
     if fact["type"] == "house":
         title = f"第{fact['number']}宫" if zh else f"เรือนที่ {fact['number']}"
         occupants = "、".join(planet(key) for key in fact["occupants"]) or ("未记录宫内星体" if zh else "ไม่มีดาวอยู่ในเรือนนี้")
@@ -124,6 +127,11 @@ class LifeReports:
 
     def __init__(self, store, settings, model_slots, calculation_slots):
         self.store, self.calculation_slots = store, calculation_slots
+        self.settings = settings
+        if settings.life_astrology_provider not in ("thai", "roxy"):
+            raise ValueError("invalid LIFE_ASTROLOGY_PROVIDER")
+        # Domain adapters own calculations/evidence; report access and generation remain here.
+        self.adapters = {"astrology": RoxyAstrology(settings, store)}
         self.writer = LifeWriter(store, settings, model_slots)
         self.parts_writer = LifeWriter(store, settings, model_slots, charge=False)
         self.tasks = {}
@@ -164,6 +172,8 @@ class LifeReports:
                 raise ReportLeaseLost()
 
     def bundle(self, body, chart, reading, months=None):
+        if western(chart):
+            return self.adapters["astrology"].bundle(body, chart, reading)
         topic = FORTUNE_TOPICS.get(reading) if body.report_kind == "fortune" else None
         result = grounding(ThaiReadingInput(profile=body.profile, year=body.year, reading="overview" if topic else reading),
                            chart, months or [], houses=topic["houses"] if topic else None)
@@ -193,7 +203,8 @@ class LifeReports:
             snapshot.pop("user_question")
         if body.career and body.career.focus is None:
             snapshot["career"].pop("focus")
-        version = CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
+        use_roxy = self.settings.life_astrology_provider == "roxy" and not body.career
+        version = WESTERN_VERSION if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
         fingerprint = hashlib.sha256(encoded([version, snapshot]).encode()).hexdigest()
         with self.store.connect() as db:
             existing = db.execute("SELECT id FROM life_reports WHERE owner=? AND fingerprint=?", (owner, fingerprint)).fetchone()
@@ -204,10 +215,11 @@ class LifeReports:
         else:
             async with self.calculation_slots:
                 # Keep the submitted time unknown; only this report's calculation uses an explicit noon estimate.
-                chart = await asyncio.to_thread(thai.natal, {**profile, "birth_time": profile["birth_time"] or "12:00"})
+                chart = (await self.adapters["astrology"].calculate(body.profile, owner, network) if use_roxy else
+                         await asyncio.to_thread(thai.natal, {**profile, "birth_time": profile["birth_time"] or "12:00"}))
             if chart["status"] != "ready":
                 raise HTTPException(422, "thai_reading_details_required")
-            if not profile["birth_time"]:
+            if not profile["birth_time"] and not use_roxy:
                 chart["time_known"] = False
                 chart["calculation_input"]["time_precision"] = "estimated-noon"
             report_id = secrets.token_hex(16)
@@ -268,22 +280,25 @@ class LifeReports:
                         preview_state="ready", lease="", lease_until=0)
             return
         bundle = self.bundle(body, chart, "overview")
-        topics = ("love", "work", "money") if body.user_question else ("love",)
-        for topic in topics:
-            related = self.bundle(body, chart, topic)
-            bundle["evidence"].update(related["evidence"])
-            bundle["topic_evidence"] = list(dict.fromkeys([*bundle["topic_evidence"], *related["topic_evidence"]]))
-        bundle["citation_rules"] = {"trait_house_ids": TRAIT_HOUSES,
-                                    "summary_house_ids": bundle["topic_evidence"],
-                                    "supporting_natal_ids": [key for key, item in bundle["evidence"].items() if item["type"] in ("planet", "ascendant")]}
+        if not western(chart):
+            topics = ("love", "work", "money") if body.user_question else ("love",)
+            for topic in topics:
+                related = self.bundle(body, chart, topic)
+                bundle["evidence"].update(related["evidence"])
+                bundle["topic_evidence"] = list(dict.fromkeys([*bundle["topic_evidence"], *related["topic_evidence"]]))
+            bundle["citation_rules"] = {"trait_house_ids": TRAIT_HOUSES,
+                                        "summary_house_ids": bundle["topic_evidence"],
+                                        "supporting_natal_ids": [key for key, item in bundle["evidence"].items() if item["type"] in ("planet", "ascendant")]}
         bundle.update(stage="preview", reading="life-preview")
         if body.user_question:
             bundle["user_question"] = body.user_question
+        elif body.career_question and western(chart):
+            bundle["user_question"] = {"subject": "career decision", **body.career_question.model_dump(mode="json")}
         result = await self.writer.generate(bundle, owner, network)
         values = {"preview_state": result["state"], "lease": "", "lease_until": 0}
         if result.get("story"):
             preview = {"story": result["story"], "evidence": bundle["evidence"]}
-            if body.career_question:
+            if body.career_question and not western(chart):
                 answer = await self.career_preview(body.career_question, chart, body.profile,
                                                    direct_question=body.career_question.focus is None)
                 preview["career_answer"] = answer["story"]["summary"]
@@ -305,14 +320,16 @@ class LifeReports:
 
     async def write_part(self, report_id, lease, bundle, owner, network):
         key = "plan" if bundle["stage"] == "plan" else bundle["reading"]
-        token = report_progress_context.set(lambda raw: self.record_progress(report_id, lease, {key: writing_progress(raw, bundle["stage"])}))
+        token = report_progress_context.set(lambda raw: self.record_progress(report_id, lease, {key: writing_progress(raw, bundle["stage"], compact=bundle.get("format") == WESTERN_VERSION)}))
         try:
             return await self.parts_writer.generate(bundle, owner, network)
         finally:
             report_progress_context.reset(token)
 
-    def chart_view(self, chart, time_known):
+    def chart_view(self, chart, time_known, language="zh"):
         """Reuse this report's calculated positions for JY's native chart view."""
+        if western(chart):
+            return self.adapters["astrology"].chart_view(chart, language)
         source = chart.get("chart") or {}
         points = source.get("points") or {}
         return {
@@ -336,27 +353,28 @@ class LifeReports:
         fortune = body.get("report_kind") == "fortune"
         labels = CAREER_COPY[language] if career else None
         chart = json.loads(row["chart"])
+        is_western = western(chart)
         records = json.loads(row["chapters"])
         preview = json.loads(row["preview"]) if row["preview"] else None
         title = ("运程解析" if language == "zh" else "วิเคราะห์ดวงชะตา") if fortune else ("人生报告" if language == "zh" else "รายงานชีวิต")
-        version = FORTUNE_VERSION if fortune else VERSION
+        version = chart["version"] if is_western else FORTUNE_VERSION if fortune else VERSION
         if career:
             title = preview["story"].get("title", labels["title"]) if preview else labels["title"]
             version = preview.get("version", "career-decision-1") if preview else CAREER_VERSION
         marks = json.loads(row.get("generation_progress", "{}"))
         preview_sections = [{"key": key, "percent": 100 if preview else min(99, marks.get(key, 0))}
                             for key in ("preview_summary", "preview_strength", "preview_decisions", "preview_relationships")]
-        chapter_keys = FORTUNE_CHAPTERS if fortune else CHAPTERS
+        chapter_keys = WESTERN_CHAPTERS if is_western else FORTUNE_CHAPTERS if fortune else CHAPTERS
         parts = {key: 100 if key in records else min(99, marks.get(key, 0)) for key in chapter_keys}
         sections = ([{"key": key, "percent": parts[key]} for key in chapter_keys] + [
             {"key": "plan", "percent": 100 if row["plan"] else min(99, marks.get("plan", 0))},
-        ]) if fortune else [
+        ]) if fortune or is_western else [
             {"key": "work", "percent": parts["work"]}, {"key": "money", "percent": parts["money"]},
             {"key": "relationships", "percent": (parts["love"] + parts["family"]) / 2},
             {"key": "annual", "percent": parts["annual"]},
             {"key": "plan", "percent": 100 if row["plan"] else min(99, marks.get("plan", 0))},
         ]
-        completed = (sum(key in records for key in chapter_keys) + bool(row["plan"])) if fortune else (
+        completed = (sum(key in records for key in chapter_keys) + bool(row["plan"])) if fortune or is_western else (
             sum(key in records for key in ("work", "money", "annual")) + ("love" in records and "family" in records) + bool(row["plan"]))
         if career:
             sections = [{"key": "work", "percent": parts["work"]}]
@@ -364,7 +382,10 @@ class LifeReports:
             chapter_keys = ("work",)
         titles = [labels["chapter"]] if labels else TITLES[language]
         questions = [list(labels["paid_titles"])] if labels else QUESTIONS[language]
-        if fortune:
+        if is_western:
+            titles = list(WESTERN_TITLES[language][:5])
+            questions = [[question] for question in WESTERN_QUESTIONS[language]]
+        elif fortune:
             titles = [FORTUNE_TOPICS[key][language]["title"] for key in chapter_keys]
             titles[0] = f"{body['year']}年运程" if language == "zh" else f"ดวงปี {body['year']}"
             questions = [FORTUNE_TOPICS[key][language]["questions"] for key in chapter_keys]
@@ -373,8 +394,11 @@ class LifeReports:
         result = {
             "id": row["id"], "version": version, "title": title,
             "input": body, "created_at": stamp(row["created"]), "location": chart["location"],
-            "method": {"name": "Thai Suriyayatra", "house_system": "whole-sign", "version": thai.ENGINE_VERSION},
-            "chart": self.chart_view(chart, bool(body["profile"].get("birth_time"))),
+            "method": ({"name": "RoxyAPI Western Astrology", "house_system": "placidus", "version": "v2",
+                        "zodiac": "tropical", "node_type": "true", "source": chart["source"]} if is_western else
+                       {"name": "Thai Suriyayatra", "house_system": "whole-sign", "version": thai.ENGINE_VERSION}),
+            "format": "western-compact" if is_western else "legacy",
+            "chart": self.chart_view(chart, bool(body["profile"].get("birth_time")), language),
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
                               "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
             "price": {"amount": 9900, "currency": "THB", "display": "฿99", "mode": "direct"} if career
@@ -386,7 +410,7 @@ class LifeReports:
             "preview_generation_progress": {"percent": int(sum(section["percent"] for section in preview_sections) / 4), "sections": preview_sections},
             "feedback": row["feedback"],
             "catalog": [{"key": key, "title": titles[index], "questions": questions[index],
-                         "houses": FORTUNE_TOPICS[key]["houses"] if fortune else list(HOUSES[key]), "ready": key in records} for index, key in enumerate(chapter_keys)],
+                         "houses": [] if is_western else FORTUNE_TOPICS[key]["houses"] if fortune else list(HOUSES[key]), "ready": key in records} for index, key in enumerate(chapter_keys)],
             "preview": {"summary": public_point(preview["story"]["summary"], preview["evidence"], language),
                         "traits": [public_point(item, preview["evidence"], language) for item in preview["story"]["traits"]]} if preview else None,
             "chapters": [], "plan": None,
@@ -512,7 +536,7 @@ class LifeReports:
             preview_context = {"summary": preview["summary"]["text"],
                                "traits": [{key: item[key] for key in ("key", "title", "text")} for item in preview["traits"]]}
             records = json.loads(row["chapters"])
-            chapter_keys = FORTUNE_CHAPTERS if body.report_kind == "fortune" else CHAPTERS
+            chapter_keys = WESTERN_CHAPTERS if western(chart) else FORTUNE_CHAPTERS if body.report_kind == "fortune" else CHAPTERS
             slots = asyncio.Semaphore(self.chapter_concurrency)
 
             async def chapter(reading):
@@ -546,6 +570,8 @@ class LifeReports:
                        for reading in chapter_keys for index, item in enumerate(records[reading]["story"]["actions"])}
             bundle = {"stage": "plan", "reading": "life-plan", "language": body.profile.language, "preview": preview_context,
                       "source_actions": actions, "translation_fields": {}, "fixed_translations": {}}
+            if western(chart):
+                bundle["format"] = WESTERN_VERSION
             if not body.profile.birth_time:
                 bundle["birth_time_basis"] = {"mode": "estimated", "assumed_local_time": "12:00"}
             generated = await self.write_part(report_id, lease, bundle, owner, network)

@@ -15,3 +15,5 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 tmp/
+/output/roxy-western-20261111/
+/output/guest-reading-20261111/

@@ -29,4 +29,14 @@ MODULES = [
         "method": None,
         "calculation_version": None,
     },
+    {
+        "id": "tarot", "status": "planned",
+        "labels": {"zh": "塔罗", "en": "Tarot", "th": "ไพ่ทาโรต์", "vi": "Tarot"},
+        "method": None, "calculation_version": None,
+    },
+    {
+        "id": "numerology", "status": "planned",
+        "labels": {"zh": "数字命理", "en": "Numerology", "th": "เลขศาสตร์", "vi": "Thần số học"},
+        "method": None, "calculation_version": None,
+    },
 ]

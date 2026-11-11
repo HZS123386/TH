@@ -1,6 +1,20 @@
 import '../l10n/generated/app_localizations.dart';
 
 extension ChartStrings on AppLocalizations {
+  String aspectName(double angle) => switch (angle) {
+    0 => aspectConjunction,
+    60 => aspectSextile,
+    90 => aspectSquare,
+    120 => aspectTrine,
+    180 => aspectOpposition,
+    _ => '${angle.toInt()}°',
+  };
+  String chartError(String? code) => switch (code) {
+    'roxy_local_limit' || 'roxy_quota' => roxyQuota,
+    'profile_changed' => profileChanged,
+    'roxy_input_rejected' => saveForChart,
+    _ => roxyUnavailable,
+  };
   List<String> get zodiacNames => [
     zAries,
     zTaurus,

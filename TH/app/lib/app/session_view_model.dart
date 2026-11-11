@@ -5,6 +5,7 @@ import '../core/storage/session_store.dart';
 import '../data/auth_repository.dart';
 import '../data/configuration_repository.dart';
 import '../data/profile_repository.dart';
+import '../core/network/api_client.dart';
 
 class SessionViewModel extends ChangeNotifier {
   SessionViewModel(this.auth, this.profiles, this.configuration, this.drafts) {
@@ -49,17 +50,22 @@ class SessionViewModel extends ChangeNotifier {
     if (_owner != owner) {
       _owner = owner;
       profile = profiles.local(owner);
-      if (auth.signedIn && profile == null) _restoreProfile(owner);
+      if (auth.hasSession && profile?.isServerRevision != true) {
+        _restoreProfile(owner);
+      }
     }
     notifyListeners();
   }
 
   Future<void> _restoreProfile(String expectedOwner) async {
+    final previous = profile;
     try {
       final restored = await profiles.remote();
-      if (restored == null || owner != expectedOwner || profile != null) return;
+      if (restored == null || owner != expectedOwner || profile != previous) {
+        return;
+      }
       await profiles.save(expectedOwner, restored, serverContractReady: false);
-      if (owner == expectedOwner && profile == null) {
+      if (owner == expectedOwner && profile == previous) {
         profile = restored;
         notifyListeners();
       }
@@ -77,13 +83,36 @@ class SessionViewModel extends ChangeNotifier {
   }
 
   Future<void> saveProfile(BirthProfile value) async {
+    if (capabilities.western && !auth.hasSession) {
+      if (!capabilities.guestReading) {
+        throw const ApiFailure('service_unavailable');
+      }
+      await auth.ensureGuest();
+    }
     final currentOwner = owner;
+    final sessionVersion = auth.api.sessionVersion;
+    var candidate = value;
+    if (capabilities.western && auth.hasSession && value.revision == null) {
+      final existing = await profiles.remote();
+      if (owner != currentOwner || auth.api.sessionVersion != sessionVersion) {
+        throw const ApiFailure('session_changed');
+      }
+      if (existing != null) {
+        candidate = BirthProfile.fromJson({
+          ...value.toJson(),
+          'profile_id': existing.id,
+          'revision': existing.revision,
+        });
+      }
+    }
     final saved = await profiles.save(
       currentOwner,
-      value,
+      candidate,
       serverContractReady: capabilities.western,
     );
-    if (currentOwner != owner) return;
+    if (currentOwner != owner || auth.api.sessionVersion != sessionVersion) {
+      throw const ApiFailure('session_changed');
+    }
     profile = saved;
     notifyListeners();
   }

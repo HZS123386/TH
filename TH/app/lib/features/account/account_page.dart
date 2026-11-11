@@ -31,15 +31,21 @@ class AccountPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    d.auth.signedIn ? s.signedIn : s.guest,
+                    d.auth.signedIn ? s.signedIn : s.guestReading,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 20),
                   OutlinedButton(
-                    onPressed: () =>
-                        context.go(d.auth.signedIn ? '/birth' : '/login'),
-                    child: Text(d.auth.signedIn ? s.editBirth : s.login),
+                    onPressed: () => context.go('/birth'),
+                    child: Text(
+                      d.session.profile != null ? s.editBirth : s.start,
+                    ),
                   ),
+                  if (!d.auth.signedIn)
+                    TextButton(
+                      onPressed: () => context.go('/login'),
+                      child: Text(s.optionalLogin),
+                    ),
                 ],
               ),
             ),

@@ -4,6 +4,48 @@ import 'support.dart';
 
 void main() {
   for (final language in ['zh', 'th']) {
+    test(
+      '$language accepts six Western sections and keeps preview access gated',
+      () {
+        final data = fixture(language: language, full: true);
+        data['format'] = 'western-compact';
+        data['method'] = {
+          'name': 'RoxyAPI Western Astrology',
+          'house_system': 'placidus',
+          'version': 'v2',
+        };
+        for (final field in ['catalog', 'chapters']) {
+          final items = objects(data[field]);
+          data[field] = [
+            for (var index = 0; index < westernKeys.length; index++)
+              {...items[index], 'key': westernKeys[index]},
+          ];
+        }
+        data['progress'] = {'completed': 6, 'total': 6};
+        data['generation_progress'] = {
+          'percent': 100,
+          'sections': [
+            for (final key in [...westernKeys, 'plan'])
+              {'key': key, 'percent': 100},
+          ],
+        };
+        final report = LifeReport.parse(data);
+        expect(report.western, isTrue);
+        expect(report.ready, isTrue);
+        expect(report.progressKeys, [...westernKeys, 'plan']);
+        expect(
+          Copy(
+            translations(),
+            language,
+          ).forReport(report).t('report', 'methodValue'),
+          contains('RoxyAPI'),
+        );
+        data['access'] = 'preview';
+        final preview = LifeReport.parse(data);
+        expect(preview.exportPayload()['chapters'], isEmpty);
+        expect(preview.plan, isEmpty);
+      },
+    );
     test('$language preserves the seven topics and full action plan', () {
       final report = LifeReport.parse(fixture(language: language, full: true));
       expect(report.ready, isTrue);

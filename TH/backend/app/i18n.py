@@ -5,6 +5,8 @@ LOCALES = {"zh": "zh-CN", "th": "th-TH", "vi": "vi-VN", "en": "en-US"}
 
 # API messages live on the server; user content and previous messages are never rewritten.
 MESSAGES = {
+    "profile_changed": ("出生资料已更新，请重新确认并保存", "ข้อมูลเกิดเปลี่ยนแล้ว กรุณายืนยันและบันทึกอีกครั้ง", "Thông tin sinh đã đổi. Hãy xác nhận và lưu lại.", "Birth details changed. Confirm and save them again."),
+    "consent_required": ("请先同意本次个人解读的数据处理说明", "กรุณายินยอมตามคำชี้แจงข้อมูลก่อนสร้างคำอ่าน", "Hãy đồng ý với thông báo xử lý dữ liệu trước khi tạo luận giải.", "Accept the reading data notice before generating a report."),
     "life_report_generating": ("报告仍在生成，请完成后再删除。", "รายงานยังสร้างอยู่ กรุณารอให้เสร็จก่อนลบ", "Báo cáo đang được tạo. Vui lòng đợi trước khi xóa.", "The report is still being generated. Wait until it finishes before deleting."),
     "landing_visit_not_found": ("暂时无法记录本次访问。", "ยังบันทึกการเข้าชมครั้งนี้ไม่ได้", "Chưa thể ghi nhận lượt truy cập này.", "This visit could not be recorded."),
     "landing_consent_required": ("请先确认资料使用说明。", "กรุณายืนยันการใช้ข้อมูลก่อน", "Vui lòng xác nhận việc sử dụng dữ liệu.", "Confirm the data-use notice first."),
@@ -191,6 +193,14 @@ MESSAGES.update({
     "life_payment_required": ("付款尚未确认，报告仍处于锁定状态。", "ยังไม่ได้รับการยืนยันการชำระเงิน รายงานยังล็อกอยู่", "Thanh toán chưa được xác nhận.", "Payment has not been confirmed."),
     "life_payment_unavailable": ("暂时无法连接测试支付，请稍后重试。", "ขณะนี้ระบบทดสอบการชำระเงินไม่พร้อมใช้งาน กรุณาลองอีกครั้ง", "Chưa thể kết nối thanh toán thử.", "Test payment is unavailable. Try again shortly."),
 })
+
+
+MESSAGES["landing_notice_outdated"] = (
+    "页面已更新，请打开新版页面并重新确认资料使用说明。",
+    "หน้าเว็บมีการอัปเดต กรุณาเปิดเวอร์ชันล่าสุดและยืนยันคำชี้แจงการใช้ข้อมูลอีกครั้ง",
+    "Trang đã được cập nhật. Hãy mở phiên bản mới và xác nhận lại thông báo sử dụng dữ liệu.",
+    "This page has been updated. Open the latest version and confirm the data-use notice again.",
+)
 
 
 def request_language(request: Request) -> str:

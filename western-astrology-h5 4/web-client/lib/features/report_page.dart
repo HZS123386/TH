@@ -45,7 +45,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   void _changed() {
     final r = _model.report;
     if (r == null) return;
-    if (!_reported && r.full && r.preview.isNotEmpty) {
+    if (!_reported && r.preview.isNotEmpty) {
       _reported = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -204,25 +204,45 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     if (items.isEmpty) return const SizedBox.shrink();
     return ExpansionTile(
       tilePadding: EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(bottom: 12),
+      expandedAlignment: Alignment.centerLeft,
+      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+      childrenPadding: const EdgeInsets.only(top: 4, bottom: 8),
       title: Text(
         c.t('report', 'summaryEvidence'),
-        style: const TextStyle(fontSize: 11, color: lavender),
+        style: const TextStyle(fontSize: 12, color: lavender),
       ),
       children: [
         for (final item in items)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: night.withValues(alpha: .45),
+              border: Border.all(color: line),
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
                   text(item['title']),
-                  style: const TextStyle(color: gold, fontSize: 12),
+                  textAlign: TextAlign.start,
+                  style: const TextStyle(
+                    color: gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                  ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   text(item['detail']),
-                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.start,
+                  style: const TextStyle(
+                    color: lavender,
+                    fontSize: 12,
+                    height: 1.7,
+                  ),
                 ),
               ],
             ),
@@ -240,6 +260,65 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           style: const TextStyle(fontSize: 14, height: 1.65),
         ),
         _evidence(value['evidence'], c),
+      ],
+    ),
+  );
+  Widget _freePreview(LifeReport report, Copy c) => JYCard(
+    key: const ValueKey('free-report-content'),
+    padding: const EdgeInsets.all(20),
+    radius: 18,
+    borderColor: line,
+    colors: const [panel, panel],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!report.full) ...[
+          Text(
+            c.t('jy', 'report.freeTitle'),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 23,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            c.t('jy', 'report.freeHint'),
+            style: const TextStyle(color: lavender, fontSize: 12, height: 1.65),
+          ),
+          const SizedBox(height: 20),
+        ],
+        Text(
+          text(report.input['user_question']).isNotEmpty
+              ? text(report.input['user_question'])
+              : c.t('report', 'takeaway'),
+          style: const TextStyle(
+            color: cream,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _summary(object(report.preview['summary']), c),
+        if (report.preview['career_answer'] != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            c.t('report', 'careerQuestionTitle'),
+            style: const TextStyle(color: gold, fontSize: 15),
+          ),
+          const SizedBox(height: 8),
+          _summary(object(report.preview['career_answer']), c),
+        ],
+        const SizedBox(height: 24),
+        Text(
+          c.t('report', 'traits'),
+          style: const TextStyle(
+            color: gold,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        for (final trait in objects(report.preview['traits'])) _point(trait, c),
       ],
     ),
   );
@@ -314,47 +393,26 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            text(chapter['title']).isEmpty
-                ? text(item['title'])
-                : text(chapter['title']),
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: gold,
+          if (!r.western)
+            Text(
+              text(chapter['title']).isEmpty
+                  ? text(item['title'])
+                  : text(chapter['title']),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: gold,
+              ),
             ),
-          ),
           const SizedBox(height: 8),
           _summary(object(chapter['summary']), c),
-          for (final group in [
-            (
-              'insights',
-              c.language == 'zh'
-                  ? '这对你意味着什么'
-                  : 'สิ่งนี้มีความหมายกับคุณอย่างไร',
-            ),
-            ('watchpoints', c.language == 'zh' ? '需要留意的地方' : 'สิ่งที่ควรใส่ใจ'),
-            ('actions', c.language == 'zh' ? '你可以这样做' : 'สิ่งที่คุณลองทำได้'),
-          ])
-            if (objects(chapter[group.$1]).isNotEmpty) ...[
-              const SizedBox(height: 18),
-              Text(
-                group.$2,
-                style: const TextStyle(
-                  color: gold,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
+          for (final group in ['insights', 'watchpoints', 'actions'])
+            for (final entry in objects(chapter[group]).indexed)
+              _point(
+                entry.$2,
+                c,
+                anchor: group == 'actions' ? 'action-$name-${entry.$1}' : null,
               ),
-              for (final entry in objects(chapter[group.$1]).indexed)
-                _point(
-                  entry.$2,
-                  c,
-                  anchor: group.$1 == 'actions'
-                      ? 'action-$name-${entry.$1}'
-                      : null,
-                ),
-            ],
         ],
       ),
     );
@@ -368,18 +426,28 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                c.t('report', 'plan'),
-                style: const TextStyle(
-                  color: gold,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+              if (!r.western)
+                Text(
+                  c.t('report', 'plan'),
+                  style: const TextStyle(
+                    color: gold,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
               for (final phase in objects(r.plan['phases'])) ...[
                 _point(phase, c),
                 for (final action in objects(phase['actions'])) ...[
-                  _point(action, c),
+                  if (r.western)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        text(action['title']),
+                        style: const TextStyle(color: cream, fontSize: 13),
+                      ),
+                    )
+                  else
+                    _point(action, c),
                   TextButton(
                     onPressed: () => _navigate(
                       'action-${action['chapter']}-${action['index']}',
@@ -429,6 +497,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         return ReportCheckout(
           h5: widget.h5,
           report: r,
+          freePreview: _freePreview(r, c),
           busy: _deleting || _generating,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
           onBack: () => context.go('/?lang=${widget.h5.language}'),
@@ -460,13 +529,22 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
         );
       }
-      const groups = [
-        ('natal', ['pattern']),
-        ('love', ['marriage']),
-        ('career', ['wealth']),
-        ('opportunities', ['risk']),
-        ('partnership', ['romance']),
-      ];
+      final groups = r.western
+          ? [
+              ('natal', ['natal']),
+              ('career', ['career']),
+              ('wealth', ['wealth']),
+              ('love', ['love']),
+              ('risk', ['risk']),
+              ('plan', <String>[]),
+            ]
+          : [
+              ('natal', ['pattern']),
+              ('love', ['marriage']),
+              ('career', ['wealth']),
+              ('opportunities', ['risk']),
+              ('partnership', ['romance']),
+            ];
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
         child: Column(
@@ -523,10 +601,32 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${r.profile['birthplace']} · ${c.t('jy', r.estimated ? 'chart.dateOnly' : 'chart.exact')}',
+                    '${r.profile['birthplace']} · ${r.estimated
+                        ? c.t('jy', 'chart.dateOnly')
+                        : r.western
+                        ? c.t('jy', 'chart.western')
+                        : c.t('jy', 'chart.exact')}',
                     style: const TextStyle(color: lavender, fontSize: 12),
                   ),
                   const SizedBox(height: 18),
+                  if (r.western) ...[
+                    ExpansionTile(
+                      key: const ValueKey('saved-free-report'),
+                      tilePadding: EdgeInsets.zero,
+                      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                      childrenPadding: const EdgeInsets.only(bottom: 16),
+                      title: Text(
+                        c.t('jy', 'report.freeTitle'),
+                        style: const TextStyle(
+                          color: gold,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      children: [_freePreview(r, c)],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   JYCard(
                     radius: 15,
                     padding: const EdgeInsets.symmetric(
@@ -544,13 +644,27 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ReportBadges(copy: c, locked: false, onTap: _navigate),
+                        ReportBadges(
+                          copy: c,
+                          locked: false,
+                          western: r.western,
+                          onTap: (key) => _navigate('report-$key'),
+                        ),
                       ],
                     ),
                   ),
-                  _sectionTitle('overall', c.t('jy', 'chart.title')),
+                  _sectionTitle(
+                    r.western ? 'chart' : 'overall',
+                    c.t('jy', 'chart.title'),
+                  ),
+                  if (r.western)
+                    Text(
+                      c.t('jy', 'chart.western'),
+                      style: const TextStyle(color: lavender, fontSize: 12),
+                    ),
                   ChartView(report: r, copy: c),
-                  for (final key in ['annual', 'overall'])
+                  for (final key
+                      in r.western ? <String>[] : ['annual', 'overall'])
                     for (final item in r.catalog.where(
                       (item) => item['key'] == key,
                     ))
@@ -558,9 +672,12 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   for (final group in groups) ...[
                     _sectionTitle(
                       group.$1,
-                      c.t('jy', 'report.sections.${group.$1}'),
+                      c.t(
+                        'jy',
+                        'report.${r.western ? 'westernSections' : 'sections'}.${group.$1}',
+                      ),
                     ),
-                    if (group.$1 == 'natal') ...[
+                    if (group.$1 == 'natal' && !r.western) ...[
                       _summary(object(r.preview['summary']), c),
                       if (r.preview['career_answer'] != null)
                         _summary(object(r.preview['career_answer']), c),
@@ -574,7 +691,8 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                         (item) => item['key'] == key,
                       ))
                         _chapter(r, item, c),
-                    if (group.$1 == 'opportunities') _plan(r, c),
+                    if (group.$1 == 'opportunities' || group.$1 == 'plan')
+                      _plan(r, c),
                   ],
                   if (!r.ready) ...[
                     const SizedBox(height: 16),

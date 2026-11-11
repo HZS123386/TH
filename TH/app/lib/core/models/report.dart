@@ -32,9 +32,12 @@ class ReportSnapshot {
     required this.fullState,
     required this.preview,
     required this.sections,
+    this.developmentPreview = false,
   });
   final String id, resultId, locale, summary, previewState, fullState;
   final bool full;
+  final bool developmentPreview;
+  bool get failed => previewState == 'failed' || fullState == 'failed';
   final List<ReportSection> preview, sections;
   bool get generating =>
       ['queued', 'running'].contains(previewState) ||
@@ -75,6 +78,7 @@ class ReportSnapshot {
       locale: locale,
       summary: json['summary'] as String? ?? '',
       full: full,
+      developmentPreview: json['access_reason'] == 'development_preview',
       previewState: json['preview_state'] as String? ?? 'ready',
       fullState: json['full_state'] as String? ?? (full ? 'ready' : 'locked'),
       preview: sections(json['preview']),

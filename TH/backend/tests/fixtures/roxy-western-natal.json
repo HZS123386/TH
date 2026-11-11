@@ -1,0 +1,593 @@
+{
+  "birthDetails": {
+    "date": "1992-04-15",
+    "time": "07:15:00",
+    "latitude": 13.7563,
+    "longitude": 100.5018,
+    "timezone": 7,
+    "nodeType": "true"
+  },
+  "planets": [
+    {
+      "name": "Sun",
+      "longitude": 25.28904915617966,
+      "latitude": -0.0002272041352815464,
+      "sign": "Aries",
+      "degree": 25.28904915617966,
+      "speed": 0.9785427792029964,
+      "isRetrograde": false,
+      "house": 12,
+      "dignity": "exaltation",
+      "interpretation": {
+        "summary": "Your Sun in Aries in The Twelfth House reveals how you express self-awareness and ego with ambitious and independent energy in the realm of karma.",
+        "detailed": "Sun represents self-awareness and ego. In Aries (Ram), this energy becomes ambitious, independent, impatient. Located in The Twelfth House, you direct this Aries Sun energy toward karma and self-undoing. This creates a unique expression where your self-awareness and ego naturally manifests through ambitious, independent, impatient approaches in matters related to the twelfth house.",
+        "keywords": [
+          "active",
+          "awareness",
+          "bright",
+          "confidence",
+          "consciousness",
+          "ambitious",
+          "independent",
+          "impatient"
+        ]
+      }
+    },
+    {
+      "name": "Moon",
+      "longitude": 176.46142970482703,
+      "latitude": -5.007315821694489,
+      "sign": "Virgo",
+      "degree": 26.461429704827026,
+      "speed": 14.341930634007284,
+      "isRetrograde": false,
+      "house": 5,
+      "dignity": "peregrine"
+    },
+    {
+      "name": "Mercury",
+      "longitude": 0.12718326229841095,
+      "latitude": -1.4402097248608037,
+      "sign": "Aries",
+      "degree": 0.12718326229841095,
+      "speed": 0.4675198295964549,
+      "isRetrograde": false,
+      "house": 11,
+      "dignity": "peregrine"
+    },
+    {
+      "name": "Venus",
+      "longitude": 9.502758318426691,
+      "latitude": -1.5056649683792562,
+      "sign": "Aries",
+      "degree": 9.502758318426691,
+      "speed": 1.2322820585564216,
+      "isRetrograde": false,
+      "house": 12,
+      "dignity": "detriment"
+    },
+    {
+      "name": "Mars",
+      "longitude": 343.8896752732477,
+      "latitude": -1.298991250756789,
+      "sign": "Pisces",
+      "degree": 13.88967527324769,
+      "speed": 0.7737653548443291,
+      "isRetrograde": false,
+      "house": 11,
+      "dignity": "peregrine"
+    },
+    {
+      "name": "Jupiter",
+      "longitude": 155.01555620484132,
+      "latitude": 1.3321931341396056,
+      "sign": "Virgo",
+      "degree": 5.015556204841317,
+      "speed": -0.04826258797017147,
+      "isRetrograde": true,
+      "house": 4,
+      "dignity": "detriment"
+    },
+    {
+      "name": "Saturn",
+      "longitude": 316.98132118532294,
+      "latitude": -0.7443851699913783,
+      "sign": "Aquarius",
+      "degree": 16.98132118532294,
+      "speed": 0.06678995300433144,
+      "isRetrograde": false,
+      "house": 10,
+      "dignity": "domicile"
+    },
+    {
+      "name": "Uranus",
+      "longitude": 287.99577023291494,
+      "latitude": -0.40175885875560446,
+      "sign": "Capricorn",
+      "degree": 17.995770232914936,
+      "speed": 0.005832477973882533,
+      "isRetrograde": false,
+      "house": 9,
+      "dignity": "peregrine"
+    },
+    {
+      "name": "Neptune",
+      "longitude": 288.94949821642626,
+      "latitude": 0.741641271477773,
+      "sign": "Capricorn",
+      "degree": 18.949498216426264,
+      "speed": 0.002963016665205487,
+      "isRetrograde": false,
+      "house": 9,
+      "dignity": "peregrine"
+    },
+    {
+      "name": "Pluto",
+      "longitude": 232.2911883086899,
+      "latitude": 15.234961888111798,
+      "sign": "Scorpio",
+      "degree": 22.291188308689897,
+      "speed": -0.023962962788644404,
+      "isRetrograde": true,
+      "house": 7,
+      "dignity": "domicile"
+    },
+    {
+      "name": "North Node",
+      "longitude": 273.2241117519094,
+      "latitude": 0,
+      "sign": "Capricorn",
+      "degree": 3.2241117519093905,
+      "speed": -0.15855517194967206,
+      "isRetrograde": true,
+      "house": 8
+    },
+    {
+      "name": "South Node",
+      "longitude": 93.22411175190939,
+      "latitude": 0,
+      "sign": "Cancer",
+      "degree": 3.2241117519093905,
+      "speed": -0.15855517194967206,
+      "isRetrograde": true,
+      "house": 2
+    },
+    {
+      "name": "Chiron",
+      "longitude": 123.39782972096948,
+      "latitude": -6.96182919858768,
+      "sign": "Leo",
+      "degree": 3.397829720969483,
+      "speed": 0.0186816630472606,
+      "isRetrograde": false,
+      "house": 3
+    },
+    {
+      "name": "Black Moon Lilith",
+      "longitude": 309.370590828832,
+      "latitude": 2.965559131417873,
+      "sign": "Aquarius",
+      "degree": 9.370590828832007,
+      "speed": 0.11114357455915069,
+      "isRetrograde": false,
+      "house": 10
+    }
+  ],
+  "houses": [
+    {
+      "number": 1,
+      "longitude": 44.17440479780523,
+      "sign": "Taurus",
+      "degree": 14.17440479780523
+    },
+    {
+      "number": 2,
+      "longitude": 72.94900893109897,
+      "sign": "Gemini",
+      "degree": 12.949008931098973
+    },
+    {
+      "number": 3,
+      "longitude": 98.8814618646752,
+      "sign": "Cancer",
+      "degree": 8.881461864675202
+    },
+    {
+      "number": 4,
+      "longitude": 125.3052328703024,
+      "sign": "Leo",
+      "degree": 5.3052328703024045
+    },
+    {
+      "number": 5,
+      "longitude": 155.03124613606133,
+      "sign": "Virgo",
+      "degree": 5.031246136061327
+    },
+    {
+      "number": 6,
+      "longitude": 188.97529955609963,
+      "sign": "Libra",
+      "degree": 8.975299556099628
+    },
+    {
+      "number": 7,
+      "longitude": 224.17440479780524,
+      "sign": "Scorpio",
+      "degree": 14.174404797805238
+    },
+    {
+      "number": 8,
+      "longitude": 252.94900893109897,
+      "sign": "Sagittarius",
+      "degree": 12.949008931098973
+    },
+    {
+      "number": 9,
+      "longitude": 278.8814618646752,
+      "sign": "Capricorn",
+      "degree": 8.881461864675202
+    },
+    {
+      "number": 10,
+      "longitude": 305.3052328703024,
+      "sign": "Aquarius",
+      "degree": 5.3052328703024045
+    },
+    {
+      "number": 11,
+      "longitude": 335.0312461360613,
+      "sign": "Pisces",
+      "degree": 5.031246136061327
+    },
+    {
+      "number": 12,
+      "longitude": 8.975299556099639,
+      "sign": "Aries",
+      "degree": 8.975299556099639
+    }
+  ],
+  "houseSystem": "placidus",
+  "aspects": [
+    {
+      "planet1": "North Node",
+      "planet2": "South Node",
+      "type": "OPPOSITION",
+      "orb": 0,
+      "angle": 180,
+      "isApplying": false
+    },
+    {
+      "planet1": "Venus",
+      "planet2": "Black Moon Lilith",
+      "type": "SEXTILE",
+      "orb": 0.1321674895946785,
+      "angle": 60,
+      "isApplying": false
+    },
+    {
+      "planet1": "North Node",
+      "planet2": "Chiron",
+      "type": "QUINCUNX",
+      "orb": 0.1737179690600783,
+      "angle": 150,
+      "isApplying": false
+    },
+    {
+      "planet1": "South Node",
+      "planet2": "Chiron",
+      "type": "SEMI_SEXTILE",
+      "orb": 0.17371796906009251,
+      "angle": 30,
+      "isApplying": false
+    },
+    {
+      "planet1": "Uranus",
+      "planet2": "Neptune",
+      "type": "CONJUNCTION",
+      "orb": 0.9537279835113281,
+      "angle": 0,
+      "isApplying": true
+    },
+    {
+      "planet1": "Jupiter",
+      "planet2": "North Node",
+      "type": "TRINE",
+      "orb": 1.791444452931927,
+      "angle": 120,
+      "isApplying": false
+    },
+    {
+      "planet1": "Jupiter",
+      "planet2": "South Node",
+      "type": "SEXTILE",
+      "orb": 1.791444452931927,
+      "angle": 60,
+      "isApplying": false
+    },
+    {
+      "planet1": "Saturn",
+      "planet2": "Uranus",
+      "type": "SEMI_SEXTILE",
+      "orb": 1.0144490475919952,
+      "angle": 30,
+      "isApplying": true
+    },
+    {
+      "planet1": "Sun",
+      "planet2": "Moon",
+      "type": "QUINCUNX",
+      "orb": 1.172380548647368,
+      "angle": 150,
+      "isApplying": false
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "Chiron",
+      "type": "TRINE",
+      "orb": 3.2706464586710666,
+      "angle": 120,
+      "isApplying": true
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "South Node",
+      "type": "SQUARE",
+      "orb": 3.096928489610974,
+      "angle": 90,
+      "isApplying": true
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "North Node",
+      "type": "SQUARE",
+      "orb": 3.0969284896110025,
+      "angle": 90,
+      "isApplying": true
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "Mercury",
+      "type": "OPPOSITION",
+      "orb": 3.6657535574713904,
+      "angle": 180,
+      "isApplying": true
+    },
+    {
+      "planet1": "Jupiter",
+      "planet2": "Neptune",
+      "type": "SESQUIQUADRATE",
+      "orb": 1.0660579884150536,
+      "angle": 135,
+      "isApplying": true
+    },
+    {
+      "planet1": "Jupiter",
+      "planet2": "Chiron",
+      "type": "SEMI_SEXTILE",
+      "orb": 1.6177264838718344,
+      "angle": 30,
+      "isApplying": true
+    },
+    {
+      "planet1": "Neptune",
+      "planet2": "Pluto",
+      "type": "SEXTILE",
+      "orb": 3.341690092263633,
+      "angle": 60,
+      "isApplying": true
+    },
+    {
+      "planet1": "Saturn",
+      "planet2": "North Node",
+      "type": "SEMI_SQUARE",
+      "orb": 1.24279056658645,
+      "angle": 45,
+      "isApplying": true
+    },
+    {
+      "planet1": "Saturn",
+      "planet2": "South Node",
+      "type": "SESQUIQUADRATE",
+      "orb": 1.24279056658645,
+      "angle": 135,
+      "isApplying": true
+    },
+    {
+      "planet1": "Saturn",
+      "planet2": "Neptune",
+      "type": "SEMI_SEXTILE",
+      "orb": 1.9681770311033233,
+      "angle": 30,
+      "isApplying": true
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "Uranus",
+      "type": "SEXTILE",
+      "orb": 4.106094959667246,
+      "angle": 60,
+      "isApplying": true
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "Pluto",
+      "type": "SEXTILE",
+      "orb": 4.170241396137129,
+      "angle": 60,
+      "isApplying": false
+    },
+    {
+      "planet1": "Uranus",
+      "planet2": "Pluto",
+      "type": "SEXTILE",
+      "orb": 4.295418075774961,
+      "angle": 60,
+      "isApplying": true
+    },
+    {
+      "planet1": "Chiron",
+      "planet2": "Black Moon Lilith",
+      "type": "OPPOSITION",
+      "orb": 5.972761107862539,
+      "angle": 180,
+      "isApplying": false
+    },
+    {
+      "planet1": "Saturn",
+      "planet2": "Pluto",
+      "type": "SQUARE",
+      "orb": 5.309867123366956,
+      "angle": 90,
+      "isApplying": true
+    },
+    {
+      "planet1": "Venus",
+      "planet2": "Chiron",
+      "type": "TRINE",
+      "orb": 6.104928597457203,
+      "angle": 120,
+      "isApplying": false
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "Neptune",
+      "type": "SEXTILE",
+      "orb": 5.059822943178574,
+      "angle": 60,
+      "isApplying": true
+    },
+    {
+      "planet1": "Venus",
+      "planet2": "North Node",
+      "type": "SQUARE",
+      "orb": 6.2786465665172955,
+      "angle": 90,
+      "isApplying": false
+    },
+    {
+      "planet1": "Venus",
+      "planet2": "South Node",
+      "type": "SQUARE",
+      "orb": 6.2786465665172955,
+      "angle": 90,
+      "isApplying": false
+    },
+    {
+      "planet1": "Sun",
+      "planet2": "Neptune",
+      "type": "SQUARE",
+      "orb": 6.339550939753394,
+      "angle": 90,
+      "isApplying": false
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "Saturn",
+      "type": "SEMI_SQUARE",
+      "orb": 1.8541379230245525,
+      "angle": 45,
+      "isApplying": true
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "Neptune",
+      "type": "TRINE",
+      "orb": 7.511931488400762,
+      "angle": 120,
+      "isApplying": false
+    },
+    {
+      "planet1": "Saturn",
+      "planet2": "Black Moon Lilith",
+      "type": "CONJUNCTION",
+      "orb": 7.610730356490933,
+      "angle": 0,
+      "isApplying": true
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "North Node",
+      "type": "SQUARE",
+      "orb": 6.7626820470823645,
+      "angle": 90,
+      "isApplying": true
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "South Node",
+      "type": "SQUARE",
+      "orb": 6.7626820470823645,
+      "angle": 90,
+      "isApplying": true
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "Pluto",
+      "type": "TRINE",
+      "orb": 7.83599495360852,
+      "angle": 120,
+      "isApplying": false
+    },
+    {
+      "planet1": "Sun",
+      "planet2": "North Node",
+      "type": "TRINE",
+      "orb": 7.9350625957297325,
+      "angle": 120,
+      "isApplying": true
+    },
+    {
+      "planet1": "Sun",
+      "planet2": "Pluto",
+      "type": "QUINCUNX",
+      "orb": 2.9978608474897612,
+      "angle": 150,
+      "isApplying": false
+    }
+  ],
+  "ascendant": {
+    "longitude": 44.17440479780523,
+    "sign": "Taurus",
+    "degree": 14.17440479780523
+  },
+  "midheaven": {
+    "longitude": 305.3052328703024,
+    "sign": "Aquarius",
+    "degree": 5.3052328703024045
+  },
+  "partOfFortune": {
+    "sign": "Libra",
+    "degree": 15.346785346452606,
+    "longitude": 195.3467853464526,
+    "sect": "day",
+    "house": 6
+  },
+  "vertex": {
+    "longitude": 194.56783754433266,
+    "sign": "Libra",
+    "degree": 14.567837544332662,
+    "house": 6
+  },
+  "summary": {
+    "dominantElement": "Earth",
+    "dominantModality": "Cardinal",
+    "retrogradePlanets": [
+      "Jupiter",
+      "Pluto",
+      "North Node",
+      "South Node"
+    ],
+    "elementDistribution": {
+      "Fire": 3,
+      "Earth": 4,
+      "Air": 1,
+      "Water": 2
+    },
+    "modalityDistribution": {
+      "Cardinal": 5,
+      "Fixed": 2,
+      "Mutable": 3
+    }
+  }
+}

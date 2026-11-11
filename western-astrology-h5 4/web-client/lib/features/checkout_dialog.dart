@@ -8,6 +8,7 @@ class ReportCheckout extends StatelessWidget {
   const ReportCheckout({
     required this.h5,
     required this.report,
+    required this.freePreview,
     required this.onBack,
     required this.onErase,
     required this.onUnlock,
@@ -17,6 +18,7 @@ class ReportCheckout extends StatelessWidget {
   });
   final H5Controller h5;
   final LifeReport report;
+  final Widget freePreview;
   final VoidCallback onBack, onErase, onUnlock;
   final bool busy;
   final String error;
@@ -40,6 +42,9 @@ class ReportCheckout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const FateBrand(compact: true),
+              const SizedBox(height: 20),
+              freePreview,
+              const SizedBox(height: 28),
               const SizedBox(height: 14),
               Text(
                 c.t('jy', 'checkout.eyebrow'),

@@ -530,11 +530,13 @@ class ReportBadges extends StatelessWidget {
   const ReportBadges({
     required this.copy,
     this.locked = true,
+    this.western = false,
     this.onTap,
     super.key,
   });
   final Copy copy;
   final bool locked;
+  final bool western;
   final ValueChanged<String>? onTap;
   @override
   Widget build(BuildContext context) {
@@ -544,17 +546,23 @@ class ReportBadges extends StatelessWidget {
             ...objects(object(copy.data['jyThemes'])['highlights']),
           ]
         : [
-            for (final key in [
-              'overall',
-              'natal',
-              'love',
-              'career',
-              'opportunities',
-              'partnership',
-            ])
+            for (final key
+                in western
+                    ? ['natal', 'career', 'wealth', 'love', 'risk', 'plan']
+                    : [
+                        'overall',
+                        'natal',
+                        'love',
+                        'career',
+                        'opportunities',
+                        'partnership',
+                      ])
               {
                 'id': key,
-                copy.language: copy.t('jy', 'report.sections.$key'),
+                copy.language: copy.t(
+                  'jy',
+                  'report.${western ? 'westernSections' : 'sections'}.$key',
+                ),
                 'icon': {
                   'overall': '✦',
                   'natal': '☉',
@@ -562,6 +570,9 @@ class ReportBadges extends StatelessWidget {
                   'career': '◇',
                   'opportunities': '✧',
                   'partnership': '☽',
+                  'wealth': '◇',
+                  'risk': '✧',
+                  'plan': '✦',
                 }[key],
               },
           ];
