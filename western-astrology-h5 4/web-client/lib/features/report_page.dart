@@ -125,7 +125,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   Future<void> _generate(bool full) async {
     final initial = _model.report;
     if (initial == null || _generating) return;
-    _generating = true;
+    setState(() => _generating = true);
     final state = GenerationState()..phase = full ? 'full' : 'preview';
     Future<void> run() async {
       _generationRequest?.cancel();
@@ -179,7 +179,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     );
     _generationRequest?.cancel();
     state.dispose();
-    _generating = false;
+    if (mounted) setState(() => _generating = false);
   }
 
   void _navigate(String key) {
@@ -429,10 +429,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         return ReportCheckout(
           h5: widget.h5,
           report: r,
-          busy: _deleting,
+          busy: _deleting || _generating,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
           onBack: () => context.go('/?lang=${widget.h5.language}'),
           onErase: () => _erase(),
+          onUnlock: () => _generate(true),
         );
       }
       if (r.preview.isEmpty) {

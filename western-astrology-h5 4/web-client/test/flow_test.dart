@@ -16,6 +16,7 @@ import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/report_view_model.dart';
 import 'package:fate_h5/features/place_picker.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
+import 'package:fate_h5/ui/jy_components.dart';
 import 'support.dart';
 
 http.Response response(dynamic value) => http.Response(
@@ -54,6 +55,84 @@ Future<void> click(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  for (final buttonKey in ['jy-unlock-report', 'jy-app-download']) {
+    testWidgets(
+      '$buttonKey generates and retains all unlocked content without a payment or download',
+      (tester) async {
+        phone(tester);
+        final browser = TestBrowser();
+        var current = fixture();
+        final gate = Completer<void>();
+        var unlocks = 0;
+        final posts = <String>[];
+        final repo = ReportRepository(
+          browser,
+          baseUrl: 'https://example.test',
+          client: MockClient((request) async {
+            expect(request.headers['X-Report-Key'], browser.key);
+            if (request.method == 'POST') {
+              posts.add(request.url.path);
+              expect(
+                request.url.path,
+                '/api/life-reports/${current['id']}/unlock',
+              );
+              expect(jsonDecode(request.body), isEmpty);
+              unlocks++;
+              await gate.future;
+              current = fixture(full: true);
+            }
+            return response(current);
+          }),
+        );
+        final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+        await tester.pumpWidget(
+          H5App(
+            controller: h5,
+            initialLocation:
+                '/report.html?id=${current['id']}&lang=zh&checkout=1',
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(posts, isEmpty);
+        expect(find.byType(ReportCheckout), findsOneWidget);
+        for (final key in ['jy-unlock-report', 'jy-app-download']) {
+          expect(
+            tester.widget<JYButton>(find.byKey(ValueKey(key))).onPressed,
+            isNotNull,
+          );
+        }
+        final button = find.byKey(ValueKey(buttonKey));
+        final repeat = tester.widget<JYButton>(button).onPressed!;
+        await click(tester, button);
+        repeat();
+        await tester.pump();
+        expect(find.byType(GenerationDialog), findsOneWidget);
+        expect(unlocks, 1);
+        expect(find.text(h5.copy.t('jy', 'report.title')), findsNothing);
+        gate.complete();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 700));
+        await tester.pumpAndSettle();
+        expect(find.byType(GenerationDialog), findsNothing);
+        expect(find.byType(ReportCheckout), findsNothing);
+        expect(find.text(h5.copy.t('jy', 'report.title')), findsOneWidget);
+        await click(tester, find.byTooltip(h5.copy.t('life', 'exportPdf')));
+        expect(browser.exported!['access'], 'full');
+        expect(objects(browser.exported!['chapters']), hasLength(7));
+        expect(
+          objects(object(browser.exported!['plan'])['phases']),
+          hasLength(3),
+        );
+        expect(browser.openedPages, isEmpty);
+        expect(posts, ['/api/life-reports/${current['id']}/unlock']);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        h5.dispose();
+      },
+    );
+  }
+
   testWidgets(
     'generation keeps the same visible wheel across stages until the report is ready',
     (tester) async {

@@ -4,30 +4,25 @@ import '../core/models.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
 
-class ReportCheckout extends StatefulWidget {
+class ReportCheckout extends StatelessWidget {
   const ReportCheckout({
     required this.h5,
     required this.report,
     required this.onBack,
     required this.onErase,
+    required this.onUnlock,
     this.busy = false,
     this.error = '',
     super.key,
   });
   final H5Controller h5;
   final LifeReport report;
-  final VoidCallback onBack, onErase;
+  final VoidCallback onBack, onErase, onUnlock;
   final bool busy;
   final String error;
   @override
-  State<ReportCheckout> createState() => _ReportCheckoutState();
-}
-
-class _ReportCheckoutState extends State<ReportCheckout> {
-  bool _downloadNotice = false;
-  @override
   Widget build(BuildContext context) {
-    final c = widget.h5.copy;
+    final c = h5.copy;
     return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: RadialGradient(
@@ -122,10 +117,10 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                     ),
                     const SizedBox(height: 8),
                     JYButton(
-                      key: const ValueKey('jy-payment-preview'),
+                      key: const ValueKey('jy-unlock-report'),
                       label: c.t('jy', 'checkout.pay'),
                       icon: 'lock',
-                      onPressed: null,
+                      onPressed: busy ? null : onUnlock,
                       dimDisabled: false,
                     ),
                     const SizedBox(height: 9),
@@ -140,23 +135,8 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                       label: c.t('jy', 'checkout.download'),
                       icon: 'download',
                       pulse: true,
-                      onPressed: () => setState(() => _downloadNotice = true),
+                      onPressed: busy ? null : onUnlock,
                     ),
-                    if (_downloadNotice)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 9),
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            c.t('jy', 'checkout.downloadUnavailable'),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: lavender,
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -212,16 +192,16 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                 runSpacing: 8,
                 children: [
                   OutlinedButton(
-                    onPressed: widget.busy ? null : widget.onBack,
+                    onPressed: busy ? null : onBack,
                     child: Text(c.t('jy', 'checkout.back')),
                   ),
                   OutlinedButton(
-                    onPressed: widget.busy ? null : widget.onErase,
+                    onPressed: busy ? null : onErase,
                     child: Text(c.t('jy', 'erase')),
                   ),
                 ],
               ),
-              errorMessage(widget.error),
+              errorMessage(error),
             ],
           ),
         ),
