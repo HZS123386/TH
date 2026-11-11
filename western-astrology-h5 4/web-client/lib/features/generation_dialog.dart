@@ -230,23 +230,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                       ),
                                     ),
                                     const SizedBox(height: 15),
-                                    SizedBox(
-                                      height: (box.maxHeight * .21).clamp(
-                                        140.0,
-                                        190.0,
-                                      ),
-                                      child: IgnorePointer(
-                                        child: GenerationVideo(
-                                          active: true,
-                                          finishing:
-                                              _loading &&
-                                              (_reduced || _playbackStarted),
-                                          reduced: _reduced,
-                                          onFinished: _finish,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
                                     AnimatedSwitcher(
                                       duration: Duration(
                                         milliseconds: _reduced ? 0 : 380,
@@ -484,6 +467,24 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                   ],
                                 );
                               },
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: box.maxHeight * .52,
+                          height: (box.maxHeight * .4).clamp(180.0, 340.0),
+                          child: IgnorePointer(
+                            child: Opacity(
+                              opacity: .78,
+                              child: GenerationVideo(
+                                active: true,
+                                finishing:
+                                    _loading && (_reduced || _playbackStarted),
+                                reduced: _reduced,
+                                onFinished: _finish,
+                              ),
                             ),
                           ),
                         ),

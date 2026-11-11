@@ -69,14 +69,14 @@ void main() {
       );
       final report = LifeReport.parse(fixture());
       final state = GenerationState()..update(report, 19, 'preview');
-      var completed = 0;
+      var completed = 0, cancelled = 0;
       await tester.pumpWidget(
         MaterialApp(
           home: GenerationDialog(
             h5: h5,
             state: state,
             full: false,
-            onCancel: () {},
+            onCancel: () => cancelled++,
             onRetry: () {},
             onComplete: (_) => completed++,
           ),
@@ -85,6 +85,7 @@ void main() {
       final wheel = find.byType(GenerationVideo);
       final wheelState = tester.state(wheel);
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
+      expect(tester.getTopLeft(wheel).dy, greaterThanOrEqualTo(320));
       await tester.pump(const Duration(milliseconds: 2100));
       await tester.pump(const Duration(milliseconds: 2600));
       state.update(report, 99, 'preview');
@@ -92,6 +93,8 @@ void main() {
       expect(tester.state(wheel), same(wheelState));
       expect(tester.widget<GenerationVideo>(wheel).finishing, isFalse);
       expect(completed, 0);
+      await tester.tap(find.widgetWithText(TextButton, '取消等待'));
+      expect(cancelled, 1);
       state.ready(report);
       await tester.pump(const Duration(milliseconds: 600));
       await tester.pump();
