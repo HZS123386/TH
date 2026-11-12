@@ -380,7 +380,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     const SizedBox(height: 7),
                     _field(
                       'birth-date',
-                      _date,
+                      birthDateLabel(_date, c.language),
                       c.language == 'zh' ? '年 / 月 / 日' : 'วัน / เดือน / ปี',
                       Icons.calendar_today_outlined,
                       () => _datePicker(h5),
