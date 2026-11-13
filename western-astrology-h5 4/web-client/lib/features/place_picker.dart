@@ -33,6 +33,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       _language = '';
   Place? _province, _city;
   Copy get c => widget.h5.copy;
+
   @override
   void dispose() {
     _countryText.dispose();
@@ -79,6 +80,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     BuildContext context,
     OverlayChildLayoutInfo layout,
     OverlayPortalController portal,
+    String id,
     Widget options,
   ) {
     const gap = 5.0, menuHeight = 185.0;
@@ -87,25 +89,23 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       Offset.zero & layout.childSize,
     );
     final viewport = MediaQueryData.fromView(View.of(context));
-    final bottom =
-        layout.overlaySize.height -
-        viewport.viewInsets.bottom.clamp(
-          viewport.padding.bottom,
-          double.infinity,
-        );
-    final top = viewport.padding.top;
+    final visibleBottom = viewport.size.height - viewport.viewInsets.bottom;
+    final bottom = (visibleBottom < layout.overlaySize.height
+        ? visibleBottom : layout.overlaySize.height) - viewport.padding.bottom - 8;
+    final top = viewport.padding.top + 8;
     if (field.bottom <= top || field.top >= bottom) {
       return const SizedBox.shrink();
     }
     final above = (field.top - top - gap).clamp(0.0, menuHeight);
     final below = (bottom - field.bottom - gap).clamp(0.0, menuHeight);
-    final opensDown = below >= above;
+    final opensDown = below >= 120 || below >= above;
     return Positioned(
       left: field.left,
       width: field.width,
       top: opensDown ? field.bottom + gap : null,
       bottom: opensDown ? null : layout.overlaySize.height - field.top + gap,
       child: ConstrainedBox(
+        key: ValueKey('$id-options'),
         constraints: BoxConstraints(maxHeight: opensDown ? below : above),
         child: TextFieldTapRegion(
           groupId: portal,
@@ -178,7 +178,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
               OverlayPortal.overlayChildLayoutBuilder(
                 controller: portal,
                 overlayChildBuilder: (context, layout) =>
-                    _positionMenu(context, layout, portal, options),
+                    _positionMenu(context, layout, portal, id, options),
                 child: SizedBox(
                   height: 46,
                   child: TextFormField(

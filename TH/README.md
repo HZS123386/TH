@@ -125,6 +125,16 @@ e2e/                # 桌面与手机浏览器流程
 
 本地账号接口：`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`、`POST /api/auth/logout`。注册和登录只接受 username、password，生辰接口不接受客户端指定其他用户 ID。密码使用独立随机盐与 scrypt 摘要存储，参数采用 [OWASP 的 scrypt 配置](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#scrypt)中的 N=2^15、r=8、p=3；使用 Python 标准库实现，摘要计算在后台线程执行，最多同时执行两次。
 
+## 落地页西洋占星与解读
+
+落地页现有 `/api/life-reports` 流程支持 `LIFE_ASTROLOGY_PROVIDER=roxy`：由 RoxyAPI v2 的 `/astrology/natal-chart` 计算热带黄道、Placidus 宫位和真实交点，Qwen 使用已验证的盘面及 Roxy 的解释整合中文或泰语解读。需在服务端配置 `ROXY_ENABLED=true`、`ROXY_API_KEY` 和原有 Qwen 配置；密钥不进入前端。`thai` 仍用于原有泰式流程，保存的旧报告继续使用原快照。
+
+新报告先生成免费摘要和三个特点；解锁后生成本命、事业、财运、感情姻缘、风险预警与行动建议六块内容。完整内容采用精简契约，五个主题各含一个特点、一个提醒及两项简短行动，最后整理行动优先级。排盘每份新报告调用一次并保存，解锁、失败重试、导出均复用快照，不重复调用 Roxy。只有本命盘依据，不推造年度行运或具体应期。
+
+`backend/app/roxy.py` 的共享传输负责鉴权、限额、超时、请求合并和缓存；`backend/app/astrology.py` 的领域适配器负责计算输入、响应校验与主题依据。以后塔罗和数字命理可添加独立领域适配器并登记到领域入口，复用传输和原有报告权限/写作流程；当前只启用占星，未请求塔罗或数字命理接口。
+
+出生时间未知时使用当地 12:00 作为明确标注的计算估值，不采用月亮、上升、天顶、宫位、相位或事件时机结论；接口失败时显示失败并允许重试，不编造报告或偷偷切换计算体系。资料使用说明已包含 RoxyAPI 和 Qwen 的数据流，新版确认版本为 `h5-data-use-2`。
+
 ## 验证与构建
 
 ```powershell

@@ -8,10 +8,15 @@ class BirthProfile {
     this.placeId,
     this.id,
     this.revision,
+    this.countryCode,
+    this.latitude,
+    this.longitude,
   });
   final String date, timezone, place, name;
   final String? time, placeId, id;
   final int? revision;
+  final String? countryCode;
+  final double? latitude, longitude;
   bool get exactTime => time != null;
   bool get isServerRevision => id != null && revision != null;
 
@@ -35,6 +40,9 @@ class BirthProfile {
     'place_id': placeId,
     'profile_id': id,
     'revision': revision,
+    'country_code': countryCode,
+    'latitude': latitude,
+    'longitude': longitude,
   };
   factory BirthProfile.fromJson(Map<String, dynamic> json) {
     final source = json['profile'] is Map
@@ -63,6 +71,9 @@ class BirthProfile {
       placeId: (source['place_id'] ?? source['location_id']) as String?,
       id: json['profile_id'] as String?,
       revision: json['revision'] as int?,
+      countryCode: source['country_code'] as String?,
+      latitude: (source['latitude'] as num?)?.toDouble(),
+      longitude: (source['longitude'] as num?)?.toDouble(),
     );
   }
 }

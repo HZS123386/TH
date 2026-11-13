@@ -223,6 +223,25 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     report = state.report,
                                     input = widget.input ?? report?.input ?? {};
                                 final complete = state.complete;
+                                final waiting =
+                                    !complete &&
+                                    state.error.isEmpty &&
+                                    state.percent == 0;
+                                final status = state.error.isNotEmpty
+                                    ? 'interpretation.interrupted'
+                                    : complete
+                                    ? 'interpretation.complete'
+                                    : state.phase == 'reconnecting'
+                                    ? 'interpretation.reconnecting'
+                                    : state.phase == 'waiting'
+                                    ? 'interpretation.waiting'
+                                    : state.percent >= 99
+                                    ? 'interpretation.validating'
+                                    : state.percent == 0
+                                    ? report == null
+                                          ? 'interpretation.preparing'
+                                          : 'interpretation.awaitingContent'
+                                    : 'interpretation.steps.${keys[_step]}.status';
                                 return Column(
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
@@ -230,7 +249,12 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     const FateBrand(compact: true),
                                     const SizedBox(height: 10),
                                     Text(
-                                      c.t('jy', 'interpretation.title'),
+                                      c.t(
+                                        'jy',
+                                        state.error.isNotEmpty
+                                            ? 'interpretation.interruptedTitle'
+                                            : 'interpretation.title',
+                                      ),
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontSize: (box.maxWidth * .06).clamp(
@@ -421,12 +445,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                               milliseconds: _reduced ? 0 : 550,
                                             ),
                                             child: Text(
-                                              c.t(
-                                                'jy',
-                                                complete
-                                                    ? 'interpretation.complete'
-                                                    : 'interpretation.steps.${keys[_step]}.status',
-                                              ),
+                                              c.t('jy', status),
                                               style: const TextStyle(
                                                 fontSize: 13,
                                                 color: Color(0xFFFFF1D9),
@@ -438,8 +457,13 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                             percent: state.percent,
                                             reduced: _reduced,
                                             label: c.t('jy', 'progress'),
+                                            waiting: waiting,
+                                            waitingLabel: c.t(
+                                              'jy',
+                                              'interpretation.waitLabel',
+                                            ),
                                           ),
-                                          if (!complete)
+                                          if (!complete && state.error.isEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                 top: 10,
@@ -457,7 +481,12 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                             OutlinedButton(
                                               onPressed: widget.onRetry,
                                               child: Text(
-                                                c.t('generation', 'retry'),
+                                                c.t(
+                                                  'jy',
+                                                  widget.full
+                                                      ? 'interpretation.retryFull'
+                                                      : 'interpretation.retryFree',
+                                                ),
                                               ),
                                             ),
                                         ],
@@ -610,84 +639,105 @@ class ReadingProgress extends StatelessWidget {
     required this.percent,
     required this.reduced,
     required this.label,
+    this.waiting = false,
+    this.waitingLabel = '',
     super.key,
   });
   final double percent;
-  final bool reduced;
-  final String label;
+  final bool reduced, waiting;
+  final String label, waitingLabel;
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: label,
-    value: '${percent.round()}%',
-    child: Row(
-      children: [
-        Expanded(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: percent / 100),
-            duration: Duration(milliseconds: reduced ? 0 : 450),
-            curve: Curves.easeOut,
-            builder: (context, value, _) => LayoutBuilder(
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: percent.clamp(0, 100) / 100),
+    duration: Duration(milliseconds: reduced ? 0 : 600),
+    curve: Curves.easeOut,
+    builder: (context, value, _) => Semantics(
+      label: label,
+      value: waiting ? waitingLabel : '${(value * 100).round()}%',
+      child: Row(
+        children: [
+          Expanded(
+            child: LayoutBuilder(
               builder: (context, box) => SizedBox(
                 height: 26,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.centerLeft,
-                  children: [
-                    Container(
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF55435C),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    Container(
-                      width: box.maxWidth * value,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF976234), Color(0xFFFFDA91)],
+                child: waiting
+                    ? Center(
+                        child: LinearProgressIndicator(
+                          value: reduced ? 0 : null,
+                          minHeight: 4,
+                          color: const Color(0xFFFFDA91),
+                          backgroundColor: const Color(0xFF55435C),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        boxShadow: const [
-                          BoxShadow(color: Color(0x9CFFD17E), blurRadius: 12),
+                      )
+                    : Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.centerLeft,
+                        children: [
+                          Container(
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF55435C),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          Container(
+                            width: box.maxWidth * value,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF976234), Color(0xFFFFDA91)],
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x9CFFD17E),
+                                  blurRadius: 12,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            left: box.maxWidth * value - 12,
+                            child: const Text(
+                              '✦',
+                              style: TextStyle(
+                                color: Color(0xFFFFF2CB),
+                                fontSize: 26,
+                                height: 1,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0xFFFFD17E),
+                                    blurRadius: 6,
+                                  ),
+                                  Shadow(
+                                    color: Color(0xFFFFB96F),
+                                    blurRadius: 15,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                    Positioned(
-                      left: box.maxWidth * value - 12,
-                      child: const Text(
-                        '✦',
-                        style: TextStyle(
-                          color: Color(0xFFFFF2CB),
-                          fontSize: 26,
-                          height: 1,
-                          shadows: [
-                            Shadow(color: Color(0xFFFFD17E), blurRadius: 6),
-                            Shadow(color: Color(0xFFFFB96F), blurRadius: 15),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 14),
-        SizedBox(
-          width: 40,
-          child: Text(
-            '${percent.round()}%',
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFFFFE3AE),
-              fontWeight: FontWeight.w700,
+          const SizedBox(width: 14),
+          SizedBox(
+            width: waiting ? 58 : 40,
+            child: Text(
+              waiting ? waitingLabel : '${(value * 100).round()}%',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFFFE3AE),
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }

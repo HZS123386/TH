@@ -15,8 +15,6 @@ import 'history_dialog.dart';
 import 'information_page.dart';
 import 'place_picker.dart';
 
-const heroImage = AssetImage('assets/images/astrologer.webp');
-
 class LandingPage extends StatefulWidget {
   const LandingPage({this.topic = 'life', super.key});
   final String topic;
@@ -124,13 +122,15 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       setState(() => _error = c.t('ui', 'invalidPlace'));
       return;
     }
-    setState(() => _error = '');
-    _confirming = true;
+    setState(() {
+      _error = '';
+      _confirming = true;
+    });
     var accepted = false;
     try {
       accepted = await confirmDataUse(context, h5);
     } finally {
-      _confirming = false;
+      if (mounted) setState(() => _confirming = false);
     }
     if (!mounted || !accepted) return;
     final input = _input(h5);
@@ -252,9 +252,12 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                         opacity: h5.welcomeOpen && !h5.welcomePortraitRevealed
                             ? 0
                             : 1,
-                        child: const Image(
-                          image: heroImage,
-                          fit: BoxFit.fitWidth,
+                        child: const AspectRatio(
+                          aspectRatio: 1199 / 1312,
+                          child: FateImage(
+                            'assets/images/astrologer-900.webp',
+                            fit: BoxFit.fitWidth,
+                          ),
                         ),
                       ),
                     ),
@@ -377,7 +380,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     const SizedBox(height: 7),
                     _field(
                       'birth-date',
-                      _date,
+                      birthDateLabel(_date, c.language),
                       c.language == 'zh' ? '年 / 月 / 日' : 'วัน / เดือน / ปี',
                       Icons.calendar_today_outlined,
                       () => _datePicker(h5),

@@ -19,10 +19,25 @@ class AuthRepository extends ChangeNotifier {
   final SessionStore store;
   Map<String, dynamic>? _account;
   String? _refreshToken;
+  Future<void>? _guestRequest;
 
   Map<String, dynamic>? get account => _account;
   String get owner => _account?['user_id'] as String? ?? 'guest';
-  bool get signedIn => _account != null;
+  bool get hasSession => _account != null;
+  bool get isGuest => _account?['kind'] == 'guest';
+  bool get signedIn => hasSession && !isGuest;
+  bool get canUseDevelopmentLogin =>
+      kDebugMode ||
+      (kIsWeb &&
+          const bool.fromEnvironment('FATE_DEVELOPMENT_PREVIEW') &&
+          ['localhost', '127.0.0.1'].contains(Uri.base.host));
+
+  Future<void> ensureGuest() {
+    if (hasSession) return Future.value();
+    return _guestRequest ??= _signIn(
+      () => api.request('POST', '/api/auth/guest', authenticated: false),
+    ).whenComplete(() => _guestRequest = null);
+  }
 
   Future<void> restore() async {
     final generation = api.sessionVersion;

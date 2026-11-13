@@ -23,7 +23,7 @@ export function runFlutter(args) {
 }
 
 export async function buildAppPreview() {
-  await runFlutter(['build', 'web', '--release', '--wasm', '--no-web-resources-cdn', '--dart-define=FATE_API_BASE_URL=']);
+  await runFlutter(['build', 'web', '--release', '--wasm', '--no-web-resources-cdn', '--dart-define=FATE_API_BASE_URL=', '--dart-define=FATE_DEVELOPMENT_PREVIEW=true']);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

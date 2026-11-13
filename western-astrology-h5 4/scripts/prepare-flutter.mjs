@@ -7,10 +7,10 @@ const target = path.join(root, 'web-client');
 await mkdir(path.join(root, 'tmp'), {recursive:true});
 const extracted = path.join(root, 'tmp', 'flutter-copy.mjs');
 await build({stdin:{contents:`
-import {lifeCopy,careerCopy,generationCopy} from './src/lib/lifeReport';
+import {lifeCopy,careerCopy,westernCopy,generationCopy} from './src/lib/lifeReport';
 import {ui,readingCopy} from './src/lib/reading';
 import {fortuneTopics,fortuneCopy} from './src/lib/fortuneTopics';
-export default {life:lifeCopy,career:careerCopy,generation:generationCopy,ui,fortune:fortuneCopy,topics:fortuneTopics,reading:{zh:readingCopy('zh'),th:readingCopy('th')}};`,resolveDir:root},bundle:true,platform:'node',format:'esm',outfile:extracted});
+export default {life:lifeCopy,career:careerCopy,western:westernCopy,generation:generationCopy,ui,fortune:fortuneCopy,topics:fortuneTopics,reading:{zh:readingCopy('zh'),th:readingCopy('th')}};`,resolveDir:root},bundle:true,platform:'node',format:'esm',outfile:extracted});
 const copy = (await import(pathToFileURL(extracted).href + '?v=' + Date.now())).default;
 copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checkout.json'),'utf8'));
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));

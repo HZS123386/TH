@@ -59,7 +59,7 @@ class Storage:
     def account(self, user_id: str):
         with self.connect() as db:
             row = db.execute("SELECT username FROM accounts WHERE user_id=?", (user_id,)).fetchone()
-        return {"user_id": user_id, "username": row["username"] if row else None, "kind": "account" if row else "demo"}
+        return {"user_id": user_id, "username": row["username"] if row else None, "kind": "account" if row else "guest"}
 
     def register(self, username: str, password: str, hours: int, existing_user: str | None = None):
         encoded = password_hash(password)
@@ -113,7 +113,7 @@ class Storage:
         payload = json.loads(row["payload"])
         if preference:
             payload["language"] = preference["language"]
-        return {"revision": row["revision"], "profile": payload, "chart": json.loads(row["chart"])}
+        return {"profile_id": "p_" + self.hash(user_id)[:24], "revision": row["revision"], "profile": payload, "chart": json.loads(row["chart"])}
 
     def set_language(self, user_id: str, language: str):
         with self.connect() as db:
@@ -140,9 +140,12 @@ class Storage:
             db.execute("INSERT INTO thai_charts VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET fingerprint=excluded.fingerprint,payload=excluded.payload", (user_id, fingerprint, json.dumps(payload)))
         return payload
 
-    def save_profile(self, user_id: str, payload: dict, chart: dict):
+    def save_profile(self, user_id: str, payload: dict, chart: dict, *, expected_revision="unchecked"):
         with self.connect() as db:
-            previous = db.execute("SELECT payload FROM profiles WHERE user_id=?", (user_id,)).fetchone()
+            db.execute("BEGIN IMMEDIATE")
+            previous = db.execute("SELECT payload,revision FROM profiles WHERE user_id=?", (user_id,)).fetchone()
+            if expected_revision != "unchecked" and expected_revision != (previous["revision"] if previous else None):
+                raise ValueError("profile_changed")
             birth_fields = ("birth_date", "birth_time", "timezone", "birthplace", "country_code", "location_id", "latitude", "longitude")
             old_profile = json.loads(previous["payload"]) if previous else {}
             birth_changed = any(old_profile.get(field) != payload.get(field) for field in birth_fields)

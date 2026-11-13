@@ -19,7 +19,7 @@ class TestBrowser implements BrowserPort {
   void openPage(String path) => openedPages.add(path);
   final settings = <String, String>{
     'session:fate-welcome-dismissed': '1',
-    'fate-data-use-version': 'h5-data-use-1',
+    'fate-data-use-version': 'h5-data-use-2',
   };
   Json visit = {};
   @override

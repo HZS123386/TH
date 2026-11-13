@@ -24,6 +24,35 @@ class ImmediateToken extends CancelToken {
 
 void main() {
   test(
+    'a stalled progress read times out without cancelling the report',
+    () async {
+      final gate = Completer<void>();
+      var calls = 0;
+      final token = CancelToken();
+      final data = fixture();
+      final repo = ReportRepository(
+        TestBrowser(),
+        baseUrl: 'https://example.test',
+        client: MockClient((_) async {
+          if (calls++ == 0) await gate.future;
+          return jsonResponse(data);
+        }),
+      );
+      await expectLater(
+        repo.request(
+          '/api/life-reports/${data['id']}',
+          token,
+          timeout: const Duration(milliseconds: 10),
+        ),
+        throwsA(isA<ApiFailure>().having((e) => e.code, 'code', 'network')),
+      );
+      expect(token.cancelled, isFalse);
+      gate.complete();
+      expect((await repo.load(data['id'], token)).id, data['id']);
+    },
+  );
+
+  test(
     'preview generation uses the original input, language and existing owner key',
     () async {
       final browser = TestBrowser();

@@ -1,7 +1,8 @@
 import type { LifeLabels, LifePoint, LifeReport, LifeSummary, ReportTopic } from "./lifeReport";
 import { fortuneTopics, fortuneTopicTitle, type FortuneTopicKey } from "./fortuneTopics";
+import jyCopy from "../content/jy.json";
 
-export type ReportSectionKey = "basics" | "summary" | "traits" | "work" | "money" | "relationships" | "recent" | "advice" | FortuneTopicKey;
+export type ReportSectionKey = "basics" | "summary" | "traits" | "work" | "money" | "relationships" | "recent" | "advice" | ReportTopic;
 export interface ReportEntry { point: LifePoint; id?: string }
 export interface ReportGroup { title: string; entries: ReportEntry[] }
 export interface ReportSection {
@@ -71,6 +72,20 @@ export function reportContent(report: LifeReport): ReportSection[] {
       ] },
     ];
   };
+  if (report.format === "western-compact") {
+    const free: ReportSection[] = labels.sections.slice(0, 3).map(([key, title, description]) => ({
+      key, title, description, paid: false, ready: key === "basics" || !!report.preview, summaries: [], groups: [],
+    }));
+    const names = jyCopy.jy[language].report.westernSections;
+    const groupTitles = language === "zh" ? ["主要特点", "提醒与调整"] : ["ลักษณะสำคัญ", "ข้อควรระวังและแนวทางปรับ"];
+    const paid: ReportSection[] = report.catalog.map(topic => ({
+      key: topic.key, title: topic.title, description: topic.questions.join(" · "), paid: true,
+      ready: chapters.has(topic.key), summaries: chapters.has(topic.key) ? [chapters.get(topic.key)!.summary] : [],
+      groups: groupFor(topic.key, groupTitles),
+    }));
+    return [...free, ...paid, { key: "advice", title: names.plan, description: labels.sections[7][2],
+      paid: true, ready: report.access === "full" && !!report.plan, summaries: [], groups: [] }];
+  }
   if (report.input.report_kind === "fortune") {
     const free: ReportSection[] = labels.sections.slice(0, 3).map(([key, title, description]) => ({
       key, title: key === "summary" ? language === "zh" ? "运程摘要" : "สรุปแนวโน้มชีวิต" : title,
@@ -110,6 +125,7 @@ export function reportContent(report: LifeReport): ReportSection[] {
 }
 
 export function reportReference(report: LifeReport, labels: LifeLabels): string {
+  if (report.format === "western-compact") return report.input.profile.language === "zh" ? "本命特征与行动参考" : "พื้นดวงและแนวทางลงมือทำ";
   const period = report.reference_period;
   return period ? `${period.start} – ${period.end}` : `${report.input.year} · ${labels.yearReference}`;
 }

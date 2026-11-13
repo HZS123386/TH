@@ -1,4 +1,4 @@
-"""Add only this IP site to the existing Caddy gateway, with rollback backups."""
+"""Publish the IP site's TLS/routes with rollback; preserve existing domain sites."""
 import datetime
 import json
 import subprocess
@@ -35,15 +35,34 @@ def main():
         raise RuntimeError('Live gateway differs from its source; inspect before modifying it')
     (backup / 'Caddyfile.source').write_bytes(original_source)
     (backup / 'compose.yaml').write_bytes(original_compose)
+    # Caddy's global options must precede site blocks. Do not replace unrelated
+    # global settings: stop for inspection if this gateway acquires any others.
+    marker = b'# Shared routes keep the existing HTTP entry available for credential migration.'
+    global_options = b''
+    if block.startswith(b'{\n'):
+        offset = block.index(marker)
+        global_options, block = block[:offset], block[offset:]
+        if b'default_sni 129.226.126.212' not in global_options:
+            raise RuntimeError('Unexpected global options')
+        if original_live.startswith(global_options):
+            original_live_sites = original_live[len(global_options):]
+        elif original_live.lstrip().startswith(b'{') and not original_live.lstrip().startswith(b'{$'):
+            raise RuntimeError('Inspect existing global options before changing them')
+        else:
+            original_live_sites = original_live
+    else:
+        original_live_sites = original_live
     if b'http://129.226.126.212 {' in original_live:
         if len(sys.argv) != 3:
             raise RuntimeError('Updating an existing IP site requires its exact previous block')
         previous = Path(sys.argv[2]).read_bytes().strip()
-        if not previous or original_live.count(previous) != 1:
+        if global_options and previous.startswith(global_options):
+            previous = previous[len(global_options):].strip()
+        if not previous or original_live_sites.count(previous) != 1:
             raise RuntimeError('Previous IP configuration does not match; leave the gateway unchanged')
-        combined = original_live.replace(previous, block.strip(), 1)
+        combined = global_options + original_live_sites.replace(previous, block.strip(), 1)
     else:
-        combined = original_live.rstrip() + b'\n\n' + block + b'\n'
+        combined = global_options + original_live_sites.rstrip() + b'\n\n' + block + b'\n'
     text = original_compose.decode()
     newline = '\r\n' if '\r\n' in text else '\n'
     start = text.index('\n  web:')
@@ -86,7 +105,7 @@ def main():
         run('docker', 'cp', str(backup / 'Caddyfile.container'), f'{WEB}:/etc/caddy/Caddyfile')
         run('docker', 'exec', WEB, 'caddy', 'reload', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile')
         raise
-    print(json.dumps({'published': 'http://129.226.126.212/', 'existing_domain_ok': True,
+    print(json.dumps({'published': 'https://129.226.126.212/', 'existing_domain_ok': True,
                       'gateway_container_unchanged': True, 'backup': str(backup)}))
 
 

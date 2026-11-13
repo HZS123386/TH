@@ -33,6 +33,7 @@ class Settings:
     fortune_network_per_day: int = 120
     roxy_api_key: str = field(default="", repr=False)
     roxy_enabled: bool = False
+    life_astrology_provider: str = "thai"
     bazi_provider: str = "github"
     roxy_per_minute: int = 12
     roxy_per_day: int = 80
@@ -79,6 +80,7 @@ class Settings:
             fortune_network_per_day=max(0, int(os.getenv("FORTUNE_NETWORK_REPORTS_PER_DAY", "120"))),
             roxy_api_key=os.getenv("ROXY_API_KEY", ""),
             roxy_enabled=os.getenv("ROXY_ENABLED", "false").lower() == "true",
+            life_astrology_provider=os.getenv("LIFE_ASTROLOGY_PROVIDER", "thai").lower(),
             bazi_provider=os.getenv("BAZI_PROVIDER", "github"),
             roxy_per_minute=max(0, int(os.getenv("ROXY_REQUESTS_PER_MINUTE", "12"))),
             roxy_per_day=max(0, int(os.getenv("ROXY_REQUESTS_PER_DAY", "80"))),

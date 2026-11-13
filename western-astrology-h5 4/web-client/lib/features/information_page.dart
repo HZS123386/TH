@@ -166,6 +166,7 @@ class _DataUseDialog extends StatefulWidget {
 
 class _DataUseDialogState extends State<_DataUseDialog> {
   bool _saving = false;
+  bool _outdated = false;
   String _error = '';
 
   Future<void> _accept() async {
@@ -181,7 +182,12 @@ class _DataUseDialogState extends State<_DataUseDialog> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = widget.h5.message(error);
+          _outdated =
+              error is ApiFailure && error.code == 'landing_notice_outdated';
+          _error = widget.h5.copy.t(
+            'jy',
+            _outdated ? 'noticeOutdated' : 'consentError',
+          );
         });
       }
     }
@@ -229,11 +235,20 @@ class _DataUseDialogState extends State<_DataUseDialog> {
           onPressed: _saving ? null : () => Navigator.pop(context, false),
           child: Text(c.t('jy', 'cancel')),
         ),
-        FilledButton(
-          key: const ValueKey('data-use-agree'),
-          onPressed: _saving ? null : () => unawaited(_accept()),
-          child: Text(c.t('jy', 'consentAction')),
-        ),
+        if (_outdated)
+          FilledButton(
+            key: const ValueKey('data-use-reload'),
+            onPressed: () => widget.h5.browser.openPage(
+              './?lang=${widget.h5.language}&preview=notice-${DateTime.now().millisecondsSinceEpoch}',
+            ),
+            child: Text(c.t('jy', 'openLatest')),
+          )
+        else
+          FilledButton(
+            key: const ValueKey('data-use-agree'),
+            onPressed: _saving ? null : () => unawaited(_accept()),
+            child: Text(c.t('jy', 'consentAction')),
+          ),
       ],
     );
   }

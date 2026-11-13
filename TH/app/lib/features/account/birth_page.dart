@@ -6,6 +6,7 @@ import '../../app/dependencies.dart';
 import '../../core/models/birth_profile.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
+import 'birthplace_fields.dart';
 
 class BirthPage extends StatefulWidget {
   const BirthPage({super.key});
@@ -14,12 +15,10 @@ class BirthPage extends StatefulWidget {
 }
 
 class _BirthPageState extends State<BirthPage> {
-  final formKey = GlobalKey<FormState>(),
-      name = TextEditingController(),
-      place = TextEditingController();
+  final formKey = GlobalKey<FormState>();
   BirthProfile? original;
-  String? date, time, placeId;
-  String timezone = 'Asia/Bangkok';
+  Map<String, dynamic>? birthLocation;
+  String? date, time;
   bool unknown = false, pending = false, initialized = false;
   String _formOwner = '';
   String? error;
@@ -32,24 +31,28 @@ class _BirthPageState extends State<BirthPage> {
     _formOwner = session.owner;
     original = session.profile;
     if (original case final p?) {
-      name.text = p.name;
-      place.text = p.place;
       date = p.date;
       time = p.time;
       unknown = p.time == null;
-      timezone = p.timezone;
-      placeId = p.placeId;
     }
   }
 
   Future<void> save() async {
     final s = AppLocalizations.of(context),
         session = DependencyScope.of(context).session;
+    if (_formOwner == 'guest' && session.auth.isGuest) {
+      _formOwner = session.owner;
+    }
     if (_formOwner != session.owner) {
       setState(() => error = s.error);
       return;
     }
     if (pending || !formKey.currentState!.validate()) return;
+    final location = birthLocation;
+    if (location == null) {
+      setState(() => error = s.selectBirthCity);
+      return;
+    }
     if (date == null) {
       setState(() => error = s.chooseBirthDate);
       return;
@@ -67,10 +70,13 @@ class _BirthPageState extends State<BirthPage> {
         BirthProfile(
           date: date!,
           time: unknown ? null : time,
-          timezone: timezone,
-          place: place.text.trim(),
-          name: name.text.trim(),
-          placeId: placeId,
+          timezone: (location['timeZone'] ?? location['timezone']) as String,
+          place: '${location['nameEnglish']}, ${location['countryCode']}',
+          name: original?.name ?? '',
+          placeId: location['id'] as String,
+          countryCode: location['countryCode'] as String,
+          latitude: (location['latitude'] as num).toDouble(),
+          longitude: (location['longitude'] as num).toDouble(),
           id: original?.id,
           revision: original?.revision,
         ),
@@ -79,64 +85,18 @@ class _BirthPageState extends State<BirthPage> {
     } catch (_) {
       if (mounted) setState(() => error = s.error);
     } finally {
-      if (mounted) setState(() => pending = false);
+      if (mounted) {
+        if (_formOwner == 'guest' && session.auth.isGuest) {
+          _formOwner = session.owner;
+        }
+        setState(() => pending = false);
+      }
     }
-  }
-
-  Future<void> chooseCity() async {
-    final d = DependencyScope.of(context), s = AppLocalizations.of(context);
-    final selected = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      useSafeArea: true,
-      constraints: const BoxConstraints(maxWidth: 430),
-      backgroundColor: panelColor,
-      builder: (_) => _CitySheet(
-        search: (q, country) => d.session.profiles.locations(
-          q,
-          d.session.locale.languageCode,
-          country: country,
-        ),
-        title: s.findCity,
-        hint: s.searchBirthCity,
-        errorText: s.error,
-      ),
-    );
-    if (!mounted || selected == null) return;
-    setState(() {
-      place.text =
-          (selected['display_name'] ??
-                  selected['name'] ??
-                  selected['label'] ??
-                  '')
-              .toString();
-      placeId = (selected['id'] ?? selected['location_id']) as String?;
-      timezone = (selected['tzid'] ?? selected['timezone'] ?? timezone)
-          .toString();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    const zones = [
-      'Asia/Bangkok',
-      'Asia/Shanghai',
-      'Asia/Hong_Kong',
-      'Asia/Singapore',
-      'Asia/Tokyo',
-      'Asia/Seoul',
-      'Asia/Ho_Chi_Minh',
-      'Asia/Kolkata',
-      'Asia/Dubai',
-      'Europe/London',
-      'Europe/Paris',
-      'America/New_York',
-      'America/Chicago',
-      'America/Los_Angeles',
-      'Australia/Sydney',
-    ];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Form(
@@ -149,15 +109,6 @@ class _BirthPageState extends State<BirthPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextFormField(
-                    controller: name,
-                    maxLength: 60,
-                    decoration: InputDecoration(
-                      labelText: s.nickname,
-                      hintText: s.nicknamePlaceholder,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
                   Text(s.birthDate),
                   const SizedBox(height: 8),
                   OutlinedButton(
@@ -247,43 +198,12 @@ class _BirthPageState extends State<BirthPage> {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
-                  TextFormField(
-                    controller: place,
-                    decoration: InputDecoration(
-                      labelText: s.birthplace,
-                      hintText: s.birthplacePlaceholder,
-                    ),
-                    maxLength: 100,
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? s.placeRequired
-                        : null,
-                    onChanged: (_) => placeId = null,
-                  ),
-                  TextButton.icon(
-                    onPressed: pending ? null : chooseCity,
-                    icon: const Icon(Icons.search, size: 18),
-                    label: Text(s.cityDirectory),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(timezone),
-                    initialValue: timezone,
-                    decoration: InputDecoration(labelText: s.timezone),
-                    isExpanded: true,
-                    items: {timezone, ...zones}
-                        .map(
-                          (zone) => DropdownMenuItem(
-                            value: zone,
-                            child: Text(
-                              zone,
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: pending
-                        ? null
-                        : (value) => setState(() => timezone = value!),
+                  BirthplaceFields(
+                    repository: DependencyScope.of(context).session.profiles,
+                    initialProfile: original,
+                    enabled: !pending,
+                    onSelected: (value) =>
+                        setState(() => birthLocation = value),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -306,17 +226,14 @@ class _BirthPageState extends State<BirthPage> {
               onPressed: pending ? null : save,
               child: Text(pending ? s.waiting : s.saveBirth),
             ),
+            TextButton(
+              onPressed: pending ? null : () => context.go('/chart?example=1'),
+              child: Text(s.example),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    name.dispose();
-    place.dispose();
-    super.dispose();
   }
 }
 
@@ -329,7 +246,6 @@ class _DateSheet extends StatefulWidget {
 
 class _DateSheetState extends State<_DateSheet> {
   late int year, month, day;
-  bool buddhist = false;
   late FixedExtentScrollController years, months, days;
   @override
   void initState() {
@@ -370,13 +286,9 @@ class _DateSheetState extends State<_DateSheet> {
           children: [
             Text(s.birthDate, style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 16),
-            SegmentedButton<bool>(
-              segments: [
-                ButtonSegment(value: false, label: Text(s.calendarGregorian)),
-                ButtonSegment(value: true, label: Text(s.calendarBuddhist)),
-              ],
-              selected: {buddhist},
-              onSelectionChanged: (v) => setState(() => buddhist = v.first),
+            Text(
+              s.calendarGregorian,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             SizedBox(
               height: 220,
@@ -393,7 +305,7 @@ class _DateSheetState extends State<_DateSheet> {
                         for (var y = 1901; y <= today.year; y++)
                           Center(
                             child: Text(
-                              '${y + (buddhist ? 543 : 0)}',
+                              '$y',
                               style: const TextStyle(
                                 color: inkColor,
                                 fontSize: 18,
@@ -464,147 +376,6 @@ class _DateSheetState extends State<_DateSheet> {
     years.dispose();
     months.dispose();
     days.dispose();
-    super.dispose();
-  }
-}
-
-class _CitySheet extends StatefulWidget {
-  const _CitySheet({
-    required this.search,
-    required this.title,
-    required this.hint,
-    required this.errorText,
-  });
-  final Future<List<Map<String, dynamic>>> Function(String, String) search;
-  final String title, hint, errorText;
-  @override
-  State<_CitySheet> createState() => _CitySheetState();
-}
-
-class _CitySheetState extends State<_CitySheet> {
-  final query = TextEditingController();
-  List<Map<String, dynamic>> rows = [];
-  bool busy = false, failed = false;
-  bool searched = false;
-  String country = 'TH';
-  int generation = 0;
-  Future<void> search() async {
-    if (query.text.trim().length < 2) return;
-    final current = ++generation;
-    setState(() {
-      busy = true;
-      failed = false;
-      searched = true;
-    });
-    try {
-      final next = await widget.search(query.text.trim(), country);
-      if (mounted && current == generation) setState(() => rows = next);
-    } catch (_) {
-      if (mounted && current == generation) setState(() => failed = true);
-    } finally {
-      if (mounted && current == generation) setState(() => busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => SafeArea(
-    child: Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        24,
-        20,
-        20 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: SizedBox(
-        height:
-            (MediaQuery.sizeOf(context).height -
-                    MediaQuery.viewInsetsOf(context).bottom -
-                    100)
-                .clamp(180, 400)
-                .toDouble(),
-        child: Column(
-          children: [
-            Text(widget.title, style: const TextStyle(fontSize: 20)),
-            const SizedBox(height: 18),
-            DropdownButtonFormField<String>(
-              initialValue: country,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context).country,
-              ),
-              items:
-                  {
-                        'TH': AppLocalizations.of(context).countryTH,
-                        'CN': AppLocalizations.of(context).countryCN,
-                        'VN': AppLocalizations.of(context).countryVN,
-                        'US': AppLocalizations.of(context).countryUS,
-                      }.entries
-                      .map(
-                        (entry) => DropdownMenuItem(
-                          value: entry.key,
-                          child: Text(entry.value),
-                        ),
-                      )
-                      .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                ++generation;
-                setState(() {
-                  country = value;
-                  rows = [];
-                  busy = false;
-                  searched = false;
-                  failed = false;
-                });
-              },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: query,
-              onSubmitted: (_) => search(),
-              decoration: InputDecoration(
-                hintText: widget.hint,
-                suffixIcon: IconButton(
-                  onPressed: busy ? null : search,
-                  icon: const Icon(Icons.search),
-                ),
-              ),
-            ),
-            if (busy) const LinearProgressIndicator(),
-            if (failed) Text(widget.errorText),
-            if (searched && !busy && !failed && rows.isEmpty)
-              Text(
-                AppLocalizations.of(context).noCityResults,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            Expanded(
-              child: ListView(
-                children: [
-                  for (final row in rows)
-                    ListTile(
-                      title: Text(
-                        (row['display_name'] ??
-                                row['name'] ??
-                                row['label'] ??
-                                '')
-                            .toString(),
-                      ),
-                      subtitle: Text(
-                        (row['timezone'] ?? row['tzid'] ?? '').toString(),
-                      ),
-                      onTap: () => Navigator.pop(context, row),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-  @override
-  void dispose() {
-    ++generation;
-    query.dispose();
     super.dispose();
   }
 }

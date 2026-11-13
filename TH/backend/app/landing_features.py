@@ -4,12 +4,12 @@ import time
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 from pydantic import Field, StrictBool
 
 from .schemas import Input
 
-NOTICE_VERSION = "h5-data-use-1"
+NOTICE_VERSION = "h5-data-use-2"
 Key = Annotated[str, Header(alias="X-Report-Key", min_length=32, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")]
 
 
@@ -29,7 +29,7 @@ class VisitEvent(Input):
 
 
 class ConsentInput(Input):
-    notice_version: Literal["h5-data-use-1"]
+    notice_version: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     granted: StrictBool
 
 
@@ -89,6 +89,8 @@ class LandingFeatures:
     def consent(self, body, owner):
         if not body.granted:
             raise HTTPException(422, "landing_consent_required")
+        if body.notice_version != NOTICE_VERSION:
+            raise HTTPException(409, "landing_notice_outdated")
         with self.store.connect() as db:
             db.execute("INSERT INTO landing_consents(owner,notice_version,agreed_at) VALUES(?,?,?) "
                        "ON CONFLICT(owner,notice_version) DO NOTHING", (owner, body.notice_version, time.time()))
@@ -98,7 +100,8 @@ def landing_router(service):
     router = APIRouter(prefix="/api/landing")
 
     @router.get("/config")
-    async def config():
+    async def config(response: Response):
+        response.headers["Cache-Control"] = "no-store"
         return {"support_email": service.settings.support_email, "notice_version": NOTICE_VERSION}
 
     @router.post("/consents")

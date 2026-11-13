@@ -172,11 +172,11 @@ class _AppShell extends StatelessWidget {
     final s = AppLocalizations.of(context),
         session = DependencyScope.of(context).session;
     final daily = path == DailyHoroscopePage.location;
-    final selected = path.startsWith('/chart')
+    final selected = path.startsWith('/chart') || path == '/birth'
         ? 1
         : path.startsWith('/reports')
         ? 2
-        : ['/profile', '/login', '/birth'].contains(path)
+        : ['/profile', '/login'].contains(path)
         ? 3
         : 0;
     return ColoredBox(

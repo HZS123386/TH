@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, rename, stat } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
+import { brotliCompressSync, brotliDecompressSync, constants, gzipSync } from 'node:zlib';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +23,7 @@ async function moveBuild(source,target){
     }
   }
 }
-export async function buildLanding(){
+export async function buildLanding({release=false}={}){
   await import('./prepare-flutter.mjs');
   const temporary=path.resolve(projectRoot,'tmp'),destination=path.resolve(projectRoot,'site');
   await mkdir(temporary,{recursive:true});
@@ -36,16 +37,47 @@ export async function buildLanding(){
   // Engine URLs carry their SDK revision, so browsers can safely retain them.
   await mkdir(path.join(generated,'engine'),{recursive:true});
   await rename(path.join(generated,'canvaskit'),path.join(generated,'engine',engineRevision));
+  // Ship the existing browser bridge with the bootstrap so it cannot fail as a separate startup request.
+  const browserSource=await readFile(path.join(flutterRoot,'web','browser.js'),'utf8');
+  const indexPath=path.join(generated,'index.html');
+  let index=await readFile(indexPath,'utf8');
+  // Discover engine fonts during the HTML request instead of after the Wasm download.
+  const fontManifest=JSON.parse(await readFile(path.join(generated,'assets','FontManifest.json'),'utf8'));
+  const fontAssets=new Set(fontManifest.flatMap(family=>family.fonts.map(font=>font.asset)));
+  fontAssets.delete('assets/fonts/NotoSansThai.ttf'); // Already a high-priority preload.
+  const fallbackFont='fonts/fallback/Roboto-Regular.ttf';
+  if(existsSync(path.join(generated,'assets',fallbackFont)))fontAssets.add(fallbackFont);
+  if(!index.includes('<!-- FATE_FONT_PRELOADS -->'))throw Error('Missing font preload slot');
+  index=index.replace('<!-- FATE_FONT_PRELOADS -->',[...fontAssets].map(asset=>`<link rel="preload" href="assets/${asset}" as="fetch" fetchpriority="low" crossorigin>`).join('\n  '));
+  if(!index.includes('<script src="browser.js"></script>'))throw Error('Missing browser bootstrap slot');
+  await writeFile(indexPath,index.replace('<script src="browser.js"></script>',`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`));
   // Preserve the existing report.html deep links, including saved report IDs.
   for (const page of ['report.html','privacy.html','support.html']) {
     await cp(path.join(generated,'index.html'),path.join(generated,page));
   }
   for(const file of ['main.dart.wasm','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
+  const compressible=new Set(['.html','.js','.mjs','.css','.json','.svg','.wasm','.ttf','.otf']);
+  for(const relative of await readdir(generated,{recursive:true})){
+    if(!compressible.has(path.extname(relative)))continue;
+    const file=path.join(generated,relative),info=await stat(file);
+    if(!info.isFile()||info.size<1024)continue;
+    const original=await readFile(file);
+    await writeFile(file+'.gz',gzipSync(original,{level:9}));
+    // Compress during the build so serving Brotli never adds request-time CPU work.
+    const brotli=brotliCompressSync(original,{params:{[constants.BROTLI_PARAM_QUALITY]:release?11:6}});
+    if(!brotliDecompressSync(brotli).equals(original))throw Error(`Brotli verification failed: ${relative}`);
+    if(brotli.length<original.length)await writeFile(file+'.br',brotli);
+  }
+  if(release)await new Promise((resolve,reject)=>{
+    const python=process.env.FATE_PYTHON_BIN||(process.platform==='win32'?'python':'python3');
+    const child=spawn(python,[path.join(projectRoot,'scripts','precompress.py'),generated],{cwd:projectRoot,stdio:'inherit',windowsHide:true});
+    child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(`Release compression exited with ${code}`)));
+  });
   const hadPrevious=existsSync(destination);
   if(hadPrevious)await moveBuild(destination,previous);
   try{await moveBuild(generated,destination);}catch(error){if(hadPrevious)await moveBuild(previous,destination);throw error;}
   console.log(`Flutter H5 build ready: ${destination}`);
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{const args=process.argv.slice(2);if(args.length)await flutter(args);else await buildLanding();}catch(error){console.error(error.message);process.exitCode=1;}
+ try{const args=process.argv.slice(2);if(args.length===1&&args[0]==='release')await buildLanding({release:true});else if(args.length)await flutter(args);else await buildLanding();}catch(error){console.error(error.message);process.exitCode=1;}
 }

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../features/landing_page.dart';
 import '../features/report_page.dart';
@@ -8,6 +7,7 @@ import '../features/welcome_page.dart';
 import '../features/information_page.dart';
 import '../ui/theme.dart';
 import 'controller.dart';
+import 'localizations.dart';
 
 class H5App extends StatefulWidget {
   const H5App({required this.controller, this.initialLocation, super.key});
@@ -18,8 +18,6 @@ class H5App extends StatefulWidget {
 }
 
 class _H5AppState extends State<H5App> {
-  bool _deferred = true;
-  Timer? _firstFrameLimit;
   Timer? _timingFrame;
   late final _router = GoRouter(
     initialLocation: widget.initialLocation,
@@ -65,31 +63,12 @@ class _H5AppState extends State<H5App> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.deferFirstFrame();
-    // A delayed image must not keep the entire application invisible.
-    _firstFrameLimit = Timer(const Duration(milliseconds: 700), _allowFrame);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        if (mounted &&
-            !(widget.initialLocation ?? Uri.base.path).contains('.html')) {
-          await Future.wait([
-            precacheImage(
-              const AssetImage('assets/images/astrologer-900.webp'),
-              context,
-            ),
-          ]);
-        }
-      } finally {
-        _allowFrame();
-      }
-    });
+    // The welcome image already resolves itself; it must not defer the whole UI.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _observeFirstFrame());
   }
 
-  void _allowFrame() {
-    if (!_deferred) return;
-    _deferred = false;
-    _firstFrameLimit?.cancel();
-    WidgetsBinding.instance.allowFirstFrame();
+  void _observeFirstFrame() {
+    if (!mounted) return;
     // Web batches raster timings for 100ms; a static welcome needs a later frame.
     _timingFrame = Timer.periodic(const Duration(milliseconds: 160), (timer) {
       if (!mounted || WidgetsBinding.instance.firstFrameRasterized) {
@@ -101,14 +80,24 @@ class _H5AppState extends State<H5App> {
     unawaited(
       WidgetsBinding.instance.waitUntilFirstFrameRasterized.then((_) {
         _timingFrame?.cancel();
-        if (mounted) widget.controller.browser.pageReady('app-ready');
+        if (!mounted) return;
+        widget.controller.browser.pageReady('app-ready');
+        // Warm the form artwork after the welcome is visible, without blocking it.
+        if (!(widget.initialLocation ?? Uri.base.path).contains('.html')) {
+          unawaited(
+            precacheImage(
+              const AssetImage('assets/images/theme-thai-artwork.jpg'),
+              context,
+              onError: (error, stack) {},
+            ),
+          );
+        }
       }),
     );
   }
 
   @override
   void dispose() {
-    _allowFrame();
     _timingFrame?.cancel();
     _router.dispose();
     super.dispose();
@@ -125,11 +114,7 @@ class _H5AppState extends State<H5App> {
         theme: h5Theme(),
         locale: Locale(widget.controller.language),
         supportedLocales: const [Locale('th'), Locale('zh')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
+        localizationsDelegates: h5Localizations,
         routerConfig: _router,
       ),
     ),

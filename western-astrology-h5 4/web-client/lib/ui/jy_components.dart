@@ -1,8 +1,99 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../core/models.dart';
 import 'theme.dart';
+
+/// Keep failed artwork recoverable without changing the surrounding layout.
+class FateImage extends StatefulWidget {
+  const FateImage(this.asset, {this.fit = BoxFit.contain, super.key});
+  final String asset;
+  final BoxFit fit;
+  @override
+  State<FateImage> createState() => _FateImageState();
+}
+
+class _FateImageState extends State<FateImage> {
+  int _attempt = 0;
+  Timer? _retry;
+
+  @override
+  void didUpdateWidget(covariant FateImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.asset != widget.asset) {
+      _retry?.cancel();
+      _retry = null;
+      _attempt = 0;
+    }
+  }
+
+  void _scheduleRetry() {
+    if (_retry != null || _attempt >= 3) return;
+    _retry = Timer(
+      Duration(milliseconds: 500 * (_attempt + 1)),
+      () => unawaited(_reload()),
+    );
+  }
+
+  Future<void> _reload({bool manual = false}) async {
+    if (!mounted) return;
+    final asset = widget.asset;
+    // A failed decoder can stay in the image cache until it is explicitly evicted.
+    try {
+      await AssetImage(
+        asset,
+      ).evict(configuration: createLocalImageConfiguration(context));
+    } catch (_) {
+      // A failed asset manifest must also get another image resolve attempt.
+    }
+    if (!mounted || asset != widget.asset) return;
+    _retry = null;
+    setState(() => _attempt = manual ? 0 : _attempt + 1);
+  }
+
+  @override
+  void dispose() {
+    _retry?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    widget.asset,
+    key: ValueKey((widget.asset, _attempt)),
+    fit: widget.fit,
+    frameBuilder: (context, child, frame, synchronous) {
+      if (frame != null || synchronous) {
+        _retry?.cancel();
+        _retry = null;
+        return child;
+      }
+      return const ColoredBox(color: panel, child: SizedBox.expand());
+    },
+    errorBuilder: (context, error, stack) {
+      _scheduleRetry();
+      return ColoredBox(
+        color: panel,
+        child: Center(
+          child: _attempt < 3
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 1.5),
+                )
+              : IconButton(
+                  tooltip: Localizations.localeOf(context).languageCode == 'zh'
+                      ? '点击重试'
+                      : 'ลองโหลดภาพใหม่',
+                  icon: const Icon(Icons.refresh_rounded, color: gold),
+                  onPressed: () => unawaited(_reload(manual: true)),
+                ),
+        ),
+      );
+    },
+  );
+}
 
 class FateBrand extends StatelessWidget {
   const FateBrand({this.compact = false, super.key});
@@ -341,7 +432,7 @@ class ThemeBoards extends StatelessWidget {
                         (box.maxHeight - crop.height * scale) / 2,
                     width: 1315 * scale,
                     height: 1197 * scale,
-                    child: Image.asset(
+                    child: FateImage(
                       'assets/images/theme-thai-artwork.jpg',
                       fit: BoxFit.fill,
                     ),
@@ -440,16 +531,53 @@ class ReportBadges extends StatelessWidget {
     required this.copy,
     this.themes,
     this.locked = true,
+    this.western = false,
     this.onTap,
     super.key,
   });
   final Copy copy;
   final List<Json>? themes;
   final bool locked;
+  final bool western;
   final ValueChanged<String>? onTap;
   @override
   Widget build(BuildContext context) {
-    final items = themes ?? copy.reportThemes;
+    final items = themes ?? (locked
+        ? [
+            ...objects(object(copy.data['jyThemes'])['outlook']),
+            ...objects(object(copy.data['jyThemes'])['highlights']),
+          ]
+        : [
+            for (final key
+                in western
+                    ? ['natal', 'career', 'wealth', 'love', 'risk', 'plan']
+                    : [
+                        'overall',
+                        'natal',
+                        'love',
+                        'career',
+                        'opportunities',
+                        'partnership',
+                      ])
+              {
+                'id': key,
+                copy.language: copy.t(
+                  'jy',
+                  'report.${western ? 'westernSections' : 'sections'}.$key',
+                ),
+                'icon': {
+                  'overall': '✦',
+                  'natal': '☉',
+                  'love': '♡',
+                  'career': '◇',
+                  'opportunities': '✧',
+                  'partnership': '☽',
+                  'wealth': '◇',
+                  'risk': '✧',
+                  'plan': '✦',
+                }[key],
+              },
+          ]);
     return LayoutBuilder(
       builder: (context, box) {
         final width = (box.maxWidth - 20) / 3;

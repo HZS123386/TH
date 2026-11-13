@@ -10,6 +10,7 @@ class ReportCheckout extends StatefulWidget {
   const ReportCheckout({
     required this.h5,
     required this.report,
+    required this.freePreview,
     required this.onBack,
     required this.onErase,
     this.onPay,
@@ -21,6 +22,7 @@ class ReportCheckout extends StatefulWidget {
   final LifeReport report;
   final VoidCallback onBack, onErase;
   final VoidCallback? onPay;
+  final Widget freePreview;
   final bool busy;
   final String error;
   @override
@@ -49,7 +51,9 @@ class _ReportCheckoutState extends State<ReportCheckout> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const FateBrand(compact: true),
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
+              widget.freePreview,
+              const SizedBox(height: 28),
               Text(
                 c.t('jy', 'checkout.eyebrow'),
                 textAlign: TextAlign.center,
@@ -164,10 +168,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                           child: Text(
                             c.t('jy', 'checkout.downloadUnavailable'),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: lavender,
-                            ),
+                            style: const TextStyle(fontSize: 12, color: lavender),
                           ),
                         ),
                       ),
@@ -303,17 +304,19 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
             ? await repository.existingPayment(widget.report, _request)
             : await repository.createPayment(widget.report, _request,
                 mobile: mobile, nationCode: nationCode);
-        if (mounted) setState(() {
-          _order = order;
-          if (existingOnly) _existingChecked = true;
-        });
+        if (mounted) {
+          setState(() {
+            _order = order;
+            if (existingOnly) _existingChecked = true;
+          });
+        }
         if (mounted && widget.report.orderOnly && order != null) _startWaiting();
       } on ApiFailure catch (error) {
         if (widget.report.orderOnly || error.status != 409 ||
             !await repository.checkPayment(widget.report, _request)) {
           rethrow;
         }
-        if (mounted) await _showSuccess();
+        if (mounted) { await _showSuccess(); }
       }
     } catch (error) {
       if (mounted && !_request.cancelled) {
@@ -399,14 +402,16 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
           if (!mounted) return;
           setState(() => _error = widget.h5.message(error, labels: _copy));
           if (error.status == 404 || error.status == 409 ||
-              error.code == 'life_payment_check_access_denied') return;
+              error.code == 'life_payment_check_access_denied') {
+            return;
+          }
           final retryAfter = error.retryAfter;
           delay = retryAfter != null && retryAfter > interval
               ? retryAfter
               : interval;
         } catch (error) {
           if (error is Cancelled) rethrow;
-          if (mounted) setState(() => _error = widget.h5.message(error, labels: _copy));
+          if (mounted) { setState(() => _error = widget.h5.message(error, labels: _copy)); }
           delay = const Duration(seconds: 15);
         }
       }
@@ -437,7 +442,7 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
         order,
         _request,
       );
-      if (mounted) await _showSuccess();
+      if (mounted) { await _showSuccess(); }
     } catch (error) {
       if (mounted && !_request.cancelled) {
         setState(() => _error = widget.h5.message(error, labels: _copy));

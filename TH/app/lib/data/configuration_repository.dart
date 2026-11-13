@@ -7,10 +7,12 @@ class AppCapabilities {
     this.appleLogin = false,
     this.applePurchase = false,
     this.developmentLogin = false,
+    this.guestReading = false,
     this.aiNoticeVersion,
   });
 
   final bool western, reports, appleLogin, applePurchase, developmentLogin;
+  final bool guestReading;
   final String? aiNoticeVersion;
 }
 
@@ -39,6 +41,7 @@ class ConfigurationRepository {
       appleLogin: app is Map && app['apple_login'] == true,
       applePurchase: reports && app['apple_iap'] == true,
       developmentLogin: json['account_login'] == true,
+      guestReading: json['guest_reading'] == true,
       aiNoticeVersion: notice is String && notice.isNotEmpty ? notice : null,
     );
   }
@@ -48,7 +51,7 @@ class ConfigurationRepository {
       'POST',
       '/api/privacy/consents',
       body: {
-        'purpose': 'western_report',
+        'purpose': 'ai_reading',
         'notice_version': version,
         'granted': true,
       },

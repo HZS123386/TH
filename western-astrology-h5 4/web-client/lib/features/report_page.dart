@@ -45,7 +45,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   void _changed() {
     final r = _model.report;
     if (r == null) return;
-    if (!_reported && r.full && r.preview.isNotEmpty) {
+    if (!_reported && r.preview.isNotEmpty) {
       _reported = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -148,7 +148,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   Future<void> _generate(bool full) async {
     final initial = _model.report;
     if (initial == null || _generating) return;
-    _generating = true;
+    setState(() => _generating = true);
     final state = GenerationState()..phase = full ? 'full' : 'preview';
     Future<void> run() async {
       _generationRequest?.cancel();
@@ -202,7 +202,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     );
     _generationRequest?.cancel();
     state.dispose();
-    _generating = false;
+    if (mounted) setState(() => _generating = false);
   }
 
   void _navigate(String key) {
@@ -227,25 +227,45 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     if (items.isEmpty) return const SizedBox.shrink();
     return ExpansionTile(
       tilePadding: EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(bottom: 12),
+      expandedAlignment: Alignment.centerLeft,
+      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+      childrenPadding: const EdgeInsets.only(top: 4, bottom: 8),
       title: Text(
         c.t('report', 'summaryEvidence'),
-        style: const TextStyle(fontSize: 11, color: lavender),
+        style: const TextStyle(fontSize: 12, color: lavender),
       ),
       children: [
         for (final item in items)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: night.withValues(alpha: .45),
+              border: Border.all(color: line),
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
                   text(item['title']),
-                  style: const TextStyle(color: gold, fontSize: 12),
+                  textAlign: TextAlign.start,
+                  style: const TextStyle(
+                    color: gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                  ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   text(item['detail']),
-                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.start,
+                  style: const TextStyle(
+                    color: lavender,
+                    fontSize: 12,
+                    height: 1.7,
+                  ),
                 ),
               ],
             ),
@@ -264,6 +284,65 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           style: const TextStyle(fontSize: 17, height: 1.95),
         ),
         _evidence(value['evidence'], c),
+      ],
+    ),
+  );
+  Widget _freePreview(LifeReport report, Copy c) => JYCard(
+    key: const ValueKey('free-report-content'),
+    padding: const EdgeInsets.all(20),
+    radius: 18,
+    borderColor: line,
+    colors: const [panel, panel],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!report.full) ...[
+          Text(
+            c.t('jy', 'report.freeTitle'),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 23,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            c.t('jy', 'report.freeHint'),
+            style: const TextStyle(color: lavender, fontSize: 12, height: 1.65),
+          ),
+          const SizedBox(height: 20),
+        ],
+        Text(
+          text(report.input['user_question']).isNotEmpty
+              ? text(report.input['user_question'])
+              : c.t('report', 'takeaway'),
+          style: const TextStyle(
+            color: cream,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _summary(object(report.preview['summary']), c),
+        if (report.preview['career_answer'] != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            c.t('report', 'careerQuestionTitle'),
+            style: const TextStyle(color: gold, fontSize: 15),
+          ),
+          const SizedBox(height: 8),
+          _summary(object(report.preview['career_answer']), c),
+        ],
+        const SizedBox(height: 24),
+        Text(
+          c.t('report', 'traits'),
+          style: const TextStyle(
+            color: gold,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        for (final trait in objects(report.preview['traits'])) _point(trait, c),
       ],
     ),
   );
@@ -476,7 +555,16 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               for (final phase in objects(r.plan['phases'])) ...[
                 _point(phase, c),
                 for (final action in objects(phase['actions'])) ...[
-                  _point(action, c),
+                  if (r.western)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        text(action['title']),
+                        style: const TextStyle(color: cream, fontSize: 13),
+                      ),
+                    )
+                  else
+                    _point(action, c),
                   TextButton(
                     onPressed: () {
                       final target = text(action['chapter']);
@@ -530,6 +618,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         return ReportCheckout(
           h5: widget.h5,
           report: r,
+          freePreview: _freePreview(r, c),
           busy: _deleting || _paying,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
           onBack: () => context.go('/?lang=${widget.h5.language}'),

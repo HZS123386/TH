@@ -25,7 +25,7 @@ class H5Controller extends ChangeNotifier {
   final BrowserPort browser;
   final Future<void> Function(String)? ensureFont;
   final Future<void> Function(String, String)? ensureTextFont;
-  static const noticeVersion = 'h5-data-use-1';
+  static const noticeVersion = 'h5-data-use-2';
   late bool welcomeOpen, noticeAccepted;
   late final bool returningVisitor;
   bool welcomePortraitRevealed = false;
@@ -98,11 +98,30 @@ class H5Controller extends ChangeNotifier {
   }
 
   Future<void> acceptDataUse() async {
-    await repository.request(
-      '/api/landing/consents',
-      _background,
-      body: {'notice_version': noticeVersion, 'granted': true},
+    final config = object(
+      await repository.request(
+        '/api/landing/config',
+        _background,
+        owned: false,
+      ),
     );
+    if (text(config['notice_version']).isEmpty) {
+      throw const ApiFailure('landing_consent_failed');
+    }
+    if (config['notice_version'] != noticeVersion) {
+      throw const ApiFailure('landing_notice_outdated', status: 409);
+    }
+    final result = object(
+      await repository.request(
+        '/api/landing/consents',
+        _background,
+        body: {'notice_version': noticeVersion, 'granted': true},
+      ),
+    );
+    if (result['accepted'] != true ||
+        result['notice_version'] != noticeVersion) {
+      throw const ApiFailure('landing_consent_failed');
+    }
     browser.writeSetting('fate-data-use-version', noticeVersion);
     noticeAccepted = true;
     notifyListeners();

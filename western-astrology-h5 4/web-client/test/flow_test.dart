@@ -16,6 +16,7 @@ import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/report_view_model.dart';
 import 'package:fate_h5/features/place_picker.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
+import 'package:fate_h5/ui/jy_components.dart';
 import 'support.dart';
 
 http.Response response(dynamic value) => http.Response(
@@ -54,6 +55,49 @@ Future<void> click(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  testWidgets('checkout and app buttons cannot bypass verified payment', (tester) async {
+    phone(tester);
+    final browser = TestBrowser();
+    final paid = fixture(full: true);
+    final data = {
+      ...fixture(),
+      'payment_simulation': false,
+      'price': {'amount': 3000, 'currency': 'THB', 'display': '฿30', 'mode': 'sunlands_order_only'},
+      'chapters': paid['chapters'],
+      'plan': paid['plan'],
+    };
+    final calls = <String>[];
+    final repo = ReportRepository(browser, baseUrl: 'https://example.test',
+      client: MockClient((request) async {
+        calls.add('${request.method} ${request.url.path}');
+        if (request.url.path.endsWith('/payment')) return http.Response('', 204);
+        return response(data);
+      }),
+    );
+    final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+    await tester.pumpWidget(H5App(controller: h5,
+      initialLocation: '/report.html?id=${data['id']}&lang=zh&checkout=1'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('free-report-content')), findsOneWidget);
+    final paidText = text(object(objects(paid['chapters']).first['summary'])['text']);
+    expect(find.text(paidText), findsNothing);
+    final appButton = find.byKey(const ValueKey('jy-app-download'));
+    expect(tester.widget<JYButton>(appButton).onPressed, isNotNull);
+    await click(tester, appButton);
+    expect(find.text(h5.copy.t('jy', 'checkout.downloadUnavailable')), findsOneWidget);
+    await click(tester, find.byKey(const ValueKey('jy-payment-preview')));
+    expect(find.byKey(const ValueKey('order-mobile')), findsOneWidget);
+    await click(tester, find.widgetWithText(TextButton, h5.copy.t('checkout', 'cancelOrderEntry')));
+    expect(find.byType(ReportPaymentDialog), findsNothing);
+    expect(find.byType(ReportCheckout), findsOneWidget);
+    expect(calls.where((call) => call.endsWith('/unlock') ||
+        call == 'POST /api/life-reports/${data['id']}/payment' ||
+        call.endsWith('/payment/simulate')), isEmpty);
+    expect(browser.openedPages, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+    h5.dispose();
+  });
+
   testWidgets('Sunlands opens and cancels phone entry without creating an order', (tester) async {
     phone(tester);
     final browser = TestBrowser();
@@ -273,12 +317,16 @@ void main() {
     });
     final repo = ReportRepository(browser, baseUrl: 'https://example.test', client: MockClient((request) async {
       requests.add(request);
-      if (request.method == 'GET') return response({'reference': '000000000003', 'amount': 3000, 'currency': 'THB',
-        'order_only': true, 'state': 'CREATED', 'order_number': 'OFFLINE_ORDER_SETTLEMENT'});
+      if (request.method == 'GET') {
+        return response({'reference': '000000000003', 'amount': 3000, 'currency': 'THB',
+          'order_only': true, 'state': 'CREATED', 'order_number': 'OFFLINE_ORDER_SETTLEMENT'});
+      }
       expect(request.url.path, '/api/life-reports/${report.id}/payment/check');
       checks++;
-      if (checks == 1) return http.Response('{"code":"life_payment_check_access_denied"}', 503,
-        headers: {'content-type': 'application/json'});
+      if (checks == 1) {
+        return http.Response('{"code":"life_payment_check_access_denied"}', 503,
+          headers: {'content-type': 'application/json'});
+      }
       return response({'paid': checks >= 3});
     }));
     final h5 = H5Controller(translations(), repo, browser, language: 'zh');
@@ -370,7 +418,7 @@ void main() {
         language: 'zh',
       );
       final report = LifeReport.parse(fixture());
-      final state = GenerationState()..update(report, 19, 'preview');
+      final state = GenerationState()..update(report, 0, 'preview');
       var completed = 0, cancelled = 0;
       await tester.pumpWidget(
         MaterialApp(
@@ -388,6 +436,12 @@ void main() {
       final wheelState = tester.state(wheel);
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(tester.getTopLeft(wheel).dy, greaterThanOrEqualTo(320));
+      expect(find.text('准备中'), findsOneWidget);
+      expect(find.text('0%'), findsNothing);
+      state.update(report, 19, 'preview');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('19%'), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 2100));
       await tester.pump(const Duration(milliseconds: 2600));
       state.update(report, 99, 'preview');
@@ -395,6 +449,14 @@ void main() {
       expect(tester.state(wheel), same(wheelState));
       expect(tester.widget<GenerationVideo>(wheel).finishing, isFalse);
       expect(completed, 0);
+      expect(find.text('正在校验并保存解读内容'), findsOneWidget);
+      state.fail('连接中断');
+      await tester.pump();
+      expect(find.text('本次生成暂未完成，请重试'), findsOneWidget);
+      expect(tester.widget<GenerationVideo>(wheel).active, isFalse);
+      state.retry();
+      await tester.pump();
+      expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       await tester.tap(find.widgetWithText(TextButton, '取消等待'));
       expect(cancelled, 1);
       state.ready(report);
@@ -470,8 +532,14 @@ void main() {
                   : 0,
             });
           }
+          if (request.url.path == '/api/landing/config') {
+            return response({'notice_version': H5Controller.noticeVersion});
+          }
           if (request.url.path == '/api/landing/consents') {
-            return response({'accepted': true});
+            return response({
+              'accepted': true,
+              'notice_version': H5Controller.noticeVersion,
+            });
           }
           if (request.method == 'POST') {
             input = object(jsonDecode(request.body));
@@ -530,6 +598,12 @@ void main() {
       await click(tester, find.byKey(const ValueKey('generate-report')));
       expect(input, isNull);
       expect(find.text('确认使用出生资料'), findsOneWidget);
+      await click(tester, find.text('取消'));
+      expect(input, isNull);
+      expect(find.text('确认使用出生资料'), findsNothing);
+      await click(tester, find.byKey(const ValueKey('generate-report')));
+      expect(find.text('确认使用出生资料'), findsOneWidget);
+      expect(input, isNull);
       await click(tester, find.byKey(const ValueKey('data-use-agree')));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 600));
@@ -545,7 +619,7 @@ void main() {
       expect(find.byType(ReportCheckout), findsOneWidget);
       expect(find.text('解锁您的运程'), findsOneWidget);
       expect(find.text('฿39'), findsOneWidget);
-      expect(find.textContaining('先看清自己的判断习惯'), findsNothing);
+      expect(find.textContaining('先看清自己的判断习惯'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -598,9 +672,10 @@ void main() {
     },
   );
   test(
-    'saved report waits for its language font before showing its contents',
+    'saved free report waits for its language and body fonts before showing its contents',
     () async {
       final gate = Completer<void>();
+      final bodyFonts = Completer<void>();
       final browser = TestBrowser();
       final repo = ReportRepository(
         browser,
@@ -613,12 +688,16 @@ void main() {
         browser,
         language: 'th',
         ensureFont: (_) => gate.future,
+        ensureTextFont: (_, _) => bodyFonts.future,
       );
       final model = ReportViewModel(h5, fixture()['id']);
       final pending = model.load();
       await Future<void>.delayed(Duration.zero);
       expect(model.report, isNull);
       gate.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(model.report, isNull);
+      bodyFonts.complete();
       await pending;
       expect(model.report!.language, 'zh');
       expect(h5.language, 'zh');

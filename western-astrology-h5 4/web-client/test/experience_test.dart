@@ -133,16 +133,22 @@ void main() {
         browser,
         baseUrl: 'https://example.test',
         client: MockClient((request) async {
+          if (request.url.path == '/api/landing/config') {
+            return reply({'notice_version': H5Controller.noticeVersion});
+          }
           expect(request.url.path, '/api/landing/consents');
           expect(request.headers['X-Report-Key'], browser.key);
           expect(jsonDecode(request.body), {
-            'notice_version': 'h5-data-use-1',
+            'notice_version': H5Controller.noticeVersion,
             'granted': true,
           });
           attempts++;
           return attempts == 1
               ? reply({'code': 'busy'}, 503)
-              : reply({'accepted': true});
+              : reply({
+                  'accepted': true,
+                  'notice_version': H5Controller.noticeVersion,
+                });
         }),
       );
       final h5 = H5Controller(translations(), repo, browser, language: 'zh');
@@ -189,6 +195,87 @@ void main() {
       h5.dispose();
     },
   );
+
+  testWidgets(
+    'outdated data-use notice offers a fresh page without submitting consent',
+    (tester) async {
+      phone(tester);
+      final browser = TestBrowser()..settings.remove('fate-data-use-version');
+      var unexpected = 0;
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          if (request.url.path == '/api/landing/config') {
+            return reply({'notice_version': 'h5-data-use-future'});
+          }
+          unexpected++;
+          return reply({}, 500);
+        }),
+      );
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+      await tester.pumpWidget(
+        H5Scope(
+          controller: h5,
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => confirmDataUse(context, h5),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
+      await tester.pumpAndSettle();
+      expect(find.text(h5.copy.t('jy', 'noticeOutdated')), findsOneWidget);
+      expect(find.byKey(const ValueKey('data-use-agree')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('data-use-reload')));
+      expect(browser.openedPages.single, contains('?lang=zh&preview=notice-'));
+      expect(browser.readSetting('fate-data-use-version'), isNull);
+      expect(h5.noticeAccepted, isFalse);
+      expect(unexpected, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
+    },
+  );
+
+  test('an invalid consent acknowledgement cannot save acceptance', () async {
+    final browser = TestBrowser()..settings.remove('fate-data-use-version');
+    final repo = ReportRepository(
+      browser,
+      baseUrl: 'https://example.test',
+      client: MockClient(
+        (request) async => reply(
+          request.url.path == '/api/landing/config'
+              ? {'notice_version': H5Controller.noticeVersion}
+              : {
+                  'accepted': false,
+                  'notice_version': H5Controller.noticeVersion,
+                },
+        ),
+      ),
+    );
+    final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+    await expectLater(
+      h5.acceptDataUse(),
+      throwsA(
+        isA<ApiFailure>().having(
+          (e) => e.code,
+          'code',
+          'landing_consent_failed',
+        ),
+      ),
+    );
+    expect(browser.readSetting('fate-data-use-version'), isNull);
+    expect(h5.noticeAccepted, isFalse);
+    h5.dispose();
+  });
 
   testWidgets(
     'JY result deletion requires confirmation and handles empty 204 responses',

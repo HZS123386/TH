@@ -9,19 +9,22 @@ const port=Number(process.env.FATE_H5_PORT||8765),upstream=new URL(process.env.F
 if(!Number.isInteger(port)||port<1||port>65535||!['http:','https:'].includes(upstream.protocol))throw Error('Invalid local server settings');
 if(!process.argv.includes('--skip-build'))await buildLanding();
 const root=path.resolve(projectRoot,'site');
-const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.wasm':'application/wasm','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.ttf':'font/ttf','.otf':'font/otf','.woff2':'font/woff2','.mp4':'video/mp4'};
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.wasm':'application/wasm','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.webp':'image/webp','.ttf':'font/ttf','.otf':'font/otf','.woff2':'font/woff2','.mp4':'video/mp4'};
 const compressible=new Set(['.html','.js','.mjs','.css','.json','.wasm','.svg','.ttf','.otf']);
-function acceptsGzip(header){
- let gzip,wildcard=0;
+function acceptedEncodings(header){
+ const qualities=new Map();
  for(const part of String(header||'').toLowerCase().split(',')){
   const [name,...params]=part.trim().split(';');
   const quality=params.map(value=>value.trim()).find(value=>value.startsWith('q='));
   const parsed=quality===undefined?1:Number(quality.slice(2));
   const weight=Number.isFinite(parsed)&&parsed>=0&&parsed<=1?parsed:0;
-  if(name==='gzip')gzip=weight;
-  else if(name==='*')wildcard=weight;
+  qualities.set(name,weight);
  }
- return (gzip??wildcard)>0;
+ const weight=name=>qualities.get(name)??qualities.get('*')??0;
+ const preferred=['br','gzip'].filter(name=>weight(name)>0).sort((a,b)=>weight(b)-weight(a));
+ const identity=qualities.get('identity')??(qualities.get('*')===0?0:1);
+ if(identity>0){preferred.push('identity');if(qualities.has('identity'))preferred.sort((a,b)=>weight(b)-weight(a));}
+ return preferred;
 }
 // Cancelled font/video requests must release Windows file handles before a rebuild.
 function sendFile(file,res,options,gzip=false){
@@ -47,13 +50,22 @@ const server=createServer(async(req,res)=>{
  if(file!==root&&!file.startsWith(root+path.sep)){res.writeHead(403).end();return;}
  try{
   if((await stat(file)).isDirectory())file=path.join(file,'index.html');
-  const info=await stat(file),etag=`W/"${info.size.toString(16)}-${info.mtimeMs.toString(16)}"`;
+  const info=await stat(file);
+  const canCompress=compressible.has(path.extname(file))&&info.size>=1024;
+  const preferences=acceptedEncodings(req.headers['accept-encoding']);
+  const encodings=canCompress&&!req.headers.range?preferences:preferences.filter(name=>name==='identity');
+  let encoding=null,encodedFile=null,encodedInfo=info,selected=false;
+  for(const name of encodings){
+   if(name==='identity'){selected=true;break;}
+   try{const candidateFile=file+(name==='br'?'.br':'.gz'),candidate=await stat(candidateFile);if(candidate.isFile()){encoding=name;encodedFile=candidateFile;encodedInfo=candidate;selected=true;break;}}catch{}
+   if(name==='gzip'){encoding=name;selected=true;break;}
+  }
+  if(!selected){res.writeHead(406,{'Vary':'Accept-Encoding'}).end();return;}
+  const etag=`W/"${encodedInfo.size.toString(16)}-${encodedInfo.mtimeMs.toString(16)}${encoding?'-'+encoding:''}"`;
   const versionedEngine=/^engine\/[a-f0-9]{40}\//.test(path.relative(root,file).split(path.sep).join('/'));
   const headers={'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':versionedEngine?'public, max-age=31536000, immutable':'no-cache',ETag:etag};
-  const canCompress=compressible.has(path.extname(file))&&info.size>=1024;
-  const gzip=canCompress&&!req.headers.range&&acceptsGzip(req.headers['accept-encoding']);
   if(canCompress)headers.Vary='Accept-Encoding';
-  if(gzip)headers['Content-Encoding']='gzip';
+  if(encoding)headers['Content-Encoding']=encoding;
   if(req.headers['if-none-match']===etag){res.writeHead(304,headers).end();return;}
   const range=req.headers.range;
   if(range&&path.extname(file)==='.mp4'){
@@ -62,7 +74,7 @@ const server=createServer(async(req,res)=>{
    if(!match||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=info.size||end<start){res.writeHead(416,{'Content-Range':`bytes */${info.size}`}).end();return;}
    res.writeHead(206,{...headers,'Accept-Ranges':'bytes','Content-Range':`bytes ${start}-${end}/${info.size}`,'Content-Length':end-start+1});if(req.method==='HEAD')res.end();else sendFile(file,res,{start,end});return;
   }
-  res.writeHead(200,{...headers,...(gzip?{}:{'Content-Length':info.size}),...(path.extname(file)==='.mp4'?{'Accept-Ranges':'bytes'}:{})});if(req.method==='HEAD')res.end();else sendFile(file,res,undefined,gzip);
+  res.writeHead(200,{...headers,...(encoding==='gzip'&&!encodedFile?{}:{'Content-Length':encodedInfo.size}),...(path.extname(file)==='.mp4'?{'Accept-Ranges':'bytes'}:{})});if(req.method==='HEAD')res.end();else sendFile(encodedFile||file,res,undefined,encoding==='gzip'&&!encodedFile);
  }catch{if(!res.headersSent)res.writeHead(404).end();else res.destroy();}
 });
 server.listen(port,'127.0.0.1',()=>console.log(`FATE Flutter H5: http://127.0.0.1:${port}${basePath}`));

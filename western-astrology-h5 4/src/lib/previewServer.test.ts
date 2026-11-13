@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { readFile, readdir } from "node:fs/promises";
 import { request } from "node:http";
 import { createServer } from "node:net";
-import { gunzipSync } from "node:zlib";
+import { brotliDecompressSync, gunzipSync } from "node:zlib";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
 let server: ChildProcess;
@@ -55,13 +55,14 @@ it("compresses the actual Wasm response and preserves versioned engine caching",
   expect(response.status).toBe(200);
   expect(response.headers["content-encoding"]).toBe("gzip");
   expect(response.headers.vary).toBe("Accept-Encoding");
-  expect(response.headers["content-length"]).toBeUndefined();
+  expect(Number(response.headers["content-length"])).toBe(response.body.length);
+  expect(response.body.equals(await readFile("site/" + path + ".gz"))).toBe(true);
   expect(response.headers["cache-control"]).toContain("immutable");
   expect(gunzipSync(response.body).equals(await readFile("site/" + path))).toBe(true);
 });
 
 it("honors gzip rejection, HEAD requests and conditional cache validation", async () => {
-  const headers = { "Accept-Encoding": "gzip;q=0, *;q=1" };
+  const headers = { "Accept-Encoding": "gzip;q=0, br;q=0, *;q=1" };
   const response = await get("main.dart.wasm", headers);
   expect(response.headers["content-encoding"]).toBeUndefined();
   expect(Number(response.headers["content-length"])).toBe(response.body.length);
@@ -70,10 +71,31 @@ it("honors gzip rejection, HEAD requests and conditional cache validation", asyn
   expect(head.status).toBe(200);
   expect(head.headers["content-encoding"]).toBe("gzip");
   expect(head.body.length).toBe(0);
-  const cached = await get("main.dart.wasm", { "If-None-Match": String(response.headers.etag), "Accept-Encoding": "gzip" });
+  const cached = await get("main.dart.wasm", { "If-None-Match": String(head.headers.etag), "Accept-Encoding": "gzip" });
   expect(cached.status).toBe(304);
   expect(cached.headers.vary).toBe("Accept-Encoding");
   expect(cached.body.length).toBe(0);
+});
+
+it("serves exact Brotli files with quality preferences, HEAD and representation-specific caching", async () => {
+  const response = await get("main.dart.wasm", { "Accept-Encoding": "gzip, br" });
+  expect(response.headers["content-encoding"]).toBe("br");
+  expect(response.headers["content-type"]).toBe("application/wasm");
+  expect(response.body.equals(await readFile("site/main.dart.wasm.br"))).toBe(true);
+  expect(brotliDecompressSync(response.body).equals(await readFile("site/main.dart.wasm"))).toBe(true);
+  const head = await get("main.dart.wasm", { "Accept-Encoding": "br" }, "HEAD");
+  expect(head.body.length).toBe(0);
+  expect(Number(head.headers["content-length"])).toBe(response.body.length);
+  const cached = await get("main.dart.wasm", { "Accept-Encoding": "br", "If-None-Match": String(head.headers.etag) });
+  expect(cached.status).toBe(304);
+  const gzip = await get("main.dart.wasm", { "Accept-Encoding": "gzip;q=1, br;q=0.5", "If-None-Match": String(head.headers.etag) });
+  expect(gzip.status).toBe(200);
+  expect(gzip.headers["content-encoding"]).toBe("gzip");
+  expect(gzip.headers.etag).not.toBe(head.headers.etag);
+  const identity = await get("main.dart.wasm", { "Accept-Encoding": "identity;q=1, br;q=0.5" });
+  expect(identity.headers["content-encoding"]).toBeUndefined();
+  expect(identity.body.equals(await readFile("site/main.dart.wasm"))).toBe(true);
+  expect((await get("main.dart.wasm", { "Accept-Encoding": "*;q=0" })).status).toBe(406);
 });
 
 it("keeps the video byte-range response uncompressed for mobile playback", async () => {
@@ -82,4 +104,10 @@ it("keeps the video byte-range response uncompressed for mobile playback", async
   expect(response.headers["content-encoding"]).toBeUndefined();
   expect(response.headers["content-range"]).toMatch(/^bytes 0-127\//);
   expect(response.body).toEqual((await readFile("site/media/report-loading-web.mp4")).subarray(0, 128));
+});
+
+it("serves the landing artwork with the browser image MIME type", async () => {
+  const response = await get("assets/assets/images/theme-thai-artwork.jpg", {}, "HEAD");
+  expect(response.status).toBe(200);
+  expect(response.headers["content-type"]).toBe("image/jpeg");
 });

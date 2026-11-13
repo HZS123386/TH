@@ -1,5 +1,10 @@
-# Add this site alongside the existing domain sites in the shared Caddyfile.
-http://129.226.126.212 {
+{
+    # IP clients omit SNI; Docker's private address must not select their certificate.
+    default_sni 129.226.126.212
+}
+
+# Shared routes keep the existing HTTP entry available for credential migration.
+(astro_landing_routes) {
     encode {
         zstd
         gzip 6
@@ -34,4 +39,20 @@ http://129.226.126.212 {
     handle {
         respond 404
     }
+}
+
+http://129.226.126.212 {
+    import astro_landing_routes
+}
+
+https://129.226.126.212 {
+    # Public IP certificates require Let's Encrypt's short-lived ACME profile.
+    # Caddy manages issuance and renewal in its existing persistent data volume.
+    tls {
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+            profile shortlived
+        }
+    }
+    import astro_landing_routes
 }

@@ -14,12 +14,16 @@ external JSPromise<JSString> _export(JSString payload, JSString format);
 external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
+@JS('fateBoot.fail')
+external void _startupFailed();
 @JS('navigator.globalPrivacyControl')
 external JSBoolean? get _privacyControl;
 @JS('navigator.doNotTrack')
 external JSString? get _doNotTrack;
 
 class WebBrowserPort implements BrowserPort {
+  void startupFailed() => _startupFailed();
+
   @override
   void openPage(String path) => web.window.open(
     Uri.base.resolve(path).toString(),

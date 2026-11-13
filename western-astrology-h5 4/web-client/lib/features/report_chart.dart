@@ -107,7 +107,7 @@ class _ChartViewState extends State<ChartView> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              c.t('jy', 'chart.noTime'),
+              c.t('jy', widget.report.western ? 'unknownNote' : 'chart.noTime'),
               style: const TextStyle(color: gold, fontSize: 12, height: 1.65),
             ),
           ),

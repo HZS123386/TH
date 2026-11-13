@@ -13,10 +13,19 @@ class LanguageFonts {
       (FontLoader(family)..addFont(rootBundle.load(asset))).load();
 
   Future<void> _ensure(String family, String asset) async {
-    final pending = _pending.putIfAbsent(
-      family,
-      () => _loadFont(family, asset),
-    );
+    final pending = _pending.putIfAbsent(family, () async {
+      for (var attempt = 0; ; attempt++) {
+        try {
+          await _loadFont(family, asset);
+          return;
+        } catch (_) {
+          if (attempt == 2) rethrow;
+          await Future<void>.delayed(
+            Duration(milliseconds: 350 * (attempt + 1)),
+          );
+        }
+      }
+    });
     try {
       await pending;
     } catch (_) {

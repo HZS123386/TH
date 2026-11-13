@@ -26,15 +26,23 @@ def event(http, visit_id, report_id, name, headers=HEADERS):
 
 def test_config_exposes_only_public_support_and_notice_version(client):
     http, _, _, _ = client
-    assert http.get("/api/landing/config").json() == {"support_email": "", "notice_version": "h5-data-use-1"}
+    response = http.get("/api/landing/config")
+    assert response.json() == {"support_email": "", "notice_version": "h5-data-use-2"}
+    assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_confirmation_is_owned_versioned_strict_and_idempotent(client):
     http, app, _, _ = client
-    body = {"notice_version": "h5-data-use-1", "granted": True}
+    body = {"notice_version": "h5-data-use-2", "granted": True}
     assert http.post("/api/landing/consents", json=body).status_code == 422
-    for bad in [{**body, "granted": False}, {**body, "granted": "true"}, {**body, "notice_version": "old"}]:
+    for bad in [{**body, "granted": False}, {**body, "granted": "true"}, {**body, "notice_version": ""}, {**body, "notice_version": 2}]:
         assert http.post("/api/landing/consents", json=bad, headers=HEADERS).status_code == 422
+    for version in ("h5-data-use-1", "old"):
+        result = http.post("/api/landing/consents", json={**body, "notice_version": version}, headers=HEADERS)
+        assert result.status_code == 409
+        assert result.json()["code"] == "landing_notice_outdated"
+    with app.state.life_reports.store.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM landing_consents").fetchone()[0] == 0
     for _ in range(2):
         assert http.post("/api/landing/consents", json=body, headers=HEADERS).status_code == 200
     with app.state.life_reports.store.connect() as db:
@@ -151,7 +159,7 @@ def test_estimated_chart_does_not_present_time_sensitive_houses_as_exact(client)
     assert all(p["house"] is None and p["id"] != "ascendant" for p in chart["planets"])
 
 
-def test_minimal_server_serves_font_mime_types_for_gateway_compression(tmp_path, monkeypatch):
+def test_minimal_server_serves_font_and_image_mime_types(tmp_path, monkeypatch):
     import mimetypes
     from fastapi.testclient import TestClient
     from backend.app.config import Settings
@@ -159,19 +167,20 @@ def test_minimal_server_serves_font_mime_types_for_gateway_compression(tmp_path,
 
     static = tmp_path / "landing"
     static.mkdir()
-    fonts = {"initial.otf": "font/otf", "symbols.ttf": "font/ttf", "extra.woff2": "font/woff2"}
-    for name in fonts:
-        (static / name).write_bytes(b"font-content")
+    assets = {"initial.otf": "font/otf", "symbols.ttf": "font/ttf", "extra.woff2": "font/woff2",
+              "portrait.webp": "image/webp", "loading-animation.webp": "image/webp"}
+    for name in assets:
+        (static / name).write_bytes(b"asset-content")
     # Reproduce the MIME database in the production slim image on every OS.
     database = mimetypes.MimeTypes()
     monkeypatch.setattr(mimetypes, "_db", database)
     monkeypatch.setattr(mimetypes, "types_map", database.types_map[True])
-    for extension in (".otf", ".ttf", ".woff2"):
+    for extension in (".otf", ".ttf", ".woff2", ".webp"):
         mimetypes.add_type("application/octet-stream", extension)
     settings = Settings(database_path=str(tmp_path / "font-test.db"), thai_landing_dir=str(static))
     with TestClient(create_app(settings)) as http:
-        for name, expected in fonts.items():
+        for name, expected in assets.items():
             response = http.get("/thai-landing/" + name)
             assert response.status_code == 200
             assert response.headers["content-type"] == expected
-            assert response.content == b"font-content"
+            assert response.content == b"asset-content"

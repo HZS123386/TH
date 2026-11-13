@@ -15,6 +15,7 @@ const fortuneKeys = [
   'risk',
   'romance',
 ];
+const westernKeys = ['natal', 'career', 'wealth', 'love', 'risk'];
 const previewKeys = [
   'preview_summary',
   'preview_strength',
@@ -49,8 +50,14 @@ class Copy {
       ...object(object(data['life'])[language]),
       if (report.input['report_kind'] == 'fortune')
         ...object(object(data['fortune'])[language]),
+      if (report.western) ...object(object(data['western'])[language]),
       if (report.career) ...object(object(data['career'])[language]),
     };
+    if (report.western) {
+      labels['methodValue'] =
+          '${object(report.json['method'])['name']} · Placidus';
+      labels['plan'] = t('jy', 'report.westernSections.plan');
+    }
     final question = object(report.input['career_question']);
     if (question.isNotEmpty) {
       final situation = object(
@@ -163,6 +170,7 @@ class LifeReport {
       object(json['progress'])['completed'] ==
           object(json['progress'])['total'];
   bool get career => input['career'] != null;
+  bool get western => json['format'] == 'western-compact';
   Json get preview => object(json['preview']);
   List<Json> get catalog => objects(json['catalog']);
   List<Json> get chapters => full ? objects(json['chapters']) : [];
@@ -175,6 +183,8 @@ class LifeReport {
   bool get estimated => object(json['time_accuracy'])['mode'] == 'estimated';
   List<String> get progressKeys => career
       ? ['work']
+      : western
+      ? [...westernKeys, 'plan']
       : input['report_kind'] == 'fortune'
       ? [...fortuneKeys, 'plan']
       : ['work', 'money', 'relationships', 'annual', 'plan'];
@@ -187,6 +197,8 @@ class LifeReport {
     final price = object(row['price']);
     final expectedCount = input['career'] != null
         ? 1
+        : row['format'] == 'western-compact'
+        ? 5
         : input['report_kind'] == 'fortune'
         ? 7
         : 5;
@@ -210,7 +222,13 @@ class LifeReport {
         progress['completed'] > progress['total']) {
       throw const FormatException('invalid_report');
     }
-    if (input['report_kind'] == 'fortune' &&
+    if (row['format'] == 'western-compact' &&
+        (catalog.map((c) => c['key']).toSet().length != 5 ||
+            catalog.any((c) => !westernKeys.contains(c['key'])))) {
+      throw const FormatException('invalid_catalog');
+    }
+    if (row['format'] != 'western-compact' &&
+        input['report_kind'] == 'fortune' &&
         input['career'] == null &&
         (catalog.map((c) => c['key']).toSet().length != 7 ||
             catalog.any((c) => !fortuneKeys.contains(c['key'])))) {

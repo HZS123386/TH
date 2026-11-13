@@ -49,16 +49,37 @@ void main() {
     },
   );
 
-  test('a failed font load can be retried', () async {
-    var attempts = 0;
-    final fonts = LanguageFonts(
-      loadFont: (family, path) async {
-        if (++attempts == 1) throw StateError('network');
-      },
-    );
-    await expectLater(fonts.ensure('zh'), throwsStateError);
-    await fonts.ensure('zh');
-    await fonts.ensure('zh');
-    expect(attempts, 2);
-  });
+  test(
+    'an interrupted font load retries automatically and stays deduplicated',
+    () async {
+      var attempts = 0;
+      final fonts = LanguageFonts(
+        loadFont: (family, path) async {
+          if (++attempts == 1) throw StateError('network');
+        },
+      );
+      await Future.wait([fonts.ensure('zh'), fonts.ensure('zh')]);
+      await fonts.ensure('zh');
+      expect(attempts, 2);
+    },
+  );
+
+  test(
+    'permanent font errors stop retrying and allow a later recovery',
+    () async {
+      var attempts = 0;
+      var unavailable = true;
+      final fonts = LanguageFonts(
+        loadFont: (family, path) async {
+          attempts++;
+          if (unavailable) throw StateError('unavailable');
+        },
+      );
+      await expectLater(fonts.ensure('zh'), throwsStateError);
+      expect(attempts, 3);
+      unavailable = false;
+      await fonts.ensure('zh');
+      expect(attempts, 4);
+    },
+  );
 }

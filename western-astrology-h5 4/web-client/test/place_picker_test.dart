@@ -122,11 +122,18 @@ void main() {
           .widget<TextFormField>(find.byKey(ValueKey(key)))
           .controller!
           .text;
-      final below = find.text('below fields');
-      final originalPosition = tester.getTopLeft(below);
+      final followingPosition = tester.getTopLeft(find.text('outside'));
+      void checkFloatingMenu(String id) {
+        expect(tester.getTopLeft(find.text('outside')), followingPosition);
+        final input = tester.getRect(find.byKey(ValueKey(id)));
+        final menu = tester.getRect(find.byKey(ValueKey('$id-options')));
+        expect(menu.top, closeTo(input.bottom + 5, .1));
+        expect(menu.width, closeTo(input.width, .1));
+      }
+
       for (final country in ['CN', 'TH']) {
         await mouse(arrow('birth-country'));
-        expect(tester.getTopLeft(below), originalPosition);
+        checkFloatingMenu('birth-country');
         expect(find.widgetWithText(InkWell, '中国'), findsOneWidget);
         expect(find.widgetWithText(InkWell, '泰国'), findsOneWidget);
         await mouse(
@@ -137,7 +144,7 @@ void main() {
         expect(value('birth-city'), isEmpty);
         expect(chosen, isNull);
         await mouse(arrow('birth-province'));
-        expect(tester.getTopLeft(below), originalPosition);
+        checkFloatingMenu('birth-province');
         final province = find.descendant(
           of: find.byType(PlacePicker),
           matching: find.text(places[country]!['nameChinese']!),
@@ -146,7 +153,7 @@ void main() {
         await mouse(province);
         expect(value('birth-province'), places[country]!['nameChinese']);
         await mouse(arrow('birth-city'));
-        expect(tester.getTopLeft(below), originalPosition);
+        checkFloatingMenu('birth-city');
         final city = find.descendant(
           of: find.byType(PlacePicker),
           matching: find.text(cities[country]!['nameChinese']!),
@@ -172,6 +179,112 @@ void main() {
       h5.dispose();
     },
     variant: TargetPlatformVariant.only(TargetPlatform.windows),
+  );
+  testWidgets(
+    'floating menus follow scrolling and stay above the phone keyboard',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+      final browser = TestBrowser();
+      final scroll = ScrollController();
+      final province = Place({
+        'id': 'geonames:1609350',
+        'countryCode': 'TH',
+        'nameThai': 'กรุงเทพมหานคร',
+        'nameEnglish': 'Bangkok',
+        'timeZone': 'Asia/Bangkok',
+        'placeType': 'province',
+      });
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient(
+          (request) async => http.Response(
+            jsonEncode({
+              'items': request.url.queryParameters['level'] == 'province'
+                  ? [province.json]
+                  : [],
+              'total': request.url.queryParameters['level'] == 'province'
+                  ? 1
+                  : 0,
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          ),
+        ),
+      );
+      final h5 = H5Controller(translations(), repo, browser);
+      Place? chosen;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: h5Theme(),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              controller: scroll,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 70),
+                    BirthplaceFields(
+                      h5: h5,
+                      onSelected: (value) => chosen = value,
+                    ),
+                    const SizedBox(height: 400),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Finder arrow(String key) => find.descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byType(IconButton),
+      );
+      await tester.tap(arrow('birth-country'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(InkWell, 'ไทย'));
+      await tester.pumpAndSettle();
+      await tester.tap(arrow('birth-province'));
+      await tester.pumpAndSettle();
+      Rect menu(String id) =>
+          tester.getRect(find.byKey(ValueKey('$id-options')));
+      Rect input(String id) => tester.getRect(find.byKey(ValueKey(id)));
+      expect(
+        menu('birth-province').bottom,
+        closeTo(input('birth-province').top - 5, .1),
+      );
+      scroll.jumpTo(24);
+      await tester.pumpAndSettle();
+      expect(
+        menu('birth-province').bottom,
+        closeTo(input('birth-province').top - 5, .1),
+      );
+      await tester.tap(find.text('กรุงเทพมหานคร'));
+      await tester.pumpAndSettle();
+      await tester.tap(arrow('birth-city'));
+      await tester.pumpAndSettle();
+      expect(menu('birth-city').bottom, lessThanOrEqualTo(320));
+      expect(find.byType(Dialog), findsNothing);
+      final cityOption = find.descendant(
+        of: find.byType(PlacePicker),
+        matching: find.text('กรุงเทพมหานคร'),
+      );
+      expect(cityOption, findsOneWidget);
+      expect(find.text(h5.copy.t('ui', 'noCity')), findsNothing);
+      await tester.tap(cityOption);
+      expect(chosen?.id, province.id);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      scroll.dispose();
+      h5.dispose();
+    },
   );
   testWidgets(
     'country suggestions open above the field when the keyboard leaves no room below',
@@ -222,60 +335,4 @@ void main() {
     },
   );
 
-  testWidgets('Thai locality picker remains usable above the phone keyboard', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(360, 640);
-    tester.view.devicePixelRatio = 1;
-    tester.view.viewInsets = const FakeViewPadding(bottom: 320);
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetViewInsets);
-    final browser = TestBrowser();
-    final province = Place({
-      'id': 'geonames:1609350',
-      'countryCode': 'TH',
-      'nameThai': 'กรุงเทพมหานคร',
-      'nameEnglish': 'Bangkok',
-      'timeZone': 'Asia/Bangkok',
-      'placeType': 'province',
-    });
-    final repo = ReportRepository(
-      browser,
-      baseUrl: 'https://example.test',
-      client: MockClient(
-        (_) async => http.Response(
-          jsonEncode({'items': [], 'total': 0}),
-          200,
-          headers: {'content-type': 'application/json; charset=utf-8'},
-        ),
-      ),
-    );
-    final h5 = H5Controller(translations(), repo, browser);
-    Place? chosen;
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: h5Theme(),
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: PlacePicker(
-              h5: h5,
-              country: 'TH',
-              province: province,
-              onSelected: (value) => chosen = value,
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byType(Dialog), findsNothing);
-    expect(find.text('กรุงเทพมหานคร'), findsOneWidget);
-    expect(find.text(h5.copy.t('ui', 'noCity')), findsNothing);
-    await tester.tap(find.text('กรุงเทพมหานคร'));
-    expect(chosen?.id, province.id);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-    h5.dispose();
-  });
 }

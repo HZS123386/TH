@@ -296,7 +296,11 @@ void main() {
 
       await tester.tap(find.byType(NavigationDestination).at(1));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(s.example));
+      expect(find.text(AppLocalizationsEn().birthIntro), findsOneWidget);
+      expect(find.text(AppLocalizationsEn().birthStorage), findsOneWidget);
+      final example = find.text(AppLocalizationsEn().example);
+      await tester.ensureVisible(example);
+      await tester.tap(example);
       await tester.pumpAndSettle();
       expect(
         find.textContaining('not calculated from your birth details'),
@@ -335,50 +339,53 @@ void main() {
       d.dispose();
     },
   );
-  testWidgets('birth date wheels and Buddhist era fit a small phone viewport', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(360, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
-    final api = ApiClient(
-      'https://api.example.test',
-      client: MockClient((_) async => http.Response('{"modules":[]}', 200)),
-    );
-    final d = AppDependencies(
-      await SharedPreferences.getInstance(),
-      client: api,
-      secureStore: MemorySessionStore(),
-    );
-    final s = AppLocalizationsEn();
-    await tester.pumpWidget(
-      DependencyScope(
-        dependencies: d,
-        child: FateApp(dependencies: d),
-      ),
-    );
-    await d.session.initialize();
-    await tester.pumpAndSettle();
-    final start = find.widgetWithText(OutlinedButton, s.start);
-    await tester.ensureVisible(start);
-    await tester.tap(start);
-    await tester.pumpAndSettle();
-    final choose = find.widgetWithText(OutlinedButton, s.chooseBirthDate);
-    await tester.ensureVisible(choose);
-    await tester.tap(choose);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(s.calendarBuddhist));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    final done = find.widgetWithText(FilledButton, s.pickerDone);
-    expect(done, findsOneWidget);
-    await tester.tap(done);
-    await tester.pumpAndSettle();
-    expect(find.text('1999-01-01'), findsOneWidget);
-    expect(d.session.profile, isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-    d.dispose();
-  });
+  testWidgets(
+    'birth form uses Gregorian dates and removes name and timezone fields',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
+      final api = ApiClient(
+        'https://api.example.test',
+        client: MockClient((_) async => http.Response('{"modules":[]}', 200)),
+      );
+      final d = AppDependencies(
+        await SharedPreferences.getInstance(),
+        client: api,
+        secureStore: MemorySessionStore(),
+      );
+      final s = AppLocalizationsEn();
+      await tester.pumpWidget(
+        DependencyScope(
+          dependencies: d,
+          child: FateApp(dependencies: d),
+        ),
+      );
+      await d.session.initialize();
+      await tester.pumpAndSettle();
+      final start = find.widgetWithText(OutlinedButton, s.start);
+      await tester.ensureVisible(start);
+      await tester.tap(start);
+      await tester.pumpAndSettle();
+      expect(find.text('Preferred name (optional)'), findsNothing);
+      expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+      final choose = find.widgetWithText(OutlinedButton, s.chooseBirthDate);
+      await tester.ensureVisible(choose);
+      await tester.tap(choose);
+      await tester.pumpAndSettle();
+      expect(find.text('Buddhist Era'), findsNothing);
+      expect(find.text(s.calendarGregorian), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      final done = find.widgetWithText(FilledButton, s.pickerDone);
+      expect(done, findsOneWidget);
+      await tester.tap(done);
+      await tester.pumpAndSettle();
+      expect(find.text('1999-01-01'), findsOneWidget);
+      expect(d.session.profile, isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      d.dispose();
+    },
+  );
 }
