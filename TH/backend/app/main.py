@@ -5,7 +5,8 @@ import mimetypes
 import time
 from collections import defaultdict, deque
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
+from math import ceil
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
@@ -287,6 +288,32 @@ def create_app(settings: Settings | None = None):
                 return await asyncio.to_thread(thai_engine.locations, country, query, offset, level, province)
         except RuntimeError as error:
             raise HTTPException(503, str(error)) from None
+
+    async def bangkok_daily_response(calculate_day):
+        bangkok = ZoneInfo("Asia/Bangkok")
+        try:
+            async with thai_slots:
+                today = datetime.now(bangkok).date()
+                day = await asyncio.to_thread(calculate_day, today.isoformat())
+                now = datetime.now(bangkok)
+                if now.date() != today:
+                    day = await asyncio.to_thread(calculate_day, now.date().isoformat())
+        except RuntimeError as error:
+            raise HTTPException(503, str(error)) from None
+        midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        seconds = max(1, min(86400, ceil((midnight - datetime.now(bangkok)).total_seconds())))
+        return JSONResponse(
+            {**day, "refresh_after_seconds": seconds},
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/api/thai-calendar/today")
+    async def thai_calendar_today():
+        return await bangkok_daily_response(thai_engine.daily_calendar)
+
+    @app.get("/api/daily-horoscope/today")
+    async def daily_horoscope_today():
+        return await bangkok_daily_response(thai_engine.daily_horoscope)
 
     @app.get("/api/thai-chart")
     async def thai_chart(user_id: str = Depends(user)):

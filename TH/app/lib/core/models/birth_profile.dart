@@ -14,6 +14,18 @@ class BirthProfile {
   final int? revision;
   bool get exactTime => time != null;
   bool get isServerRevision => id != null && revision != null;
+
+  int? get westernSignIndex {
+    final birthday = DateTime.tryParse('${date}T00:00:00Z');
+    if (birthday == null) return null;
+    const signChangeDays = [20, 19, 21, 20, 21, 21, 23, 23, 23, 23, 22, 22];
+    // April starts in Aries (index 0), and each month advances one sign.
+    final signAtMonthStart = (birthday.month - DateTime.april) % 12;
+    return birthday.day >= signChangeDays[birthday.month - 1]
+        ? (signAtMonthStart + 1) % 12
+        : signAtMonthStart;
+  }
+
   Map<String, dynamic> toJson() => {
     'birth_date': date,
     'birth_time': time,

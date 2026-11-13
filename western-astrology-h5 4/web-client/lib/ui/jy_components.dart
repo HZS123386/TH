@@ -438,42 +438,18 @@ class _Corners extends CustomClipper<Path> {
 class ReportBadges extends StatelessWidget {
   const ReportBadges({
     required this.copy,
+    this.themes,
     this.locked = true,
     this.onTap,
     super.key,
   });
   final Copy copy;
+  final List<Json>? themes;
   final bool locked;
   final ValueChanged<String>? onTap;
   @override
   Widget build(BuildContext context) {
-    final items = locked
-        ? [
-            ...objects(object(copy.data['jyThemes'])['outlook']),
-            ...objects(object(copy.data['jyThemes'])['highlights']),
-          ]
-        : [
-            for (final key in [
-              'overall',
-              'natal',
-              'love',
-              'career',
-              'opportunities',
-              'partnership',
-            ])
-              {
-                'id': key,
-                copy.language: copy.t('jy', 'report.sections.$key'),
-                'icon': {
-                  'overall': '✦',
-                  'natal': '☉',
-                  'love': '♡',
-                  'career': '◇',
-                  'opportunities': '✧',
-                  'partnership': '☽',
-                }[key],
-              },
-          ];
+    final items = themes ?? copy.reportThemes;
     return LayoutBuilder(
       builder: (context, box) {
         final width = (box.maxWidth - 20) / 3;
@@ -518,9 +494,7 @@ class ReportBadges extends StatelessWidget {
             gradient: RadialGradient(
               center: const Alignment(0, -.65),
               radius: .85,
-              colors: locked
-                  ? colors
-                  : const [Color(0xFF573B64), Color(0xFF271934)],
+              colors: colors,
             ),
           ),
           child: Container(
@@ -531,14 +505,13 @@ class ReportBadges extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                if (locked)
-                  ClipOval(
-                    child: SvgPicture.asset(
-                      'assets/images/badges/${id == 'warning' ? 'opportunities' : id}.svg',
-                      width: size,
-                      height: size,
-                    ),
+                ClipOval(
+                  child: SvgPicture.asset(
+                    'assets/images/badges/${id == 'warning' ? 'opportunities' : id}.svg',
+                    width: size,
+                    height: size,
                   ),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(4),
                   child: Column(

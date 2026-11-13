@@ -21,6 +21,10 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
   final _countryText = TextEditingController(),
       _provinceText = TextEditingController(),
       _cityText = TextEditingController();
+  final _menus = {
+    for (final id in ['birth-country', 'birth-province', 'birth-city'])
+      id: OverlayPortalController(),
+  };
   String _country = '',
       _countryQuery = '',
       _provinceQuery = '',
@@ -64,6 +68,53 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     widget.onSelected(null);
   }
 
+  void _setOpen(String id) {
+    if (_open == id) return;
+    _menus[_open]?.hide();
+    _open = id;
+    _menus[id]?.show();
+  }
+
+  Widget _positionMenu(
+    BuildContext context,
+    OverlayChildLayoutInfo layout,
+    OverlayPortalController portal,
+    Widget options,
+  ) {
+    const gap = 5.0, menuHeight = 185.0;
+    final field = MatrixUtils.transformRect(
+      layout.childPaintTransform,
+      Offset.zero & layout.childSize,
+    );
+    final viewport = MediaQueryData.fromView(View.of(context));
+    final bottom =
+        layout.overlaySize.height -
+        viewport.viewInsets.bottom.clamp(
+          viewport.padding.bottom,
+          double.infinity,
+        );
+    final top = viewport.padding.top;
+    if (field.bottom <= top || field.top >= bottom) {
+      return const SizedBox.shrink();
+    }
+    final above = (field.top - top - gap).clamp(0.0, menuHeight);
+    final below = (bottom - field.bottom - gap).clamp(0.0, menuHeight);
+    final opensDown = below >= above;
+    return Positioned(
+      left: field.left,
+      width: field.width,
+      top: opensDown ? field.bottom + gap : null,
+      bottom: opensDown ? null : layout.overlaySize.height - field.top + gap,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: opensDown ? below : above),
+        child: TextFieldTapRegion(
+          groupId: portal,
+          child: Material(type: MaterialType.transparency, child: options),
+        ),
+      ),
+    );
+  }
+
   void _setCountry(String country) {
     setState(() {
       _country = country;
@@ -72,7 +123,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       _provinceQuery = '';
       _provinceText.clear();
       _clearCity();
-      _open = '';
+      _setOpen('');
       _countryText.text = c.t(
         'jy',
         country == 'global'
@@ -96,67 +147,81 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       String hint,
       VoidCallback open,
       ValueChanged<String> edit,
-      Widget? options, {
+      Widget options, {
       bool enabled = true,
-    }) => Focus(
-      onFocusChange: (focused) {
-        // Web focus can arrive before an arrow press; only explicit taps open it.
-        if (mounted && !focused && _open == id) {
-          setState(() => _open = '');
-        }
-      },
-      // Mouse-down on a suggestion must not blur and remove it before mouse-up.
-      child: TextFieldTapRegion(
-        onTapOutside: (_) {
-          if (_open == id && mounted) setState(() => _open = '');
+    }) {
+      final portal = _menus[id]!;
+      return Focus(
+        onFocusChange: (focused) {
+          // Web focus can arrive before an arrow press; only explicit taps open it.
+          if (mounted && !focused && _open == id) {
+            setState(() => _setOpen(''));
+          }
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 7),
-            SizedBox(
-              height: 46,
-              child: TextFormField(
-                key: ValueKey(id),
-                controller: controller,
-                enabled: enabled,
-                style: const TextStyle(fontSize: 13),
-                autocorrect: false,
-                maxLength: 80,
-                onTap: open,
-                onChanged: edit,
-                decoration: InputDecoration(
-                  hintText: hint,
-                  counterText: '',
-                  suffixIconConstraints: const BoxConstraints(
-                    minWidth: 36,
-                    maxWidth: 36,
-                  ),
-                  suffixIcon: IconButton(
-                    tooltip: label,
-                    onPressed: enabled
-                        ? () => setState(() => _open = _open == id ? '' : id)
-                        : null,
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 19,
-                      color: gold,
+        // Mouse-down on a suggestion must not blur and remove it before mouse-up.
+        child: TextFieldTapRegion(
+          groupId: portal,
+          onTapOutside: (_) {
+            if (_open == id && mounted) setState(() => _setOpen(''));
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 7),
+              OverlayPortal.overlayChildLayoutBuilder(
+                controller: portal,
+                overlayChildBuilder: (context, layout) =>
+                    _positionMenu(context, layout, portal, options),
+                child: SizedBox(
+                  height: 46,
+                  child: TextFormField(
+                    key: ValueKey(id),
+                    groupId: portal,
+                    controller: controller,
+                    enabled: enabled,
+                    style: const TextStyle(fontSize: 13),
+                    autocorrect: false,
+                    maxLength: 80,
+                    onTap: open,
+                    onChanged: edit,
+                    decoration: InputDecoration(
+                      hintText: hint,
+                      counterText: '',
+                      suffixIconConstraints: const BoxConstraints(
+                        minWidth: 36,
+                        maxWidth: 36,
+                      ),
+                      suffixIcon: IconButton(
+                        tooltip: label,
+                        onPressed: enabled
+                            ? () => setState(
+                                () => _setOpen(_open == id ? '' : id),
+                              )
+                            : null,
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 19,
+                          color: gold,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            if (_open == id && enabled && options != null)
-              Padding(padding: const EdgeInsets.only(top: 5), child: options),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
+
     final countries = [
       ('CN', c.t('jy', 'china'), 'china 中国 中國 จีน cn'),
       ('TH', c.t('jy', 'thailand'), 'thailand 泰国 泰國 ไทย th'),
@@ -170,7 +235,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
           '⌖  ${c.t('jy', 'country')}',
           _countryText,
           c.t('jy', 'countryPrompt'),
-          () => setState(() => _open = 'birth-country'),
+          () => setState(() => _setOpen('birth-country')),
           (v) => setState(() {
             _countryQuery = v;
             _country = '';
@@ -178,7 +243,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
             _provinceQuery = '';
             _provinceText.clear();
             _clearCity();
-            _open = 'birth-country';
+            _setOpen('birth-country');
           }),
           Container(
             decoration: BoxDecoration(
@@ -186,30 +251,33 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
               border: Border.all(color: const Color(0x40E4BC78)),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final item in countries)
-                  if ('${item.$2} ${item.$3}'.toLowerCase().contains(
-                    _countryQuery.toLowerCase().trim(),
-                  ))
-                    InkWell(
-                      onTap: () => _setCountry(item.$1),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 9,
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            item.$2,
-                            style: const TextStyle(fontSize: 12),
+            child: SingleChildScrollView(
+              primary: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final item in countries)
+                    if ('${item.$2} ${item.$3}'.toLowerCase().contains(
+                      _countryQuery.toLowerCase().trim(),
+                    ))
+                      InkWell(
+                        onTap: () => _setCountry(item.$1),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 9,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              item.$2,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -230,12 +298,12 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                       ? 'thaiRegionPrompt'
                       : 'regionPrompt',
                 ),
-                () => setState(() => _open = 'birth-province'),
+                () => setState(() => _setOpen('birth-province')),
                 (v) => setState(() {
                   _province = null;
                   _provinceQuery = v;
                   _clearCity();
-                  _open = 'birth-province';
+                  _setOpen('birth-province');
                 }),
                 PlacePicker(
                   key: ValueKey('province-$_country'),
@@ -247,7 +315,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                     _provinceText.text = value.name(c.language);
                     _provinceQuery = '';
                     _clearCity();
-                    _open = '';
+                    _setOpen('');
                   }),
                 ),
                 enabled: hasRegions,
@@ -267,12 +335,12 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                       ? 'countryFirst'
                       : 'regionFirst',
                 ),
-                () => setState(() => _open = 'birth-city'),
+                () => setState(() => _setOpen('birth-city')),
                 (v) => setState(() {
                   _cityQuery = v;
                   _city = null;
                   widget.onSelected(null);
-                  _open = 'birth-city';
+                  _setOpen('birth-city');
                 }),
                 PlacePicker(
                   key: ValueKey('city-$_country-${_province?.id}'),
@@ -284,7 +352,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                     _city = value;
                     _cityText.text = value.name(c.language);
                     _cityQuery = '';
-                    _open = '';
+                    _setOpen('');
                     widget.onSelected(value);
                   }),
                 ),
@@ -431,6 +499,7 @@ class _PlacePickerState extends State<PlacePicker> {
       borderRadius: BorderRadius.circular(9),
     ),
     child: ListView(
+      primary: false,
       shrinkWrap: true,
       padding: EdgeInsets.zero,
       children: [

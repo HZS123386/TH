@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { calculateFortune } from './thai-fortune.mjs';
+import { calculateDailyHoroscope, calculateFortune } from './thai-fortune.mjs';
 import { indexedLocation, recognizeBirthplace, searchBirthCities } from './birth-locations.mjs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -74,6 +74,48 @@ function civil(date, time) {
   const [hour, minute] = time.split(':').map(Number);
   return { date: { year, month, day, era: 'CE' }, time: { hour, minute } };
 }
+
+// Ubakong weekday table, daytime slots with two or four dots (Sunday first).
+// https://www.maneedee.com/yam-ubakong/
+const ubakongDaylight = [[0, 3], [1, 4], [0, 2], [1, 3], [2, 4], [0, 3], [1, 4]];
+
+function formatClock(minutes) {
+  const hour = String(Math.floor(minutes / 60)).padStart(2, '0');
+  const minute = String(minutes % 60).padStart(2, '0');
+  return `${hour}:${minute}`;
+}
+
+export function calculateDailyCalendar(date) {
+  // The date-level Kalayok label uses the small-era year at Bangkok noon.
+  const input = civil(date, '12:00');
+  const { calendar } = calculateThaiHoroscope({ ...input, referenceMode: 'traditional' });
+  const { chulaSakarat: year, civilWeekday: weekday, thaiLunarDate: lunar } = calendar;
+  const isWeekday = value => (value % 7 || 7) === weekday;
+  // Cross-check the four weekday bases against the Royal Songkran announcement.
+  // https://www.culture.go.th/culture_th/ewt_news.php?filename=index&nid=9131
+  const auspicious = isWeekday(year * 10 + 3) || isWeekday(year % 498);
+  const caution = isWeekday(year * 10 + 2) || isWeekday(year + 1120);
+  const dayKind = auspicious
+    ? (caution ? 'mixed' : 'auspicious')
+    : (caution ? 'caution' : 'ordinary');
+  return {
+    date,
+    buddhist_year: input.date.year + 543,
+    lunar: lunar && {
+      phase: lunar.phase,
+      day: lunar.day,
+      month: lunar.month,
+      second_eighth_month: lunar.secondEighthMonth,
+    },
+    day_kind: dayKind,
+    // Five equal daytime periods start at 06:00 and end at 18:00 ICT.
+    auspicious_hours: ubakongDaylight[weekday - 1].map(slot => {
+      const start = 360 + slot * 144;
+      return { start: formatClock(start), end: formatClock(start + 144) };
+    }),
+  };
+}
+
 function inputFor(profile, offset) {
   const location = findLocation(profile);
   if (!location) return { location: null, input: null };
@@ -197,6 +239,8 @@ function calculateCareerWindow(start, ascendant) {
 }
 
 export function dispatch(request) {
+  if (request.operation === 'daily-calendar') return calculateDailyCalendar(request.date);
+  if (request.operation === 'daily-horoscope') return calculateDailyHoroscope(request.date);
   if (request.operation === 'annual') return calculateAnnual(request.year, request.ascendant);
   if (request.operation === 'career-window') return calculateCareerWindow(request.start, request.ascendant);
   if (request.operation === 'fortune') {

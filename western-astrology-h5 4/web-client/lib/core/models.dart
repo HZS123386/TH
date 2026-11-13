@@ -38,6 +38,10 @@ class Copy {
   List<String> list(String group, String path) =>
       (value(group, path) as List? ?? []).map((v) => '$v').toList();
   List<Json> get topics => objects(data['topics']);
+  List<Json> get reportThemes => [
+    ...objects(object(data['jyThemes'])['outlook']),
+    ...objects(object(data['jyThemes'])['highlights']),
+  ];
   Copy forLanguage(String language) => Copy(data, language);
   Copy forReport(LifeReport report) {
     final language = report.language;
@@ -165,6 +169,9 @@ class LifeReport {
   Json get plan => full ? object(json['plan']) : {};
   Json get price => object(json['price']);
   String get priceLabel => text(price['display']);
+  bool get paysoTest => price['mode'] == 'payso_test';
+  bool get orderOnly => price['mode'] == 'sunlands_order_only';
+  bool get canPay => orderOnly || paysoTest || json['payment_simulation'] == true;
   bool get estimated => object(json['time_accuracy'])['mode'] == 'estimated';
   List<String> get progressKeys => career
       ? ['work']
@@ -191,7 +198,7 @@ class LifeReport {
         !['preview', 'full'].contains(row['access']) ||
         catalog.length != expectedCount ||
         row['chapters'] is! List ||
-        !['direct', 'payso_test'].contains(price['mode']) ||
+        !['direct', 'payso_test', 'sunlands_order_only'].contains(price['mode']) ||
         price['amount'] is! num ||
         price['amount'] < 0 ||
         price['currency'] != 'THB' ||

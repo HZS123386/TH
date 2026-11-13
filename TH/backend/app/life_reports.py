@@ -12,12 +12,12 @@ from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import Field, model_validator
 
 from . import thai
 from .bazi_reports import report_progress_context, report_usage_context
-from .life_card_payments import CARD_AMOUNT, LifeCardPayments
+from .life_card_payments import CARD_AMOUNT, SIMULATED_AMOUNT, SIMULATED_MERCHANT, SUNLANDS_AMOUNT, LifeCardPayments
 from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
 from .schemas import Input, ProfileInput, ThaiReadingInput
 from .thai_readings import HOUSES, copy_for, grounding
@@ -65,6 +65,15 @@ class LifeInput(Input):
 
 class Feedback(Input):
     rating: Literal["close", "partly", "different"]
+
+
+class SimulatedPayment(Input):
+    reference: str = Field(pattern=r"^[0-9]{12}$")
+
+
+class PaymentContact(Input):
+    mobile: str = Field(default="", max_length=32)
+    nationCode: str = Field(default="", max_length=4)
 
 
 def encoded(value):
@@ -124,6 +133,7 @@ class LifeReports:
 
     def __init__(self, store, settings, model_slots, calculation_slots):
         self.store, self.calculation_slots = store, calculation_slots
+        self.development = settings.app_env == "development"
         self.writer = LifeWriter(store, settings, model_slots)
         self.parts_writer = LifeWriter(store, settings, model_slots, charge=False)
         self.tasks = {}
@@ -370,6 +380,13 @@ class LifeReports:
             questions = [FORTUNE_TOPICS[key][language]["questions"] for key in chapter_keys]
         percent = int(sum(section["percent"] for section in sections) / len(sections))
         percent = min(percent, 100 if row["full_state"] == "ready" else 99)
+        simulation = self.can_simulate_payment(career)
+        amount = 9900 if career else CARD_AMOUNT
+        if self.card_payments.order_only:
+            amount = SUNLANDS_AMOUNT
+        if simulation:
+            order = self.card_payments.order_for(row["id"]) if preview and not row["unlocked"] else None
+            amount = order["amount"] if order and order["merchant"] == SIMULATED_MERCHANT else SIMULATED_AMOUNT
         result = {
             "id": row["id"], "version": version, "title": title,
             "input": body, "created_at": stamp(row["created"]), "location": chart["location"],
@@ -377,9 +394,10 @@ class LifeReports:
             "chart": self.chart_view(chart, bool(body["profile"].get("birth_time"))),
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
                               "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
-            "price": {"amount": 9900, "currency": "THB", "display": "฿99", "mode": "direct"} if career
-                     else {"amount": CARD_AMOUNT, "currency": "THB", "display": "฿50",
-                           "mode": "payso_test" if self.card_payments.enabled else "direct"},
+            "price": {"amount": amount, "currency": "THB", "display": f"฿{amount // 100}",
+                      "mode": "sunlands_order_only" if self.card_payments.order_only else
+                      "payso_test" if self.card_payments.enabled and not career else "direct"},
+            "payment_simulation": simulation,
             "preview_state": row["preview_state"], "access": "full" if row["unlocked"] else "preview",
             "full_state": row["full_state"], "progress": {"completed": completed, "total": len(sections)},
             "generation_progress": {"percent": percent, "sections": sections},
@@ -441,6 +459,9 @@ class LifeReports:
             row = db.execute("SELECT * FROM life_reports WHERE id=? AND owner=?", (report_id, owner)).fetchone()
             if row is None:
                 raise HTTPException(404, "life_report_not_found")
+            payment = db.execute("SELECT merchant FROM life_card_payments WHERE report_id=?", (report_id,)).fetchone()
+            if payment and payment["merchant"].startswith("sunlands:"):
+                raise HTTPException(409, "life_order_needs_review")
             active_task = any(task is not None and not task.done()
                               for task in (self.preview_tasks.get(report_id), self.tasks.get(report_id)))
             claimed = (row["preview_state"] in ("pending", "generating") or row["full_state"] == "generating")
@@ -454,25 +475,49 @@ class LifeReports:
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
         if not row["unlocked"]:
-            if not json.loads(row["input"]).get("career") and (
-                self.card_payments.enabled or self.card_payments.order_for(report_id)
-            ):
+            career = json.loads(row["input"]).get("career")
+            if (self.card_payments.order_only or self.can_simulate_payment(career) or self.card_payments.order_for(report_id)
+                    or (self.card_payments.enabled and not career)):
                 raise HTTPException(402, "life_payment_required")
             self.update(report_id, unlocked=1)
         await self.start_full_generation(report_id, owner, network)
         return self.get(report_id, owner)
 
-    def create_card_order(self, report_id, owner, network):
+    def can_simulate_payment(self, career):
+        return not self.card_payments.order_only and self.development and (bool(career) or not self.card_payments.enabled)
+
+    async def create_card_order(self, report_id, owner, network, contact=None):
         row = self.row(report_id, owner)
         body = json.loads(row["input"])
-        if not self.card_payments.enabled or body.get("career") or row["unlocked"]:
+        if row["unlocked"]:
             raise HTTPException(409, "life_payment_unavailable")
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
+        career = body.get("career")
+        if self.card_payments.order_only:
+            return await self.card_payments.create_sunlands(
+                report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "")
+        if self.can_simulate_payment(career):
+            return self.card_payments.create_simulated(report_id, network)
+        if not self.card_payments.enabled or career:
+            raise HTTPException(409, "life_payment_unavailable")
         return self.card_payments.create(report_id, network, body["profile"]["language"])
 
-    async def confirm_card_order(self, order, owner):
-        if not await self.card_payments.confirm(order):
+    async def simulate_payment(self, report_id, owner, network, reference):
+        row = self.row(report_id, owner)
+        if not self.can_simulate_payment(json.loads(row["input"]).get("career")):
+            raise HTTPException(404, "life_payment_unavailable")
+        if not self.card_payments.confirm_simulated(report_id, reference):
+            raise HTTPException(409, "life_payment_required")
+        await self.start_full_generation(report_id, owner, network)
+        return {"paid": True}
+
+    async def confirm_card_order(self, order, owner, notification=None):
+        if order and order["merchant"].startswith("sunlands:"):
+            paid = await self.card_payments.confirm_sunlands(order, notification)
+        else:
+            paid = await self.card_payments.confirm(order)
+        if not paid:
             return False
         await self.start_full_generation(order["report_id"], owner, order["network"])
         return True
@@ -625,17 +670,29 @@ def life_report_router(service):
         owner, network = scopes(key, request)
         return await service.unlock(report_id, owner, network)
 
+    @router.get("/{report_id}/payment")
+    async def existing_payment(report_id: str, request: Request, key: key_header):
+        service.row(report_id, scopes(key, request)[0])
+        order = service.card_payments.existing_sunlands(report_id)
+        return order if order is not None else Response(status_code=204)
+
     @router.post("/{report_id}/payment")
-    async def create_payment(report_id: str, request: Request, key: key_header):
-        return service.create_card_order(report_id, *scopes(key, request))
+    async def create_payment(report_id: str, request: Request, key: key_header, body: PaymentContact | None = None):
+        return await service.create_card_order(report_id, *scopes(key, request), contact=body)
 
     @router.post("/{report_id}/payment/check")
     async def check_payment(report_id: str, request: Request, key: key_header):
-        owner, _ = scopes(key, request)
+        owner, network = scopes(key, request)
         row = service.row(report_id, owner)
         if row["unlocked"]:
+            await service.start_full_generation(report_id, owner, network)
             return {"paid": True}
         return {"paid": await service.confirm_card_order(service.card_payments.order_for(report_id), owner)}
+
+    @router.post("/{report_id}/payment/simulate")
+    async def simulate_payment(report_id: str, body: SimulatedPayment, request: Request, key: key_header):
+        owner, network = scopes(key, request)
+        return await service.simulate_payment(report_id, owner, network, body.reference)
 
     @router.post("/payment/payso/postback")
     async def payso_postback(request: Request):
@@ -647,6 +704,29 @@ def life_report_router(service):
         if not order or not await service.confirm_card_order(order, order["owner"]):
             raise HTTPException(409, "life_payment_required")
         return PlainTextResponse("OK")
+
+    @router.post("/payment/sunlands/notify")
+    async def sunlands_notify(request: Request):
+        if not service.card_payments.order_only:
+            return JSONResponse({"code": 0, "msg": "unavailable"}, status_code=404)
+        try:
+            if request.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/x-www-form-urlencoded":
+                raise HTTPException(415, "invalid_content_type")
+            params = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True, max_num_fields=32)
+            if any(len(values) != 1 for values in params.values()):
+                raise ValueError("duplicate_fields")
+            notice = {key: values[0] for key, values in params.items()}
+            order = service.card_payments.from_sunlands_number(notice.get("orderNumber", ""))
+            if not order:
+                raise HTTPException(404, "order_not_found")
+            # The documented callback is a signal; only an authenticated server inquiry can grant access.
+            if not await service.confirm_card_order(order, order["owner"], notice):
+                raise HTTPException(409, "life_payment_required")
+        except (ValueError, UnicodeError):
+            return JSONResponse({"code": 0, "msg": "invalid_form"}, status_code=400)
+        except HTTPException as error:
+            return JSONResponse({"code": 0, "msg": error.detail}, status_code=error.status_code)
+        return {"code": 1, "msg": "success"}
 
     @router.post("/{report_id}/feedback")
     async def feedback(report_id: str, body: Feedback, request: Request, key: key_header):

@@ -7,7 +7,6 @@ import '../core/models.dart';
 import '../core/repository.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
-import 'report_chart.dart';
 import 'checkout_dialog.dart';
 import 'generation_dialog.dart';
 import 'report_view_model.dart';
@@ -30,8 +29,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   late final _model = ReportViewModel(widget.h5, widget.id);
   CancelToken? _generationRequest;
   final _anchors = <String, GlobalKey>{};
+  final _expanded = <String>{};
   final _deleteRequest = CancelToken();
-  bool _deleting = false;
+  bool _deleting = false, _paying = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
   @override
@@ -119,6 +119,29 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       }
     } finally {
       if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  Future<void> _pay() async {
+    final report = _model.report;
+    if (report == null ||
+        !report.canPay ||
+        report.full ||
+        _paying ||
+        _deleting) {
+      return;
+    }
+    setState(() => _paying = true);
+    try {
+      final paid = await showDialog<bool>(
+        context: context,
+        builder: (_) => ReportPaymentDialog(h5: widget.h5, report: report),
+      );
+      if (mounted && paid == true && _model.report?.ready != true) {
+        await _generate(true);
+      }
+    } finally {
+      if (mounted) setState(() => _paying = false);
     }
   }
 
@@ -231,13 +254,14 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _summary(Json value, Copy c) => JYCard(
+  Widget _summary(Json value, Copy c) => Panel(
+    highlight: true,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           text(value['text']),
-          style: const TextStyle(fontSize: 14, height: 1.65),
+          style: const TextStyle(fontSize: 17, height: 1.95),
         ),
         _evidence(value['evidence'], c),
       ],
@@ -304,93 +328,170 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   );
   Widget _chapter(LifeReport r, Json item, Copy c) {
     final name = text(item['key']);
-    final chapter = r.chapters
-        .where((value) => value['key'] == name)
-        .firstOrNull;
-    if (chapter == null) return const SizedBox.shrink();
+    final matching = r.chapters.where((chapter) => chapter['key'] == name);
+    final chapter = matching.isEmpty ? null : matching.first;
+    final opened = _expanded.contains(name);
     return Padding(
       key: _key(name),
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            text(chapter['title']).isEmpty
-                ? text(item['title'])
-                : text(chapter['title']),
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: gold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _summary(object(chapter['summary']), c),
-          for (final group in [
-            (
-              'insights',
-              c.language == 'zh'
-                  ? '这对你意味着什么'
-                  : 'สิ่งนี้มีความหมายกับคุณอย่างไร',
-            ),
-            ('watchpoints', c.language == 'zh' ? '需要留意的地方' : 'สิ่งที่ควรใส่ใจ'),
-            ('actions', c.language == 'zh' ? '你可以这样做' : 'สิ่งที่คุณลองทำได้'),
-          ])
-            if (objects(chapter[group.$1]).isNotEmpty) ...[
-              const SizedBox(height: 18),
-              Text(
-                group.$2,
-                style: const TextStyle(
-                  color: gold,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
+      padding: const EdgeInsets.only(top: 16),
+      child: Panel(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              button: true,
+              expanded: opened,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: chapter == null
+                    ? null
+                    : () => setState(() {
+                        if (opened) {
+                          _expanded.remove(name);
+                        } else {
+                          _expanded.add(name);
+                        }
+                      }),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              text(item['title']),
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (chapter == null)
+                              Text(
+                                c.t('report', 'states.${r.json['full_state']}'),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        opened ? Icons.expand_less : Icons.expand_more,
+                        color: gold,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              for (final entry in objects(chapter[group.$1]).indexed)
-                _point(
-                  entry.$2,
-                  c,
-                  anchor: group.$1 == 'actions'
-                      ? 'action-$name-${entry.$1}'
-                      : null,
+            ),
+            if (opened && chapter != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _summary(object(chapter['summary']), c),
+                    for (final group in [
+                      (
+                        'insights',
+                        c.language == 'zh'
+                            ? '这对你意味着什么'
+                            : 'สิ่งนี้มีความหมายกับคุณอย่างไร',
+                      ),
+                      (
+                        'watchpoints',
+                        c.language == 'zh' ? '需要留意的地方' : 'สิ่งที่ควรใส่ใจ',
+                      ),
+                      (
+                        'actions',
+                        c.language == 'zh' ? '你可以这样做' : 'สิ่งที่คุณลองทำได้',
+                      ),
+                    ])
+                      if (objects(chapter[group.$1]).isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          group.$2,
+                          style: const TextStyle(
+                            color: gold,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        for (final entry in objects(chapter[group.$1]).indexed)
+                          _point(
+                            entry.$2,
+                            c,
+                            anchor: group.$1 == 'actions'
+                                ? 'action-$name-${entry.$1}'
+                                : null,
+                          ),
+                      ],
+                  ],
                 ),
-            ],
-        ],
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _plan(LifeReport r, Copy c) => r.plan.isEmpty
-      ? const SizedBox.shrink()
-      : Padding(
-          key: _key('plan'),
-          padding: const EdgeInsets.only(top: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                c.t('report', 'plan'),
-                style: const TextStyle(
-                  color: gold,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+  Widget _plan(LifeReport r, Copy c) {
+    if (r.plan.isEmpty) return const SizedBox.shrink();
+    final open = _expanded.contains('plan');
+    return Padding(
+      key: _key('plan'),
+      padding: const EdgeInsets.only(top: 20),
+      child: Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: () => setState(() {
+                if (open) {
+                  _expanded.remove('plan');
+                } else {
+                  _expanded.add('plan');
+                }
+              }),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      c.t('report', 'plan'),
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    open ? Icons.expand_less : Icons.expand_more,
+                    color: gold,
+                  ),
+                ],
               ),
+            ),
+            if (open)
               for (final phase in objects(r.plan['phases'])) ...[
                 _point(phase, c),
                 for (final action in objects(phase['actions'])) ...[
                   _point(action, c),
                   TextButton(
-                    onPressed: () => _navigate(
-                      'action-${action['chapter']}-${action['index']}',
-                    ),
+                    onPressed: () {
+                      final target = text(action['chapter']);
+                      setState(() => _expanded.add(target));
+                      _navigate('action-$target-${action['index']}');
+                    },
                     child: Text('${c.t('report', 'viewAction')} →'),
                   ),
                 ],
               ],
-            ],
-          ),
-        );
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -429,10 +530,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         return ReportCheckout(
           h5: widget.h5,
           report: r,
-          busy: _deleting,
+          busy: _deleting || _paying,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
           onBack: () => context.go('/?lang=${widget.h5.language}'),
           onErase: () => _erase(),
+          onPay: r.canPay ? _pay : null,
         );
       }
       if (r.preview.isEmpty) {
@@ -459,183 +561,282 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
         );
       }
-      const groups = [
-        ('natal', ['pattern']),
-        ('love', ['marriage']),
-        ('career', ['wealth']),
-        ('opportunities', ['risk']),
-        ('partnership', ['romance']),
-      ];
-      return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+      return Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          backgroundColor: night,
+          titleSpacing: 20,
+          title: InkWell(
+            onTap: () => context.go('/?lang=${widget.h5.language}'),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const FateBrand(),
-                const Spacer(),
-                IconButton(
-                  tooltip: c.t('jy', 'checkout.back'),
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
-                  icon: const Icon(Icons.arrow_back, color: gold, size: 19),
-                ),
-                IconButton(
-                  tooltip: c.t('report', 'exportPdf'),
-                  onPressed: _model.exporting
-                      ? null
-                      : () => _model.export('pdf'),
-                  icon: const Icon(
-                    Icons.picture_as_pdf_outlined,
-                    color: gold,
-                    size: 19,
+                Icon(Icons.auto_awesome_outlined, size: 25),
+                SizedBox(width: 12),
+                Text(
+                  'FATE',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 3,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            JYCard(
-              padding: const EdgeInsets.all(24),
-              radius: 20,
-              borderColor: line,
-              colors: const [panel, panel],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: () => context.go('/?lang=${widget.h5.language}'),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: Text(
+                c.t('generation', 'back'),
+                style: const TextStyle(fontSize: 11),
+              ),
+            ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  Text(
-                    'FATE / ${c.t('jy', 'topics.life.label')}',
-                    style: const TextStyle(
-                      color: gold,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Text(
+                      'FATE · ${c.t('report', 'eyebrow')}',
+                      style: const TextStyle(color: gold, fontSize: 11),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    c.t('jy', 'report.title'),
-                    style: const TextStyle(
-                      color: Color(0xFFFFEAC5),
-                      fontSize: 23,
-                      height: 1.3,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${r.profile['birthplace']} · ${c.t('jy', r.estimated ? 'chart.dateOnly' : 'chart.exact')}',
-                    style: const TextStyle(color: lavender, fontSize: 12),
-                  ),
-                  const SizedBox(height: 18),
-                  JYCard(
-                    radius: 15,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 14,
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          c.t('jy', 'report.contents'),
-                          style: const TextStyle(
-                            fontSize: 14,
+                  IconButton(
+                    tooltip: c.t('report', 'exportPdf'),
+                    onPressed: _model.exporting
+                        ? null
+                        : () => _model.export('pdf'),
+                    icon: _model.exporting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(
+                            Icons.picture_as_pdf_outlined,
                             color: gold,
-                            fontWeight: FontWeight.w700,
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        ReportBadges(copy: c, locked: false, onTap: _navigate),
-                      ],
-                    ),
-                  ),
-                  _sectionTitle('overall', c.t('jy', 'chart.title')),
-                  ChartView(report: r, copy: c),
-                  for (final key in ['annual', 'overall'])
-                    for (final item in r.catalog.where(
-                      (item) => item['key'] == key,
-                    ))
-                      _chapter(r, item, c),
-                  for (final group in groups) ...[
-                    _sectionTitle(
-                      group.$1,
-                      c.t('jy', 'report.sections.${group.$1}'),
-                    ),
-                    if (group.$1 == 'natal') ...[
-                      _summary(object(r.preview['summary']), c),
-                      if (r.preview['career_answer'] != null)
-                        _summary(object(r.preview['career_answer']), c),
-                      for (final item in objects(r.preview['traits']))
-                        _point(item, c),
-                    ],
-                    if (group.$1 == 'opportunities')
-                      ReportFactors(report: r, copy: c),
-                    for (final key in group.$2)
-                      for (final item in r.catalog.where(
-                        (item) => item['key'] == key,
-                      ))
-                        _chapter(r, item, c),
-                    if (group.$1 == 'opportunities') _plan(r, c),
-                  ],
-                  if (!r.ready) ...[
-                    const SizedBox(height: 16),
-                    ReadingProgress(
-                      percent: r.percent(true),
-                      reduced: MediaQuery.disableAnimationsOf(context),
-                      label: c.t('jy', 'progress'),
-                    ),
-                    OutlinedButton(
-                      onPressed: _generating ? null : () => _generate(true),
-                      child: Text(c.t('report', 'retry')),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  Text(
-                    c.t('jy', 'chart.note'),
-                    style: const TextStyle(fontSize: 12, color: lavender),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
-              onPressed: _model.exporting ? null : () => _model.export('pdf'),
-              icon: const Icon(Icons.picture_as_pdf_outlined, size: 17),
-              label: Text(c.t('report', 'exportPdf')),
-            ),
-            OutlinedButton.icon(
-              onPressed: _model.exporting ? null : () => _model.export('html'),
-              icon: const Icon(Icons.download_outlined, size: 17),
-              label: Text(c.t('report', 'save')),
-            ),
-            if (_model.exportStatus.isNotEmpty)
-              Text(
-                _model.exportStatus,
-                style: const TextStyle(color: gold, fontSize: 12),
+              SectionTitle(
+                text(r.json['title']),
+                subtitle: c.t('report', 'subtitle'),
               ),
-            TextButton(
-              onPressed: _deleting ? null : () => _erase(),
-              child: Text(c.t('jy', 'erase')),
-            ),
-            errorMessage(_deleteError),
-            errorMessage(_model.error),
-          ],
+              Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      c.t('report', 'birth'),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${r.profile['birth_date']} · ${r.profile['birth_time'] ?? c.t('report', 'timeUnknown')}',
+                    ),
+                    Text(
+                      '${Place(object(r.json['location'])).label(c.language)}\n${r.profile['timezone']}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Text(
+                      '${c.t('report', 'timeRange')} · ${object(r.json['reference_period'])['start'] ?? r.input['year']} ${object(r.json['reference_period'])['end'] ?? ''}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (r.estimated)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          c.t('ui', 'timeNote'),
+                          style: const TextStyle(fontSize: 12, color: gold),
+                        ),
+                      ),
+                    ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      title: Text(
+                        c.t('report', 'evidence'),
+                        style: const TextStyle(fontSize: 12, color: lavender),
+                      ),
+                      children: [
+                        Text(c.t('report', 'methodValue')),
+                        Text(
+                          '${r.json['created_at']}\n${c.t('report', 'number')}: ${r.id}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (r.preview.isNotEmpty) ...[
+                SectionTitle(c.t('report', 'takeaway')),
+                _summary(object(r.preview['summary']), c),
+                if (r.preview['career_answer'] != null) ...[
+                  const SizedBox(height: 20),
+                  SectionTitle(c.t('report', 'careerQuestionTitle')),
+                  _summary(object(r.preview['career_answer']), c),
+                ],
+                if (text(r.input['user_question']).isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 20),
+                    child: Text(
+                      text(r.input['user_question']),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: gold,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 28),
+                SectionTitle(c.t('report', 'traits')),
+                for (final point in objects(r.preview['traits']))
+                  Panel(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 15),
+                    child: _point(point, c),
+                  ),
+                const SizedBox(height: 24),
+                Text(
+                  c.t('report', 'feedback'),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final entry in [
+                      'close',
+                      'partly',
+                      'different',
+                    ].indexed)
+                      ChoiceChip(
+                        label: Text(
+                          c.list('report', 'feedbackOptions')[entry.$1],
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        selected: r.json['feedback'] == entry.$2,
+                        onSelected: _model.feedbackBusy
+                            ? null
+                            : (_) => _model.feedback(entry.$2),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  c.t(
+                    'report',
+                    r.json['feedback'] == null
+                        ? 'feedbackHint'
+                        : 'feedbackSaved',
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+              const Divider(),
+              SectionTitle(
+                c.t('report', 'catalog'),
+                subtitle: c.t('report', 'catalogHint'),
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 10,
+                children: [
+                  for (final item in r.catalog)
+                    ActionChip(
+                      avatar: Icon(
+                        r.full ? Icons.menu_book_outlined : Icons.lock_outline,
+                        size: 15,
+                        color: gold,
+                      ),
+                      label: Text(
+                        text(item['title']),
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      onPressed: r.full
+                          ? () {
+                              final key = text(item['key']);
+                              setState(() => _expanded.add(key));
+                              _navigate(key);
+                            }
+                          : null,
+                    ),
+                ],
+              ),
+              if (r.full) ...[
+                const SizedBox(height: 20),
+                Text(
+                  c.t('report', 'full'),
+                  style: const TextStyle(
+                    color: gold,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (!r.ready) ...[
+                  const SizedBox(height: 12),
+                  LinearProgressIndicator(value: r.percent(true) / 100),
+                  Text(
+                    '${r.percent(true).round()}% · ${c.t('report', 'states.${r.json['full_state']}')}',
+                  ),
+                  OutlinedButton(
+                    onPressed: () => _generate(true),
+                    child: Text(c.t('report', 'retry')),
+                  ),
+                ],
+                for (final item in r.catalog) _chapter(r, item, c),
+                _plan(r, c),
+              ],
+              const Divider(),
+              Text(
+                c.t('report', 'printHint'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _model.exporting
+                    ? null
+                    : () => _model.export('html'),
+                icon: const Icon(Icons.download_outlined, size: 17),
+                label: Text(c.t('report', r.ready ? 'save' : 'savePreview')),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _model.exporting ? null : () => _model.export('pdf'),
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 17),
+                label: Text(c.t('report', 'exportPdf')),
+              ),
+              if (_model.exportStatus.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _model.exportStatus,
+                      style: const TextStyle(color: gold, fontSize: 12),
+                    ),
+                  ),
+                ),
+              TextButton(
+                onPressed: _deleting ? null : () => _erase(),
+                child: Text(c.t('jy', 'erase')),
+              ),
+              errorMessage(_deleteError),
+              errorMessage(_model.error),
+            ],
+          ),
         ),
       );
     },
-  );
-  Widget _sectionTitle(String key, String title) => Container(
-    key: _key('report-$key'),
-    margin: const EdgeInsets.only(top: 20),
-    padding: const EdgeInsets.only(top: 15, bottom: 10),
-    decoration: const BoxDecoration(
-      border: Border(top: BorderSide(color: line)),
-    ),
-    child: Text(
-      title,
-      style: const TextStyle(
-        color: Color(0xFFF4D399),
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-      ),
-    ),
   );
 }

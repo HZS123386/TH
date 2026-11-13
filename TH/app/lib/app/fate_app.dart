@@ -4,25 +4,37 @@ import '../features/account/account_page.dart';
 import '../features/account/birth_page.dart';
 import '../features/account/login_page.dart';
 import '../features/chart/chart_page.dart';
+import '../features/home/daily_horoscope.dart';
 import '../features/home/home_page.dart';
+import '../features/lucky_numbers/lucky_numbers_page.dart';
 import '../features/reports/reports_page.dart';
+import '../features/tarot/tarot_page.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../ui/theme.dart';
+import 'app_opening.dart';
 import 'dependencies.dart';
 
 class FateApp extends StatefulWidget {
-  const FateApp({required this.dependencies, super.key});
+  const FateApp({
+    required this.dependencies,
+    this.playOpening = false,
+    super.key,
+  });
   final AppDependencies dependencies;
+  final bool playOpening;
   @override
   State<FateApp> createState() => _FateAppState();
 }
 
 class _FateAppState extends State<FateApp> {
-  bool _firstFrameDeferred = true;
+  bool _firstFrameDeferred = false;
+  final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
+    if (_showOpening) return;
+    _firstFrameDeferred = true;
     final binding = WidgetsBinding.instance;
     binding.deferFirstFrame();
     // Build normally, but present the first frame only after the hero is decoded.
@@ -42,13 +54,62 @@ class _FateAppState extends State<FateApp> {
   }
 
   late final GoRouter _router = GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: '/fortune',
     routes: [
       ShellRoute(
-        builder: (context, state, child) =>
-            _AppShell(path: state.uri.path, child: child),
+        builder: (context, state, child) => _AppShell(
+          path: state.uri.path == DailyHoroscopePage.location
+              ? '/fortune'
+              : state.uri.path,
+          child: child,
+        ),
         routes: [
-          GoRoute(path: '/fortune', builder: (_, _) => const HomePage()),
+          GoRoute(
+            path: '/fortune',
+            builder: (_, _) => const HomePage(),
+            routes: [
+              GoRoute(path: 'tarot', builder: (_, _) => const TarotPage()),
+              GoRoute(
+                path: DailyHoroscopePage.path,
+                parentNavigatorKey: _rootNavigatorKey,
+                pageBuilder: (context, state) {
+                  final reduceMotion = MediaQuery.disableAnimationsOf(context);
+                  return CustomTransitionPage<void>(
+                    key: state.pageKey,
+                    transitionDuration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 230),
+                    reverseTransitionDuration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 190),
+                    transitionsBuilder: (context, animation, _, child) {
+                      // Slide the opaque page in one pass without blending two full screens.
+                      return SlideTransition(
+                        position: animation
+                            .drive(CurveTween(curve: Curves.easeInOutCubic))
+                            .drive(
+                              Tween(
+                                begin: const Offset(1, 0),
+                                end: Offset.zero,
+                              ),
+                            ),
+                        child: child,
+                      );
+                    },
+                    child: const _AppShell(
+                      path: DailyHoroscopePage.location,
+                      child: DailyHoroscopePage(),
+                    ),
+                  );
+                },
+              ),
+              GoRoute(
+                path: 'lucky-numbers',
+                builder: (_, _) => const LuckyNumbersPage(),
+              ),
+            ],
+          ),
           GoRoute(
             path: '/chart',
             builder: (_, state) =>
@@ -71,6 +132,14 @@ class _FateAppState extends State<FateApp> {
     ],
     errorBuilder: (_, _) => const HomePage(),
   );
+
+  late final bool _showOpening =
+      widget.playOpening &&
+      const {
+        '/',
+        '/fortune',
+      }.contains(_router.routeInformationProvider.value.uri.path);
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.dependencies.session,
@@ -82,6 +151,8 @@ class _FateAppState extends State<FateApp> {
       locale: widget.dependencies.session.locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
+      builder: (context, child) =>
+          _showOpening ? AppOpening(child: child!) : child!,
     ),
   );
   @override
@@ -100,6 +171,7 @@ class _AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context),
         session = DependencyScope.of(context).session;
+    final daily = path == DailyHoroscopePage.location;
     final selected = path.startsWith('/chart')
         ? 1
         : path.startsWith('/reports')
@@ -114,25 +186,38 @@ class _AppShell extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 430),
           child: Scaffold(
             appBar: AppBar(
+              leading: path.startsWith('/fortune/')
+                  ? BackButton(onPressed: () => context.pop())
+                  : null,
               titleSpacing: 18,
-              title: InkWell(
-                onTap: () => context.go('/fortune'),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.auto_awesome_outlined, size: 25),
-                    SizedBox(width: 12),
-                    Text(
-                      'FATE',
-                      style: TextStyle(
-                        fontFamily: 'serif',
-                        letterSpacing: 3,
-                        fontSize: 20,
+              centerTitle: daily ? true : null,
+              title: daily
+                  ? Text(
+                      s.dailyHoroscopeTitle,
+                      style: const TextStyle(
+                        color: horoscopeTitleColor,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  : InkWell(
+                      onTap: () => context.go('/fortune'),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome_outlined, size: 25),
+                          SizedBox(width: 12),
+                          Text(
+                            'FATE',
+                            style: TextStyle(
+                              fontFamily: 'serif',
+                              letterSpacing: 3,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
               actions: [
                 PopupMenuButton<String>(
                   tooltip: s.language,
@@ -148,40 +233,44 @@ class _AppShell extends StatelessWidget {
                       PopupMenuItem(value: row.$1, child: Text(row.$2)),
                   ],
                 ),
-                IconButton(
-                  tooltip: session.auth.signedIn ? s.account : s.login,
-                  onPressed: () =>
-                      context.go(session.auth.signedIn ? '/profile' : '/login'),
-                  icon: const Icon(Icons.person_outline, size: 22),
-                ),
+                if (!daily)
+                  IconButton(
+                    tooltip: session.auth.signedIn ? s.account : s.login,
+                    onPressed: () => context.go(
+                      session.auth.signedIn ? '/profile' : '/login',
+                    ),
+                    icon: const Icon(Icons.person_outline, size: 22),
+                  ),
               ],
             ),
             body: child,
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: selected,
-              onDestinationSelected: (index) => context.go(
-                ['/fortune', '/chart', '/reports', '/profile'][index],
-              ),
-              destinations: [
-                NavigationDestination(
-                  icon: const Icon(Icons.home_outlined),
-                  selectedIcon: const Icon(Icons.home_rounded),
-                  label: s.home,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.public_outlined),
-                  label: s.chart,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: s.reports,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.person_outline),
-                  label: s.mine,
-                ),
-              ],
-            ),
+            bottomNavigationBar: daily
+                ? null
+                : NavigationBar(
+                    selectedIndex: selected,
+                    onDestinationSelected: (index) => context.go(
+                      ['/fortune', '/chart', '/reports', '/profile'][index],
+                    ),
+                    destinations: [
+                      NavigationDestination(
+                        icon: const Icon(Icons.home_outlined),
+                        selectedIcon: const Icon(Icons.home_rounded),
+                        label: s.home,
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.public_outlined),
+                        label: s.chart,
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.menu_book_outlined),
+                        label: s.reports,
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.person_outline),
+                        label: s.mine,
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),

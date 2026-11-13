@@ -44,6 +44,14 @@ class ApiFailure implements Exception {
   final Duration? retryAfter;
 }
 
+typedef PaymentOrder = ({
+  String reference,
+  String gatewayOrder,
+  String checkoutUrl,
+  String action,
+  Map<String, String> fields,
+});
+
 class ReportRepository {
   ReportRepository(this.store, {http.Client? client, this.baseUrl = ''})
     : client = client ?? http.Client();
@@ -149,6 +157,90 @@ class ReportRepository {
       body: {},
     );
     return _wait(result, initial.input, token, true, progress, id: initial.id);
+  }
+
+  Future<PaymentOrder> createPayment(
+    LifeReport report,
+    CancelToken token, {
+    String mobile = '',
+    String nationCode = '',
+  }) async {
+    final order = object(
+      await request('/api/life-reports/${report.id}/payment', token,
+        body: report.orderOnly ? {'mobile': mobile, 'nationCode': nationCode} : {}),
+    );
+    return _paymentOrder(report, order);
+  }
+
+  Future<PaymentOrder?> existingPayment(LifeReport report, CancelToken token) async {
+    final order = await request('/api/life-reports/${report.id}/payment', token);
+    return order == null ? null : _paymentOrder(report, object(order));
+  }
+
+  PaymentOrder _paymentOrder(LifeReport report, Json order) {
+    if (!report.paysoTest) {
+      final reference = text(order['reference']);
+      if (!RegExp(r'^[0-9]{12}$').hasMatch(reference) ||
+          order['amount'] != report.price['amount'] ||
+          order['currency'] != report.price['currency']) {
+        throw const ApiFailure('badResult');
+      }
+      final gatewayOrder = text(order['order_number']);
+      if (report.orderOnly &&
+          (order['order_only'] != true || order['state'] != 'CREATED' ||
+           !RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(gatewayOrder))) {
+        throw const ApiFailure('badResult');
+      }
+      return (
+        reference: reference,
+        gatewayOrder: gatewayOrder,
+        checkoutUrl: text(order['checkout_url']),
+        action: '',
+        fields: const <String, String>{},
+      );
+    }
+    final action = text(order['action']), fields = object(order['fields']);
+    final reference = text(fields['refno']);
+    if (action.isEmpty ||
+        !RegExp(r'^[0-9]{12}$').hasMatch(reference) ||
+        fields.values.any((value) => value is! String)) {
+      throw const ApiFailure('badResult');
+    }
+    return (
+      reference: reference,
+      gatewayOrder: '',
+      checkoutUrl: '',
+      action: action,
+      fields: Map<String, String>.from(fields),
+    );
+  }
+
+  Future<void> simulatePayment(
+    LifeReport report,
+    PaymentOrder order,
+    CancelToken token,
+  ) async {
+    final result = object(
+      await request(
+        '/api/life-reports/${report.id}/payment/simulate',
+        token,
+        body: {'reference': order.reference},
+      ),
+    );
+    if (result['paid'] != true) throw const ApiFailure('badResult');
+  }
+
+  Future<bool> checkPayment(LifeReport report, CancelToken token) async {
+    final result = object(
+      await request(
+        '/api/life-reports/${report.id}/payment/check',
+        token,
+        body: {},
+      ),
+    );
+    final paid = result['paid'];
+    if (paid is! bool) throw const ApiFailure('badResult');
+    return paid;
   }
 
   Future<LifeReport> _wait(

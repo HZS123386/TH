@@ -1385,6 +1385,1152 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pisces'**
   String get zPisces;
+
+  /// No description provided for @skipOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip intro'**
+  String get skipOpening;
+
+  /// No description provided for @tarot.
+  ///
+  /// In en, this message translates to:
+  /// **'Tarot'**
+  String get tarot;
+
+  /// No description provided for @luckyNumbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Lucky numbers'**
+  String get luckyNumbers;
+
+  /// No description provided for @tarotDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw three cards'**
+  String get tarotDraw;
+
+  /// No description provided for @tarotDrawHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Think of a question, then choose three cards from the spread.'**
+  String get tarotDrawHint;
+
+  /// No description provided for @tarotChooseCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw scattered card {position}'**
+  String tarotChooseCard(int position);
+
+  /// No description provided for @tarotResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Your three cards'**
+  String get tarotResult;
+
+  /// No description provided for @tarotDrawAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw again'**
+  String get tarotDrawAgain;
+
+  /// No description provided for @todayLuckyNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Today’s lucky number'**
+  String get todayLuckyNumber;
+
+  /// No description provided for @luckyNumberHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A prompt for today'**
+  String get luckyNumberHint;
+
+  /// No description provided for @luckyNumberUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates using your device’s local date'**
+  String get luckyNumberUpdates;
+
+  /// No description provided for @tarotFool.
+  ///
+  /// In en, this message translates to:
+  /// **'The Fool'**
+  String get tarotFool;
+
+  /// No description provided for @tarotFoolMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a new direction with one small step, leaving yourself room to adjust.'**
+  String get tarotFoolMeaning;
+
+  /// No description provided for @tarotMagician.
+  ///
+  /// In en, this message translates to:
+  /// **'The Magician'**
+  String get tarotMagician;
+
+  /// No description provided for @tarotMagicianMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Take stock of the skills and tools you have, then act on one idea today.'**
+  String get tarotMagicianMeaning;
+
+  /// No description provided for @tarotHighPriestess.
+  ///
+  /// In en, this message translates to:
+  /// **'The High Priestess'**
+  String get tarotHighPriestess;
+
+  /// No description provided for @tarotHighPriestessMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Give yourself a quiet moment to observe and listen to your instincts before acting.'**
+  String get tarotHighPriestessMeaning;
+
+  /// No description provided for @tarotEmpress.
+  ///
+  /// In en, this message translates to:
+  /// **'The Empress'**
+  String get tarotEmpress;
+
+  /// No description provided for @tarotEmpressMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Make time for something that nourishes your creativity, and give yourself time to rest.'**
+  String get tarotEmpressMeaning;
+
+  /// No description provided for @tarotEmperor.
+  ///
+  /// In en, this message translates to:
+  /// **'The Emperor'**
+  String get tarotEmperor;
+
+  /// No description provided for @tarotEmperorMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a clear goal and boundaries, then put your tasks in order of importance.'**
+  String get tarotEmperorMeaning;
+
+  /// No description provided for @tarotHierophant.
+  ///
+  /// In en, this message translates to:
+  /// **'The Hierophant'**
+  String get tarotHierophant;
+
+  /// No description provided for @tarotHierophantMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask someone you trust for guidance, and keep the advice that fits your situation.'**
+  String get tarotHierophantMeaning;
+
+  /// No description provided for @tarotLovers.
+  ///
+  /// In en, this message translates to:
+  /// **'The Lovers'**
+  String get tarotLovers;
+
+  /// No description provided for @tarotLoversMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'When making a choice, name what matters to you and communicate it honestly.'**
+  String get tarotLoversMeaning;
+
+  /// No description provided for @tarotChariot.
+  ///
+  /// In en, this message translates to:
+  /// **'The Chariot'**
+  String get tarotChariot;
+
+  /// No description provided for @tarotChariotMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick one direction and focus your energy on the next step that matters most.'**
+  String get tarotChariotMeaning;
+
+  /// No description provided for @tarotStrength.
+  ///
+  /// In en, this message translates to:
+  /// **'Strength'**
+  String get tarotStrength;
+
+  /// No description provided for @tarotStrengthMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'When tension arises, take a moment to settle and respond with calm resolve.'**
+  String get tarotStrengthMeaning;
+
+  /// No description provided for @tarotHermit.
+  ///
+  /// In en, this message translates to:
+  /// **'The Hermit'**
+  String get tarotHermit;
+
+  /// No description provided for @tarotHermitMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Step away from outside opinions for a moment and reflect on what you want to know.'**
+  String get tarotHermitMeaning;
+
+  /// No description provided for @tarotWheelOfFortune.
+  ///
+  /// In en, this message translates to:
+  /// **'Wheel of Fortune'**
+  String get tarotWheelOfFortune;
+
+  /// No description provided for @tarotWheelOfFortuneMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave some flexibility in your plans and start with what you can control.'**
+  String get tarotWheelOfFortuneMeaning;
+
+  /// No description provided for @tarotJustice.
+  ///
+  /// In en, this message translates to:
+  /// **'Justice'**
+  String get tarotJustice;
+
+  /// No description provided for @tarotJusticeMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Consider the facts and your feelings, then make a choice you can stand behind.'**
+  String get tarotJusticeMeaning;
+
+  /// No description provided for @tarotHangedMan.
+  ///
+  /// In en, this message translates to:
+  /// **'The Hanged Man'**
+  String get tarotHangedMan;
+
+  /// No description provided for @tarotHangedManMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'If you feel stuck, pause and look at the situation from a different angle.'**
+  String get tarotHangedManMeaning;
+
+  /// No description provided for @tarotDeath.
+  ///
+  /// In en, this message translates to:
+  /// **'Death'**
+  String get tarotDeath;
+
+  /// No description provided for @tarotDeathMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Set aside something that has run its course to make room for a new habit or choice.'**
+  String get tarotDeathMeaning;
+
+  /// No description provided for @tarotTemperance.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperance'**
+  String get tarotTemperance;
+
+  /// No description provided for @tarotTemperanceMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Make a small adjustment that gives two competing needs a little more balance.'**
+  String get tarotTemperanceMeaning;
+
+  /// No description provided for @tarotDevil.
+  ///
+  /// In en, this message translates to:
+  /// **'The Devil'**
+  String get tarotDevil;
+
+  /// No description provided for @tarotDevilMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Notice a habit that takes too much of your energy and change one small part of it.'**
+  String get tarotDevilMeaning;
+
+  /// No description provided for @tarotTower.
+  ///
+  /// In en, this message translates to:
+  /// **'The Tower'**
+  String get tarotTower;
+
+  /// No description provided for @tarotTowerMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'When a plan falls apart, deal with what is most urgent before making a new one.'**
+  String get tarotTowerMeaning;
+
+  /// No description provided for @tarotStar.
+  ///
+  /// In en, this message translates to:
+  /// **'The Star'**
+  String get tarotStar;
+
+  /// No description provided for @tarotStarMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Give yourself time to recharge and choose one small goal you still look forward to.'**
+  String get tarotStarMeaning;
+
+  /// No description provided for @tarotMoon.
+  ///
+  /// In en, this message translates to:
+  /// **'The Moon'**
+  String get tarotMoon;
+
+  /// No description provided for @tarotMoonMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'If something feels unclear, check the information you have before drawing a conclusion.'**
+  String get tarotMoonMeaning;
+
+  /// No description provided for @tarotSun.
+  ///
+  /// In en, this message translates to:
+  /// **'The Sun'**
+  String get tarotSun;
+
+  /// No description provided for @tarotSunMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Take note of your progress and share a piece of good news with someone you trust.'**
+  String get tarotSunMeaning;
+
+  /// No description provided for @tarotJudgement.
+  ///
+  /// In en, this message translates to:
+  /// **'Judgement'**
+  String get tarotJudgement;
+
+  /// No description provided for @tarotJudgementMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Reflect on a past choice, recognize what you learned, and decide what comes next.'**
+  String get tarotJudgementMeaning;
+
+  /// No description provided for @tarotWorld.
+  ///
+  /// In en, this message translates to:
+  /// **'The World'**
+  String get tarotWorld;
+
+  /// No description provided for @tarotWorldMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Close out a completed task, note what you gained, and prepare for the next stage.'**
+  String get tarotWorldMeaning;
+
+  /// No description provided for @luckyNumberOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Start something new with one small action you can take today.'**
+  String get luckyNumberOne;
+
+  /// No description provided for @luckyNumberTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'Make time for collaboration and listen to another point of view.'**
+  String get luckyNumberTwo;
+
+  /// No description provided for @luckyNumberThree.
+  ///
+  /// In en, this message translates to:
+  /// **'Give an idea a voice by sharing it, writing it down, or making something.'**
+  String get luckyNumberThree;
+
+  /// No description provided for @luckyNumberFour.
+  ///
+  /// In en, this message translates to:
+  /// **'Set your priorities and begin with one task you can put into practice.'**
+  String get luckyNumberFour;
+
+  /// No description provided for @luckyNumberFive.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different approach and leave a little flexibility in your plan.'**
+  String get luckyNumberFive;
+
+  /// No description provided for @luckyNumberSix.
+  ///
+  /// In en, this message translates to:
+  /// **'Make time for the people you care about and look after yourself too.'**
+  String get luckyNumberSix;
+
+  /// No description provided for @luckyNumberSeven.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a quiet moment to organize your thoughts and consider a question.'**
+  String get luckyNumberSeven;
+
+  /// No description provided for @luckyNumberEight.
+  ///
+  /// In en, this message translates to:
+  /// **'Take one concrete step toward something worth pursuing over time.'**
+  String get luckyNumberEight;
+
+  /// No description provided for @luckyNumberNine.
+  ///
+  /// In en, this message translates to:
+  /// **'Tie up a loose end and let go of something that is already complete.'**
+  String get luckyNumberNine;
+
+  /// No description provided for @tarotDrawTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw Tarot'**
+  String get tarotDrawTitle;
+
+  /// No description provided for @tarotProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Drawn {count} / {total}'**
+  String tarotProgress(int count, int total);
+
+  /// No description provided for @tarotCardPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Card {position}'**
+  String tarotCardPosition(int position);
+
+  /// No description provided for @tarotCardsRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose {count} more from the spread'**
+  String tarotCardsRemaining(int count);
+
+  /// No description provided for @tarotGestureHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a card or swipe up on it'**
+  String get tarotGestureHint;
+
+  /// No description provided for @tarotShuffle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle'**
+  String get tarotShuffle;
+
+  /// No description provided for @tarotSeerWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'The astrologer is waiting for your question'**
+  String get tarotSeerWaiting;
+
+  /// No description provided for @tarotRevealing.
+  ///
+  /// In en, this message translates to:
+  /// **'Turning over your card…'**
+  String get tarotRevealing;
+
+  /// No description provided for @tarotSeerReading.
+  ///
+  /// In en, this message translates to:
+  /// **'All three cards are ready. The astrologer is reading them.'**
+  String get tarotSeerReading;
+
+  /// No description provided for @tarotReadingComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading complete'**
+  String get tarotReadingComplete;
+
+  /// No description provided for @tarotReadingStepOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening to the stars…'**
+  String get tarotReadingStepOne;
+
+  /// No description provided for @tarotReadingStepTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'The astrologer touches the glowing chart…'**
+  String get tarotReadingStepTwo;
+
+  /// No description provided for @tarotReadingStepThree.
+  ///
+  /// In en, this message translates to:
+  /// **'Exploring the three cards…'**
+  String get tarotReadingStepThree;
+
+  /// No description provided for @tarotReadingStepFour.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing your reading…'**
+  String get tarotReadingStepFour;
+
+  /// No description provided for @tarotMinorName.
+  ///
+  /// In en, this message translates to:
+  /// **'{rank} of {suit}'**
+  String tarotMinorName(String suit, String rank);
+
+  /// No description provided for @tarotRankAce.
+  ///
+  /// In en, this message translates to:
+  /// **'Ace'**
+  String get tarotRankAce;
+
+  /// No description provided for @tarotRankTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'Two'**
+  String get tarotRankTwo;
+
+  /// No description provided for @tarotRankThree.
+  ///
+  /// In en, this message translates to:
+  /// **'Three'**
+  String get tarotRankThree;
+
+  /// No description provided for @tarotRankFour.
+  ///
+  /// In en, this message translates to:
+  /// **'Four'**
+  String get tarotRankFour;
+
+  /// No description provided for @tarotRankFive.
+  ///
+  /// In en, this message translates to:
+  /// **'Five'**
+  String get tarotRankFive;
+
+  /// No description provided for @tarotRankSix.
+  ///
+  /// In en, this message translates to:
+  /// **'Six'**
+  String get tarotRankSix;
+
+  /// No description provided for @tarotRankSeven.
+  ///
+  /// In en, this message translates to:
+  /// **'Seven'**
+  String get tarotRankSeven;
+
+  /// No description provided for @tarotRankEight.
+  ///
+  /// In en, this message translates to:
+  /// **'Eight'**
+  String get tarotRankEight;
+
+  /// No description provided for @tarotRankNine.
+  ///
+  /// In en, this message translates to:
+  /// **'Nine'**
+  String get tarotRankNine;
+
+  /// No description provided for @tarotRankTen.
+  ///
+  /// In en, this message translates to:
+  /// **'Ten'**
+  String get tarotRankTen;
+
+  /// No description provided for @tarotRankPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Page'**
+  String get tarotRankPage;
+
+  /// No description provided for @tarotRankKnight.
+  ///
+  /// In en, this message translates to:
+  /// **'Knight'**
+  String get tarotRankKnight;
+
+  /// No description provided for @tarotRankQueen.
+  ///
+  /// In en, this message translates to:
+  /// **'Queen'**
+  String get tarotRankQueen;
+
+  /// No description provided for @tarotRankKing.
+  ///
+  /// In en, this message translates to:
+  /// **'King'**
+  String get tarotRankKing;
+
+  /// No description provided for @tarotSuitWands.
+  ///
+  /// In en, this message translates to:
+  /// **'Wands'**
+  String get tarotSuitWands;
+
+  /// No description provided for @tarotWandsAceMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a small step toward an idea that excites you.'**
+  String get tarotWandsAceMeaning;
+
+  /// No description provided for @tarotWandsTwoMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Look at your options and decide which step to take next.'**
+  String get tarotWandsTwoMeaning;
+
+  /// No description provided for @tarotWandsThreeMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Look beyond your first success for a chance to build on it.'**
+  String get tarotWandsThreeMeaning;
+
+  /// No description provided for @tarotWandsFourMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Take time to celebrate something you have built with others.'**
+  String get tarotWandsFourMeaning;
+
+  /// No description provided for @tarotWandsFiveMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'When opinions clash, listen for the problem each person wants to solve.'**
+  String get tarotWandsFiveMeaning;
+
+  /// No description provided for @tarotWandsSixMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledge your progress and share credit with those who helped.'**
+  String get tarotWandsSixMeaning;
+
+  /// No description provided for @tarotWandsSevenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Decide which boundary matters and express it calmly.'**
+  String get tarotWandsSevenMeaning;
+
+  /// No description provided for @tarotWandsEightMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'When things speed up, check the details and respond promptly.'**
+  String get tarotWandsEightMeaning;
+
+  /// No description provided for @tarotWandsNineMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Protect your energy and make time to recover.'**
+  String get tarotWandsNineMeaning;
+
+  /// No description provided for @tarotWandsTenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Share a responsibility that has become too heavy to carry alone.'**
+  String get tarotWandsTenMeaning;
+
+  /// No description provided for @tarotWandsPageMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow your curiosity with one small experiment.'**
+  String get tarotWandsPageMeaning;
+
+  /// No description provided for @tarotWandsKnightMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Act on your enthusiasm with a plan for what comes after the first step.'**
+  String get tarotWandsKnightMeaning;
+
+  /// No description provided for @tarotWandsQueenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your idea with confidence and invite others to contribute.'**
+  String get tarotWandsQueenMeaning;
+
+  /// No description provided for @tarotWandsKingMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a direction people can work toward together.'**
+  String get tarotWandsKingMeaning;
+
+  /// No description provided for @tarotSuitCups.
+  ///
+  /// In en, this message translates to:
+  /// **'Cups'**
+  String get tarotSuitCups;
+
+  /// No description provided for @tarotCupsAceMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Make room for a new feeling and let yourself express it.'**
+  String get tarotCupsAceMeaning;
+
+  /// No description provided for @tarotCupsTwoMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for what you need and leave room for the other person to respond.'**
+  String get tarotCupsTwoMeaning;
+
+  /// No description provided for @tarotCupsThreeMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend a moment with supportive people and share something worth celebrating.'**
+  String get tarotCupsThreeMeaning;
+
+  /// No description provided for @tarotCupsFourMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Notice what feels uninteresting, then look for an option you may have overlooked.'**
+  String get tarotCupsFourMeaning;
+
+  /// No description provided for @tarotCupsFiveMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Give yourself time to feel the loss and notice what support remains.'**
+  String get tarotCupsFiveMeaning;
+
+  /// No description provided for @tarotCupsSixMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Revisit a small activity that once brought you comfort.'**
+  String get tarotCupsSixMeaning;
+
+  /// No description provided for @tarotCupsSevenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate ideas you can act on from ones you are still imagining.'**
+  String get tarotCupsSevenMeaning;
+
+  /// No description provided for @tarotCupsEightMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'If a path no longer fits, consider what you want to move toward.'**
+  String get tarotCupsEightMeaning;
+
+  /// No description provided for @tarotCupsNineMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoy a wish that has come true and notice what need it met.'**
+  String get tarotCupsNineMeaning;
+
+  /// No description provided for @tarotCupsTenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Care for a relationship that gives you a sense of belonging.'**
+  String get tarotCupsTenMeaning;
+
+  /// No description provided for @tarotCupsPageMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Put a new feeling into words without judging it.'**
+  String get tarotCupsPageMeaning;
+
+  /// No description provided for @tarotCupsKnightMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Express what you feel and give the other person time to respond.'**
+  String get tarotCupsKnightMeaning;
+
+  /// No description provided for @tarotCupsQueenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen with care and keep space for your own feelings.'**
+  String get tarotCupsQueenMeaning;
+
+  /// No description provided for @tarotCupsKingMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Let strong feelings settle before making a decision that affects others.'**
+  String get tarotCupsKingMeaning;
+
+  /// No description provided for @tarotSuitSwords.
+  ///
+  /// In en, this message translates to:
+  /// **'Swords'**
+  String get tarotSuitSwords;
+
+  /// No description provided for @tarotSwordsAceMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Find one fact you can check to make a complicated situation clearer.'**
+  String get tarotSwordsAceMeaning;
+
+  /// No description provided for @tarotSwordsTwoMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Consider the cost of each option before making a decision.'**
+  String get tarotSwordsTwoMeaning;
+
+  /// No description provided for @tarotSwordsThreeMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Give a painful feeling some time and share it with someone you trust.'**
+  String get tarotSwordsThreeMeaning;
+
+  /// No description provided for @tarotSwordsFourMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause and rest before you return to a hard problem.'**
+  String get tarotSwordsFourMeaning;
+
+  /// No description provided for @tarotSwordsFiveMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask whether winning an argument is worth what it might cost.'**
+  String get tarotSwordsFiveMeaning;
+
+  /// No description provided for @tarotSwordsSixMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus on one next step away from a draining situation.'**
+  String get tarotSwordsSixMeaning;
+
+  /// No description provided for @tarotSwordsSevenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Be clear about your motives and speak openly where you can.'**
+  String get tarotSwordsSevenMeaning;
+
+  /// No description provided for @tarotSwordsEightMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate real limits from worries and look for one choice you still have.'**
+  String get tarotSwordsEightMeaning;
+
+  /// No description provided for @tarotSwordsNineMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Write down recurring worries and choose one you can address today.'**
+  String get tarotSwordsNineMeaning;
+
+  /// No description provided for @tarotSwordsTenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept that one chapter has ended and put your energy into recovery.'**
+  String get tarotSwordsTenMeaning;
+
+  /// No description provided for @tarotSwordsPageMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask questions and check information before you pass it on.'**
+  String get tarotSwordsPageMeaning;
+
+  /// No description provided for @tarotSwordsKnightMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Act decisively and check your tone and facts before speaking.'**
+  String get tarotSwordsKnightMeaning;
+
+  /// No description provided for @tarotSwordsQueenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Be clear about the facts and your boundaries while staying open to a conversation.'**
+  String get tarotSwordsQueenMeaning;
+
+  /// No description provided for @tarotSwordsKingMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a consistent standard and consider each point of view fairly.'**
+  String get tarotSwordsKingMeaning;
+
+  /// No description provided for @tarotSuitPentacles.
+  ///
+  /// In en, this message translates to:
+  /// **'Pentacles'**
+  String get tarotSuitPentacles;
+
+  /// No description provided for @tarotPentaclesAceMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn a practical opportunity into one action you can take.'**
+  String get tarotPentaclesAceMeaning;
+
+  /// No description provided for @tarotPentaclesTwoMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebalance your time and resources when several demands compete.'**
+  String get tarotPentaclesTwoMeaning;
+
+  /// No description provided for @tarotPentaclesThreeMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Improve your work with people who bring different skills.'**
+  String get tarotPentaclesThreeMeaning;
+
+  /// No description provided for @tarotPentaclesFourMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Take stock of what you have and leave room for change.'**
+  String get tarotPentaclesFourMeaning;
+
+  /// No description provided for @tarotPentaclesFiveMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Look for support and ask for it when you need it.'**
+  String get tarotPentaclesFiveMeaning;
+
+  /// No description provided for @tarotPentaclesSixMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance giving and receiving by being clear about expectations.'**
+  String get tarotPentaclesSixMeaning;
+
+  /// No description provided for @tarotPentaclesSevenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Give steady work time to grow and set a date to check your progress.'**
+  String get tarotPentaclesSevenMeaning;
+
+  /// No description provided for @tarotPentaclesEightMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Practice one skill and let small improvements add up.'**
+  String get tarotPentaclesEightMeaning;
+
+  /// No description provided for @tarotPentaclesNineMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Recognize the stability and independence you have worked for.'**
+  String get tarotPentaclesNineMeaning;
+
+  /// No description provided for @tarotPentaclesTenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Consider what you can build now that will support you in the future.'**
+  String get tarotPentaclesTenMeaning;
+
+  /// No description provided for @tarotPentaclesPageMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a useful skill and take one step toward learning it.'**
+  String get tarotPentaclesPageMeaning;
+
+  /// No description provided for @tarotPentaclesKnightMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow through on a small task you can do well today.'**
+  String get tarotPentaclesKnightMeaning;
+
+  /// No description provided for @tarotPentaclesQueenMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Care for yourself and others with something practical you can do today.'**
+  String get tarotPentaclesQueenMeaning;
+
+  /// No description provided for @tarotPentaclesKingMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the stability you have built to prepare for the next stage.'**
+  String get tarotPentaclesKingMeaning;
+
+  /// No description provided for @thaiCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thai calendar today'**
+  String get thaiCalendarTitle;
+
+  /// No description provided for @thaiCalendarTimezone.
+  ///
+  /// In en, this message translates to:
+  /// **'Bangkok time'**
+  String get thaiCalendarTimezone;
+
+  /// No description provided for @thaiCalendarCivilDate.
+  ///
+  /// In en, this message translates to:
+  /// **'{date} · B.E. {year}'**
+  String thaiCalendarCivilDate(String date, int year);
+
+  /// No description provided for @thaiCalendarWaxing.
+  ///
+  /// In en, this message translates to:
+  /// **'Waxing day {day}'**
+  String thaiCalendarWaxing(int day);
+
+  /// No description provided for @thaiCalendarWaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Waning day {day}'**
+  String thaiCalendarWaning(int day);
+
+  /// No description provided for @thaiCalendarLunarMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunar month {month}'**
+  String thaiCalendarLunarMonth(int month);
+
+  /// No description provided for @thaiCalendarSecondEighth.
+  ///
+  /// In en, this message translates to:
+  /// **'Second lunar month 8'**
+  String get thaiCalendarSecondEighth;
+
+  /// No description provided for @thaiCalendarAuspicious.
+  ///
+  /// In en, this message translates to:
+  /// **'Auspicious day'**
+  String get thaiCalendarAuspicious;
+
+  /// No description provided for @thaiCalendarCaution.
+  ///
+  /// In en, this message translates to:
+  /// **'Caution day'**
+  String get thaiCalendarCaution;
+
+  /// No description provided for @thaiCalendarMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed indications'**
+  String get thaiCalendarMixed;
+
+  /// No description provided for @thaiCalendarOrdinary.
+  ///
+  /// In en, this message translates to:
+  /// **'Ordinary day'**
+  String get thaiCalendarOrdinary;
+
+  /// No description provided for @thaiCalendarHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Good hours {hours}'**
+  String thaiCalendarHours(String hours);
+
+  /// No description provided for @thaiCalendarDayRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Kalayok day indications use the small-era year at Bangkok noon'**
+  String get thaiCalendarDayRule;
+
+  /// No description provided for @thaiCalendarHourRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Daytime periods from the traditional Ubakong weekday table'**
+  String get thaiCalendarHourRule;
+
+  /// No description provided for @thaiCalendarLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading today’s Thai calendar…'**
+  String get thaiCalendarLoading;
+
+  /// No description provided for @thaiCalendarUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Today’s Thai calendar is unavailable'**
+  String get thaiCalendarUnavailable;
+
+  /// No description provided for @thaiCalendarLunarUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunar date unavailable for today'**
+  String get thaiCalendarLunarUnavailable;
+
+  /// No description provided for @thaiCalendarRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get thaiCalendarRetry;
+
+  /// No description provided for @dailyHoroscopeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily horoscope'**
+  String get dailyHoroscopeTitle;
+
+  /// No description provided for @dailyHoroscopeToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{sign} today'**
+  String dailyHoroscopeToday(String sign);
+
+  /// No description provided for @dailyHoroscopeMore.
+  ///
+  /// In en, this message translates to:
+  /// **'See more'**
+  String get dailyHoroscopeMore;
+
+  /// No description provided for @dailyHoroscopeChooseSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a zodiac sign'**
+  String get dailyHoroscopeChooseSign;
+
+  /// No description provided for @dailyHoroscopeForecast.
+  ///
+  /// In en, this message translates to:
+  /// **'Today’s reading'**
+  String get dailyHoroscopeForecast;
+
+  /// No description provided for @dailyHoroscopeBasis.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on Thai astrological transits and the Moon’s position. Updated by Bangkok date.'**
+  String get dailyHoroscopeBasis;
+
+  /// No description provided for @dailyHoroscopeLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading today’s horoscope…'**
+  String get dailyHoroscopeLoading;
+
+  /// No description provided for @dailyHoroscopeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Today’s horoscope is unavailable'**
+  String get dailyHoroscopeUnavailable;
+
+  /// No description provided for @dailyHoroscopeLove.
+  ///
+  /// In en, this message translates to:
+  /// **'Love'**
+  String get dailyHoroscopeLove;
+
+  /// No description provided for @dailyHoroscopeWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Career'**
+  String get dailyHoroscopeWork;
+
+  /// No description provided for @dailyHoroscopeMoney.
+  ///
+  /// In en, this message translates to:
+  /// **'Finances'**
+  String get dailyHoroscopeMoney;
+
+  /// No description provided for @dailyHoroscopeLoveShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Love'**
+  String get dailyHoroscopeLoveShort;
+
+  /// No description provided for @dailyHoroscopeWorkShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get dailyHoroscopeWorkShort;
+
+  /// No description provided for @dailyHoroscopeMoneyShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Money'**
+  String get dailyHoroscopeMoneyShort;
+
+  /// No description provided for @dailyHoroscopeHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Health'**
+  String get dailyHoroscopeHealth;
+
+  /// No description provided for @dailyHoroscopeReading.
+  ///
+  /// In en, this message translates to:
+  /// **'{planet} transits house {house}. {advice}'**
+  String dailyHoroscopeReading(String planet, int house, String advice);
+
+  /// No description provided for @dailyHoroscopeLoveAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'{tone, select, supportive{A good day to share how you feel and give the other person time to respond.} reflective{Pause before reading into a silence. Ask how the other person feels.} other{Make time for a relaxed conversation and listen to what matters to the other person.}}'**
+  String dailyHoroscopeLoveAdvice(String tone);
+
+  /// No description provided for @dailyHoroscopeWorkAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'{tone, select, supportive{Pick a task you can move forward today and agree on the next step with your team.} reflective{Review the details of a task in progress before taking on a new commitment.} other{Set one clear priority and handle the rest in order.}}'**
+  String dailyHoroscopeWorkAdvice(String tone);
+
+  /// No description provided for @dailyHoroscopeMoneyAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'{tone, select, supportive{Make time to review your spending and see what you can set aside.} reflective{Give yourself time to think through any unplanned purchase.} other{Check upcoming expenses and keep some room in your budget.}}'**
+  String dailyHoroscopeMoneyAdvice(String tone);
+
+  /// No description provided for @dailyHoroscopeHealthAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'{tone, select, supportive{A little movement or a short break can help you keep a steady rhythm today.} reflective{Leave some space between plans and take a break when you need one.} other{Keep your usual routine and step away from the screen for a moment.}}'**
+  String dailyHoroscopeHealthAdvice(String tone);
 }
 
 class _AppLocalizationsDelegate

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 /// Poster renderer for environments without an HTML video surface.
@@ -61,17 +62,27 @@ class GenerationPoster extends StatelessWidget {
     scaleY: 1.06,
     child: ShaderMask(
       blendMode: BlendMode.dstIn,
-      shaderCallback: (rect) => const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.transparent,
-          Colors.black,
-          Colors.black,
-          Colors.transparent,
-        ],
-        stops: [.03, .27, .8, .97],
-      ).createShader(rect),
+      shaderCallback: (rect) {
+        // Stretch the radial mask to the poster's edges on both axes.
+        final ellipse = Matrix4.diagonal3Values(
+          rect.width / 2,
+          rect.height / 2,
+          1,
+        )..setTranslationRaw(rect.center.dx, rect.center.dy, 0);
+        return ui.Gradient.radial(
+          Offset.zero,
+          1,
+          const [
+            Colors.black,
+            Color(0xEE000000),
+            Color(0x88000000),
+            Colors.transparent,
+          ],
+          const [.64, .77, .89, 1],
+          TileMode.clamp,
+          ellipse.storage,
+        );
+      },
       child: ShaderMask(
         blendMode: BlendMode.dstIn,
         shaderCallback: (rect) => const LinearGradient(
@@ -81,11 +92,20 @@ class GenerationPoster extends StatelessWidget {
             Colors.black,
             Colors.transparent,
           ],
-          stops: [.03, .18, .82, .97],
+          stops: [0, .18, .82, 1],
         ).createShader(rect),
-        child: Image.asset(
-          'assets/images/report-loading-poster.webp',
-          fit: BoxFit.contain,
+        child: ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (rect) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Color(0xBB000000), Colors.transparent],
+            stops: [.76, .90, 1],
+          ).createShader(rect),
+          child: Image.asset(
+            'assets/images/report-loading-poster.webp',
+            fit: BoxFit.fill,
+          ),
         ),
       ),
     ),

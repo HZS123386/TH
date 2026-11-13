@@ -42,6 +42,16 @@ class Settings:
     payso_test_merchant_id: str = ""
     payso_test_api_key: str = field(default="", repr=False)
     payso_test_secret_key: str = field(default="", repr=False)
+    sunlands_order_only: bool = False
+    sunlands_base_url: str = "https://api-prod.sunlands.com"
+    sunlands_app_key: str = "sunlands_fb_fate"
+    sunlands_app_secret: str = field(default="", repr=False)
+    sunlands_channel_code: str | None = None
+    sunlands_item_no: str = "193261112000101"
+    sunlands_product_no: str = "1932611120001"
+    sunlands_item_title: str = "测试产品包"
+    sunlands_province_id: str = ""
+    sunlands_merchant_notify_uri: str = ""
     support_email: str = ""
 
     @classmethod
@@ -78,5 +88,15 @@ class Settings:
             payso_test_merchant_id=os.getenv("PAYSO_TEST_MERCHANT_ID", ""),
             payso_test_api_key=os.getenv("PAYSO_TEST_API_KEY", ""),
             payso_test_secret_key=os.getenv("PAYSO_TEST_SECRET_KEY", ""),
+            sunlands_order_only=os.getenv("SUNLANDS_ORDER_ONLY", "false").lower() == "true",
+            sunlands_base_url=os.getenv("SUNLANDS_BASE_URL", "https://api-prod.sunlands.com"),
+            sunlands_app_key=os.getenv("SUNLANDS_APP_KEY", "sunlands_fb_fate"),
+            sunlands_app_secret=os.getenv("SUNLANDS_APP_SECRET", ""),
+            sunlands_channel_code=os.getenv("SUNLANDS_CHANNEL_CODE"),
+            sunlands_item_no=os.getenv("SUNLANDS_ITEM_NO", "193261112000101"),
+            sunlands_product_no=os.getenv("SUNLANDS_PRODUCT_NO", "1932611120001"),
+            sunlands_item_title=os.getenv("SUNLANDS_ITEM_TITLE", "测试产品包"),
+            sunlands_province_id=os.getenv("SUNLANDS_PROVINCE_ID", ""),
+            sunlands_merchant_notify_uri=os.getenv("SUNLANDS_MERCHANT_NOTIFY_URI", ""),
             support_email=os.getenv("FATE_SUPPORT_EMAIL", ""),
         )

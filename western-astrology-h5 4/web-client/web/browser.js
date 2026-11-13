@@ -22,7 +22,7 @@ window.fateH5 = {
   },
   postPayment(action,fieldsJson) {
     const target=new URL(action);
-    if(target.protocol!=='https:'||target.hostname!=='www.thaiepay.com') throw new Error('Invalid payment URL');
+    if(target.origin!=='https://www.thaiepay.com'||target.pathname!=='/epaylink/payment.aspx'||target.username||target.password) throw new Error('Invalid payment URL');
     const form=document.createElement('form');
     form.action=target.href;form.method='post';form.target='_blank';form.rel='noopener';
     for(const [name,value] of Object.entries(JSON.parse(fieldsJson))) {

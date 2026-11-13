@@ -150,7 +150,7 @@ class H5Controller extends ChangeNotifier {
     final c = labels ?? copy;
     if (error is FormatException) return c.t('ui', 'badResult');
     if (error is ApiFailure) {
-      for (final group in ['experience', 'generation', 'ui', 'life']) {
+      for (final group in ['checkout', 'experience', 'generation', 'ui', 'life']) {
         final value = c.t(group, error.code);
         if (value.isNotEmpty) return value;
       }

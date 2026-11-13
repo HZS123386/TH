@@ -701,4 +701,728 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get zPisces => 'Song Ngư';
+
+  @override
+  String get skipOpening => 'Bỏ qua mở đầu';
+
+  @override
+  String get tarot => 'Bài Tarot';
+
+  @override
+  String get luckyNumbers => 'Con số may mắn';
+
+  @override
+  String get tarotDraw => 'Rút ba lá bài';
+
+  @override
+  String get tarotDrawHint =>
+      'Nghĩ đến câu hỏi của bạn rồi chọn ba lá trong trải bài.';
+
+  @override
+  String tarotChooseCard(int position) {
+    return 'Rút lá bài số $position';
+  }
+
+  @override
+  String get tarotResult => 'Ba lá bài của bạn';
+
+  @override
+  String get tarotDrawAgain => 'Rút lại';
+
+  @override
+  String get todayLuckyNumber => 'Số may mắn hôm nay';
+
+  @override
+  String get luckyNumberHint => 'Gợi ý từ con số hôm nay';
+
+  @override
+  String get luckyNumberUpdates => 'Cập nhật theo ngày trên thiết bị của bạn';
+
+  @override
+  String get tarotFool => 'Kẻ Khờ';
+
+  @override
+  String get tarotFoolMeaning =>
+      'Thử một hướng mới bằng một bước nhỏ và cho mình thời gian để điều chỉnh.';
+
+  @override
+  String get tarotMagician => 'Nhà Ảo Thuật';
+
+  @override
+  String get tarotMagicianMeaning =>
+      'Xem lại những kỹ năng và nguồn lực bạn có, rồi chọn một ý tưởng để thực hiện hôm nay.';
+
+  @override
+  String get tarotHighPriestess => 'Nữ Tư Tế';
+
+  @override
+  String get tarotHighPriestessMeaning =>
+      'Dành chút thời gian yên tĩnh để quan sát và lắng nghe cảm nhận của mình trước khi hành động.';
+
+  @override
+  String get tarotEmpress => 'Hoàng Hậu';
+
+  @override
+  String get tarotEmpressMeaning =>
+      'Dành thời gian cho việc khơi gợi sáng tạo và nghỉ ngơi khi bạn cần.';
+
+  @override
+  String get tarotEmperor => 'Hoàng Đế';
+
+  @override
+  String get tarotEmperorMeaning =>
+      'Đặt mục tiêu và giới hạn rõ ràng, rồi sắp xếp công việc theo mức độ ưu tiên.';
+
+  @override
+  String get tarotHierophant => 'Giáo Hoàng';
+
+  @override
+  String get tarotHierophantMeaning =>
+      'Hỏi ý kiến người bạn tin tưởng và chọn lời khuyên phù hợp với hoàn cảnh của mình.';
+
+  @override
+  String get tarotLovers => 'Đôi Tình Nhân';
+
+  @override
+  String get tarotLoversMeaning =>
+      'Khi đứng trước lựa chọn, hãy xác định điều mình coi trọng và chia sẻ thật lòng.';
+
+  @override
+  String get tarotChariot => 'Cỗ Xe';
+
+  @override
+  String get tarotChariotMeaning =>
+      'Chọn một hướng đi rồi tập trung sức lực vào bước quan trọng nhất.';
+
+  @override
+  String get tarotStrength => 'Sức Mạnh';
+
+  @override
+  String get tarotStrengthMeaning =>
+      'Khi có bất đồng, hãy bình tâm một chút rồi phản hồi kiên định và nhẹ nhàng.';
+
+  @override
+  String get tarotHermit => 'Ẩn Sĩ';
+
+  @override
+  String get tarotHermitMeaning =>
+      'Tạm rời những ý kiến xung quanh để suy nghĩ về câu trả lời bạn đang tìm.';
+
+  @override
+  String get tarotWheelOfFortune => 'Bánh Xe Số Phận';
+
+  @override
+  String get tarotWheelOfFortuneMeaning =>
+      'Giữ cho kế hoạch linh hoạt và bắt đầu với phần bạn có thể kiểm soát.';
+
+  @override
+  String get tarotJustice => 'Công Lý';
+
+  @override
+  String get tarotJusticeMeaning =>
+      'Cân nhắc cả sự thật lẫn cảm xúc, rồi đưa ra lựa chọn mà bạn sẵn lòng chịu trách nhiệm.';
+
+  @override
+  String get tarotHangedMan => 'Người Treo Ngược';
+
+  @override
+  String get tarotHangedManMeaning =>
+      'Nếu đang bế tắc, hãy dừng lại một chút và nhìn sự việc từ một góc khác.';
+
+  @override
+  String get tarotDeath => 'Cái Chết';
+
+  @override
+  String get tarotDeathMeaning =>
+      'Khép lại một việc đã đến hồi kết để nhường chỗ cho thói quen hoặc lựa chọn mới.';
+
+  @override
+  String get tarotTemperance => 'Tiết Độ';
+
+  @override
+  String get tarotTemperanceMeaning =>
+      'Điều chỉnh từng chút để tìm sự cân bằng giữa hai nhu cầu đang cạnh tranh.';
+
+  @override
+  String get tarotDevil => 'Ác Quỷ';
+
+  @override
+  String get tarotDevilMeaning =>
+      'Nhận ra thói quen đang lấy đi quá nhiều năng lượng và thay đổi từ một bước nhỏ.';
+
+  @override
+  String get tarotTower => 'Tòa Tháp';
+
+  @override
+  String get tarotTowerMeaning =>
+      'Nếu kế hoạch bị xáo trộn, hãy xử lý việc cấp thiết nhất trước khi sắp xếp lại.';
+
+  @override
+  String get tarotStar => 'Ngôi Sao';
+
+  @override
+  String get tarotStarMeaning =>
+      'Cho mình thời gian hồi phục và chọn một mục tiêu nhỏ mà bạn vẫn mong đợi.';
+
+  @override
+  String get tarotMoon => 'Mặt Trăng';
+
+  @override
+  String get tarotMoonMeaning =>
+      'Khi sự việc chưa rõ ràng, hãy kiểm tra thông tin bạn có trước khi kết luận.';
+
+  @override
+  String get tarotSun => 'Mặt Trời';
+
+  @override
+  String get tarotSunMeaning =>
+      'Ghi nhận tiến bộ của mình và chia sẻ một tin vui với người bạn tin tưởng.';
+
+  @override
+  String get tarotJudgement => 'Phán Xét';
+
+  @override
+  String get tarotJudgementMeaning =>
+      'Nhìn lại lựa chọn trước đây, nhận ra điều đã học và cân nhắc bước tiếp theo.';
+
+  @override
+  String get tarotWorld => 'Thế Giới';
+
+  @override
+  String get tarotWorldMeaning =>
+      'Khép lại việc đã hoàn thành, ghi lại điều bạn nhận được và chuẩn bị cho chặng tiếp theo.';
+
+  @override
+  String get luckyNumberOne =>
+      'Bắt đầu một việc mới bằng một hành động nhỏ có thể làm hôm nay.';
+
+  @override
+  String get luckyNumberTwo =>
+      'Dành thời gian hợp tác và lắng nghe góc nhìn của người khác.';
+
+  @override
+  String get luckyNumberThree =>
+      'Chia sẻ, viết ra hoặc tạo một thứ gì đó từ ý tưởng của bạn.';
+
+  @override
+  String get luckyNumberFour =>
+      'Sắp xếp thứ tự ưu tiên và bắt đầu với một việc dễ thực hiện.';
+
+  @override
+  String get luckyNumberFive =>
+      'Thử một cách làm khác và giữ cho kế hoạch có thể điều chỉnh.';
+
+  @override
+  String get luckyNumberSix =>
+      'Dành thời gian cho người bạn quan tâm và chăm sóc cả bản thân.';
+
+  @override
+  String get luckyNumberSeven =>
+      'Tìm một khoảng lặng để sắp xếp suy nghĩ và cân nhắc câu hỏi của mình.';
+
+  @override
+  String get luckyNumberEight =>
+      'Tiến thêm một bước cụ thể cho điều đáng để đầu tư lâu dài.';
+
+  @override
+  String get luckyNumberNine =>
+      'Hoàn tất phần còn dở và đặt xuống việc đã kết thúc.';
+
+  @override
+  String get tarotDrawTitle => 'Rút bài Tarot';
+
+  @override
+  String tarotProgress(int count, int total) {
+    return 'Đã rút $count / $total';
+  }
+
+  @override
+  String tarotCardPosition(int position) {
+    return 'Lá $position';
+  }
+
+  @override
+  String tarotCardsRemaining(int count) {
+    return 'Chọn thêm $count lá trong trải bài';
+  }
+
+  @override
+  String get tarotGestureHint => 'Chạm vào lá bài hoặc vuốt lên';
+
+  @override
+  String get tarotShuffle => 'Xáo lại';
+
+  @override
+  String get tarotSeerWaiting => 'Nhà chiêm tinh đang chờ câu hỏi của bạn';
+
+  @override
+  String get tarotRevealing => 'Đang lật lá bài…';
+
+  @override
+  String get tarotSeerReading => 'Đã đủ ba lá. Nhà chiêm tinh đang đọc bài.';
+
+  @override
+  String get tarotReadingComplete => 'Đã đọc xong';
+
+  @override
+  String get tarotReadingStepOne =>
+      'Đang lắng nghe lời thì thầm của các vì sao…';
+
+  @override
+  String get tarotReadingStepTwo => 'Nhà chiêm tinh chạm vào bản đồ sao…';
+
+  @override
+  String get tarotReadingStepThree => 'Đang xem xét ba lá bài…';
+
+  @override
+  String get tarotReadingStepFour => 'Đang viết phần giải nghĩa…';
+
+  @override
+  String tarotMinorName(String suit, String rank) {
+    return '$rank $suit';
+  }
+
+  @override
+  String get tarotRankAce => 'Át';
+
+  @override
+  String get tarotRankTwo => 'Hai';
+
+  @override
+  String get tarotRankThree => 'Ba';
+
+  @override
+  String get tarotRankFour => 'Bốn';
+
+  @override
+  String get tarotRankFive => 'Năm';
+
+  @override
+  String get tarotRankSix => 'Sáu';
+
+  @override
+  String get tarotRankSeven => 'Bảy';
+
+  @override
+  String get tarotRankEight => 'Tám';
+
+  @override
+  String get tarotRankNine => 'Chín';
+
+  @override
+  String get tarotRankTen => 'Mười';
+
+  @override
+  String get tarotRankPage => 'Tiểu Đồng';
+
+  @override
+  String get tarotRankKnight => 'Hiệp Sĩ';
+
+  @override
+  String get tarotRankQueen => 'Nữ Hoàng';
+
+  @override
+  String get tarotRankKing => 'Vua';
+
+  @override
+  String get tarotSuitWands => 'Gậy';
+
+  @override
+  String get tarotWandsAceMeaning =>
+      'Thử một bước nhỏ với ý tưởng khiến bạn hào hứng.';
+
+  @override
+  String get tarotWandsTwoMeaning =>
+      'Xem các lựa chọn và quyết định bước tiếp theo.';
+
+  @override
+  String get tarotWandsThreeMeaning =>
+      'Tìm cơ hội phát triển từ việc bạn đã bắt đầu thành công.';
+
+  @override
+  String get tarotWandsFourMeaning =>
+      'Dành thời gian ăn mừng thành quả làm cùng người khác.';
+
+  @override
+  String get tarotWandsFiveMeaning =>
+      'Khi có bất đồng, hãy lắng nghe vấn đề mỗi bên muốn giải quyết.';
+
+  @override
+  String get tarotWandsSixMeaning =>
+      'Ghi nhận tiến bộ và chia sẻ công lao với người đã giúp đỡ.';
+
+  @override
+  String get tarotWandsSevenMeaning =>
+      'Chọn ranh giới quan trọng rồi nói ra một cách bình tĩnh.';
+
+  @override
+  String get tarotWandsEightMeaning =>
+      'Khi mọi việc tiến nhanh, hãy kiểm tra chi tiết và phản hồi kịp thời.';
+
+  @override
+  String get tarotWandsNineMeaning =>
+      'Giữ sức cho mình và dành thời gian nghỉ ngơi.';
+
+  @override
+  String get tarotWandsTenMeaning =>
+      'Chia sẻ một trách nhiệm quá nặng để tự gánh.';
+
+  @override
+  String get tarotWandsPageMeaning =>
+      'Thử một việc nhỏ để theo đuổi sự tò mò của bạn.';
+
+  @override
+  String get tarotWandsKnightMeaning =>
+      'Tận dụng nhiệt huyết để hành động và chuẩn bị bước kế tiếp.';
+
+  @override
+  String get tarotWandsQueenMeaning =>
+      'Tự tin chia sẻ ý tưởng và mời người khác cùng đóng góp.';
+
+  @override
+  String get tarotWandsKingMeaning =>
+      'Chọn một hướng đi mà mọi người có thể cùng theo đuổi.';
+
+  @override
+  String get tarotSuitCups => 'Cốc';
+
+  @override
+  String get tarotCupsAceMeaning =>
+      'Dành chỗ cho cảm xúc mới và cho phép mình bày tỏ.';
+
+  @override
+  String get tarotCupsTwoMeaning =>
+      'Nói điều bạn cần và để đối phương có thời gian đáp lại.';
+
+  @override
+  String get tarotCupsThreeMeaning =>
+      'Ở bên những người ủng hộ bạn và chia sẻ điều đáng mừng.';
+
+  @override
+  String get tarotCupsFourMeaning =>
+      'Nhận ra điều khiến bạn thiếu hứng thú rồi xem lựa chọn đã bỏ qua.';
+
+  @override
+  String get tarotCupsFiveMeaning =>
+      'Cho phép mình buồn và chú ý đến sự hỗ trợ vẫn còn.';
+
+  @override
+  String get tarotCupsSixMeaning =>
+      'Thử lại một hoạt động từng khiến bạn thấy dễ chịu.';
+
+  @override
+  String get tarotCupsSevenMeaning =>
+      'Phân biệt ý tưởng có thể làm với điều vẫn chỉ là tưởng tượng.';
+
+  @override
+  String get tarotCupsEightMeaning =>
+      'Nếu lối cũ không còn phù hợp, hãy nghĩ đến nơi bạn muốn đến.';
+
+  @override
+  String get tarotCupsNineMeaning =>
+      'Tận hưởng một mong muốn đã thành hiện thực và hiểu nó đáp ứng điều gì.';
+
+  @override
+  String get tarotCupsTenMeaning =>
+      'Chăm sóc một mối quan hệ mang lại cho bạn cảm giác thuộc về.';
+
+  @override
+  String get tarotCupsPageMeaning =>
+      'Thử nói ra một cảm xúc mới mà không vội phán xét.';
+
+  @override
+  String get tarotCupsKnightMeaning =>
+      'Bày tỏ cảm xúc của mình và cho đối phương thời gian trả lời.';
+
+  @override
+  String get tarotCupsQueenMeaning =>
+      'Lắng nghe người khác và chừa chỗ cho cảm xúc của bạn.';
+
+  @override
+  String get tarotCupsKingMeaning =>
+      'Đợi cảm xúc lắng xuống trước khi quyết định việc ảnh hưởng đến người khác.';
+
+  @override
+  String get tarotSuitSwords => 'Kiếm';
+
+  @override
+  String get tarotSwordsAceMeaning =>
+      'Tìm một sự thật có thể kiểm chứng để làm rõ tình huống phức tạp.';
+
+  @override
+  String get tarotSwordsTwoMeaning =>
+      'Cân nhắc cái giá của từng lựa chọn trước khi quyết định.';
+
+  @override
+  String get tarotSwordsThreeMeaning =>
+      'Dành thời gian cho nỗi buồn và chia sẻ với người bạn tin tưởng.';
+
+  @override
+  String get tarotSwordsFourMeaning =>
+      'Tạm dừng để nghỉ ngơi trước khi quay lại vấn đề khó.';
+
+  @override
+  String get tarotSwordsFiveMeaning =>
+      'Tự hỏi thắng cuộc tranh luận có đáng với điều bạn phải đánh đổi không.';
+
+  @override
+  String get tarotSwordsSixMeaning =>
+      'Chọn một bước giúp bạn rời khỏi tình huống làm mình kiệt sức.';
+
+  @override
+  String get tarotSwordsSevenMeaning =>
+      'Xem lại động cơ của bạn và trao đổi thẳng thắn khi có thể.';
+
+  @override
+  String get tarotSwordsEightMeaning =>
+      'Tách giới hạn thực tế khỏi nỗi lo và tìm một lựa chọn còn lại.';
+
+  @override
+  String get tarotSwordsNineMeaning =>
+      'Viết ra những lo lắng lặp lại và chọn một việc bạn có thể xử lý hôm nay.';
+
+  @override
+  String get tarotSwordsTenMeaning =>
+      'Chấp nhận một việc đã kết thúc và dành sức để hồi phục.';
+
+  @override
+  String get tarotSwordsPageMeaning =>
+      'Đặt câu hỏi và kiểm tra thông tin trước khi chia sẻ.';
+
+  @override
+  String get tarotSwordsKnightMeaning =>
+      'Hành động dứt khoát và kiểm tra lời nói cùng sự thật trước khi phản hồi.';
+
+  @override
+  String get tarotSwordsQueenMeaning =>
+      'Nói rõ sự thật và ranh giới, đồng thời giữ cuộc trò chuyện cởi mở.';
+
+  @override
+  String get tarotSwordsKingMeaning =>
+      'Dùng cùng một tiêu chuẩn và cân nhắc công bằng các góc nhìn.';
+
+  @override
+  String get tarotSuitPentacles => 'Tiền';
+
+  @override
+  String get tarotPentaclesAceMeaning =>
+      'Biến một cơ hội thực tế thành một hành động cụ thể.';
+
+  @override
+  String get tarotPentaclesTwoMeaning =>
+      'Sắp xếp lại thời gian và nguồn lực khi nhiều việc cùng đòi hỏi.';
+
+  @override
+  String get tarotPentaclesThreeMeaning =>
+      'Cải thiện công việc cùng những người có kỹ năng khác nhau.';
+
+  @override
+  String get tarotPentaclesFourMeaning =>
+      'Nhìn lại nguồn lực bạn có và chừa chỗ cho thay đổi.';
+
+  @override
+  String get tarotPentaclesFiveMeaning =>
+      'Tìm sự hỗ trợ và chủ động nhờ giúp đỡ khi cần.';
+
+  @override
+  String get tarotPentaclesSixMeaning =>
+      'Cân bằng cho và nhận bằng cách nói rõ mong đợi.';
+
+  @override
+  String get tarotPentaclesSevenMeaning =>
+      'Cho công việc dài hạn thời gian và đặt ngày xem lại tiến độ.';
+
+  @override
+  String get tarotPentaclesEightMeaning =>
+      'Luyện một kỹ năng và tích lũy những tiến bộ nhỏ.';
+
+  @override
+  String get tarotPentaclesNineMeaning =>
+      'Ghi nhận sự ổn định và tự chủ bạn đã tạo dựng.';
+
+  @override
+  String get tarotPentaclesTenMeaning =>
+      'Nghĩ xem hôm nay bạn có thể xây dựng điều gì để hỗ trợ tương lai.';
+
+  @override
+  String get tarotPentaclesPageMeaning =>
+      'Chọn kỹ năng hữu ích và bắt đầu bằng một bước học cụ thể.';
+
+  @override
+  String get tarotPentaclesKnightMeaning =>
+      'Hoàn thành một việc nhỏ mà bạn có thể làm tốt hôm nay.';
+
+  @override
+  String get tarotPentaclesQueenMeaning =>
+      'Chăm sóc bản thân và người khác bằng một hành động thiết thực.';
+
+  @override
+  String get tarotPentaclesKingMeaning =>
+      'Dùng sự ổn định đã có để chuẩn bị cho chặng tiếp theo.';
+
+  @override
+  String get thaiCalendarTitle => 'Lịch Thái hôm nay';
+
+  @override
+  String get thaiCalendarTimezone => 'Giờ Bangkok';
+
+  @override
+  String thaiCalendarCivilDate(String date, int year) {
+    return '$date · Phật lịch $year';
+  }
+
+  @override
+  String thaiCalendarWaxing(int day) {
+    return 'Trăng lên ngày $day';
+  }
+
+  @override
+  String thaiCalendarWaning(int day) {
+    return 'Trăng tàn ngày $day';
+  }
+
+  @override
+  String thaiCalendarLunarMonth(int month) {
+    return 'Tháng $month âm lịch Thái';
+  }
+
+  @override
+  String get thaiCalendarSecondEighth => 'Tháng 8 nhuận';
+
+  @override
+  String get thaiCalendarAuspicious => 'Ngày tốt';
+
+  @override
+  String get thaiCalendarCaution => 'Ngày cần thận trọng';
+
+  @override
+  String get thaiCalendarMixed => 'Có cả dấu hiệu tốt và cần thận trọng';
+
+  @override
+  String get thaiCalendarOrdinary => 'Ngày thường';
+
+  @override
+  String thaiCalendarHours(String hours) {
+    return 'Giờ tốt $hours';
+  }
+
+  @override
+  String get thaiCalendarDayRule =>
+      'Ngày theo Kalayok dựa vào tiểu lịch tại giữa trưa ở Bangkok';
+
+  @override
+  String get thaiCalendarHourRule =>
+      'Các giờ ban ngày theo bảng Ubakong truyền thống của từng thứ';
+
+  @override
+  String get thaiCalendarLoading => 'Đang tải lịch Thái hôm nay…';
+
+  @override
+  String get thaiCalendarUnavailable => 'Chưa tải được lịch Thái hôm nay';
+
+  @override
+  String get thaiCalendarLunarUnavailable =>
+      'Chưa có ngày âm lịch Thái hôm nay';
+
+  @override
+  String get thaiCalendarRetry => 'Thử lại';
+
+  @override
+  String get dailyHoroscopeTitle => 'Vận trình hằng ngày';
+
+  @override
+  String dailyHoroscopeToday(String sign) {
+    return '$sign hôm nay';
+  }
+
+  @override
+  String get dailyHoroscopeMore => 'Xem thêm';
+
+  @override
+  String get dailyHoroscopeChooseSign => 'Chọn cung hoàng đạo';
+
+  @override
+  String get dailyHoroscopeForecast => 'Luận giải hôm nay';
+
+  @override
+  String get dailyHoroscopeBasis =>
+      'Dựa trên vị trí các sao và Mặt Trăng theo chiêm tinh Thái Lan. Cập nhật theo ngày tại Bangkok.';
+
+  @override
+  String get dailyHoroscopeLoading => 'Đang tải vận trình hôm nay…';
+
+  @override
+  String get dailyHoroscopeUnavailable => 'Chưa thể tải vận trình hôm nay';
+
+  @override
+  String get dailyHoroscopeLove => 'Tình yêu';
+
+  @override
+  String get dailyHoroscopeWork => 'Sự nghiệp';
+
+  @override
+  String get dailyHoroscopeMoney => 'Tài chính';
+
+  @override
+  String get dailyHoroscopeLoveShort => 'Tình yêu';
+
+  @override
+  String get dailyHoroscopeWorkShort => 'Công việc';
+
+  @override
+  String get dailyHoroscopeMoneyShort => 'Tiền bạc';
+
+  @override
+  String get dailyHoroscopeHealth => 'Sức khỏe';
+
+  @override
+  String dailyHoroscopeReading(String planet, int house, String advice) {
+    return '$planet đi qua nhà số $house. $advice';
+  }
+
+  @override
+  String dailyHoroscopeLoveAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive': 'Hãy chia sẻ cảm xúc và cho đối phương thời gian trả lời.',
+      'reflective':
+          'Nếu còn điều chưa rõ, hãy hỏi xem đối phương cảm thấy thế nào.',
+      'other':
+          'Dành thời gian trò chuyện và lắng nghe điều đối phương quan tâm.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeWorkAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive':
+          'Chọn việc có thể tiến triển hôm nay và thống nhất bước tiếp theo với nhóm.',
+      'reflective': 'Xem kỹ công việc đang làm trước khi nhận thêm nhiệm vụ.',
+      'other': 'Đặt một ưu tiên rõ ràng và xử lý các việc còn lại theo thứ tự.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeMoneyAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive':
+          'Xem lại chi tiêu gần đây và khoản có thể dành dụm trong tuần.',
+      'reflective':
+          'Cân nhắc thêm trước khi quyết định chi một khoản ngoài kế hoạch.',
+      'other': 'Xem các khoản sắp đến hạn và để lại một phần dự phòng.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeHealthAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive':
+          'Vận động nhẹ hoặc nghỉ một chút để giữ nhịp sinh hoạt dễ chịu.',
+      'reflective': 'Chừa khoảng trống giữa các kế hoạch để có thời gian nghỉ.',
+      'other': 'Giữ nhịp sinh hoạt quen thuộc và dành một lúc rời màn hình.',
+    });
+    return '$_temp0';
+  }
 }

@@ -701,4 +701,731 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get zPisces => 'Pisces';
+
+  @override
+  String get skipOpening => 'Skip intro';
+
+  @override
+  String get tarot => 'Tarot';
+
+  @override
+  String get luckyNumbers => 'Lucky numbers';
+
+  @override
+  String get tarotDraw => 'Draw three cards';
+
+  @override
+  String get tarotDrawHint =>
+      'Think of a question, then choose three cards from the spread.';
+
+  @override
+  String tarotChooseCard(int position) {
+    return 'Draw scattered card $position';
+  }
+
+  @override
+  String get tarotResult => 'Your three cards';
+
+  @override
+  String get tarotDrawAgain => 'Draw again';
+
+  @override
+  String get todayLuckyNumber => 'Today’s lucky number';
+
+  @override
+  String get luckyNumberHint => 'A prompt for today';
+
+  @override
+  String get luckyNumberUpdates => 'Updates using your device’s local date';
+
+  @override
+  String get tarotFool => 'The Fool';
+
+  @override
+  String get tarotFoolMeaning =>
+      'Try a new direction with one small step, leaving yourself room to adjust.';
+
+  @override
+  String get tarotMagician => 'The Magician';
+
+  @override
+  String get tarotMagicianMeaning =>
+      'Take stock of the skills and tools you have, then act on one idea today.';
+
+  @override
+  String get tarotHighPriestess => 'The High Priestess';
+
+  @override
+  String get tarotHighPriestessMeaning =>
+      'Give yourself a quiet moment to observe and listen to your instincts before acting.';
+
+  @override
+  String get tarotEmpress => 'The Empress';
+
+  @override
+  String get tarotEmpressMeaning =>
+      'Make time for something that nourishes your creativity, and give yourself time to rest.';
+
+  @override
+  String get tarotEmperor => 'The Emperor';
+
+  @override
+  String get tarotEmperorMeaning =>
+      'Set a clear goal and boundaries, then put your tasks in order of importance.';
+
+  @override
+  String get tarotHierophant => 'The Hierophant';
+
+  @override
+  String get tarotHierophantMeaning =>
+      'Ask someone you trust for guidance, and keep the advice that fits your situation.';
+
+  @override
+  String get tarotLovers => 'The Lovers';
+
+  @override
+  String get tarotLoversMeaning =>
+      'When making a choice, name what matters to you and communicate it honestly.';
+
+  @override
+  String get tarotChariot => 'The Chariot';
+
+  @override
+  String get tarotChariotMeaning =>
+      'Pick one direction and focus your energy on the next step that matters most.';
+
+  @override
+  String get tarotStrength => 'Strength';
+
+  @override
+  String get tarotStrengthMeaning =>
+      'When tension arises, take a moment to settle and respond with calm resolve.';
+
+  @override
+  String get tarotHermit => 'The Hermit';
+
+  @override
+  String get tarotHermitMeaning =>
+      'Step away from outside opinions for a moment and reflect on what you want to know.';
+
+  @override
+  String get tarotWheelOfFortune => 'Wheel of Fortune';
+
+  @override
+  String get tarotWheelOfFortuneMeaning =>
+      'Leave some flexibility in your plans and start with what you can control.';
+
+  @override
+  String get tarotJustice => 'Justice';
+
+  @override
+  String get tarotJusticeMeaning =>
+      'Consider the facts and your feelings, then make a choice you can stand behind.';
+
+  @override
+  String get tarotHangedMan => 'The Hanged Man';
+
+  @override
+  String get tarotHangedManMeaning =>
+      'If you feel stuck, pause and look at the situation from a different angle.';
+
+  @override
+  String get tarotDeath => 'Death';
+
+  @override
+  String get tarotDeathMeaning =>
+      'Set aside something that has run its course to make room for a new habit or choice.';
+
+  @override
+  String get tarotTemperance => 'Temperance';
+
+  @override
+  String get tarotTemperanceMeaning =>
+      'Make a small adjustment that gives two competing needs a little more balance.';
+
+  @override
+  String get tarotDevil => 'The Devil';
+
+  @override
+  String get tarotDevilMeaning =>
+      'Notice a habit that takes too much of your energy and change one small part of it.';
+
+  @override
+  String get tarotTower => 'The Tower';
+
+  @override
+  String get tarotTowerMeaning =>
+      'When a plan falls apart, deal with what is most urgent before making a new one.';
+
+  @override
+  String get tarotStar => 'The Star';
+
+  @override
+  String get tarotStarMeaning =>
+      'Give yourself time to recharge and choose one small goal you still look forward to.';
+
+  @override
+  String get tarotMoon => 'The Moon';
+
+  @override
+  String get tarotMoonMeaning =>
+      'If something feels unclear, check the information you have before drawing a conclusion.';
+
+  @override
+  String get tarotSun => 'The Sun';
+
+  @override
+  String get tarotSunMeaning =>
+      'Take note of your progress and share a piece of good news with someone you trust.';
+
+  @override
+  String get tarotJudgement => 'Judgement';
+
+  @override
+  String get tarotJudgementMeaning =>
+      'Reflect on a past choice, recognize what you learned, and decide what comes next.';
+
+  @override
+  String get tarotWorld => 'The World';
+
+  @override
+  String get tarotWorldMeaning =>
+      'Close out a completed task, note what you gained, and prepare for the next stage.';
+
+  @override
+  String get luckyNumberOne =>
+      'Start something new with one small action you can take today.';
+
+  @override
+  String get luckyNumberTwo =>
+      'Make time for collaboration and listen to another point of view.';
+
+  @override
+  String get luckyNumberThree =>
+      'Give an idea a voice by sharing it, writing it down, or making something.';
+
+  @override
+  String get luckyNumberFour =>
+      'Set your priorities and begin with one task you can put into practice.';
+
+  @override
+  String get luckyNumberFive =>
+      'Try a different approach and leave a little flexibility in your plan.';
+
+  @override
+  String get luckyNumberSix =>
+      'Make time for the people you care about and look after yourself too.';
+
+  @override
+  String get luckyNumberSeven =>
+      'Find a quiet moment to organize your thoughts and consider a question.';
+
+  @override
+  String get luckyNumberEight =>
+      'Take one concrete step toward something worth pursuing over time.';
+
+  @override
+  String get luckyNumberNine =>
+      'Tie up a loose end and let go of something that is already complete.';
+
+  @override
+  String get tarotDrawTitle => 'Draw Tarot';
+
+  @override
+  String tarotProgress(int count, int total) {
+    return 'Drawn $count / $total';
+  }
+
+  @override
+  String tarotCardPosition(int position) {
+    return 'Card $position';
+  }
+
+  @override
+  String tarotCardsRemaining(int count) {
+    return 'Choose $count more from the spread';
+  }
+
+  @override
+  String get tarotGestureHint => 'Tap a card or swipe up on it';
+
+  @override
+  String get tarotShuffle => 'Shuffle';
+
+  @override
+  String get tarotSeerWaiting => 'The astrologer is waiting for your question';
+
+  @override
+  String get tarotRevealing => 'Turning over your card…';
+
+  @override
+  String get tarotSeerReading =>
+      'All three cards are ready. The astrologer is reading them.';
+
+  @override
+  String get tarotReadingComplete => 'Reading complete';
+
+  @override
+  String get tarotReadingStepOne => 'Listening to the stars…';
+
+  @override
+  String get tarotReadingStepTwo => 'The astrologer touches the glowing chart…';
+
+  @override
+  String get tarotReadingStepThree => 'Exploring the three cards…';
+
+  @override
+  String get tarotReadingStepFour => 'Writing your reading…';
+
+  @override
+  String tarotMinorName(String suit, String rank) {
+    return '$rank of $suit';
+  }
+
+  @override
+  String get tarotRankAce => 'Ace';
+
+  @override
+  String get tarotRankTwo => 'Two';
+
+  @override
+  String get tarotRankThree => 'Three';
+
+  @override
+  String get tarotRankFour => 'Four';
+
+  @override
+  String get tarotRankFive => 'Five';
+
+  @override
+  String get tarotRankSix => 'Six';
+
+  @override
+  String get tarotRankSeven => 'Seven';
+
+  @override
+  String get tarotRankEight => 'Eight';
+
+  @override
+  String get tarotRankNine => 'Nine';
+
+  @override
+  String get tarotRankTen => 'Ten';
+
+  @override
+  String get tarotRankPage => 'Page';
+
+  @override
+  String get tarotRankKnight => 'Knight';
+
+  @override
+  String get tarotRankQueen => 'Queen';
+
+  @override
+  String get tarotRankKing => 'King';
+
+  @override
+  String get tarotSuitWands => 'Wands';
+
+  @override
+  String get tarotWandsAceMeaning =>
+      'Try a small step toward an idea that excites you.';
+
+  @override
+  String get tarotWandsTwoMeaning =>
+      'Look at your options and decide which step to take next.';
+
+  @override
+  String get tarotWandsThreeMeaning =>
+      'Look beyond your first success for a chance to build on it.';
+
+  @override
+  String get tarotWandsFourMeaning =>
+      'Take time to celebrate something you have built with others.';
+
+  @override
+  String get tarotWandsFiveMeaning =>
+      'When opinions clash, listen for the problem each person wants to solve.';
+
+  @override
+  String get tarotWandsSixMeaning =>
+      'Acknowledge your progress and share credit with those who helped.';
+
+  @override
+  String get tarotWandsSevenMeaning =>
+      'Decide which boundary matters and express it calmly.';
+
+  @override
+  String get tarotWandsEightMeaning =>
+      'When things speed up, check the details and respond promptly.';
+
+  @override
+  String get tarotWandsNineMeaning =>
+      'Protect your energy and make time to recover.';
+
+  @override
+  String get tarotWandsTenMeaning =>
+      'Share a responsibility that has become too heavy to carry alone.';
+
+  @override
+  String get tarotWandsPageMeaning =>
+      'Follow your curiosity with one small experiment.';
+
+  @override
+  String get tarotWandsKnightMeaning =>
+      'Act on your enthusiasm with a plan for what comes after the first step.';
+
+  @override
+  String get tarotWandsQueenMeaning =>
+      'Share your idea with confidence and invite others to contribute.';
+
+  @override
+  String get tarotWandsKingMeaning =>
+      'Choose a direction people can work toward together.';
+
+  @override
+  String get tarotSuitCups => 'Cups';
+
+  @override
+  String get tarotCupsAceMeaning =>
+      'Make room for a new feeling and let yourself express it.';
+
+  @override
+  String get tarotCupsTwoMeaning =>
+      'Ask for what you need and leave room for the other person to respond.';
+
+  @override
+  String get tarotCupsThreeMeaning =>
+      'Spend a moment with supportive people and share something worth celebrating.';
+
+  @override
+  String get tarotCupsFourMeaning =>
+      'Notice what feels uninteresting, then look for an option you may have overlooked.';
+
+  @override
+  String get tarotCupsFiveMeaning =>
+      'Give yourself time to feel the loss and notice what support remains.';
+
+  @override
+  String get tarotCupsSixMeaning =>
+      'Revisit a small activity that once brought you comfort.';
+
+  @override
+  String get tarotCupsSevenMeaning =>
+      'Separate ideas you can act on from ones you are still imagining.';
+
+  @override
+  String get tarotCupsEightMeaning =>
+      'If a path no longer fits, consider what you want to move toward.';
+
+  @override
+  String get tarotCupsNineMeaning =>
+      'Enjoy a wish that has come true and notice what need it met.';
+
+  @override
+  String get tarotCupsTenMeaning =>
+      'Care for a relationship that gives you a sense of belonging.';
+
+  @override
+  String get tarotCupsPageMeaning =>
+      'Put a new feeling into words without judging it.';
+
+  @override
+  String get tarotCupsKnightMeaning =>
+      'Express what you feel and give the other person time to respond.';
+
+  @override
+  String get tarotCupsQueenMeaning =>
+      'Listen with care and keep space for your own feelings.';
+
+  @override
+  String get tarotCupsKingMeaning =>
+      'Let strong feelings settle before making a decision that affects others.';
+
+  @override
+  String get tarotSuitSwords => 'Swords';
+
+  @override
+  String get tarotSwordsAceMeaning =>
+      'Find one fact you can check to make a complicated situation clearer.';
+
+  @override
+  String get tarotSwordsTwoMeaning =>
+      'Consider the cost of each option before making a decision.';
+
+  @override
+  String get tarotSwordsThreeMeaning =>
+      'Give a painful feeling some time and share it with someone you trust.';
+
+  @override
+  String get tarotSwordsFourMeaning =>
+      'Pause and rest before you return to a hard problem.';
+
+  @override
+  String get tarotSwordsFiveMeaning =>
+      'Ask whether winning an argument is worth what it might cost.';
+
+  @override
+  String get tarotSwordsSixMeaning =>
+      'Focus on one next step away from a draining situation.';
+
+  @override
+  String get tarotSwordsSevenMeaning =>
+      'Be clear about your motives and speak openly where you can.';
+
+  @override
+  String get tarotSwordsEightMeaning =>
+      'Separate real limits from worries and look for one choice you still have.';
+
+  @override
+  String get tarotSwordsNineMeaning =>
+      'Write down recurring worries and choose one you can address today.';
+
+  @override
+  String get tarotSwordsTenMeaning =>
+      'Accept that one chapter has ended and put your energy into recovery.';
+
+  @override
+  String get tarotSwordsPageMeaning =>
+      'Ask questions and check information before you pass it on.';
+
+  @override
+  String get tarotSwordsKnightMeaning =>
+      'Act decisively and check your tone and facts before speaking.';
+
+  @override
+  String get tarotSwordsQueenMeaning =>
+      'Be clear about the facts and your boundaries while staying open to a conversation.';
+
+  @override
+  String get tarotSwordsKingMeaning =>
+      'Use a consistent standard and consider each point of view fairly.';
+
+  @override
+  String get tarotSuitPentacles => 'Pentacles';
+
+  @override
+  String get tarotPentaclesAceMeaning =>
+      'Turn a practical opportunity into one action you can take.';
+
+  @override
+  String get tarotPentaclesTwoMeaning =>
+      'Rebalance your time and resources when several demands compete.';
+
+  @override
+  String get tarotPentaclesThreeMeaning =>
+      'Improve your work with people who bring different skills.';
+
+  @override
+  String get tarotPentaclesFourMeaning =>
+      'Take stock of what you have and leave room for change.';
+
+  @override
+  String get tarotPentaclesFiveMeaning =>
+      'Look for support and ask for it when you need it.';
+
+  @override
+  String get tarotPentaclesSixMeaning =>
+      'Balance giving and receiving by being clear about expectations.';
+
+  @override
+  String get tarotPentaclesSevenMeaning =>
+      'Give steady work time to grow and set a date to check your progress.';
+
+  @override
+  String get tarotPentaclesEightMeaning =>
+      'Practice one skill and let small improvements add up.';
+
+  @override
+  String get tarotPentaclesNineMeaning =>
+      'Recognize the stability and independence you have worked for.';
+
+  @override
+  String get tarotPentaclesTenMeaning =>
+      'Consider what you can build now that will support you in the future.';
+
+  @override
+  String get tarotPentaclesPageMeaning =>
+      'Choose a useful skill and take one step toward learning it.';
+
+  @override
+  String get tarotPentaclesKnightMeaning =>
+      'Follow through on a small task you can do well today.';
+
+  @override
+  String get tarotPentaclesQueenMeaning =>
+      'Care for yourself and others with something practical you can do today.';
+
+  @override
+  String get tarotPentaclesKingMeaning =>
+      'Use the stability you have built to prepare for the next stage.';
+
+  @override
+  String get thaiCalendarTitle => 'Thai calendar today';
+
+  @override
+  String get thaiCalendarTimezone => 'Bangkok time';
+
+  @override
+  String thaiCalendarCivilDate(String date, int year) {
+    return '$date · B.E. $year';
+  }
+
+  @override
+  String thaiCalendarWaxing(int day) {
+    return 'Waxing day $day';
+  }
+
+  @override
+  String thaiCalendarWaning(int day) {
+    return 'Waning day $day';
+  }
+
+  @override
+  String thaiCalendarLunarMonth(int month) {
+    return 'Lunar month $month';
+  }
+
+  @override
+  String get thaiCalendarSecondEighth => 'Second lunar month 8';
+
+  @override
+  String get thaiCalendarAuspicious => 'Auspicious day';
+
+  @override
+  String get thaiCalendarCaution => 'Caution day';
+
+  @override
+  String get thaiCalendarMixed => 'Mixed indications';
+
+  @override
+  String get thaiCalendarOrdinary => 'Ordinary day';
+
+  @override
+  String thaiCalendarHours(String hours) {
+    return 'Good hours $hours';
+  }
+
+  @override
+  String get thaiCalendarDayRule =>
+      'Kalayok day indications use the small-era year at Bangkok noon';
+
+  @override
+  String get thaiCalendarHourRule =>
+      'Daytime periods from the traditional Ubakong weekday table';
+
+  @override
+  String get thaiCalendarLoading => 'Loading today’s Thai calendar…';
+
+  @override
+  String get thaiCalendarUnavailable => 'Today’s Thai calendar is unavailable';
+
+  @override
+  String get thaiCalendarLunarUnavailable => 'Lunar date unavailable for today';
+
+  @override
+  String get thaiCalendarRetry => 'Retry';
+
+  @override
+  String get dailyHoroscopeTitle => 'Daily horoscope';
+
+  @override
+  String dailyHoroscopeToday(String sign) {
+    return '$sign today';
+  }
+
+  @override
+  String get dailyHoroscopeMore => 'See more';
+
+  @override
+  String get dailyHoroscopeChooseSign => 'Choose a zodiac sign';
+
+  @override
+  String get dailyHoroscopeForecast => 'Today’s reading';
+
+  @override
+  String get dailyHoroscopeBasis =>
+      'Based on Thai astrological transits and the Moon’s position. Updated by Bangkok date.';
+
+  @override
+  String get dailyHoroscopeLoading => 'Loading today’s horoscope…';
+
+  @override
+  String get dailyHoroscopeUnavailable => 'Today’s horoscope is unavailable';
+
+  @override
+  String get dailyHoroscopeLove => 'Love';
+
+  @override
+  String get dailyHoroscopeWork => 'Career';
+
+  @override
+  String get dailyHoroscopeMoney => 'Finances';
+
+  @override
+  String get dailyHoroscopeLoveShort => 'Love';
+
+  @override
+  String get dailyHoroscopeWorkShort => 'Work';
+
+  @override
+  String get dailyHoroscopeMoneyShort => 'Money';
+
+  @override
+  String get dailyHoroscopeHealth => 'Health';
+
+  @override
+  String dailyHoroscopeReading(String planet, int house, String advice) {
+    return '$planet transits house $house. $advice';
+  }
+
+  @override
+  String dailyHoroscopeLoveAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive':
+          'A good day to share how you feel and give the other person time to respond.',
+      'reflective':
+          'Pause before reading into a silence. Ask how the other person feels.',
+      'other':
+          'Make time for a relaxed conversation and listen to what matters to the other person.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeWorkAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive':
+          'Pick a task you can move forward today and agree on the next step with your team.',
+      'reflective':
+          'Review the details of a task in progress before taking on a new commitment.',
+      'other': 'Set one clear priority and handle the rest in order.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeMoneyAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive':
+          'Make time to review your spending and see what you can set aside.',
+      'reflective':
+          'Give yourself time to think through any unplanned purchase.',
+      'other': 'Check upcoming expenses and keep some room in your budget.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeHealthAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive':
+          'A little movement or a short break can help you keep a steady rhythm today.',
+      'reflective':
+          'Leave some space between plans and take a break when you need one.',
+      'other':
+          'Keep your usual routine and step away from the screen for a moment.',
+    });
+    return '$_temp0';
+  }
 }

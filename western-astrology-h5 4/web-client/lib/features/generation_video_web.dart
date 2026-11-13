@@ -53,7 +53,7 @@ class _GenerationVideoState extends State<GenerationVideo>
     style
       ..width = '100%'
       ..height = '100%'
-      ..objectFit = 'contain'
+      ..objectFit = 'fill'
       ..pointerEvents = 'none'
       ..transform = 'scale(1.06)'
       ..background = 'transparent'
@@ -61,7 +61,9 @@ class _GenerationVideoState extends State<GenerationVideo>
       ..visibility = 'hidden'
       ..transition = 'opacity .7s ease-out';
     const mask =
-        'linear-gradient(to right,transparent 3%,#0005 7%,#000c 12%,#000 18% 82%,#000c 88%,#0005 93%,transparent 97%),linear-gradient(to bottom,transparent 3%,#0004 9%,#000c 17%,#000 27% 80%,#000b 90%,#0004 94%,transparent 97%)';
+        'radial-gradient(ellipse closest-side, #000 64%, #000e 77%, #0008 89%, transparent 100%),'
+        'linear-gradient(to right, transparent, #000 18% 82%, transparent),'
+        'linear-gradient(to bottom, #000 76%, #000b 90%, transparent)';
     style.setProperty('mask-image', mask);
     style.setProperty('mask-composite', 'intersect');
     style.setProperty('-webkit-mask-image', mask);

@@ -54,6 +54,46 @@ function bucket(position, rule) {
       ? 'reflective'
       : 'steady';
 }
+
+const dailyTopics = {
+  love: TOPIC_RULES.love,
+  work: TOPIC_RULES.work,
+  money: TOPIC_RULES.money,
+  health: { planet: 'moon', supportive: [1, 4, 5, 9, 11], reflective: [6, 8, 12] },
+};
+const dailyBaseScores = { supportive: 85, steady: 74, reflective: 63 };
+
+export function calculateDailyHoroscope(date) {
+  const { points } = calculateThaiHoroscope({
+    ...civil(date, '12:00'),
+    referenceMode: 'traditional',
+    location: { province: 'กรุงเทพมหานคร' },
+  });
+  const moon = points.moon.longitudeDegrees;
+  const signs = Array.from({ length: 12 }, (_, sign) => {
+    // Use lunar motion for a small continuous adjustment to the editorial scores.
+    const lunarAngle = (moon - (sign * 30 + 15)) * Math.PI / 180;
+    const factors = Object.entries(dailyTopics).map(([topic, rule]) => {
+      const point = points[rule.planet];
+      const house = ((point.sign - sign + 12) % 12) + 1;
+      const tone = bucket(house, rule);
+      const phasePoint = topic === 'health' ? points.sun : point;
+      const phaseAngle = (moon - phasePoint.longitudeDegrees) * Math.PI / 180;
+      const lunarAdjustment = Math.round(5 * Math.cos(lunarAngle) + 5 * Math.cos(phaseAngle));
+      const score = dailyBaseScores[tone] + lunarAdjustment;
+      return { topic, planet: rule.planet, house, tone, score };
+    });
+    const scores = Object.fromEntries(factors.map(({ topic, score }) => [topic, score]));
+    const strongest = factors.reduce((best, factor) =>
+      Math.abs(factor.score - dailyBaseScores.steady) > Math.abs(best.score - dailyBaseScores.steady)
+        ? factor : best,
+    );
+    const { topic, planet, house, tone } = strongest;
+    return { sign, scores, highlight: { topic, planet, house, tone } };
+  });
+  return { date, signs };
+}
+
 function dominant(counts, count) {
   const [key, value] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   return value / count >= 0.6 ? key : 'mixed';

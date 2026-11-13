@@ -5,6 +5,7 @@ LOCALES = {"zh": "zh-CN", "th": "th-TH", "vi": "vi-VN", "en": "en-US"}
 
 # API messages live on the server; user content and previous messages are never rewritten.
 MESSAGES = {
+    "life_order_phone_invalid": ("请填写有效的手机号和国家区号。", "กรุณากรอกหมายเลขโทรศัพท์และรหัสประเทศให้ถูกต้อง", "Vui lòng nhập số điện thoại và mã quốc gia hợp lệ.", "Enter a valid mobile number and country calling code."),
     "life_report_generating": ("报告仍在生成，请完成后再删除。", "รายงานยังสร้างอยู่ กรุณารอให้เสร็จก่อนลบ", "Báo cáo đang được tạo. Vui lòng đợi trước khi xóa.", "The report is still being generated. Wait until it finishes before deleting."),
     "landing_visit_not_found": ("暂时无法记录本次访问。", "ยังบันทึกการเข้าชมครั้งนี้ไม่ได้", "Chưa thể ghi nhận lượt truy cập này.", "This visit could not be recorded."),
     "landing_consent_required": ("请先确认资料使用说明。", "กรุณายืนยันการใช้ข้อมูลก่อน", "Vui lòng xác nhận việc sử dụng dữ liệu.", "Confirm the data-use notice first."),
@@ -190,6 +191,14 @@ MESSAGES.update({
     "life_preview_required": ("请先完成免费试读，再查看完整报告。", "กรุณาสร้างคำอ่านเบื้องต้นก่อนเปิดรายงานฉบับเต็ม", "Hãy tạo bản đọc thử trước.", "Create the preview before unlocking the full report."),
     "life_payment_required": ("付款尚未确认，报告仍处于锁定状态。", "ยังไม่ได้รับการยืนยันการชำระเงิน รายงานยังล็อกอยู่", "Thanh toán chưa được xác nhận.", "Payment has not been confirmed."),
     "life_payment_unavailable": ("暂时无法连接测试支付，请稍后重试。", "ขณะนี้ระบบทดสอบการชำระเงินไม่พร้อมใช้งาน กรุณาลองอีกครั้ง", "Chưa thể kết nối thanh toán thử.", "Test payment is unavailable. Try again shortly."),
+    "life_payment_check_unavailable": ("暂时无法查询到账状态，请稍后查询；请勿重复下单。", "ตรวจสอบการชำระเงินไม่ได้ชั่วคราว กรุณาลองใหม่และอย่าสร้างคำสั่งซื้อซ้ำ", "Chưa thể kiểm tra thanh toán. Vui lòng thử lại, không tạo đơn mới.", "Payment status is temporarily unavailable. Retry the check without creating another order."),
+    "life_payment_check_access_denied": ("到账查询权限尚未开通，请联系支持。订单已保留，请勿重复下单。", "ยังไม่มีสิทธิ์ตรวจสอบการชำระเงิน กรุณาติดต่อฝ่ายช่วยเหลือและอย่าสร้างคำสั่งซื้อซ้ำ", "Chưa có quyền kiểm tra thanh toán. Vui lòng liên hệ hỗ trợ.", "Payment inquiry access is not enabled. Contact support; do not create another order."),
+    "life_payment_verification_failed": ("到账信息与订单不符，报告暂未解锁，请联系支持核对。", "ข้อมูลการชำระเงินไม่ตรงกับคำสั่งซื้อ รายงานยังล็อกอยู่ กรุณาติดต่อฝ่ายช่วยเหลือ", "Thông tin thanh toán không khớp. Báo cáo vẫn bị khóa; vui lòng liên hệ hỗ trợ.", "Payment details do not match this order. The report remains locked; contact support."),
+    "life_order_configuration_required": ("订单服务配置未完成，请稍后重试。", "ระบบคำสั่งซื้อยังตั้งค่าไม่ครบ กรุณาลองใหม่ภายหลัง", "Dịch vụ đặt hàng chưa được cấu hình đầy đủ.", "Order service configuration is incomplete."),
+    "life_order_access_denied": ("订单服务访问受限，请联系支持后重试。", "ระบบคำสั่งซื้อยังไม่ได้รับสิทธิ์เข้าถึง กรุณาติดต่อฝ่ายช่วยเหลือก่อนลองใหม่", "Dịch vụ đặt hàng chưa được cấp quyền truy cập.", "Order service access is restricted. Contact support before retrying."),
+    "life_order_rejected": ("订单创建未完成，请联系支持核对。", "ยังสร้างคำสั่งซื้อไม่สำเร็จ กรุณาติดต่อฝ่ายช่วยเหลือเพื่อตรวจสอบ", "Không thể tạo đơn hàng. Vui lòng liên hệ hỗ trợ.", "The order could not be created. Contact support for review."),
+    "life_order_needs_review": ("已有建单记录需要核对，请勿重复建单或删除报告。", "ต้องตรวจสอบคำสั่งซื้อเดิมก่อน กรุณาอย่าสร้างซ้ำหรือลบรายงาน", "Cần kiểm tra đơn hàng hiện có trước.", "Review the existing order before retrying or deleting the report."),
+    "life_order_channel_invalid": ("下单渠道配置需要核对，暂未取得订单号。请勿重复提交。", "ต้องตรวจสอบการตั้งค่าช่องทางคำสั่งซื้อ ยังไม่ได้รับเลขคำสั่งซื้อ กรุณาอย่าส่งซ้ำ", "Cần kiểm tra cấu hình kênh đặt hàng. Chưa nhận được mã đơn hàng. Vui lòng không gửi lại.", "The order channel configuration needs review. No order number was returned. Do not submit again."),
 })
 
 

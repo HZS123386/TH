@@ -60,6 +60,16 @@ def transits(profile: dict):
     return _run({"operation": "transits", "profile": profile, "offset_seconds": offset_for(profile), "now": {"date": now.date().isoformat(), "time": now.strftime("%H:%M"), "iso": now.isoformat()}})
 
 
+@lru_cache(maxsize=8)
+def daily_calendar(civil_date: str):
+    return _run({"operation": "daily-calendar", "date": civil_date})
+
+
+@lru_cache(maxsize=8)
+def daily_horoscope(civil_date: str):
+    return _run({"operation": "daily-horoscope", "date": civil_date})
+
+
 def annual(year: int, ascendant: int):
     return _run({"operation": "annual", "year": year, "ascendant": ascendant})
 

@@ -5,6 +5,7 @@ dist/
 *.db
 *.db-*
 data/
+!/app/lib/data/
 !src/data/
 src/data/*
 !src/data/wanjai-*.json

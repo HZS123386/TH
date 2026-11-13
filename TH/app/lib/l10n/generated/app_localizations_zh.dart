@@ -663,4 +663,629 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get zPisces => '双鱼座';
+
+  @override
+  String get skipOpening => '跳过开场';
+
+  @override
+  String get tarot => '塔罗牌';
+
+  @override
+  String get luckyNumbers => '幸运数字';
+
+  @override
+  String get tarotDraw => '抽三张牌';
+
+  @override
+  String get tarotDrawHint => '静下心想一想你的问题，从散落的牌中抽取三张。';
+
+  @override
+  String tarotChooseCard(int position) {
+    return '抽取第 $position 张散落牌';
+  }
+
+  @override
+  String get tarotResult => '你的三张牌';
+
+  @override
+  String get tarotDrawAgain => '重新抽牌';
+
+  @override
+  String get todayLuckyNumber => '今日幸运数字';
+
+  @override
+  String get luckyNumberHint => '今日数字提示';
+
+  @override
+  String get luckyNumberUpdates => '按设备的本地日期更新';
+
+  @override
+  String get tarotFool => '愚者';
+
+  @override
+  String get tarotFoolMeaning => '新的方向值得试一试。先迈出一小步，给自己留一点调整的空间。';
+
+  @override
+  String get tarotMagician => '魔术师';
+
+  @override
+  String get tarotMagicianMeaning => '盘点手里的技能和资源，把一个具体想法变成今天能做的事。';
+
+  @override
+  String get tarotHighPriestess => '女祭司';
+
+  @override
+  String get tarotHighPriestessMeaning => '给自己一点安静观察的时间，听听内心的感受，再决定要不要行动。';
+
+  @override
+  String get tarotEmpress => '女皇';
+
+  @override
+  String get tarotEmpressMeaning => '把时间留给让你有创造力的事，也照顾好自己的休息和需求。';
+
+  @override
+  String get tarotEmperor => '皇帝';
+
+  @override
+  String get tarotEmperorMeaning => '先定下清晰的目标和边界，把眼前的事按优先级安排好。';
+
+  @override
+  String get tarotHierophant => '教皇';
+
+  @override
+  String get tarotHierophantMeaning => '向信任的人请教，看看哪些经验适合你，哪些需要自己调整。';
+
+  @override
+  String get tarotLovers => '恋人';
+
+  @override
+  String get tarotLoversMeaning => '面对选择时，先问自己真正看重什么，再坦诚地表达出来。';
+
+  @override
+  String get tarotChariot => '战车';
+
+  @override
+  String get tarotChariotMeaning => '选定一个方向，把分散的精力收回来，专心推进最重要的一步。';
+
+  @override
+  String get tarotStrength => '力量';
+
+  @override
+  String get tarotStrengthMeaning => '遇到摩擦时，先稳住自己的情绪，用坚定而温和的方式回应。';
+
+  @override
+  String get tarotHermit => '隐士';
+
+  @override
+  String get tarotHermitMeaning => '暂时远离外界的声音，独处片刻，理清你真正想要的答案。';
+
+  @override
+  String get tarotWheelOfFortune => '命运之轮';
+
+  @override
+  String get tarotWheelOfFortuneMeaning => '形势在变化，给计划留一点弹性，先处理你能够掌握的部分。';
+
+  @override
+  String get tarotJustice => '正义';
+
+  @override
+  String get tarotJusticeMeaning => '把事实和感受分别想清楚，做一个自己愿意承担后果的决定。';
+
+  @override
+  String get tarotHangedMan => '倒吊人';
+
+  @override
+  String get tarotHangedManMeaning => '如果一件事推不动，可以先停一停，换个角度再看。';
+
+  @override
+  String get tarotDeath => '死神';
+
+  @override
+  String get tarotDeathMeaning => '把一件已经告一段落的事放下，给新的习惯或选择腾出空间。';
+
+  @override
+  String get tarotTemperance => '节制';
+
+  @override
+  String get tarotTemperanceMeaning => '把节奏放慢一点，从小处调整，在两种需求之间找到平衡。';
+
+  @override
+  String get tarotDevil => '恶魔';
+
+  @override
+  String get tarotDevilMeaning => '留意哪个习惯正在占用太多精力，试着替换一个最容易改变的动作。';
+
+  @override
+  String get tarotTower => '高塔';
+
+  @override
+  String get tarotTowerMeaning => '当原来的计划被打乱，先处理最紧要的事，再重新安排。';
+
+  @override
+  String get tarotStar => '星星';
+
+  @override
+  String get tarotStarMeaning => '给自己一点恢复的时间，选一个仍让你期待的小目标。';
+
+  @override
+  String get tarotMoon => '月亮';
+
+  @override
+  String get tarotMoonMeaning => '有些细节还不明朗。先验证你掌握的信息，再作判断。';
+
+  @override
+  String get tarotSun => '太阳';
+
+  @override
+  String get tarotSunMeaning => '把取得的进展记下来，也可以把好消息分享给信任的人。';
+
+  @override
+  String get tarotJudgement => '审判';
+
+  @override
+  String get tarotJudgementMeaning => '回看过去的选择，认清学到的东西，再决定怎样走下一步。';
+
+  @override
+  String get tarotWorld => '世界';
+
+  @override
+  String get tarotWorldMeaning => '给已经完成的事做个收尾，记下收获，再准备进入下一阶段。';
+
+  @override
+  String get luckyNumberOne => '适合开启一件新事。选一个最小的动作，今天就做。';
+
+  @override
+  String get luckyNumberTwo => '给合作和沟通多一点时间，先听听对方的想法。';
+
+  @override
+  String get luckyNumberThree => '把一个点子说出来、写下来，或者用作品表达。';
+
+  @override
+  String get luckyNumberFour => '把手头的事按优先级排好，从一件容易落实的开始。';
+
+  @override
+  String get luckyNumberFive => '试着换一种做法，给计划留出调整的余地。';
+
+  @override
+  String get luckyNumberSix => '留一点时间给在意的人，也照顾好自己的状态。';
+
+  @override
+  String get luckyNumberSeven => '安排一段安静的时间，整理想法，把问题想清楚。';
+
+  @override
+  String get luckyNumberEight => '把精力放到一件值得长期投入的事上，推进一个具体步骤。';
+
+  @override
+  String get luckyNumberNine => '收好手上的尾巴，放下一件已经完成的事。';
+
+  @override
+  String get tarotDrawTitle => '塔罗抽牌';
+
+  @override
+  String tarotProgress(int count, int total) {
+    return '已抽 $count / $total';
+  }
+
+  @override
+  String tarotCardPosition(int position) {
+    return '第 $position 张';
+  }
+
+  @override
+  String tarotCardsRemaining(int count) {
+    return '还差 $count 张，继续从牌堆抽取';
+  }
+
+  @override
+  String get tarotGestureHint => '点按牌面，或按住牌面向上滑';
+
+  @override
+  String get tarotShuffle => '重新洗牌';
+
+  @override
+  String get tarotSeerWaiting => '占星师正静候你的问题';
+
+  @override
+  String get tarotRevealing => '正在翻开这一张牌…';
+
+  @override
+  String get tarotSeerReading => '三张牌已集齐，占星师正在解读';
+
+  @override
+  String get tarotReadingComplete => '解读完成';
+
+  @override
+  String get tarotReadingStepOne => '正在聆听星辰的低语…';
+
+  @override
+  String get tarotReadingStepTwo => '她抬手轻点星盘，引动星光…';
+
+  @override
+  String get tarotReadingStepThree => '正在翻阅三张牌的启示…';
+
+  @override
+  String get tarotReadingStepFour => '正在为你书写解读…';
+
+  @override
+  String tarotMinorName(String suit, String rank) {
+    return '$suit$rank';
+  }
+
+  @override
+  String get tarotRankAce => '王牌';
+
+  @override
+  String get tarotRankTwo => '二';
+
+  @override
+  String get tarotRankThree => '三';
+
+  @override
+  String get tarotRankFour => '四';
+
+  @override
+  String get tarotRankFive => '五';
+
+  @override
+  String get tarotRankSix => '六';
+
+  @override
+  String get tarotRankSeven => '七';
+
+  @override
+  String get tarotRankEight => '八';
+
+  @override
+  String get tarotRankNine => '九';
+
+  @override
+  String get tarotRankTen => '十';
+
+  @override
+  String get tarotRankPage => '侍从';
+
+  @override
+  String get tarotRankKnight => '骑士';
+
+  @override
+  String get tarotRankQueen => '王后';
+
+  @override
+  String get tarotRankKing => '国王';
+
+  @override
+  String get tarotSuitWands => '权杖';
+
+  @override
+  String get tarotWandsAceMeaning => '一个新点子值得动手试试，今天就从简单的一步开始。';
+
+  @override
+  String get tarotWandsTwoMeaning => '看清眼前的选择，把下一步写成一件能行动的事。';
+
+  @override
+  String get tarotWandsThreeMeaning => '已经迈出的努力开始延伸，可以看看更远的机会。';
+
+  @override
+  String get tarotWandsFourMeaning => '给一段稳定的进展留个庆祝的时刻，也感谢身边的人。';
+
+  @override
+  String get tarotWandsFiveMeaning => '面对不同意见，先听清各方真正想解决的问题。';
+
+  @override
+  String get tarotWandsSixMeaning => '承认自己的进步，也把功劳分给一起努力的人。';
+
+  @override
+  String get tarotWandsSevenMeaning => '明确自己愿意守住的立场，用平和的方式说出来。';
+
+  @override
+  String get tarotWandsEightMeaning => '事情进展变快时，先确认信息，再及时回应。';
+
+  @override
+  String get tarotWandsNineMeaning => '累的时候留好边界，给自己一点恢复的时间。';
+
+  @override
+  String get tarotWandsTenMeaning => '看看哪些责任可以分出去，给自己的精力减负。';
+
+  @override
+  String get tarotWandsPageMeaning => '用一点好奇心试试新方向，先做一个小实验。';
+
+  @override
+  String get tarotWandsKnightMeaning => '有动力时可以向前，但出发前先想好怎么收尾。';
+
+  @override
+  String get tarotWandsQueenMeaning => '带着自信表达想法，也给别人留出参与的空间。';
+
+  @override
+  String get tarotWandsKingMeaning => '把眼光放长一些，挑一个方向带着大家往前走。';
+
+  @override
+  String get tarotSuitCups => '圣杯';
+
+  @override
+  String get tarotCupsAceMeaning => '给一种新的感受留出空间，也允许自己把它表达出来。';
+
+  @override
+  String get tarotCupsTwoMeaning => '关系靠双方回应，试着坦诚说出你需要的支持。';
+
+  @override
+  String get tarotCupsThreeMeaning => '和支持你的人相处片刻，把值得庆祝的事说出来。';
+
+  @override
+  String get tarotCupsFourMeaning => '察觉自己对什么提不起劲，也看看有没有被忽略的选择。';
+
+  @override
+  String get tarotCupsFiveMeaning => '允许自己为失去的东西难过，再看看身边还在的支持。';
+
+  @override
+  String get tarotCupsSixMeaning => '回忆能带来安慰，挑一件过去喜欢的事重新做做。';
+
+  @override
+  String get tarotCupsSevenMeaning => '选项太多时，先分清哪些能落实，哪些只是想象。';
+
+  @override
+  String get tarotCupsEightMeaning => '如果原来的方向已不适合，想想你愿意走向哪里。';
+
+  @override
+  String get tarotCupsNineMeaning => '享受一件已经实现的愿望，也留意它满足了什么需求。';
+
+  @override
+  String get tarotCupsTenMeaning => '珍惜能让你安心的关系，今天做一件小事来维护它。';
+
+  @override
+  String get tarotCupsPageMeaning => '试着用不带判断的方式说出一个新感受。';
+
+  @override
+  String get tarotCupsKnightMeaning => '可以认真表达心意，同时给对方时间和空间。';
+
+  @override
+  String get tarotCupsQueenMeaning => '倾听别人的感受，也记得照顾自己的情绪边界。';
+
+  @override
+  String get tarotCupsKingMeaning => '情绪激动时先慢下来，再做一个体谅各方的决定。';
+
+  @override
+  String get tarotSuitSwords => '宝剑';
+
+  @override
+  String get tarotSwordsAceMeaning => '把复杂的事说清楚，先抓住一个可以验证的事实。';
+
+  @override
+  String get tarotSwordsTwoMeaning => '犹豫时给自己一点空间，想清两边各自的代价。';
+
+  @override
+  String get tarotSwordsThreeMeaning => '给受伤的感受一点时间，也试着向可信的人说出来。';
+
+  @override
+  String get tarotSwordsFourMeaning => '先暂停手上的事，等思路恢复再处理难题。';
+
+  @override
+  String get tarotSwordsFiveMeaning => '争执里问一问自己，赢下这句话是否值得。';
+
+  @override
+  String get tarotSwordsSixMeaning => '把注意力放在下一步，逐渐离开消耗你的处境。';
+
+  @override
+  String get tarotSwordsSevenMeaning => '行动前想清楚动机，能坦诚沟通的地方就别绕开。';
+
+  @override
+  String get tarotSwordsEightMeaning => '把现实限制和自己担心的事分开，找一个还能做的选择。';
+
+  @override
+  String get tarotSwordsNineMeaning => '把反复担心的事写下来，分出你今天能处理的一项。';
+
+  @override
+  String get tarotSwordsTenMeaning => '承认一件事已经结束，先把精力用在恢复上。';
+
+  @override
+  String get tarotSwordsPageMeaning => '用好奇心提问，听到新消息后先核实再转述。';
+
+  @override
+  String get tarotSwordsKnightMeaning => '行动可以果断，开口前再确认语气和事实。';
+
+  @override
+  String get tarotSwordsQueenMeaning => '把边界和事实讲清楚，同时让对话保留温度。';
+
+  @override
+  String get tarotSwordsKingMeaning => '用一致的标准做判断，给每个观点同样的考虑机会。';
+
+  @override
+  String get tarotSuitPentacles => '星币';
+
+  @override
+  String get tarotPentaclesAceMeaning => '从手头可以落实的小机会开始，把计划变成行动。';
+
+  @override
+  String get tarotPentaclesTwoMeaning => '同时忙几件事时，把时间和资源重新排个顺序。';
+
+  @override
+  String get tarotPentaclesThreeMeaning => '找人一起打磨作品，让不同的专长互相补足。';
+
+  @override
+  String get tarotPentaclesFourMeaning => '整理你已经有的资源，也给变化留一点余地。';
+
+  @override
+  String get tarotPentaclesFiveMeaning => '遇到困难时可以求助，先看看周围有哪些支持。';
+
+  @override
+  String get tarotPentaclesSixMeaning => '在给予和接受之间找平衡，先说清双方的期待。';
+
+  @override
+  String get tarotPentaclesSevenMeaning => '给长期投入一些时间，定个日期回头检查进展。';
+
+  @override
+  String get tarotPentaclesEightMeaning => '练习一个具体技能，把小进步一步步积累起来。';
+
+  @override
+  String get tarotPentaclesNineMeaning => '留意自己已经建立的独立和稳定，给努力一点肯定。';
+
+  @override
+  String get tarotPentaclesTenMeaning => '想想哪些积累能给未来带来长期的支持。';
+
+  @override
+  String get tarotPentaclesPageMeaning => '选一项实用的技能，列出今天就能做的第一步。';
+
+  @override
+  String get tarotPentaclesKnightMeaning => '稳稳完成一件小事，比把计划一下拉得很大更实际。';
+
+  @override
+  String get tarotPentaclesQueenMeaning => '用实际的行动照顾自己和身边的人，先把今天安顿好。';
+
+  @override
+  String get tarotPentaclesKingMeaning => '把已经建立的稳定用好，为下一阶段留足资源。';
+
+  @override
+  String get thaiCalendarTitle => '今日泰历';
+
+  @override
+  String get thaiCalendarTimezone => '曼谷时间';
+
+  @override
+  String thaiCalendarCivilDate(String date, int year) {
+    return '$date · 佛历 $year 年';
+  }
+
+  @override
+  String thaiCalendarWaxing(int day) {
+    return '盈月第 $day 日';
+  }
+
+  @override
+  String thaiCalendarWaning(int day) {
+    return '亏月第 $day 日';
+  }
+
+  @override
+  String thaiCalendarLunarMonth(int month) {
+    return '农历 $month 月';
+  }
+
+  @override
+  String get thaiCalendarSecondEighth => '农历闰八月';
+
+  @override
+  String get thaiCalendarAuspicious => '吉日';
+
+  @override
+  String get thaiCalendarCaution => '谨慎日';
+
+  @override
+  String get thaiCalendarMixed => '吉凶并见';
+
+  @override
+  String get thaiCalendarOrdinary => '平常日';
+
+  @override
+  String thaiCalendarHours(String hours) {
+    return '吉时 $hours';
+  }
+
+  @override
+  String get thaiCalendarDayRule => '泰式择日（กาลโยค）以曼谷正午的小历年为准';
+
+  @override
+  String get thaiCalendarHourRule => '按星期查泰式อุบากอง择时表，显示白天吉时';
+
+  @override
+  String get thaiCalendarLoading => '正在读取今日泰历…';
+
+  @override
+  String get thaiCalendarUnavailable => '今日泰历暂时无法加载';
+
+  @override
+  String get thaiCalendarLunarUnavailable => '当日农历资料暂不可用';
+
+  @override
+  String get thaiCalendarRetry => '重试';
+
+  @override
+  String get dailyHoroscopeTitle => '每日星座运势';
+
+  @override
+  String dailyHoroscopeToday(String sign) {
+    return '今日$sign运势';
+  }
+
+  @override
+  String get dailyHoroscopeMore => '查看更多';
+
+  @override
+  String get dailyHoroscopeChooseSign => '选择星座';
+
+  @override
+  String get dailyHoroscopeForecast => '今日运势解读';
+
+  @override
+  String get dailyHoroscopeBasis => '依据泰式行运的宫位与月亮位置生成，按曼谷日期更新。';
+
+  @override
+  String get dailyHoroscopeLoading => '正在读取今日运势…';
+
+  @override
+  String get dailyHoroscopeUnavailable => '今日运势暂时无法加载';
+
+  @override
+  String get dailyHoroscopeLove => '爱情';
+
+  @override
+  String get dailyHoroscopeWork => '事业';
+
+  @override
+  String get dailyHoroscopeMoney => '财运';
+
+  @override
+  String get dailyHoroscopeLoveShort => '爱情';
+
+  @override
+  String get dailyHoroscopeWorkShort => '事业';
+
+  @override
+  String get dailyHoroscopeMoneyShort => '财运';
+
+  @override
+  String get dailyHoroscopeHealth => '健康';
+
+  @override
+  String dailyHoroscopeReading(String planet, int house, String advice) {
+    return '$planet行经第 $house 宫，$advice';
+  }
+
+  @override
+  String dailyHoroscopeLoveAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive': '适合把心里的话说清楚，给对方留出回应的时间。',
+      'reflective': '遇到没说清楚的事，可以先问问对方的感受。',
+      'other': '找个轻松的时间聊聊，听听对方最近在意什么。',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeWorkAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive': '挑一件今天能推进的事，和同事把下一步定下来。',
+      'reflective': '先检查手头工作的细节，再决定要不要接新任务。',
+      'other': '先定好今天最重要的一件事，再按顺序处理。',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeMoneyAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive': '适合整理近期账单，看看这周能留出多少储蓄。',
+      'reflective': '遇到计划外的开销，可以缓一缓再决定。',
+      'other': '看一下接下来的固定支出，给预算留点余地。',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String dailyHoroscopeHealthAdvice(String tone) {
+    String _temp0 = intl.Intl.selectLogic(tone, {
+      'supportive': '可以安排一点轻松的活动，让今天的节奏更舒展。',
+      'reflective': '日程别排太满，给自己留一段休息时间。',
+      'other': '照平时的节奏安排作息，忙起来也记得歇一会儿。',
+    });
+    return '$_temp0';
+  }
 }
