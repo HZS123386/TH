@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/browser_port.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
+import 'languages.dart';
 
 class H5Controller extends ChangeNotifier {
   H5Controller(
@@ -12,29 +13,52 @@ class H5Controller extends ChangeNotifier {
     String language = 'th',
     this.ensureFont,
     this.ensureTextFont,
-  }) : _language = language {
-    repository.language = language;
+  }) : _language = h5Language(language) {
+    repository.language = _language;
     welcomeOpen = true;
     returningVisitor = browser.readSetting('fate-welcome-seen') == '1';
     browser.writeSetting('fate-welcome-seen', '1');
-    noticeAccepted =
-        browser.readSetting('fate-data-use-version') == noticeVersion;
   }
   final Json translations;
   final ReportRepository repository;
   final BrowserPort browser;
   final Future<void> Function(String)? ensureFont;
   final Future<void> Function(String, String)? ensureTextFont;
-  static const noticeVersion = 'h5-data-use-2';
-  late bool welcomeOpen, noticeAccepted;
+  late bool welcomeOpen;
   late final bool returningVisitor;
   bool welcomePortraitRevealed = false;
   bool landingPrepared = false;
+  Json? landingInput;
+  Place? landingPlace;
   Future<void>? _visitRequest;
   Json _visit = {};
   final _events = <String>{};
   final _submissions = <String, Future<void>>{};
   final _background = CancelToken();
+
+  void restoreLandingFromReport(LifeReport? report) {
+    if (report != null) {
+      landingInput = report.input;
+      final location = object(report.json['location']);
+      final profile = report.profile;
+      landingPlace = Place({
+        ...location,
+        'id': text(profile['location_id']).isNotEmpty
+            ? profile['location_id']
+            : text(location['id']),
+        'countryCode': text(location['countryCode']).isNotEmpty
+            ? location['countryCode']
+            : text(profile['country_code']).isNotEmpty
+            ? profile['country_code']
+            : text(location['country']),
+        'timeZone': profile['timezone'] ?? location['timeZone'],
+        'nameEnglish': text(location['nameEnglish']).isEmpty
+            ? profile['birthplace']
+            : location['nameEnglish'],
+      });
+    }
+    enterLanding();
+  }
 
   void enterLanding() {
     landingPrepared = true;
@@ -97,36 +121,6 @@ class H5Controller extends ChangeNotifier {
     }
   }
 
-  Future<void> acceptDataUse() async {
-    final config = object(
-      await repository.request(
-        '/api/landing/config',
-        _background,
-        owned: false,
-      ),
-    );
-    if (text(config['notice_version']).isEmpty) {
-      throw const ApiFailure('landing_consent_failed');
-    }
-    if (config['notice_version'] != noticeVersion) {
-      throw const ApiFailure('landing_notice_outdated', status: 409);
-    }
-    final result = object(
-      await repository.request(
-        '/api/landing/consents',
-        _background,
-        body: {'notice_version': noticeVersion, 'granted': true},
-      ),
-    );
-    if (result['accepted'] != true ||
-        result['notice_version'] != noticeVersion) {
-      throw const ApiFailure('landing_consent_failed');
-    }
-    browser.writeSetting('fate-data-use-version', noticeVersion);
-    noticeAccepted = true;
-    notifyListeners();
-  }
-
   @override
   void dispose() {
     _background.cancel();
@@ -139,7 +133,7 @@ class H5Controller extends ChangeNotifier {
   String get language => _language;
   Copy get copy => Copy(translations, language);
   Future<bool> changeLanguage(String language) async {
-    if (!['zh', 'th'].contains(language)) return false;
+    if (!h5Languages.any((item) => item.$1 == language)) return false;
     final revision = ++_languageRevision;
     if (language == _language && !languageLoading) return true;
     languageLoading = true;
@@ -157,10 +151,7 @@ class H5Controller extends ChangeNotifier {
     languageLoading = false;
     _language = language;
     repository.language = language;
-    browser.setLanguage(
-      language,
-      language == 'zh' ? '运程解析 · FATE' : 'วิเคราะห์ดวงชะตา · FATE',
-    );
+    browser.setLanguage(language, copy.t('jy', 'title'));
     notifyListeners();
     return true;
   }
@@ -169,7 +160,7 @@ class H5Controller extends ChangeNotifier {
     final c = labels ?? copy;
     if (error is FormatException) return c.t('ui', 'badResult');
     if (error is ApiFailure) {
-      for (final group in ['experience', 'generation', 'ui', 'life']) {
+      for (final group in ['checkout', 'experience', 'generation', 'ui', 'life']) {
         final value = c.t(group, error.code);
         if (value.isNotEmpty) return value;
       }

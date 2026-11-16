@@ -1,0 +1,24 @@
+{
+  "intro": "For problems generating, viewing or managing a reading, contact us at the email below or check these common questions first.",
+  "labels": {
+    "contactTitle": "Contact FATE support", "emailAction": "Compose email", "emailSubject": "FATE website support request",
+    "operator": "Operator", "address": "Contact address", "noContact": "Contact details are temporarily unavailable. Please try again later.",
+    "requestTitle": "What to include in your email", "faqTitle": "Common questions", "privacyLink": "Read the Privacy Policy",
+    "privacyHint": "Use the same email for access, correction, deletion, withdrawal of consent or privacy complaints. See the Privacy Policy for rights and applicable response periods."
+  },
+  "requestDetails": [
+    "Describe the issue and approximately when it happened. Include the report ID if available.",
+    "Tell us your device and browser and the displayed error. You may attach a screenshot with personal details hidden.",
+    "Do not send complete birth details, identity documents, card details, payment passwords, API keys or the report access credential stored in your browser."
+  ],
+  "sections": [
+    {"id": "generation", "title": "What if a report keeps loading or generation fails?", "paragraphs": ["Check your connection, then use Retry or Continue Generation on the page. Saved portions remain available, so retrying does not normally require entering all details again. Cancel Waiting primarily stops the page's wait, not necessarily the background job, and does not delete data. If it still fails, email the error, time and report ID rather than submitting repeatedly."]},
+    {"id": "history", "title": "Where can I find an existing report?", "paragraphs": ["Return home and open My Reports, or reopen the original report page. Use the same device, browser and site address where possible. Access relies on a random credential saved by the browser; clearing site data, changing browsers or using private mode can prevent recognition. A report link alone is not access authorisation."]},
+    {"id": "birth-time", "title": "Can I continue without an exact birth time?", "paragraphs": ["Yes. Select that the exact time is unknown. The system uses local 12:00 noon as a calculation reference and limits or marks time-sensitive conclusions. Ascendant, houses and related details may be unavailable or uncertain. Noon is not your verified birth time."]},
+    {"id": "change-details", "title": "What if I entered the wrong birth details?", "paragraphs": ["Check the form on the home page and generate a new report with corrected information. Existing reports reflect their original inputs and do not automatically change when you edit the form later. Select the matching country, province/state and city; use your birthplace rather than your current residence."]},
+    {"id": "unlock", "title": "Will unlocking charge me?", "paragraphs": ["The current version is a test. Displayed amounts are examples, and pressing the payment/unlock control does not make a real charge; it generates and opens the full reading. There is currently no real collection or online refund flow. Any future live checkout must explain the actual price, payment provider and terms before confirmation."]},
+    {"id": "app", "title": "Why does the APP button not start a download?", "paragraphs": ["The APP is still being tested and downloads are not open. The button only displays a testing notice. It does not download, install or automatically unlock a report. The link and relevant information will be updated when distribution opens."]},
+    {"id": "delete", "title": "How do I delete a report or make a privacy request?", "paragraphs": ["Use Delete on the report or in My Reports. An active generation job may need to finish first. Clearing browser storage does not delete server data. Email this page's contact for further access, correction, deletion or complaints, starting with the report ID and request type. The Privacy Policy explains the scope and cache/backup limitations."]},
+    {"id": "meaning", "title": "Can I rely on the report for a major decision?", "paragraphs": ["The report combines Western astrology calculations and AI language for entertainment and self-exploration. It may be inaccurate or unsuitable and does not guarantee future events. It does not replace medical, legal or financial advice and should not be the sole basis for major employment, borrowing or relationship decisions."]}
+  ]
+}

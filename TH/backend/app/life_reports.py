@@ -12,15 +12,16 @@ from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import Field, model_validator
 
 from . import thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
 from .bazi_reports import report_progress_context, report_usage_context
-from .life_card_payments import CARD_AMOUNT, LifeCardPayments
-from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
+from .life_card_payments import CARD_AMOUNT, SIMULATED_AMOUNT, SIMULATED_MERCHANT, SUNLANDS_AMOUNT, LifeCardPayments
+from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, WESTERN_WRITING_VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
 from .schemas import Input, ProfileInput, ThaiReadingInput
+from .report_languages import REGIONAL_LANGUAGES
 from .thai_readings import HOUSES, copy_for, grounding
 
 logger = logging.getLogger(__name__)
@@ -42,8 +43,12 @@ class CareerInput(Input):
         return self
 
 
+class LifeProfile(ProfileInput):
+    language: Literal["zh", "th", "en", "vi", "my", "km", "lo", "ms", "id"] = "zh"
+
+
 class LifeInput(Input):
-    profile: ProfileInput
+    profile: LifeProfile
     year: int = Field(ge=1901, le=2100)
     report_kind: Literal["life", "fortune"] = "life"
     career: CareerInput | None = None
@@ -52,7 +57,8 @@ class LifeInput(Input):
 
     @model_validator(mode="after")
     def supported_input(self):
-        if self.profile.language not in ("zh", "th"):
+        # The separate legacy transit-decision flow retains its original languages.
+        if (self.career or self.career_question) and self.profile.language not in ("zh", "th"):
             raise ValueError("language_invalid")
         if sum(value is not None for value in (self.career, self.career_question, self.user_question)) > 1:
             raise ValueError("career_input_conflict")
@@ -68,6 +74,15 @@ class Feedback(Input):
     rating: Literal["close", "partly", "different"]
 
 
+class SimulatedPayment(Input):
+    reference: str = Field(pattern=r"^[0-9]{12}$")
+
+
+class PaymentContact(Input):
+    mobile: str = Field(default="", max_length=32)
+    nationCode: str = Field(default="", max_length=4)
+
+
 def encoded(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
@@ -77,6 +92,8 @@ def stamp(value):
 
 
 def explain(identifier, fact, language):
+    if fact.get("provider") == "roxy":
+        return {"id": identifier, "title": fact["title"], "detail": fact["detail"]}
     labels = copy_for(language)
     planets = labels["planets"]
     def planet(key):
@@ -84,8 +101,50 @@ def explain(identifier, fact, language):
     def sign(index):
         return labels["signs"][index % 12]
     zh = language == "zh"
-    if fact.get("provider") == "roxy":
-        return {"id": identifier, "title": fact["title"], "detail": fact["detail"]}
+    if language in REGIONAL_LANGUAGES:
+        copy = REGIONAL_LANGUAGES[language]
+        def house(number):
+            return copy["house"].replace("{number}", str(number))
+        if fact["type"] == "house":
+            title = house(fact["number"])
+            detail = " · ".join([sign(fact["sign"]), planet(fact["ruler"]), house(fact["ruler_house"]), *(planet(key) for key in fact["occupants"])])
+        elif fact["type"] == "planet":
+            title, detail = planet(fact["key"]), f"{sign(fact['sign'])} · {house(fact['house'])}"
+        elif fact["type"] == "ascendant":
+            title, detail = planet("ascendant"), sign(fact["sign"])
+        else:
+            key, states = next(iter(fact["states"].items()))
+            title = f"{fact['month']}/{fact['year']} · {planet(key)}"
+            detail = "; ".join(f"{sign(row['sign'])} · {house(row['house'])}" for row in states)
+        if fact.get("time_estimated"):
+            detail += " (" + copy["estimated"] + ")"
+        return {"id": identifier, "title": title, "detail": detail}
+    if language in ("en", "vi"):
+        def house(number):
+            return f"House {number}" if language == "en" else f"Nhà {number}"
+        if fact["type"] == "house":
+            title = house(fact["number"])
+            occupants = ", ".join(planet(key) for key in fact["occupants"])
+            empty = "No recorded occupants" if language == "en" else "Không ghi nhận hành tinh trong nhà"
+            ruler = "Ruler" if language == "en" else "Hành tinh chủ quản"
+            detail = f"{sign(fact['sign'])} · {ruler}: {planet(fact['ruler'])} · {house(fact['ruler_house'])} · {occupants or empty}"
+        elif fact["type"] == "planet":
+            title = planet(fact["key"])
+            detail = f"{sign(fact['sign'])} · {house(fact['house'])}"
+        elif fact["type"] == "ascendant":
+            title = "Ascendant" if language == "en" else "Cung Mọc"
+            detail = sign(fact["sign"])
+        elif fact["type"] == "career_window":
+            period = fact["start"] if fact["start"] == fact["end"] else f"{fact['start']} – {fact['end']}"
+            title = f"{period} · {planet(fact['key'])}"
+            detail = f"{sign(fact['sign'])} · {house(fact['house'])}"
+        else:
+            key, states = next(iter(fact["states"].items()))
+            title = f"{fact['month']}/{fact['year']} · {planet(key)}"
+            detail = "; ".join(f"{sign(row['sign'])} · {house(row['house'])} · {row['samples']} " + ("days" if language == "en" else "ngày") for row in states)
+        if fact.get("time_estimated"):
+            detail += " (estimated local 12:00)" if language == "en" else " (ước tính 12:00 địa phương)"
+        return {"id": identifier, "title": title, "detail": detail}
     if fact["type"] == "house":
         title = f"第{fact['number']}宫" if zh else f"เรือนที่ {fact['number']}"
         occupants = "、".join(planet(key) for key in fact["occupants"]) or ("未记录宫内星体" if zh else "ไม่มีดาวอยู่ในเรือนนี้")
@@ -115,7 +174,9 @@ def explain(identifier, fact, language):
 def public_point(row, facts, language):
     identifiers = row["evidence_ids"]
     month = next((facts[key] for key in identifiers if facts[key]["type"] == "month"), None)
+    transit = next((facts[key] for key in identifiers if facts[key]["type"] == "transit"), None)
     return {**{key: value for key, value in row.items() if key != "evidence_ids"},
+            **({"window": {key: transit[key] for key in ("start", "end", "event_date", "timezone")}} if transit else {}),
             "period": {"year": month["year"], "month": month["month"]} if month else None,
             "evidence": [explain(key, facts[key], language) for key in identifiers]}
 
@@ -127,13 +188,14 @@ class LifeReports:
 
     def __init__(self, store, settings, model_slots, calculation_slots):
         self.store, self.calculation_slots = store, calculation_slots
+        self.development = settings.app_env == "development"
         self.settings = settings
         if settings.life_astrology_provider not in ("thai", "roxy"):
             raise ValueError("invalid LIFE_ASTROLOGY_PROVIDER")
         # Domain adapters own calculations/evidence; report access and generation remain here.
         self.adapters = {"astrology": RoxyAstrology(settings, store)}
         self.writer = LifeWriter(store, settings, model_slots)
-        self.parts_writer = LifeWriter(store, settings, model_slots, charge=False)
+        self.parts_writer = LifeWriter(store, settings, model_slots, charge=False, availability=self.writer.availability)
         self.tasks = {}
         self.preview_tasks = {}
         with store.connect() as db:
@@ -161,7 +223,7 @@ class LifeReports:
         return dict(result)
 
     def update(self, report_id, *, expected_lease=None, **values):
-        allowed = {"preview", "preview_state", "chapters", "plan", "unlocked", "full_state", "lease", "lease_until", "feedback", "generation_progress"}
+        allowed = {"chart", "preview", "preview_state", "chapters", "plan", "unlocked", "full_state", "lease", "lease_until", "feedback", "generation_progress"}
         if not values or not set(values) <= allowed:
             raise ValueError("invalid report update")
         with self.store.connect() as db:
@@ -204,8 +266,21 @@ class LifeReports:
         if body.career and body.career.focus is None:
             snapshot["career"].pop("focus")
         use_roxy = self.settings.life_astrology_provider == "roxy" and not body.career
-        version = WESTERN_VERSION if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
-        fingerprint = hashlib.sha256(encoded([version, snapshot]).encode()).hexdigest()
+        # New writing settings create a fresh report; saved report IDs retain their original content.
+        version = f"{WESTERN_VERSION}:{WESTERN_WRITING_VERSION}" if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
+        identity = [version, snapshot]
+        if use_roxy:
+            identity.append(["forecast", datetime.now(timezone.utc).date().isoformat()])
+        if not body.career:
+            config = self.writer.config
+            identity.append([self.writer.provider, config.base_url if config else None, config.model if config else None,
+                             config.reasoning_effort if config else None])
+            if self.writer.fallback_writer:
+                fallback = self.writer.fallback_writer
+                config = fallback.config
+                identity.append([fallback.provider, config.base_url if config else None, config.model if config else None,
+                                 config.reasoning_effort if config else None])
+        fingerprint = hashlib.sha256(encoded(identity).encode()).hexdigest()
         with self.store.connect() as db:
             existing = db.execute("SELECT id FROM life_reports WHERE owner=? AND fingerprint=?", (owner, fingerprint)).fetchone()
         if existing:
@@ -246,7 +321,9 @@ class LifeReports:
     async def generate_preview(self, row, body, owner, network, lease):
         heartbeat = asyncio.create_task(self.keep_lease(row["id"], lease))
         usage_token = report_usage_context.set((row["id"], "preview"))
-        progress_token = report_progress_context.set(lambda raw: self.record_progress(row["id"], lease, preview_writing_progress(raw, body.profile.language)))
+        four_questions = western(json.loads(row["chart"]))
+        progress_token = report_progress_context.set(lambda raw: self.record_progress(
+            row["id"], lease, preview_writing_progress(raw, body.profile.language, four_questions=four_questions)))
         try:
             await self.write_preview(row, body, owner, network, lease)
         except ReportLeaseLost:
@@ -279,7 +356,24 @@ class LifeReports:
             self.update(row["id"], expected_lease=lease, preview=encoded(preview),
                         preview_state="ready", lease="", lease_until=0)
             return
+        if western(chart) and "forecast" not in chart:
+            chart["forecast"] = await self.adapters["astrology"].forecast(body.profile, owner, network)
+            self.update(row["id"], expected_lease=lease, chart=encoded(chart))
         bundle = self.bundle(body, chart, "overview")
+        if western(chart):
+            sample = self.bundle(body, chart, "career")
+            timing = sample["citation_rules"]["timing_ids"][:1]
+            bundle["evidence"] = {key: fact for key, fact in {**bundle["evidence"], **sample["evidence"]}.items()
+                                  if fact["type"] != "transit" or key in timing}
+            # Share one career response and one of the paid calculation windows.
+            # Keep other career windows out of the free writer's context entirely.
+            bundle["evidence"] = {key: fact for key, fact in bundle["evidence"].items() if fact["type"] != "transit"}
+            bundle["evidence"].update({key: fact for key, fact in sample["evidence"].items() if fact["type"] != "transit" or key in timing})
+            identifiers = list(dict.fromkeys([*bundle["topic_evidence"], *sample["topic_evidence"]]))
+            bundle["topic_evidence"] = [key for key in identifiers if key in bundle["evidence"]]
+            bundle["citation_rules"].update(topic_ids=bundle["topic_evidence"], timing_ids=timing,
+                sample_ids=[key for key in sample["topic_evidence"] if key in bundle["evidence"] and bundle["evidence"][key]["type"] != "transit"])
+            bundle["preview_topic"] = "career"
         if not western(chart):
             topics = ("love", "work", "money") if body.user_question else ("love",)
             for topic in topics:
@@ -290,6 +384,8 @@ class LifeReports:
                                         "summary_house_ids": bundle["topic_evidence"],
                                         "supporting_natal_ids": [key for key, item in bundle["evidence"].items() if item["type"] in ("planet", "ascendant")]}
         bundle.update(stage="preview", reading="life-preview")
+        if western(chart):
+            bundle["preview_layout"] = "four-questions"
         if body.user_question:
             bundle["user_question"] = body.user_question
         elif body.career_question and western(chart):
@@ -298,6 +394,8 @@ class LifeReports:
         values = {"preview_state": result["state"], "lease": "", "lease_until": 0}
         if result.get("story"):
             preview = {"story": result["story"], "evidence": bundle["evidence"]}
+            if bundle.get("preview_topic"):
+                preview["sample_topic"] = bundle["preview_topic"]
             if body.career_question and not western(chart):
                 answer = await self.career_preview(body.career_question, chart, body.profile,
                                                    direct_question=body.career_question.focus is None)
@@ -356,7 +454,8 @@ class LifeReports:
         is_western = western(chart)
         records = json.loads(row["chapters"])
         preview = json.loads(row["preview"]) if row["preview"] else None
-        title = ("运程解析" if language == "zh" else "วิเคราะห์ดวงชะตา") if fortune else ("人生报告" if language == "zh" else "รายงานชีวิต")
+        title = (REGIONAL_LANGUAGES[language]["report_title" if fortune else "life_title"] if language in REGIONAL_LANGUAGES else ({"zh": "运程解析", "th": "วิเคราะห์ดวงชะตา", "en": "Personal reading", "vi": "Luận giải cá nhân"} if fortune else
+                 {"zh": "人生报告", "th": "รายงานชีวิต", "en": "Life report", "vi": "Báo cáo cuộc sống"})[language])
         version = chart["version"] if is_western else FORTUNE_VERSION if fortune else VERSION
         if career:
             title = preview["story"].get("title", labels["title"]) if preview else labels["title"]
@@ -387,10 +486,17 @@ class LifeReports:
             questions = [[question] for question in WESTERN_QUESTIONS[language]]
         elif fortune:
             titles = [FORTUNE_TOPICS[key][language]["title"] for key in chapter_keys]
-            titles[0] = f"{body['year']}年运程" if language == "zh" else f"ดวงปี {body['year']}"
+            titles[0] = (REGIONAL_LANGUAGES[language]["annual_title"].replace("{year}", str(body["year"])) if language in REGIONAL_LANGUAGES else {"zh": f"{body['year']}年运程", "th": f"ดวงปี {body['year']}", "en": f"{body['year']} yearly themes", "vi": f"Chủ đề năm {body['year']}"}[language])
             questions = [FORTUNE_TOPICS[key][language]["questions"] for key in chapter_keys]
         percent = int(sum(section["percent"] for section in sections) / len(sections))
         percent = min(percent, 100 if row["full_state"] == "ready" else 99)
+        simulation = self.can_simulate_payment(career)
+        amount = 9900 if career else CARD_AMOUNT
+        if self.card_payments.order_only:
+            amount = SUNLANDS_AMOUNT
+        if simulation:
+            order = self.card_payments.order_for(row["id"]) if preview and not row["unlocked"] else None
+            amount = order["amount"] if order and order["merchant"] == SIMULATED_MERCHANT else SIMULATED_AMOUNT
         result = {
             "id": row["id"], "version": version, "title": title,
             "input": body, "created_at": stamp(row["created"]), "location": chart["location"],
@@ -401,9 +507,10 @@ class LifeReports:
             "chart": self.chart_view(chart, bool(body["profile"].get("birth_time")), language),
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
                               "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
-            "price": {"amount": 9900, "currency": "THB", "display": "฿99", "mode": "direct"} if career
-                     else {"amount": CARD_AMOUNT, "currency": "THB", "display": "฿50",
-                           "mode": "payso_test" if self.card_payments.enabled else "direct"},
+            "price": {"amount": amount, "currency": "THB", "display": f"฿{amount // 100}",
+                      "mode": "sunlands_order_only" if self.card_payments.order_only else
+                      "payso_test" if self.card_payments.enabled and not career else "direct"},
+            "payment_simulation": simulation,
             "preview_state": row["preview_state"], "access": "full" if row["unlocked"] else "preview",
             "full_state": row["full_state"], "progress": {"completed": completed, "total": len(sections)},
             "generation_progress": {"percent": percent, "sections": sections},
@@ -419,6 +526,15 @@ class LifeReports:
             result["reference_period"] = {"start": career["start"], "end": (date.fromisoformat(career["start"]) + timedelta(days=29)).isoformat()}
         if preview and "career_answer" in preview:
             result["preview"]["career_answer"] = public_point(preview["career_answer"], preview["evidence"], language)
+        if is_western:
+            forecast = chart.get("forecast", {})
+            result["outlook"] = {key: forecast[key] for key in ("state", "start", "end", "timezone") if key in forecast}
+            if preview:
+                for key in ("environment", "favorable", "unfavorable", "recent", "response"):
+                    if preview["story"].get(key):
+                        result["preview"][key] = public_point(preview["story"][key], preview["evidence"], language)
+                if preview.get("sample_topic"):
+                    result["preview"]["sample_topic"] = preview["sample_topic"]
         if row["unlocked"]:
             for index, key in enumerate(chapter_keys):
                 if key not in records:
@@ -465,6 +581,9 @@ class LifeReports:
             row = db.execute("SELECT * FROM life_reports WHERE id=? AND owner=?", (report_id, owner)).fetchone()
             if row is None:
                 raise HTTPException(404, "life_report_not_found")
+            payment = db.execute("SELECT merchant FROM life_card_payments WHERE report_id=?", (report_id,)).fetchone()
+            if payment and payment["merchant"].startswith("sunlands:"):
+                raise HTTPException(409, "life_order_needs_review")
             active_task = any(task is not None and not task.done()
                               for task in (self.preview_tasks.get(report_id), self.tasks.get(report_id)))
             claimed = (row["preview_state"] in ("pending", "generating") or row["full_state"] == "generating")
@@ -478,25 +597,49 @@ class LifeReports:
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
         if not row["unlocked"]:
-            if not json.loads(row["input"]).get("career") and (
-                self.card_payments.enabled or self.card_payments.order_for(report_id)
-            ):
+            career = json.loads(row["input"]).get("career")
+            if (self.card_payments.order_only or self.can_simulate_payment(career) or self.card_payments.order_for(report_id)
+                    or (self.card_payments.enabled and not career)):
                 raise HTTPException(402, "life_payment_required")
             self.update(report_id, unlocked=1)
         await self.start_full_generation(report_id, owner, network)
         return self.get(report_id, owner)
 
-    def create_card_order(self, report_id, owner, network):
+    def can_simulate_payment(self, career):
+        return not self.card_payments.order_only and self.development and (bool(career) or not self.card_payments.enabled)
+
+    async def create_card_order(self, report_id, owner, network, contact=None):
         row = self.row(report_id, owner)
         body = json.loads(row["input"])
-        if not self.card_payments.enabled or body.get("career") or row["unlocked"]:
+        if row["unlocked"]:
             raise HTTPException(409, "life_payment_unavailable")
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
+        career = body.get("career")
+        if self.card_payments.order_only:
+            return await self.card_payments.create_sunlands(
+                report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "")
+        if self.can_simulate_payment(career):
+            return self.card_payments.create_simulated(report_id, network)
+        if not self.card_payments.enabled or career:
+            raise HTTPException(409, "life_payment_unavailable")
         return self.card_payments.create(report_id, network, body["profile"]["language"])
 
-    async def confirm_card_order(self, order, owner):
-        if not await self.card_payments.confirm(order):
+    async def simulate_payment(self, report_id, owner, network, reference):
+        row = self.row(report_id, owner)
+        if not self.can_simulate_payment(json.loads(row["input"]).get("career")):
+            raise HTTPException(404, "life_payment_unavailable")
+        if not self.card_payments.confirm_simulated(report_id, reference):
+            raise HTTPException(409, "life_payment_required")
+        await self.start_full_generation(report_id, owner, network)
+        return {"paid": True}
+
+    async def confirm_card_order(self, order, owner, notification=None):
+        if order and order["merchant"].startswith("sunlands:"):
+            paid = await self.card_payments.confirm_sunlands(order, notification)
+        else:
+            paid = await self.card_payments.confirm(order)
+        if not paid:
             return False
         await self.start_full_generation(order["report_id"], owner, order["network"])
         return True
@@ -535,6 +678,7 @@ class LifeReports:
             # Carry the preview's meaning without leaking its citations into another topic.
             preview_context = {"summary": preview["summary"]["text"],
                                "traits": [{key: item[key] for key in ("key", "title", "text")} for item in preview["traits"]]}
+            preview_context.update({key: preview[key]["text"] for key in ("environment", "favorable", "unfavorable", "recent", "response") if preview.get(key)})
             records = json.loads(row["chapters"])
             chapter_keys = WESTERN_CHAPTERS if western(chart) else FORTUNE_CHAPTERS if body.report_kind == "fortune" else CHAPTERS
             slots = asyncio.Semaphore(self.chapter_concurrency)
@@ -651,17 +795,29 @@ def life_report_router(service):
         owner, network = scopes(key, request)
         return await service.unlock(report_id, owner, network)
 
+    @router.get("/{report_id}/payment")
+    async def existing_payment(report_id: str, request: Request, key: key_header):
+        service.row(report_id, scopes(key, request)[0])
+        order = service.card_payments.existing_sunlands(report_id)
+        return order if order is not None else Response(status_code=204)
+
     @router.post("/{report_id}/payment")
-    async def create_payment(report_id: str, request: Request, key: key_header):
-        return service.create_card_order(report_id, *scopes(key, request))
+    async def create_payment(report_id: str, request: Request, key: key_header, body: PaymentContact | None = None):
+        return await service.create_card_order(report_id, *scopes(key, request), contact=body)
 
     @router.post("/{report_id}/payment/check")
     async def check_payment(report_id: str, request: Request, key: key_header):
-        owner, _ = scopes(key, request)
+        owner, network = scopes(key, request)
         row = service.row(report_id, owner)
         if row["unlocked"]:
+            await service.start_full_generation(report_id, owner, network)
             return {"paid": True}
         return {"paid": await service.confirm_card_order(service.card_payments.order_for(report_id), owner)}
+
+    @router.post("/{report_id}/payment/simulate")
+    async def simulate_payment(report_id: str, body: SimulatedPayment, request: Request, key: key_header):
+        owner, network = scopes(key, request)
+        return await service.simulate_payment(report_id, owner, network, body.reference)
 
     @router.post("/payment/payso/postback")
     async def payso_postback(request: Request):
@@ -673,6 +829,29 @@ def life_report_router(service):
         if not order or not await service.confirm_card_order(order, order["owner"]):
             raise HTTPException(409, "life_payment_required")
         return PlainTextResponse("OK")
+
+    @router.post("/payment/sunlands/notify")
+    async def sunlands_notify(request: Request):
+        if not service.card_payments.order_only:
+            return JSONResponse({"code": 0, "msg": "unavailable"}, status_code=404)
+        try:
+            if request.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/x-www-form-urlencoded":
+                raise HTTPException(415, "invalid_content_type")
+            params = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True, max_num_fields=32)
+            if any(len(values) != 1 for values in params.values()):
+                raise ValueError("duplicate_fields")
+            notice = {key: values[0] for key, values in params.items()}
+            order = service.card_payments.from_sunlands_number(notice.get("orderNumber", ""))
+            if not order:
+                raise HTTPException(404, "order_not_found")
+            # The documented callback is a signal; only an authenticated server inquiry can grant access.
+            if not await service.confirm_card_order(order, order["owner"], notice):
+                raise HTTPException(409, "life_payment_required")
+        except (ValueError, UnicodeError):
+            return JSONResponse({"code": 0, "msg": "invalid_form"}, status_code=400)
+        except HTTPException as error:
+            return JSONResponse({"code": 0, "msg": error.detail}, status_code=error.status_code)
+        return {"code": 1, "msg": "success"}
 
     @router.post("/{report_id}/feedback")
     async def feedback(report_id: str, body: Feedback, request: Request, key: key_header):

@@ -1,0 +1,229 @@
+{
+  "version": "1.1",
+  "updated": "2026-11-13",
+  "labels": {
+    "version": "Phiên bản",
+    "updated": "Ngày sửa đổi",
+    "effective": "Ngày có hiệu lực",
+    "pending": "Cần xác nhận trước khi công bố",
+    "reviewNote": "Bản dự thảo để duyệt trước khi công bố. Thông tin đơn vị vận hành ở bên dưới. Cần xác nhận ngày có hiệu lực và các việc còn lại về lưu giữ, chuyển dữ liệu, xử lý quyền nêu trong chính sách trước khi phát hành chính thức.",
+    "controller": "Đơn vị vận hành / bên kiểm soát dữ liệu",
+    "address": "Địa chỉ liên hệ",
+    "contact": "Email quyền riêng tư",
+    "contactHint": "Gửi yêu cầu truy cập, sửa, xóa, rút lại sự đồng ý hoặc khiếu nại đến email quyền riêng tư trên.",
+    "contents": "Mục lục",
+    "overview": "Những điểm cần biết"
+  },
+  "summary": [
+    "Báo cáo cần ngày sinh, nơi sinh và múi giờ tương ứng. Bạn có thể không biết giờ sinh nhưng kết quả sẽ có giới hạn. Câu hỏi bổ sung là tùy chọn.",
+    "Máy chủ ở Hồng Kông, Trung Quốc. RoxyAPI tính lá số và Alibaba Cloud Qwen viết diễn giải, có xử lý tại Đức và Trung Quốc đại lục.",
+    "Quyền xem báo cáo dựa vào mã ngẫu nhiên trong trình duyệt. Hãy giữ kín mã; xóa dữ liệu trình duyệt không xóa báo cáo trên máy chủ.",
+    "Mở khóa hiện chỉ để thử nghiệm, không thu tiền thật. Chưa mở tải APP. Diễn giải tự động phục vụ giải trí và khám phá bản thân, không dùng để ra quyết định có hiệu lực pháp lý hoặc tác động đáng kể tương tự."
+  ],
+  "sections": [
+    {
+      "id": "scope",
+      "title": "1. Phạm vi và bên kiểm soát",
+      "paragraphs": [
+        "Chính sách áp dụng cho trang H5 FATE, diễn giải miễn phí và đầy đủ, lịch sử báo cáo, phản hồi và xuất PDF. Đơn vị thực tế nêu trên quyết định mục đích, phương thức xử lý và là bên kiểm soát dữ liệu. FATE là tên sản phẩm, không thay thế tên pháp lý của đơn vị vận hành.",
+        "Chính sách được soạn theo dịch vụ hiện hướng tới người dùng Thái Lan, có tham chiếu PDPA Thái Lan. Quyền bắt buộc theo luật địa phương khác vẫn được bảo lưu. Có một ngôn ngữ không đồng nghĩa đã tuân thủ mọi quốc gia dùng ngôn ngữ đó. Tài khoản, trò chuyện trong APP và trang bên ngoài có thông báo riêng; dùng chung hệ thống phía sau không khiến trang này thu thập mọi dữ liệu của các dịch vụ ấy."
+      ]
+    },
+    {
+      "id": "inputs",
+      "title": "2. Thông tin bạn cung cấp và lựa chọn",
+      "bullets": [
+        "Ngày sinh cần thiết để tính lá số. Không cung cấp thì không thể tạo báo cáo cá nhân hóa.",
+        "Giờ sinh dùng tính cung mọc, các nhà và yếu tố nhạy theo thời gian. Có thể chọn không nhớ giờ chính xác. Hệ thống dùng 12:00 trưa làm mốc và chỉ rõ sự không chắc chắn; đó không phải giờ sinh đã xác minh.",
+        "Quốc gia, tỉnh/bang, thành phố/quận và mã nơi sinh dùng xác định tọa độ, múi giờ. Tọa độ từ danh mục thành phố đã chọn, không phải GPS hay quyền theo dõi vị trí hiện tại. Cần nơi sinh nhận dạng được để tính phần liên quan.",
+        "Chủ đề, bối cảnh nghề nghiệp và câu hỏi tùy chọn giúp tập trung diễn giải. Bỏ trống câu hỏi vẫn nhận báo cáo thông thường. Trải nghiệm, công việc hay quan hệ bạn nhập sẽ được xử lý trong văn bản đó.",
+        "Luồng tiêu chuẩn không yêu cầu tên thật, giấy tờ tùy thân, số điện thoại hay thông tin thẻ. Không nên thêm những dữ liệu này vào câu hỏi."
+      ]
+    },
+    {
+      "id": "generated",
+      "title": "3. Dữ liệu phát sinh và nhật ký",
+      "paragraphs": [
+        "Dịch vụ lưu định danh dẫn xuất từ mã truy cập ngẫu nhiên, mã báo cáo, lá số và căn cứ, nội dung miễn phí/đầy đủ, trạng thái và tiến độ tạo, thử lại, mở khóa, thời điểm và phản hồi bạn gửi. Suy luận và giá trị băm vẫn có thể là dữ liệu cá nhân, không tự động trở thành vô danh.",
+        "Nhật ký vận hành có thể gồm IP, thời gian, đường dẫn yêu cầu, mã trạng thái, lỗi; giới hạn tần suất dùng định danh người dùng/mạng và số lần. Nhật ký dùng mô hình gồm mã báo cáo, nhà cung cấp, mô hình, mã yêu cầu, thời gian, Token và kết quả kiểm tra, thường không chứa toàn bộ lời nhắc hay báo cáo nhưng vẫn có thể liên kết.",
+        "Khi liên hệ, địa chỉ trả lời, yêu cầu và thông tin cần thiết để kiểm tra được xử lý. Hãy bắt đầu bằng mã báo cáo và mô tả vấn đề; không gửi mật khẩu, API key, mã truy cập trình duyệt hoặc bản đầy đủ giấy tờ không cần thiết."
+      ]
+    },
+    {
+      "id": "purposes",
+      "title": "4. Mục đích và cơ sở pháp lý",
+      "bullets": [
+        "Tính toán, tạo, lưu, xem lại, thử lại và xuất báo cáo: xử lý cần thiết để cung cấp dịch vụ bạn yêu cầu hoặc bước tiền hợp đồng, khi luật áp dụng cho phép.",
+        "Chống lạm dụng, bảo vệ truy cập, ổn định, sửa lỗi và kiểm soát API: lợi ích hợp pháp cần thiết, khi không bị quyền và lợi ích của bạn lấn át; bạn có thể phản đối theo luật.",
+        "Thống kê nội bộ cơ bản từ lượt truy cập đến hiển thị báo cáo ở mục 8: lợi ích hợp pháp tương xứng với kênh phản đối, hoặc đồng ý hợp lệ trước nếu luật yêu cầu.",
+        "Xử lý quyền, nghĩa vụ quản lý và tranh chấp: nghĩa vụ pháp lý hoặc lợi ích hợp pháp phù hợp.",
+        "Mục đích mới cần đồng ý, gồm dữ liệu nhạy cảm hay chuyển dữ liệu khi phải đồng ý rõ ràng, cần thông báo và đồng ý hợp lệ trước. Đọc chính sách, truy cập hoặc nhấn tạo không phải đồng ý chung cho mọi mục đích."
+      ]
+    },
+    {
+      "id": "sensitive",
+      "title": "5. Dữ liệu nhạy cảm và của người khác",
+      "paragraphs": [
+        "Báo cáo thông thường không cần tôn giáo, chính trị, nguồn gốc chủng tộc, sức khỏe, hành vi tình dục, sinh trắc học, tiền án hay dữ liệu được bảo vệ đặc biệt. Không nhập vào câu hỏi/phản hồi, và không gửi thông tin sinh hoặc riêng tư của người khác nếu thiếu căn cứ hay ủy quyền hợp pháp.",
+        "Văn bản tự do đi vào luồng tạo báo cáo. Hiện chưa có quy trình riêng nhận dữ liệu nhạy cảm và đồng ý rõ ràng, cũng không bảo đảm tự động phát hiện/lọc hết. Nếu câu hỏi bắt buộc cần chúng, hãy dừng trước khi gửi và liên hệ email quyền riêng tư. Dữ liệu vượt nhu cầu phải được hạn chế hoặc xóa theo luật; cảnh báo này không thay thế cơ sở pháp lý hay đồng ý cần thiết."
+      ]
+    },
+    {
+      "id": "recipients",
+      "title": "6. Nhà cung cấp và dữ liệu nhận",
+      "bullets": [
+        "Tencent Cloud: hạ tầng Hồng Kông lưu trang, API, cơ sở dữ liệu và nhật ký để vận hành, bảo mật. Quyền truy cập vận hành chỉ nên cấp khi cần cho công việc.",
+        "RoxyAPI do Roxy Labs vận hành nhận ngày sinh, giờ thật hoặc tham chiếu, tọa độ, múi giờ và thiết lập để tính chiêm tinh phương Tây. Yêu cầu tính hiện không chủ động kèm tên, email, câu hỏi hay IP trình duyệt, nhưng nhà cung cấp thấy thông tin kỹ thuật của yêu cầu từ máy chủ chúng tôi. Tài liệu công bố nêu lưu trữ tại Đức; xem chính sách và điều khoản bên dưới.",
+        "Alibaba Cloud Model Studio / Qwen nhận yếu tố lá số, căn cứ, ngôn ngữ, độ chắc chắn giờ sinh, câu hỏi tùy chọn và tóm tắt diễn giải trước cần để nối tiếp. Gói viết thông thường không đòi các trường trực tiếp về tên, ngày sinh thô, tên thành phố, tọa độ; văn bản và bối cảnh vẫn có thể là dữ liệu cá nhân. Hiện dùng dịch vụ Trung Quốc đại lục qua điểm truy cập Bắc Kinh, không bảo đảm toàn bộ tính toán chỉ tại Bắc Kinh.",
+        "GeoNames cung cấp danh mục địa danh sao chép cục bộ trên máy chủ để tìm tọa độ/múi giờ, không cần nhận thông tin sinh hoặc câu hỏi. Nếu nhấn liên kết trang bên ngoài, chuyến truy cập theo quy tắc của trang đó."
+      ],
+      "paragraphs": [
+        "Đơn vị vận hành nên áp dụng điều khoản bên xử lý, giới hạn truy cập và kiểm tra nhà cung cấp phù hợp. Chính sách không cho phép bán hay cho thuê dữ liệu; hiện không có chức năng bán báo cáo cho quảng cáo hoặc sàn quảng cáo. Tiết lộ theo luật, tranh chấp hợp pháp hay chuyển giao kinh doanh phải giới hạn phạm vi và thực hiện thông báo, nghĩa vụ bên kế nhiệm khi cần."
+      ],
+      "links": [
+        {
+          "label": "Chính sách RoxyAPI",
+          "url": "https://roxyapi.com/policy/privacy"
+        },
+        {
+          "label": "Thỏa thuận xử lý RoxyAPI",
+          "url": "https://roxyapi.com/policy/dpa"
+        },
+        {
+          "label": "Thông tin riêng tư Alibaba Cloud",
+          "url": "https://help.aliyun.com/zh/model-studio/privacy-notice"
+        },
+        {
+          "label": "Thông tin riêng tư Tencent Cloud",
+          "url": "https://www.tencentcloud.com/document/product/301/17345"
+        }
+      ]
+    },
+    {
+      "id": "transfers",
+      "title": "7. Chuyển dữ liệu xuyên biên giới",
+      "paragraphs": [
+        "Từ Thái Lan hay nơi khác, dữ liệu có thể tới máy chủ Hồng Kông trước; đầu vào cần tính tiếp tới RoxyAPI được lưu trữ ở Đức, dữ liệu viết tới Alibaba Cloud tại Trung Quốc đại lục. Dịch vụ không hoàn toàn ngoại tuyến hay chỉ giữ dữ liệu tại Thái Lan. Luật, quyền tiếp cận của cơ quan nhà nước và biện pháp khắc phục có thể khác.",
+        "Việc chuyển phải đáp ứng điều kiện luật, như mức bảo vệ thích hợp, bảo đảm có quyền và biện pháp thực thi, hoặc ngoại lệ luật thật sự áp dụng. HTTPS, tuyên bố GDPR, nêu địa điểm hoặc nhấn tạo không tự đáp ứng quy định chuyển theo PDPA. Đơn vị vận hành phải xác định cơ chế cho nhà cung cấp/đích thực tế; bản dự thảo không chứng nhận đã xong. Hãy liên hệ để biết căn cứ và thông tin bảo đảm áp dụng."
+      ]
+    },
+    {
+      "id": "storage",
+      "title": "8. Lưu trữ trình duyệt, cookie và thống kê",
+      "bullets": [
+        "astro-life-report-key là mã ngẫu nhiên lưu trong cả localStorage và sessionStorage để nhận quyền xem báo cáo; máy chủ chủ yếu lưu định danh dẫn xuất. Người dùng chung thiết bị có thể xem khi mã còn đó.",
+        "fate-welcome-seen và dấu phục hồi tải phục vụ giao diện. Dữ liệu phiên thường kết thúc theo phiên, dữ liệu cục bộ có thể còn tới khi xóa dữ liệu trang.",
+        "Luồng chuyển HTTP sang HTTPS có thể dùng cookie bên thứ nhất fate-https-owner chứa mã ngẫu nhiên tối đa khoảng 60 giây; không phải cookie quảng cáo.",
+        "Thống kê bên thứ nhất dùng mã phiên fate-visit, nhãn nguồn/chiến dịch và thời gian truy cập, gửi, hiển thị liên kết mã báo cáo. Điểm thống kê không nhận trường ngày sinh/câu hỏi; dữ liệu không hoàn toàn vô danh. Hiện dừng sự kiện này khi trình duyệt bật Do Not Track hoặc Global Privacy Control, nhưng yêu cầu, lưu trữ và log bảo mật cần thiết vẫn tiếp tục.",
+        "H5 hiện không tích hợp Google Analytics, Meta Pixel hay SDK quảng cáo theo dõi chéo trang. Chặn/xóa lưu trữ có thể mất quyền xem lại. Mã còn trong phiên mở có thể khôi phục vào localStorage; để xóa hết mã trên trình duyệt, xóa mọi lưu trữ của trang và đóng các thẻ liên quan."
+      ]
+    },
+    {
+      "id": "retention",
+      "title": "9. Thời hạn lưu và quy tắc dọn",
+      "paragraphs": [
+        "Thời hạn dựa trên dịch vụ liên tục đã yêu cầu, vấn đề chưa giải quyết và nghĩa vụ luật. Khi chưa xác định thời gian cố định, dùng tiêu chí và cơ chế sau. Hiệu lực bộ nhớ đệm không có nghĩa mọi bản sao bị xóa đúng thời điểm hết hạn."
+      ],
+      "bullets": [
+        "Đầu vào, lá số, báo cáo và phản hồi giữ để xem lại/thử lại tới khi bạn xóa, mục đích chấm dứt hoặc luật buộc xóa. Chưa có tự hết hạn theo tuổi báo cáo; điều này không cho phép lưu mọi dữ liệu vô thời hạn.",
+        "Lượt truy cập và liên kết báo cáo: cửa sổ 30 ngày, xóa phần hết hạn khi lượt sau kích hoạt, không bảo đảm xóa đúng giây ngày thứ 30.",
+        "Bộ nhớ đệm tính và viết tại dịch vụ thường có hiệu lực khoảng 24 giờ, dọn bởi lần dùng bộ nhớ đệm sau, giới hạn dung lượng hoặc khởi động lại tiến trình. Bộ đếm người dùng/mạng loại bản ghi quá 24 giờ khi thao tác liên quan tiếp theo.",
+        "Dùng mô hình, lỗi và bảo mật: giữ cần thiết cho đối soát, sửa lỗi, điều tra lạm dụng, tranh chấp hoặc luật. Bảng dùng hiện không có hạn tự động thống nhất; access log xoay theo dung lượng. Trước phát hành chính thức, đơn vị phải xác nhận thời hạn tối đa, người chịu trách nhiệm và lịch dọn, không hứa số ngày chưa cấu hình.",
+        "Sao lưu: xóa cơ sở chính không ghi đè sao lưu ngay. Chu kỳ và hạn ghi đè cuối cần xác nhận. Nên hạn chế truy cập/sử dụng và không để khôi phục đảo ngược yêu cầu xóa hợp lệ.",
+        "Nhà cung cấp áp dụng điều khoản và nghĩa vụ lưu riêng. Chưa xác minh Zero Data Retention cho điểm truy cập đại lục hiện tại, không bảo đảm bên thứ ba không lưu. Có thể yêu cầu xóa/hạn chế thêm qua đơn vị vận hành theo luật."
+      ]
+    },
+    {
+      "id": "deletion",
+      "title": "10. Xóa báo cáo và dừng chờ",
+      "paragraphs": [
+        "Dùng nút xóa trên báo cáo hoặc Báo cáo của tôi cho bản mà mã truy cập có quyền quản lý. Nó xóa bản ghi chính và bản ghi thanh toán thử liên quan. Có thể tạm từ chối khi tác vụ tạo đang chạy; thử sau khi xong hoặc liên hệ. Bản đã xóa thường không thể khôi phục; tạo lại là xử lý mới.",
+        "Hủy chờ chủ yếu dừng đợi/thăm dò của trang, không bảo đảm hủy ngay tính toán đã gửi và không tự xóa dữ liệu. Xóa trình duyệt không gửi yêu cầu xóa máy chủ và có thể làm mất cách chứng minh quyền. Nên xóa báo cáo trước nếu đó là ý định của bạn.",
+        "Nút không tự xóa hết bộ nhớ đệm, thống kê, nhật ký dùng mô hình, bản nhà cung cấp hay sao lưu; xem mục 9 và gửi yêu cầu thêm qua email. PDF/văn bản đã tải, sao chép, chia sẻ thuộc bạn/người nhận quản lý; xóa máy chủ không xóa từ xa các bản ấy."
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "11. Phân tích tự động và huấn luyện",
+      "paragraphs": [
+        "Báo cáo kết hợp yếu tố tính toán và ngôn ngữ AI để suy luận tính cách, lựa chọn, quan hệ. Phân tích tự động cá nhân hóa có thể sai, thiếu hoặc không phù hợp; giờ sinh không chắc tăng giới hạn. Không chứng minh dự đoán sẽ xảy ra, không dùng cho quyết định y tế, tín dụng, việc làm, bảo hiểm, tư pháp hay có hiệu lực pháp lý/tác động đáng kể tương tự.",
+        "Chưa có quy trình dùng báo cáo huấn luyện mô hình tổng quát riêng. Cần tách huấn luyện và lưu: Alibaba Cloud công bố không huấn luyện từ dữ liệu khách nhưng có thể lưu dữ liệu gọi theo luật. Không huấn luyện không có nghĩa không lưu. Huấn luyện không liên quan, hồ sơ quảng cáo hay mục đích mới cần căn cứ và đồng ý khi cần."
+      ]
+    },
+    {
+      "id": "rights",
+      "title": "12. Quyền và cách yêu cầu",
+      "paragraphs": [
+        "Tùy điều kiện luật, bạn có thể xin truy cập/bản sao, sửa, xóa/vô danh hóa, hạn chế, phản đối như xử lý theo lợi ích hợp pháp, và chuyển dữ liệu khi đủ điều kiện. Đồng ý có thể rút không ảnh hưởng tính hợp pháp trước đó; hồ sơ cần cho dịch vụ/nghĩa vụ luật không tự bị xóa hết.",
+        "Dùng nút xóa cho phạm vi đó; yêu cầu khác gửi email trên kèm mã báo cáo và quyền cần thực hiện. Xác minh cần tương xứng với danh tính/quyền kiểm soát, ngăn tiết lộ sai người. Không gửi API key, mã trình duyệt hay giấy tờ đầy đủ không liên quan.",
+        "Theo PDPA Thái Lan, truy cập/bản sao đủ điều kiện cần giải quyết không chậm trễ, thường trong 30 ngày từ nhận. Quyền khác theo hạn riêng. Từ chối hợp pháp nên nêu lý do và kênh khiếu nại; không phân biệt đối xử vô lý vì thực hiện quyền. Bạn có thể khiếu nại Văn phòng PDPC hoặc cơ quan có thẩm quyền mà không cần chúng tôi cho phép."
+      ],
+      "links": [
+        {
+          "label": "Trang chính thức PDPC Thái Lan",
+          "url": "https://www.pdpc.or.th/"
+        }
+      ]
+    },
+    {
+      "id": "children",
+      "title": "13. Người chưa thành niên",
+      "paragraphs": [
+        "Dịch vụ dành cho người có năng lực pháp lý tương ứng. Tại Thái Lan, người dưới 20 tuổi chưa có năng lực đầy đủ theo căn cứ khác có thể là người chưa thành niên. Yêu cầu đồng ý của giám hộ phụ thuộc tuổi, năng lực và trường hợp; nhấn nút không luôn là đồng ý hợp lệ.",
+        "Trang chưa có quy trình xác minh giám hộ/đồng ý riêng. Nếu không thể tự gửi hợp pháp, đừng tạo trước khi có sắp xếp hợp lệ. Giám hộ có thể liên hệ email về dữ liệu gửi không phù hợp; đơn vị cần xác minh, hạn chế hoặc xóa theo luật. Viết quy tắc tuổi không thay biện pháp bảo vệ trẻ em thực tế."
+      ]
+    },
+    {
+      "id": "security",
+      "title": "14. An toàn và sự cố dữ liệu",
+      "paragraphs": [
+        "Biện pháp gồm HTTPS, API key ở máy chủ, mã truy cập ngẫu nhiên, kiểm quyền, kiểm đầu vào và giới hạn tần suất. Truy cập vận hành nên theo nhu cầu. Giữ kín mã trên thiết bị chung; liên kết báo cáo thường không phải mã cấp quyền.",
+        "Chưa có căn cứ xác nhận mọi bản ghi được mã hóa khi lưu, chứng nhận bảo mật cụ thể hay không có rủi ro. Khi có vi phạm cần đánh giá/kiểm soát. PDPA yêu cầu báo cơ quan không chậm trễ và khi khả thi trong 72 giờ từ biết, trừ khi ít khả năng gây rủi ro quyền/tự do; rủi ro cao phải báo người bị ảnh hưởng không chậm trễ kèm khắc phục. Luật nghiêm hơn có hiệu lực vẫn áp dụng."
+      ]
+    },
+    {
+      "id": "payment",
+      "title": "15. Thử nghiệm, APP và tính năng mới",
+      "paragraphs": [
+        "Giá và mở khóa hiện để thử, không thu tiền thật; luồng không thu thẻ, mật khẩu thanh toán hay ủy quyền ví. Nút tải APP chỉ báo giai đoạn thử nghiệm, không tải/cài.",
+        "Trước trả tiền thật, phân phối APP, đăng nhập, tarot, thần số học hay tính năng khác, cần rà soát dữ liệu, bên nhận, căn cứ; cập nhật, thông báo và xin đồng ý khi luật yêu cầu. Chính sách không cho phép trước mọi xử lý tương lai."
+      ]
+    },
+    {
+      "id": "changes",
+      "title": "16. Sửa đổi, liên hệ và ngôn ngữ",
+      "paragraphs": [
+        "Phiên bản và ngày trên nhận dạng chính sách. Thay đổi đáng kể về mục đích, loại dữ liệu, bên nhận, chuyển hoặc quyền cần thông báo rõ trước và đồng ý mới nếu cần. Tiếp tục duyệt không là đồng ý mọi mục đích mới.",
+        "Liên hệ đơn vị và email trên về quyền/khiếu nại. Nếu luật cần đại diện địa phương hoặc cán bộ bảo vệ dữ liệu, phải cung cấp liên hệ; bản này không xác nhận đã bổ nhiệm hay tự miễn. Các bản dịch hướng tới cùng sự thật; hỏi đơn vị khi khác cách hiểu, không bản nào giảm quyền luật bắt buộc."
+      ]
+    },
+    {
+      "id": "regional-law",
+      "title": "17. Luật áp dụng tại nơi đặt đơn vị vận hành",
+      "paragraphs": [
+        "Đơn vị vận hành hiện ở Bắc Kinh, Trung Quốc đại lục. Xử lý tại đại lục còn phải tuân theo luật Trung Quốc áp dụng, gồm PIPL. Chủ yếu phục vụ Thái Lan không tự miễn các nghĩa vụ đó. Căn cứ lợi ích hợp pháp theo luật Thái trong chính sách không tự tạo căn cứ theo luật Trung Quốc.",
+        "Nghĩa vụ luật Trung Quốc về chuyển dữ liệu, thông báo, đồng ý riêng khi cần và đánh giá tác động phải được kiểm tra theo luồng thực tế. Đánh giá, hợp đồng, chứng nhận hay miễn trừ phải đủ điều kiện hiện hành. Bản dự thảo không xác nhận đã hoàn tất hoặc thay đổi vị trí máy chủ Hồng Kông.",
+        "Khi Personal Data (Privacy) Ordinance, Cap. 486 của Hồng Kông áp dụng, bạn có thể yêu cầu truy cập, bản sao và sửa. Yêu cầu liên quan thường theo hạn 40 ngày, có thủ tục/ngoại lệ luật; không kéo hạn truy cập 30 ngày theo PDPA Thái thành 40. Phí hợp pháp phải giải thích trước và trong giới hạn hợp lý luật cho phép.",
+        "Dùng email trên hoặc khiếu nại cơ quan có thẩm quyền, gồm PCPD Hồng Kông khi luật đó áp dụng. Thuê ngoài/xử lý nước ngoài không tự miễn trách nhiệm. Trước chủ động mở thị trường khác cần thông báo và biện pháp thích hợp."
+      ],
+      "links": [
+        {
+          "label": "Luật bảo vệ thông tin cá nhân Trung Quốc",
+          "url": "https://www.cac.gov.cn/2021-08/20/c_1631050028355286.htm"
+        },
+        {
+          "label": "CAC: hướng dẫn chuyển dữ liệu xuyên biên giới",
+          "url": "https://www.cac.gov.cn/2026-07/24/c_1786638883119336.htm"
+        },
+        {
+          "label": "PCPD: Luật và nguyên tắc bảo vệ dữ liệu",
+          "url": "https://www.pcpd.org.hk/english/data_privacy_law/ordinance_at_a_Glance/ordinance.html"
+        },
+        {
+          "label": "PCPD Hồng Kông",
+          "url": "https://www.pcpd.org.hk/"
+        }
+      ]
+    }
+  ]
+}

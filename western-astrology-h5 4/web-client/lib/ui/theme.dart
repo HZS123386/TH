@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 
 const h5FontFamily = 'NotoSansThai';
 const h5FontFallback = [
+  'FateLatin',
+  'NotoMyanmar',
+  'NotoKhmer',
+  'NotoLao',
+  'FateMyanmarLabel',
+  'FateKhmerLabel',
+  'FateLaoLabel',
   'FateLanguageLabel',
   'NotoSansSC',
   'NotoSansSCCommon',

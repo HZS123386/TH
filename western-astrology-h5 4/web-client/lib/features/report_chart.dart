@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../core/models.dart';
 import '../ui/theme.dart';
@@ -20,6 +19,8 @@ String planetName(Json p, Copy c) => c.language == 'zh'
             'ketu': '计都',
           }[p['id']] ??
           text(p['label'])
+    : c.t('reading', 'planets.${p['id']}').isNotEmpty
+    ? c.t('reading', 'planets.${p['id']}')
     : text(p['label']);
 String planetSign(Json p, Copy c) {
   const names = [
@@ -37,133 +38,10 @@ String planetSign(Json p, Copy c) {
     '双鱼座',
   ];
   final index = (p['sign_index'] as num?)?.toInt();
-  return c.language == 'zh' && index != null && index >= 0 && index < 12
-      ? names[index]
+  final localized = c.list('reading', 'signs');
+  return index != null && index >= 0 && index < 12
+      ? (c.language == 'zh' ? names[index] : localized[index])
       : text(p['sign_name']);
-}
-
-class ChartView extends StatefulWidget {
-  const ChartView({required this.report, required this.copy, super.key});
-  final LifeReport report;
-  final Copy copy;
-  @override
-  State<ChartView> createState() => _ChartViewState();
-}
-
-class _ChartViewState extends State<ChartView> {
-  String _selected = 'sun';
-  @override
-  Widget build(BuildContext context) {
-    final c = widget.copy,
-        chart = object(widget.report.json['chart']),
-        planets = objects(chart['planets']);
-    final exact = chart['precision'] == 'exact';
-    final current =
-        planets.where((p) => p['id'] == _selected).firstOrNull ??
-        planets.firstOrNull;
-    if (planets.isEmpty) {
-      return Text(
-        c.t('jy', 'report.readingUnavailable'),
-        style: const TextStyle(color: lavender, fontSize: 12),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (exact)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 340),
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: LayoutBuilder(
-                builder: (context, box) {
-                  final painter = _ChartPainter(chart, _selected);
-                  return Semantics(
-                    label: c.t('jy', 'chart.wheel'),
-                    image: true,
-                    child: GestureDetector(
-                      onTapUp: (event) {
-                        final point =
-                            event.localPosition / (box.maxWidth / 320);
-                        for (final p in planets) {
-                          final marker = painter.planetPoint(
-                            p,
-                            planets.indexOf(p),
-                          );
-                          if ((point - marker).distance < 12) {
-                            setState(() => _selected = text(p['id']));
-                            break;
-                          }
-                        }
-                      },
-                      child: CustomPaint(painter: painter),
-                    ),
-                  );
-                },
-              ),
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              c.t('jy', widget.report.western ? 'unknownNote' : 'chart.noTime'),
-              style: const TextStyle(color: gold, fontSize: 12, height: 1.65),
-            ),
-          ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final p in planets)
-              Semantics(
-                button: true,
-                selected: p == current,
-                child: InkWell(
-                  onTap: () => setState(() => _selected = text(p['id'])),
-                  borderRadius: BorderRadius.circular(9),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: p == current
-                          ? const Color(0xFFF3CF9A)
-                          : const Color(0xFF2D2041),
-                      borderRadius: BorderRadius.circular(9),
-                      border: Border.all(
-                        color: p == current ? const Color(0xFFF3CF9A) : line,
-                      ),
-                    ),
-                    child: Text(
-                      planetName(p, c),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: p == current
-                            ? const Color(0xFF221630)
-                            : const Color(0xFFF8EDFF),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        if (current != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 13),
-            child: Text(
-              '${planetName(current, c)}${c.t('jy', 'chart.inSign')}${planetSign(current, c)}'
-              '${current['degree'] is num ? ' · ${(current['degree'] as num).toStringAsFixed(2)}°' : ''}'
-              '${current['house'] is num ? ' · ${c.language == 'zh' ? '第 ${current['house']} 宫' : 'เรือน ${current['house']}'}' : ''}',
-              style: const TextStyle(color: Color(0xFFF8DCAE), fontSize: 13),
-            ),
-          ),
-      ],
-    );
-  }
 }
 
 class PlacementMetrics extends StatelessWidget {
@@ -296,86 +174,4 @@ class ReportFactors extends StatelessWidget {
       ],
     );
   }
-}
-
-class _ChartPainter extends CustomPainter {
-  _ChartPainter(this.chart, this.selected);
-  final Json chart;
-  final String selected;
-  double get origin =>
-      (objects(
-                chart['planets'],
-              ).where((p) => p['id'] == 'ascendant').firstOrNull?['longitude']
-              as num?)
-          ?.toDouble() ??
-      0;
-  Offset point(num degree, double radius) {
-    final a = math.pi - ((degree - origin) * math.pi / 180);
-    return Offset(160 + math.cos(a) * radius, 160 - math.sin(a) * radius);
-  }
-
-  Offset planetPoint(Json p, int index) =>
-      point(p['longitude'] as num, 95 + (index % 3) * 6.0);
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 320);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = const Color(0xFFA486B6);
-    for (final radius in [148.0, 119.0, 91.0]) {
-      canvas.drawCircle(const Offset(160, 160), radius, paint);
-    }
-    void label(String value, Offset at, double fontSize, {double spacing = 0}) {
-      final text = TextPainter(
-        text: TextSpan(
-          text: value,
-          style: TextStyle(
-            color: const Color(0xFFEDC99A),
-            fontFamily: h5FontFamily,
-            fontFamilyFallback: h5FontFallback,
-            fontSize: fontSize,
-            letterSpacing: spacing,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      text.paint(canvas, at - Offset(text.width / 2, text.height / 2));
-    }
-
-    const signs = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
-    for (var i = 0; i < 12; i++) {
-      paint.color = const Color(0xFF80638E);
-      canvas.drawLine(point(i * 30, 119), point(i * 30, 148), paint);
-      label(signs[i], point(i * 30 + 15, 134), 16);
-    }
-    for (final house in objects(chart['houses'])) {
-      canvas.drawLine(
-        point(house['longitude'] as num, 91),
-        point(house['longitude'] as num, 118),
-        paint,
-      );
-    }
-    final planets = objects(chart['planets']);
-    for (final entry in planets.indexed) {
-      final at = planetPoint(entry.$2, entry.$1),
-          active = entry.$2['id'] == selected;
-      paint
-        ..style = PaintingStyle.fill
-        ..color = active ? Colors.white : const Color(0xFFF2CC97);
-      canvas.drawCircle(at, active ? 6 : 3.7, paint);
-      paint
-        ..style = PaintingStyle.stroke
-        ..color = active ? const Color(0xFFF2CC97) : const Color(0xFF201536)
-        ..strokeWidth = active ? 2 : 1;
-      canvas.drawCircle(at, active ? 6 : 3.7, paint);
-    }
-    label('FATE', const Offset(160, 164), 13, spacing: 2.8);
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_ChartPainter oldDelegate) =>
-      oldDelegate.chart != chart || oldDelegate.selected != selected;
 }

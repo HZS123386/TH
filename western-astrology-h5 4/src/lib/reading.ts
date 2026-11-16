@@ -1,8 +1,11 @@
+import informationCopy from "../content/jy.json";
 import type { LifeLabels, LifePoint, LifeReport, LifeSummary } from "./lifeReport";
 import { reportContent, reportReference } from "./reportContent";
-import copy from "../content/thai-test.json" with { type: "json" };
+import originalCopy from "../content/thai-test.json" with { type: "json" };
+import { additionalCopy, additionalLocales, localeTag, type Language } from "./locales";
 
-export type Language = "zh" | "th";
+export type { Language } from "./locales";
+const copy = { ...originalCopy, ...additionalCopy("reading") };
 export type Reading = keyof typeof copy.zh.readings;
 export const readings: Reading[] = [
   "overview",
@@ -34,11 +37,11 @@ export interface Place {
   longitude: number;
 }
 export function placeName(place: Place, language: Language) {
-  const label = language === "zh" ? place.labelChinese : place.labelThai;
+  const label = language === "zh" ? place.labelChinese : language === "th" ? place.labelThai : undefined;
   if (label) return label;
   const names = ui[language].countryNames;
   const country = names[place.countryCode as keyof typeof names] || place.countryCode;
-  return [country, (language === "zh" ? place.nameChinese : place.nameThai) || place.nameEnglish].filter(Boolean).join("，");
+  return [country, (language === "zh" ? place.nameChinese : language === "th" ? place.nameThai : place.nameEnglish) || place.nameEnglish].filter(Boolean).join(language === "zh" ? "，" : ", ");
 }
 export interface ReadingInput {
   profile: {
@@ -68,6 +71,7 @@ export interface ReadingItem {
   check?: string;
 }
 export const ui = {
+  ...additionalCopy("ui"),
   zh: {
     date: "出生日期",
     ce: "阳历",
@@ -170,7 +174,7 @@ export function periodLabel(
   period: { year: number; month: number },
   language: Language,
 ) {
-  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "th-TH", {
+  return new Intl.DateTimeFormat(localeTag(language), {
     year: "numeric",
     month: "long",
     calendar: "gregory",
@@ -234,13 +238,27 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
   const escape = (text: string) => text.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
   const evidence = (item: LifeSummary) => '<details><summary>' + escape(c.evidence) + '</summary>' + item.evidence.map(fact => '<p><strong>' + escape(fact.title) + '</strong> ' + escape(fact.detail) + '</p>').join('') + '<p>' + escape(c.evidenceHint) + '</p></details>';
   const list = (items: string[], ordered = false) => '<' + (ordered ? 'ol' : 'ul') + '>' + items.map(text => '<li>' + escape(text) + '</li>').join('') + '</' + (ordered ? 'ol' : 'ul') + '>';
-  const point = (item: LifePoint) => '<article><h4>' + escape(item.title) + '</h4><p>' + escape(item.text) + '</p>' + (item.signals ? list(item.signals) : '') + (item.response ? '<p>' + escape(item.response) + '</p>' : '') + (item.steps ? list(item.steps, true) : '') + (['example','pitfall','check'] as const).map(key => item[key] ? '<p>' + escape(item[key]!) + '</p>' : '').join('') + evidence(item) + '</article>';
+  const reportCopy = result.format === "western-compact" ? (language === "zh" || language === "th" ? informationCopy.jy[language].report.questions : additionalLocales[language].jy.report.questions) : undefined;
+  const window = (item: { window?: { start: string; end: string; event_date: string; timezone: string } }) => item.window
+    ? '<p class="label">' + escape((reportCopy?.window || c.timeRange) + ': ' + item.window.start + ' – ' + item.window.end + ' (' + item.window.timezone + ')') + '<br>' + escape((reportCopy?.eventDate || c.evidence) + ': ' + item.window.event_date) + '</p>' : '';
+  const point = (item: LifePoint) => '<article><h4>' + escape(item.title) + '</h4>' + window(item) + '<p>' + escape(item.text) + '</p>' + (item.signals ? list(item.signals) : '') + (item.response ? '<p>' + escape(item.response) + '</p>' : '') + (item.steps ? list(item.steps, true) : '') + (['example','pitfall','check'] as const).map(key => item[key] ? '<p>' + escape(item[key]!) + '</p>' : '').join('') + evidence(item) + '</article>';
   const answer = result.preview?.career_answer;
   const careerAnswer = answer && c.careerQuestionTitle ? '<h2>' + escape(c.careerQuestionTitle) + '</h2><p>' + escape(answer.text) + '</p>' + evidence(answer) : '';
   const typedQuestion = result.input.user_question ? '<h3>' + escape(result.input.user_question) + '</h3>' : '';
-  const preview = result.preview ? '<section><p class="label">' + escape(c.preview) + '</p>' + careerAnswer + '<h2>' + escape(sections[1].title) + '</h2>' + typedQuestion + '<p class="takeaway">' + escape(result.preview.summary.text) + '</p>' + evidence(result.preview.summary) + '</section><section><h2>' + escape(sections[2].title) + '</h2>' + result.preview.traits.map(point).join('') + '</section>' : '';
+  let preview = result.preview ? '<section><p class="label">' + escape(c.preview) + '</p>' + careerAnswer + '<h2>' + escape(sections[1].title) + '</h2>' + typedQuestion + '<p class="takeaway">' + escape(result.preview.summary.text) + '</p>' + evidence(result.preview.summary) + '</section><section><h2>' + escape(sections[2].title) + '</h2>' + result.preview.traits.map(point).join('') + '</section>' : '';
+  if (result.preview && reportCopy) {
+    const p = result.preview;
+    const answer = (value?: LifeSummary) => value ? window(value) + '<p class="takeaway">' + escape(value.text) + '</p>' + evidence(value) : '<p>' + escape(reportCopy.legacy) + '</p>';
+    const section = (title: string, content: string) => '<section><h2>' + escape(title) + '</h2>' + content + '</section>';
+    const timingNote = result.time_accuracy?.mode === 'estimated' ? reportCopy.timeUnknown : result.outlook?.state === 'ready' ? reportCopy.empty : result.outlook?.state === 'unavailable' ? reportCopy.unavailable : reportCopy.legacy;
+    preview = section(reportCopy.who, typedQuestion + answer(p.summary) + p.traits.map(point).join('') + careerAnswer)
+      + section(reportCopy.environment, answer(p.environment))
+      + section(reportCopy.influence, '<h3>' + escape(reportCopy.favorable) + '</h3>' + answer(p.favorable) + '<h3>' + escape(reportCopy.unfavorable) + '</h3>' + answer(p.unfavorable)
+        + (p.response ? '<h3>' + escape(reportCopy.freeResponse) + '</h3>' + answer(p.response) : ''))
+      + section(reportCopy.timing, (p.recent ? (p.sample_topic === 'career' ? '<h3>' + escape(reportCopy.freePeriod) + '</h3>' : '') + answer(p.recent) : '<p>' + escape(timingNote) + '</p>') + '<p>' + escape(reportCopy.timingNote) + '</p>');
+  }
   const catalog = '<section><h2>' + escape(c.catalog) + '</h2>' + sections.filter(section => full || !section.paid).map(section => '<h3>' + escape(section.title) + '</h3><p>' + escape(section.description) + '</p>').join('') + '</section>';
-  const chapters = full ? sections.filter(section => section.paid && section.groups.length).map(section => '<section><h2>' + escape(section.title) + '</h2>' + section.summaries.map(summary => '<p class="takeaway">' + escape(summary.text) + '</p>' + evidence(summary)).join('') + section.groups.map(group => '<h3>' + escape(group.title) + '</h3>' + group.entries.map(entry => point(entry.point)).join('')).join('') + '</section>').join('') : '';
-  const plan = full && result.plan && advice ? '<section><h2>' + escape(advice.title) + '</h2><p>' + escape(advice.description) + '</p>' + result.plan.phases.map((phase,index) => '<h3>' + escape(c.priority) + ' ' + (index + 1) + '</h3><h4>' + escape(phase.title) + '</h4><p>' + escape(phase.text) + '</p>' + phase.actions.map(action => '<h4>' + escape(action.title) + '</h4>' + list(action.steps || [],true)).join('')).join('') + '</section>' : '';
+  const chapters = full ? sections.filter(section => section.paid && section.groups.length).map(section => '<section><h2>' + escape(section.title) + '</h2>' + section.summaries.map(summary => window(summary) + '<p class="takeaway">' + escape(summary.text) + '</p>' + evidence(summary)).join('') + section.groups.map(group => '<h3>' + escape(group.title) + '</h3>' + group.entries.map(entry => point(entry.point)).join('')).join('') + '</section>').join('') : '';
+  const plan = full && result.plan && advice ? '<section><h2>' + escape(advice.title) + '</h2><p>' + escape(advice.description) + '</p>' + result.plan.phases.map((phase,index) => '<h3>' + escape(c.priority) + ' ' + (index + 1) + '</h3><h4>' + escape(phase.title) + '</h4><p>' + escape(phase.text) + '</p>' + phase.actions.map(action => '<h4>' + escape(action.title) + '</h4>' + window(action) + list(action.steps || [],true)).join('')).join('') + '</section>' : '';
   return '<!doctype html><html lang="' + language + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(c.title) + '</title><style>html{background:#130c24;color-scheme:dark}*{box-sizing:border-box}body{max-width:820px;margin:0 auto;padding:40px 28px;background:radial-gradient(ellipse at 0 0,#352044,transparent 55%),#130c24;color:#fff5df;font:15px/1.95 "Noto Sans SC","Noto Sans Thai",system-ui,sans-serif}h1,h2,h3,h4,h5{break-after:avoid}h1{font-size:36px;font-weight:500}h2{font-size:25px;color:#e4bc78}h3{font-size:19px;color:#e4bc78}h4{font-size:17px;margin:0 0 12px}h5{font-size:14px;color:#e4bc78;margin-bottom:6px}p,li{overflow-wrap:anywhere;color:#d5c8e3}p{margin:12px 0}.label{font-size:12px;color:#e4bc78}.takeaway{font-size:20px;color:#fff5df}section{border-top:1px solid #e4bc7850;margin-top:34px;padding-top:18px}article{margin:26px 0;padding:18px;background:#21162f;border:1px solid #e4bc7830;border-radius:12px;break-inside:avoid}details{font-size:12px;background:#160f24;border:1px solid #e4bc7830;border-radius:8px;padding:12px;margin-top:16px;color:#b4a8c6}summary{color:#e4bc78;cursor:pointer}li{padding-left:4px;margin:10px 0}header{border:1px solid #e4bc7860;border-radius:16px;padding:24px;background:#241535}footer{margin-top:36px;font-size:11px;color:#b4a8c6}@page{size:A4;margin:16mm}@media print{html,body{background:#130c24!important;color:#fff5df;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:0;max-width:none;font-size:11pt}details{display:block}details>*{display:block}article{break-inside:auto}section{break-before:auto}}</style></head><body><header><p class="label">FATE</p><h1>' + escape(c.title) + '</h1><p>' + escape(c.subtitle) + '</p><h2>' + escape(sections[0].title) + '</h2><p>' + escape(c.name) + ': ' + escape(result.input.profile.display_name || c.defaultName) + '</p><p>' + escape(result.input.profile.birth_date) + ' · ' + escape(result.input.profile.birth_time || c.timeUnknown) + '<br>' + escape(result.input.profile.birthplace) + ' · ' + escape(result.input.profile.timezone) + '</p>' + (!result.input.profile.birth_time ? '<p>' + escape(ui[language].timeNote) + '</p>' : '') + '<p class="label">' + escape(c.methodValue) + '<br>' + escape(c.timeRange) + ': ' + escape(reportReference(result, c)) + '<br>' + escape(result.id.toUpperCase()) + '</p></header>' + preview + catalog + chapters + plan + '<footer>' + escape(c.sourceVersion) + ' · ' + escape(result.method.version) + ' / ' + escape(result.version) + '</footer></body></html>';
 }

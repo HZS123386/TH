@@ -14,7 +14,7 @@ if (!process.argv.includes('--skip-build')) {
 }
 const webRoot = path.resolve(appRoot, 'build', 'web');
 if (!existsSync(path.join(webRoot, 'index.html'))) throw new Error('Run pnpm build:app:preview first');
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ttf': 'font/ttf', '.otf': 'font/otf', '.woff2': 'font/woff2' };
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.mp4': 'video/mp4', '.ttf': 'font/ttf', '.otf': 'font/otf', '.woff2': 'font/woff2' };
 
 const server = createServer(async (req, res) => {
   let url;
@@ -40,7 +40,14 @@ const server = createServer(async (req, res) => {
     if ((await stat(file)).isDirectory()) file = path.join(file, 'index.html');
     const info = await stat(file);
     const etag = `W/"${info.size.toString(16)}-${info.mtimeMs.toString(16)}"`;
-    const headers = { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache', ETag: etag };
+    const headers = {
+      'Content-Type': mime[path.extname(file)] || 'application/octet-stream',
+      'Cache-Control': 'no-cache',
+      ETag: etag,
+      // The local Wasm preview uses the same-origin assets needed for Skwasm workers.
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    };
     // Revalidate unversioned assets so refreshes reuse bytes and rebuilds stay current.
     if (req.headers['if-none-match']?.split(',').some((tag) => tag.trim() === etag || tag.trim() === '*')) {
       res.writeHead(304, headers).end(); return;

@@ -4,6 +4,23 @@ import 'package:fate_h5/ui/chinese_coverage.dart';
 import 'package:fate_h5/ui/language_fonts.dart';
 
 void main() {
+  test('regional body fonts load only when selected and reuse the same download', () async {
+    final loaded = <String>[];
+    final fonts = LanguageFonts(loadFont: (family, asset) async => loaded.add(asset));
+    for (final language in ['th', 'en', 'vi', 'ms', 'id']) {
+      await fonts.ensure(language);
+    }
+    expect(loaded, isEmpty);
+    await Future.wait([fonts.ensure('my'), fonts.ensureCommon('my')]);
+    expect(loaded, ['assets/fonts/NotoSansMyanmar-Regular.ttf']);
+    await fonts.ensureText('km', 'ខ្មែរ');
+    await fonts.ensure('lo');
+    expect(loaded, [
+      'assets/fonts/NotoSansMyanmar-Regular.ttf',
+      'assets/fonts/NotoSansKhmer-Regular.ttf',
+      'assets/fonts/NotoSansLao-Regular.ttf',
+    ]);
+  });
   test(
     'startup loads only the small UI font; Thai does not download Chinese',
     () async {

@@ -25,6 +25,42 @@ def save(client, headers, **patch):
     return response.json()
 
 
+def test_daily_calendar_keeps_the_kalayok_overlap_and_lunar_month_boundary():
+    monday = thai.daily_calendar("2026-11-09")
+    assert monday["buddhist_year"] == 2569
+    assert monday["lunar"] == {
+        "phase": "waning", "day": 14, "month": 11, "second_eighth_month": False,
+    }
+    assert monday["day_kind"] == "mixed"
+    assert monday["auspicious_hours"] == [
+        {"start": "08:24", "end": "10:48"}, {"start": "15:36", "end": "18:00"},
+    ]
+    tuesday = thai.daily_calendar("2026-11-10")
+    assert tuesday["lunar"] == {
+        "phase": "waxing", "day": 1, "month": 12, "second_eighth_month": False,
+    }
+    assert tuesday["day_kind"] == "ordinary"
+
+
+def test_daily_horoscope_serves_twelve_signs_for_the_bangkok_date(client):
+    bangkok = ZoneInfo("Asia/Bangkok")
+    before = datetime.now(bangkok).date().isoformat()
+    response = client.get("/api/daily-horoscope/today")
+    after = datetime.now(bangkok).date().isoformat()
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    day = response.json()
+    assert day["date"] in {before, after}
+    assert 1 <= day["refresh_after_seconds"] <= 86400
+    assert [reading["sign"] for reading in day["signs"]] == list(range(12))
+    for reading in day["signs"]:
+        assert set(reading["scores"]) == {"love", "work", "money", "health"}
+        assert all(0 <= score <= 100 for score in reading["scores"].values())
+        assert 1 <= reading["highlight"]["house"] <= 12
+    assert day["signs"] == thai.daily_horoscope(day["date"])["signs"]
+    assert thai.daily_horoscope("2026-11-10")["signs"] != thai.daily_horoscope("2026-11-11")["signs"]
+
+
 def test_actual_thai_chart_is_authenticated_account_scoped_and_cached(client, monkeypatch):
     assert client.get("/api/thai-chart").status_code == 401
     first, other = login(client), login(client)

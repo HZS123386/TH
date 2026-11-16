@@ -90,6 +90,9 @@ class ThaiStory(BaseModel):
 
 @lru_cache(maxsize=4)
 def copy_for(language):
+    from .report_languages import REGIONAL_LANGUAGES
+    if language in REGIONAL_LANGUAGES:
+        return REGIONAL_LANGUAGES[language]["reading"]
     return json.loads((Path(__file__).resolve().parents[2] / "src/content/thai-test.json").read_text(encoding="utf-8"))[language]
 
 
@@ -137,6 +140,8 @@ def calculation_in_prose(text, *, allow_practical_details=False):
         if re.search(pattern, text, re.IGNORECASE):
             return label
     patterns = [
+        r"ဇာတာ|ရာသီခွင်|ဂြိုဟ်|လဂ်|ហោរាសាស្ត្រ|ផែនទីកំណើត|លគ្នា|ໂຫລາສາດ|ດວງເກີດ|ລາສີ|ລັກຄະນາ",
+        r"\b(?:astrologi|zodiak|asenden|konjungsi|oposisi|trigon|sekstil|retrograd)\b|(?:carta|bagan)\s+kelahiran|rumah\s+(?:ke[- ]?)?\d+",
         r"宫|星体|星盘|命盘|主星|守护星|庙旺|落陷|行运|逆行|相位|八字|五行|日主|十神|明年|去年",
         r"tứ trụ|lá\s*số|chủ\s*tinh|nghịch\s*hành|góc\s*(?:chiếu|hợp)|chiêm\s*tinh|cung\s*(?:nhà|mọc|sự\s*nghiệp|tài\s*bạch|phu\s*thê|mệnh)|nhà\s+thứ|tháng\s+(?:một|hai|ba|tư|bốn|năm|sáu|bảy|tám|chín|mười)|năm\s+(?:nay|tới|sau|ngoái)",
         r"(?<!ครัว)(?<!บ้าน)เรือน|ราศี|ลัคนา|ดาว(?!น์โหลด)|ทักษา|ตรียางค์|นวางค์|ดวงกำเนิด|ดวงชะตา|พื้นดวง|โหราศาสตร์|สุริยยาตร์|ปาจื้อ|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม|ปีนี้|ปีหน้า|ปีก่อน",
@@ -176,6 +181,11 @@ def plain_language_problem(text, language, *, summary=False, title=False, detail
 
 
 def title_language_matches(text, language):
+    script = {"my": "MYANMAR", "km": "KHMER", "lo": "LAO"}.get(language)
+    if script:
+        import unicodedata
+        letters = [char for char in text if char.isalpha()]
+        return len(letters) >= 2 and all(unicodedata.name(char, "").startswith(script) for char in letters)
     cjk = len(re.findall(r"[\u3400-\u9fff]", text))
     thai_letters = len(re.findall(r"[\u0e00-\u0e7f]", text))
     latin = len(re.findall(r"[a-zA-Z]", text))

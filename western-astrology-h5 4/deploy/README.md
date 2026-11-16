@@ -2,7 +2,8 @@
 
 部署目标为 `ubuntu@129.226.126.212`。使用当前本地落地页及相邻的 `TH` 后端源码，保留服务器已有的 `ipplay.top` 网站。
 
-- 访问入口：`http://129.226.126.212/thai-landing/?lang=zh`
+- 域名入口：`https://ipplay.top/thai-landing/`，默认泰语；中文加 `?lang=zh`。
+- 原 IP 入口：`https://129.226.126.212/thai-landing/?lang=zh`。
 - 健康检查：`http://129.226.126.212/health`
 - 应用容器：`astro-life-report`，Python 3.12、Node.js 24、单个 Uvicorn worker。
 - 当前发布目录：`/opt/astro-life-report/current`，指向 `releases/` 中的版本。
@@ -11,7 +12,7 @@
 - 入口配置：`/opt/astro-life-report/shared/Caddyfile`，沿用现有 Caddy 网关，另外增加公网 IP 站点。
 - 网关修改前的备份：`/opt/astro-life-report/shared/backups/ingress-*`。
 
-当前保留原有点击解锁逻辑，不接入真实收款。TH 的本地开发登录入口在 production 环境关闭，公网入口只转发落地页、地点查询、人生报告接口和健康检查。
+配置 Sunlands 后使用手机号建单、官方收银台和服务端查单核验，核对订单、币种和到账金额后才解锁报告。production 仅允许 Sunlands 正式网关；测试网关和 Payso Demo 仍限 development。TH 的本地开发登录入口在 production 环境关闭，公网入口只转发落地页、地点查询、人生报告接口和健康检查。
 
 ## 日常查看
 
@@ -27,13 +28,19 @@ sudo docker compose logs --tail 80 app
 
 ## 制作新版本
 
-先在落地页目录安装 `scripts/release-requirements.txt` 中的构建工具并执行 `pnpm build:release`，再运行 `deploy/prepare_release.py`。生成结果在被 Git 忽略的 `output/deploy/` 下。普通本地构建仍可使用 `pnpm build`。
+在统一仓库总目录执行 `pnpm deploy:prepare`，或在落地页目录执行同名命令。已有最新构建时，可在落地页目录执行 `node ../TH/scripts/python.mjs -X utf8 deploy/prepare_release.py` 仅打包。生成结果固定为总目录的 `output/deploy/latest/`，上一份保留在 `output/deploy/previous/`；不在桌面创建项目副本。发布版本号仍写入 manifest，服务器端的版本和回滚流程保持原样。普通本地构建可使用 `pnpm build`。
 
 发布包包含后端、排盘脚本及库、`TH/src/content`、`TH/src/locales`、`TH/src/data` 中的运行资源，以及落地页 `site` 构建目录。报告校验代码会读取这些语言资源，不能只复制 Python 文件。
 
 `runtime.env` 与应用压缩包分开生成和上传，不进入 Docker 构建上下文。打包程序会检查构建文件中是否包含本机已配置的密钥，并排除原有用户数据库。地点索引单独复制，后续版本复用服务器已有文件。
 
+更新现有服务器时，保留线上已有的模型、数据库路径和环境模式，只合并本次明确要发布的配置项；不要用包含本机代理地址的开发配置整体覆盖线上 `runtime.env`。支付凭据同样只放在该私有配置文件中，发布前备份旧配置，失败时连同应用版本一起恢复。部署验收不创建真实订单或付款。
+
 首次部署依次使用 `stage_server.sh`、`start_server.sh` 和 `publish_proxy.py`。后续更新只需构建和启动新应用版本。需要修改已有 IP 入口时，向网关脚本额外提供上个版本的 `Caddyfile.ip` 路径；只有旧配置逐字匹配时才替换该站点，避免重复添加或改动其他网站。
+
+复用 `ipplay.top` 时，`Caddyfile.domain` 仅包含落地页静态资源及报告接口路由，插入原站域名配置，不接管 `/`、`/api/v1/` 或管理后台。通过 `publish_proxy.py <本次IP配置> <现有IP配置> --domain-routes Caddyfile.domain --release vYYYY.MM.DD.N` 校验后热重载，所有容器保持运行。配置更新也使用独立版本，回执写入 `/opt/ipplay/shared/releases/`，原网关备份放在 `/opt/ipplay/shared/config-releases/<版本>/`，同步更新原站 `deploy/server/releases.json`。后续更换独立域名时只调整网关和 DNS，应用继续使用同源接口及 `/thai-landing/` base 路径。
+
+域名和原 IP 属于不同浏览器来源，原 IP 上保存的报告访问凭证不会自动转到新域名。保留原 IP 入口供已有访客查看历史报告，不把访问凭证放进 URL。
 
 ## 首屏资源
 

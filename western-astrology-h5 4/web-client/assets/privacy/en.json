@@ -1,0 +1,139 @@
+{
+  "version": "1.1",
+  "updated": "2026-11-13",
+  "labels": {
+    "version": "Version", "updated": "Last revised", "effective": "Effective date",
+    "pending": "To be confirmed before publication",
+    "reviewNote": "Publication review draft. Operator details are shown below. The effective date and outstanding retention, transfer and rights-handling arrangements described in this policy must be confirmed before formal publication.",
+    "controller": "Operator / data controller", "address": "Contact address", "contact": "Privacy email",
+    "contactHint": "Use the privacy email above for access, correction, deletion, withdrawal of consent or complaints.",
+    "contents": "Contents", "overview": "Key points to understand"
+  },
+  "summary": [
+    "A report requires your birth date, birthplace and corresponding time zone. An unknown birth time is allowed, with limitations. Your optional question can be left blank.",
+    "Our server is in Hong Kong SAR, China. RoxyAPI calculates the chart and Alibaba Cloud Qwen writes the interpretation, involving processing in Germany and mainland China.",
+    "A random credential in your browser protects access to your reports. Keep it private. Clearing browser storage does not delete reports on the server.",
+    "Unlocking is currently a test without an actual charge. APP downloads are not open. Automated interpretations are for entertainment and self-exploration, not decisions with legal or similarly significant effects."
+  ],
+  "sections": [
+    {"id": "scope", "title": "1. Scope and controller", "paragraphs": [
+      "This policy covers the FATE H5 website, free and full interpretations, report history, feedback and PDF export. The actual operator identified above determines the purposes and means of this processing and is the data controller. FATE is a product name, not a substitute for the operator's legal identity.",
+      "The policy is prepared for the current service for users in Thailand with reference to Thailand's Personal Data Protection Act (PDPA). Mandatory rights under other applicable local laws remain unaffected. Offering a language does not establish compliance with every country using it. Native APP accounts, chat and independent third-party websites have their own applicable notices; sharing a backend does not mean this webpage collects all of their data."
+    ]},
+    {"id": "inputs", "title": "2. Information you provide and your choices", "bullets": [
+      "Birth date is necessary to calculate your chart. Without it, a personalised report cannot be generated.",
+      "Birth time determines time-sensitive factors such as the ascendant and houses. You may select that the exact time is unknown. The system then uses 12:00 noon as a reference and identifies uncertainty; this reference is not your verified birth time.",
+      "Birth country, province/state, city/district and the selected place identifier determine birthplace coordinates and time zone. The coordinates come from the selected city directory, not GPS or permission to track your current location. A recognisable birthplace is needed for the relevant calculation.",
+      "Selected topics, career context and an optional question determine the interpretation's focus. You can leave the question blank and receive the standard report. Any experiences or information about work or relationships that you type will be processed as part of that text.",
+      "The standard webpage flow does not require your real name, identity document, telephone number or bank card details. Please do not add them to your question."
+    ]},
+    {"id": "generated", "title": "3. Generated information and technical records", "paragraphs": [
+      "The service stores a derived identifier for your random access credential, report ID, calculated chart and evidence, free and full text, generation progress and retry states, unlock status, timestamps and feedback you submit. Inferences and hashed identifiers may still be personal data; they are not automatically anonymous.",
+      "For operation and security, requests may create logs containing IP addresses, time, paths, status codes and errors, as well as user/network identifiers and counts for rate limiting. Model-usage records contain report references, provider, model, request ID, time, token counts and validation outcomes. They generally do not contain complete prompts or report text but may remain linkable to a report.",
+      "If you contact the operator, your reply address, request and information reasonably needed to investigate it are processed. Start with the report ID and issue description. Do not send passwords, API keys, browser access credentials or unnecessary copies of identity documents."
+    ]},
+    {"id": "purposes", "title": "4. Purposes and lawful grounds", "bullets": [
+      "Calculating, generating, saving, reopening, retrying and exporting a report you request: processing necessary for the requested service or relevant pre-contract steps, where permitted by applicable law.",
+      "Preventing abuse, protecting access, maintaining availability, diagnosing faults and controlling API usage: necessary legitimate interests, only where these are not overridden by your rights and interests. Applicable objection rights remain available.",
+      "Basic first-party visit-to-report statistics described in section 8: proportionate legitimate interests with an objection channel, or valid prior consent where the applicable law requires it.",
+      "Handling rights requests, regulatory duties and disputes: applicable legal obligations or legitimate interests as appropriate.",
+      "New purposes requiring consent, including sensitive-data processing or transfers where explicit consent is legally required, require separate information and valid consent before they begin. Reading this policy, browsing or pressing Generate is not blanket consent to every purpose."
+    ]},
+    {"id": "sensitive", "title": "5. Sensitive data and information about others", "paragraphs": [
+      "A standard report does not require religion, political opinions, racial or ethnic origin, health, sexual behaviour, biometric data, criminal records or other specially protected information. Please omit it from questions and feedback. Do not submit other people's birth or private information without a lawful basis or authorisation.",
+      "Free text enters the report-generation workflow. There is currently no dedicated sensitive-data submission and explicit-consent procedure, and automatic identification or removal of all sensitive text is not guaranteed. If such information is essential to a question, stop before submitting and contact the privacy email. Excessive data should be restricted or deleted as legally required. This warning is not a substitute for a required legal ground or consent."
+    ]},
+    {"id": "recipients", "title": "6. Service providers and what they receive", "bullets": [
+      "Tencent Cloud infrastructure in Hong Kong hosts the website, API, database and operational logs for hosting, security and service operation. Operational access should be limited to personnel who need it.",
+      "RoxyAPI, operated by Roxy Labs, receives birth date, actual or reference time, birthplace coordinates, time zone and chart settings to calculate Western astrology positions and houses. The current calculation request does not intentionally include your name, email, free-text question or browser IP. The provider sees technical information associated with our server's request. Its published materials describe hosting in Germany; its own policy and processing terms are linked below.",
+      "Alibaba Cloud Model Studio / Qwen receives necessary chart factors, supporting evidence, output language, birth-time certainty, your optional question and existing interpretation summaries needed for continuity. The normal writing bundle does not require direct fields for a name, raw birth date, city name or coordinates. The question, chart and context may nevertheless be personal data. The current mainland China service uses a Beijing access endpoint; this does not guarantee that all computation occurs only in Beijing.",
+      "GeoNames supplies a place directory used as a local copy on our server to resolve selected cities and time zones. This lookup does not need to send your birth details or question to GeoNames. Visiting its external website subjects that visit to its own practices."
+    ], "paragraphs": [
+      "The operator should apply appropriate processor terms, access restrictions and supplier checks. This policy does not authorise selling or renting your data; the current website has no advertising exchange or report-sale-to-advertisers function. Legally required disclosures, lawful disputes or business succession require limited disclosure and applicable notices and successor obligations."
+    ], "links": [
+      {"label": "RoxyAPI Privacy Policy", "url": "https://roxyapi.com/policy/privacy"},
+      {"label": "RoxyAPI Data Processing Addendum", "url": "https://roxyapi.com/policy/dpa"},
+      {"label": "Alibaba Cloud Model Studio privacy information", "url": "https://help.aliyun.com/zh/model-studio/privacy-notice"},
+      {"label": "Tencent Cloud privacy information", "url": "https://www.tencentcloud.com/document/product/301/17345"}
+    ]},
+    {"id": "transfers", "title": "7. International transfers", "paragraphs": [
+      "If you use the site in Thailand or elsewhere, data may first reach our Hong Kong server. Necessary chart inputs are then processed by the Germany-hosted RoxyAPI service, and interpretation inputs by Alibaba Cloud in mainland China. The service is not entirely offline or restricted to keeping all data in Thailand. Laws, regulatory access and remedies can differ between locations.",
+      "A transfer must meet applicable legal conditions, such as an applicable adequacy standard, appropriate safeguards with enforceable rights and remedies, or a strictly applicable statutory exception. HTTPS, a provider's GDPR statement, disclosing locations or clicking Generate does not itself satisfy Thailand's transfer rules. The operator must determine the actual mechanism for each provider and destination; this review draft does not certify completion. Contact the privacy email for the applicable basis and available safeguard information."
+    ]},
+    {"id": "storage", "title": "8. Browser storage, cookies and visit statistics", "bullets": [
+      "Report credential: a random astro-life-report-key is stored in both localStorage and sessionStorage to recognise access to your reports. The server mainly stores a derived identifier. Other users of a shared browser may access reports while the credential remains available.",
+      "Necessary interface state: fate-welcome-seen and loading-recovery markers support the interface. Session data normally ends with the relevant session; persistent storage can remain until you clear site data.",
+      "Short migration cookie: an existing HTTP-to-HTTPS migration flow may use a first-party fate-https-owner cookie containing the random credential for up to about 60 seconds. It is not an advertising cookie.",
+      "First-party statistics: a session visit ID, fate-visit, source/campaign labels and visit, submission and display timestamps may be associated with report IDs. The statistics endpoint does not accept birth-date or question fields. These records are not fully anonymous. The current implementation stops these visit events when the browser declares Do Not Track or Global Privacy Control; necessary requests, storage and security logs continue.",
+      "The current H5 does not integrate Google Analytics, Meta Pixel or a cross-site advertising SDK. Blocking storage or clearing it may prevent report recovery. A credential remaining in an open session may restore persistent storage; to remove browser credentials fully, clear all site storage and close relevant tabs."
+    ]},
+    {"id": "retention", "title": "9. Retention and clearing rules", "paragraphs": [
+      "Retention depends on providing the requested ongoing service, resolving issues and legal obligations. Where a fixed period cannot be specified, the criteria and current cleanup behaviour below apply. Cache validity is not a promise that every copy is physically erased at that exact moment."
+    ], "bullets": [
+      "Inputs, charts, report text and report feedback: retained for reopening and retries until you delete the report, the service purpose ends or deletion is legally required. Reports currently have no automatic age-based expiry. This does not authorise indefinite retention of all information.",
+      "First-party visits and report associations: a rolling 30-day window, with expired records removed when a later visit triggers cleanup rather than at an exact scheduled instant.",
+      "Local calculation and generation caches: results generally have about 24 hours of validity and are cleared by later cache operations, capacity eviction or process restart. Daily user/network usage counters also discard records older than 24 hours on relevant later operations.",
+      "Model-usage, error and security records: retained as necessary for usage reconciliation, troubleshooting, abuse investigations, disputes or legal duties. The current usage table has no uniform automatic expiry and access logs rotate by size. A fixed maximum and responsible cleanup procedure must be confirmed by the operator before final publication; this draft does not promise an unconfigured number of days.",
+      "Backups: deleting the live record does not immediately rewrite historical backups. The operator must confirm rotation and final overwrite periods. Backup access and use should be restricted, and a restoration should not reverse an applicable deletion request.",
+      "Providers apply their service terms and legal retention duties. Zero-data-retention for the current mainland China endpoint has not been verified. We cannot promise zero third-party retention; applicable further deletion or restriction requests can be made through the operator."
+    ]},
+    {"id": "deletion", "title": "10. Deleting reports and stopping a wait", "paragraphs": [
+      "Use the deletion control on your report or in My Reports for reports accessible with your credential. It removes the main report record and associated test-payment record. Deletion may be temporarily refused while a generation job is active; retry after it finishes or contact the operator. Deleted reports generally cannot be restored; generating again is new processing.",
+      "Cancel Waiting primarily stops the page's wait or polling, not necessarily a calculation already submitted to the server. It does not automatically delete stored data. Clearing browser storage does not send a server deletion request and may remove your ability to demonstrate report access. Delete the report first if that is your intention.",
+      "The page control does not automatically erase every cache, visit record, model-usage record, provider-held record or historical backup; see section 9 and contact the privacy email for further requests. PDFs or text you download, copy or share remain under your or the recipient's control and cannot be remotely erased by server deletion."
+    ]},
+    {"id": "ai", "title": "11. Automated interpretation and model training", "paragraphs": [
+      "Reports combine calculated factors and AI-generated language to infer personality, choices or relationship themes. This automated personalised analysis may be inaccurate, incomplete or unsuitable. Unknown birth time adds uncertainty. It is not proof that a prediction will occur and is not used for medical, credit, employment, insurance, judicial or other legally or similarly significant decisions about you.",
+      "Our current service has no workflow for training our own general-purpose model on your reports. Provider training and retention are different issues: Alibaba Cloud states that it does not train models on customer data but may retain invocation-related data as required by law. No training does not mean no retention. Unrelated training, advertising profiling or other new purposes require their own lawful basis and any required consent."
+    ]},
+    {"id": "rights", "title": "12. Your rights and requests", "paragraphs": [
+      "Subject to applicable conditions, you may request access and copies, correction, erasure or anonymisation, restriction, objection to processing such as legitimate-interest processing, and portability where available. Consent-based processing permits withdrawal without affecting earlier lawful processing. Necessary service or legally required records are not automatically all erased by withdrawal.",
+      "Use the report deletion control for that operation; send other requests to the privacy email above with the report ID and the right you wish to exercise. Verification should be proportionate to identity or report control and prevent disclosure to unauthorised people. Do not send API keys, browser credentials or unrelated full identity documents.",
+      "Under Thailand's PDPA, an applicable access/copy request must be addressed without undue delay and generally within 30 days of receipt. Other rights follow their own statutory deadlines. A lawful refusal should explain the reason and complaint options. You should not face unreasonable discrimination for exercising rights. You may complain to Thailand's Office of the Personal Data Protection Committee or another competent authority without our prior permission."
+    ], "links": [{"label": "Thailand PDPC official website", "url": "https://www.pdpc.or.th/"}]},
+    {"id": "children", "title": "13. Minors and guardians", "paragraphs": [
+      "The service is intended for users with the relevant legal capacity to request it and authorise processing. In Thailand, a person under 20 who has not otherwise acquired full legal capacity may be a minor; guardian consent requirements depend on age, capacity and the particular processing. A button click alone is not necessarily valid consent.",
+      "The current page has no dedicated guardian verification and consent procedure. If you cannot lawfully submit these details independently, do not generate a report before valid arrangements exist. Guardians may contact the privacy email about improper submissions. The operator should verify and restrict or delete data as required. A written age statement does not replace actual child-protection measures."
+    ]},
+    {"id": "security", "title": "14. Security and data breaches", "paragraphs": [
+      "Measures include HTTPS transport, server-side supplier API keys, random report credentials, access checks, input validation and rate limits. Operational access should be limited by necessity. Protect credentials on shared devices; a normal report URL should not be treated as the access credential.",
+      "The verified implementation does not justify claiming that all stored database records are encrypted at rest, that the service holds a particular security certification or that risk is zero. Following a breach, the operator should assess and contain the incident. Under Thailand's PDPA, unless unlikely to result in risk to rights and freedoms, the competent authority must be notified without undue delay and where feasible within 72 hours of awareness. High-risk breaches also require notice to affected individuals without undue delay and information on remediation. Stricter applicable local rules remain applicable."
+    ]},
+    {"id": "payment", "title": "15. Test unlocks, APP downloads and future features", "paragraphs": [
+      "Displayed prices and unlock controls currently serve testing without real collection of payment. The report flow does not collect card details, payment passwords or wallet authorisations. The APP download button currently displays a testing notice; it does not download or install an application.",
+      "Before enabling real payment, APP distribution, login, tarot, numerology or other new functions, the operator must reassess data, recipients and lawful grounds, update this policy and provide notices or consent where required. This policy is not advance authorisation for all future processing."
+    ]},
+    {"id": "changes", "title": "16. Updates, contact and language", "paragraphs": [
+      "The version and revision date above identify this policy. Material changes to purposes, data categories, recipients, transfers or rights should be clearly notified before implementation, with fresh consent where required. Continued browsing alone is not consent to every new purpose.",
+      "Contact the operator and privacy email identified above about privacy rights or complaints. If local representation or a data protection officer is legally required, the operator must also provide those contact details; this draft does not claim appointment or automatic exemption. Translations aim to convey the same facts. Ask the operator about discrepancies; no language version limits mandatory legal rights."
+    ]},
+    {
+      "id": "regional-law",
+      "title": "17. Laws applicable to the operator's location",
+      "paragraphs": [
+        "The operator is now based in Beijing, mainland China. Processing in mainland China must also comply with applicable Chinese law, including the PIPL. Serving Thailand does not automatically exclude these duties. The Thai-law legitimate-interest grounds in this policy do not themselves establish a Chinese-law ground.",
+        "Chinese-law duties for transfers, notification, any required separate consent and impact assessment must be checked against actual data flows. Any assessment, contract, certification or exemption must meet current conditions. This draft does not assert completion or change the server's Hong Kong location.",
+        "Where Hong Kong's Personal Data (Privacy) Ordinance, Cap. 486, applies, you may request access, copies and correction. Applicable requests generally follow a 40-day period, subject to statutory procedures and exceptions; this does not extend a Thai PDPA access deadline of 30 days to 40. Any lawful copying/access charge should be explained beforehand and limited to what the law reasonably permits.",
+        "Use the privacy email above or complain to a competent authority, including Hong Kong's PCPD where its law applies. Outsourcing or overseas processing does not by itself remove the operator's applicable responsibilities. Other markets should receive appropriate notices and safeguards before active expansion."
+      ],
+      "links": [
+        {
+          "label": "China Personal Information Protection Law",
+          "url": "https://www.cac.gov.cn/2021-08/20/c_1631050028355286.htm"
+        },
+        {
+          "label": "CAC: cross-border data policy guidance",
+          "url": "https://www.cac.gov.cn/2026-07/24/c_1786638883119336.htm"
+        },
+        {
+          "label": "PCPD: Ordinance and data protection principles",
+          "url": "https://www.pcpd.org.hk/english/data_privacy_law/ordinance_at_a_Glance/ordinance.html"
+        },
+        {
+          "label": "Hong Kong PCPD",
+          "url": "https://www.pcpd.org.hk/"
+        }
+      ]
+    }
+  ]
+}

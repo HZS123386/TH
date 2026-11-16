@@ -1,0 +1,773 @@
+{
+  "jy": {
+    "language": "Bahasa",
+    "dateParts": {
+      "year": "Tahun Masihi",
+      "month": "Bulan",
+      "day": "Hari",
+      "placeholder": "Tahun / Bulan / Hari"
+    },
+    "pointFields": {
+      "example": "Contoh harian",
+      "pitfall": "Perkara yang perlu dielakkan",
+      "check": "Cara menilai hasil"
+    },
+    "house": "Rumah {number}",
+    "home": "Laman utama FATE",
+    "title": "FATE · Bacaan astrologi peribadi",
+    "welcome": {
+      "first": "Selamat datang",
+      "returning": "Selamat kembali",
+      "firstNote": "Terokai peta bintang anda",
+      "returningNote": "Gembira bertemu anda lagi",
+      "start": "Mula meneroka",
+      "swipe": "Leret ke atas untuk bermula"
+    },
+    "persona": "Ahli astrologi AI peribadi anda",
+    "formTitle": "Kenali corak diri melalui carta kelahiran",
+    "formCaption": "Baca ciri diri percuma, kemudian terokai enam tema",
+    "topicLabel": "Kandungan bacaan anda",
+    "date": "Tarikh lahir",
+    "calendar": "Kalendar Masihi",
+    "time": "Waktu lahir",
+    "unknown": "Saya tidak tahu waktu lahir tepat",
+    "unknownNote": "Boleh teruskan dengan anggaran 12:00 waktu tempatan. Asenden, rumah dan masa peristiwa dikecualikan; bacaan mungkin kurang tepat tanpa waktu lahir sebenar.",
+    "country": "Negara kelahiran",
+    "countryPrompt": "Masukkan China atau Thailand",
+    "countryFirst": "Pilih negara dahulu",
+    "china": "China",
+    "thailand": "Thailand",
+    "globalCities": "Cari bandar seluruh dunia",
+    "region": "Wilayah / negeri",
+    "regionPrompt": "Contohnya, Hebei",
+    "thaiRegionPrompt": "Contohnya, Chiang Mai",
+    "regionFirst": "Pilih wilayah dahulu",
+    "regionPending": "Sedang memuatkan…",
+    "regionRetry": "Muat semula senarai",
+    "city": "Bandar / daerah",
+    "cityExample": "Contohnya, Handan",
+    "citySearch": "Cari atau pilih bandar",
+    "cityHint": "Masukkan nama bandar atau pilih lokasi cadangan",
+    "cityError": "Carian tidak tersedia sementara",
+    "placeHint": "Pilih negara, wilayah dan bandar. Carian menyokong bahasa Cina, Thai dan Inggeris.",
+    "history": "Laporan saya",
+    "historyHint": "Buka laporan dengan kunci akses yang disimpan dalam pelayar ini",
+    "emptyHistory": "Belum ada laporan tersimpan",
+    "openReport": "Terus membaca",
+    "close": "Tutup",
+    "cancel": "Batal",
+    "questionTitle": "Apakah yang paling ingin anda terokai?",
+    "questionHint": "Pilih soalan atau tulis sendiri",
+    "writeQuestion": "Tulis soalan saya",
+    "browseQuestions": "Pilih soalan",
+    "selected": "Dipilih",
+    "questions": [
+      [
+        "Kekal atau pergi",
+        "Patutkah saya bertukar kerja?"
+      ],
+      [
+        "Meletak jawatan",
+        "Patutkah saya berhenti sebelum mendapat kerja baharu?"
+      ],
+      [
+        "Menunggu",
+        "Patutkah saya membuat susulan selepas temu duga?"
+      ],
+      [
+        "Tawaran kerja",
+        "Patutkah saya menerima tawaran ini?"
+      ]
+    ],
+    "formHint": "Butiran lahir ini hanya untuk bacaan ini dan tidak mengubah profil anda.",
+    "disclaimer": "Untuk hiburan dan penerokaan diri",
+    "consentTitle": "Sahkan penggunaan butiran lahir",
+    "consentError": "Persetujuan tidak dapat disimpan. Cuba lagi. Laporan belum dimulakan.",
+    "noticeOutdated": "Halaman telah dikemas kini. Buka versi terkini dan sahkan notis penggunaan data semula.",
+    "openLatest": "Buka versi terkini",
+    "consent": "Tarikh, waktu dan koordinat lahir dihantar ke RoxyAPI untuk mengira carta Barat. Maklumat carta yang perlu dan soalan dihantar ke Qwen untuk menulis bacaan. Baca butiran penggunaan data dahulu.",
+    "consentAction": "Setuju dan kira carta",
+    "privacy": "Dasar privasi",
+    "support": "Bantuan",
+    "supportTitle": "Hubungi sokongan",
+
+    "back": "← Kembali ke laman utama",
+    "geoNames": "Data lokasi daripada",
+    "progress": "Kemajuan penjanaan",
+    "generation": {
+      "birthDetails": "Butiran lahir anda",
+      "birthplace": "Tempat lahir",
+      "question": "Soalan anda",
+      "method": "Cara carta dikira",
+      "basis": "RoxyAPI mengira carta Barat daripada tarikh, waktu tempatan, koordinat bandar dan zon waktu. Qwen menulis bacaan.",
+      "process": "Langkah pengiraan",
+      "stages": {
+        "review": "Menyemak butiran lahir",
+        "submitting": "Menghantar pengiraan carta",
+        "queued": "Menunggu pengiraan carta",
+        "running": "Mengira kedudukan planet"
+      }
+    },
+    "interpretation": {
+      "title": "Membaca peta bintang anda",
+      "steps": {
+        "basics": {
+          "title": "Butiran kelahiran",
+          "status": "Menyemak asas carta kelahiran"
+        },
+        "placements": {
+          "title": "Planet dan rumah",
+          "status": "Menyusun kedudukan, rumah dan faktor carta"
+        },
+        "reading": {
+          "title": "Bacaan peribadi",
+          "status": "Menulis bacaan berdasarkan carta"
+        }
+      },
+      "dateOnlyPlacements": "Menyusun kedudukan yang dapat disahkan",
+      "preparing": "Mengira carta sebelum menulis bacaan",
+      "awaitingContent": "Carta siap. Menunggu bahagian pertama",
+      "validating": "Menyemak dan menyimpan bacaan",
+      "reconnecting": "Menyambung semula; kemajuan disimpan",
+      "waiting": "Perkhidmatan sibuk dan akan bersambung automatik",
+      "interrupted": "Bacaan belum selesai. Sila cuba lagi",
+      "interruptedTitle": "Bacaan belum lengkap",
+      "retryFree": "Jana semula bacaan percuma",
+      "retryFull": "Teruskan bacaan penuh",
+      "waitLabel": "Menunggu",
+      "next": "Peringkat seterusnya",
+      "complete": "Bacaan anda siap",
+      "summarizing": "Menyediakan ringkasan",
+      "planets": "Kedudukan planet",
+      "houses": "Rumah",
+      "aspects": "Aspek utama"
+    },
+    "erase": "Padam hasil ini",
+    "checkout": {"downloadUnavailable": "Aplikasi masih dalam ujian dan belum boleh dimuat turun. Terima kasih atas minat anda. Nantikan pelancaran rasmi!",
+      "eyebrow": "Terokai bacaan peribadi",
+      "title": "Buka bacaan anda",
+      "contents": "Buka enam topik secara mendalam",
+      "samplePrice": "Harga contoh",
+      "pay": "Bayar dan buka",
+      "preview": "Selepas pembayaran disahkan, laporan penuh anda akan dibuka.",
+      "download": "Muat turun aplikasi",
+      "appTestingTitle": "Aplikasi sedang diuji",
+      "appTestingMessage": "Aplikasi masih dalam ujian dan belum boleh dimuat turun. Terima kasih atas minat anda. Nantikan pelancaran rasmi!",
+      "appTestingClose": "Faham",
+      "aboutTitle": [
+        "Keliru apabila kerja dan cinta tidak seperti diharapkan?",
+        "Hilang arah atau berasa lesu?"
+      ],
+      "about": "Ahli astrologi membantu mentafsir kehidupan, mengenal pasti inti kebimbangan dan memberi panduan ke arah kehidupan yang tenang dan bahagia.",
+      "resume": "Ke halaman bayaran",
+      "back": "Kembali ke laman utama"
+    , "details": ["Tempoh penting", "Asas analisis", "Cara menangani"]},
+    "report": {
+      "title": "Laporan carta kelahiran anda",
+      "freeTitle": "Bacaan percuma anda",
+      "freeHint": "Kenali personaliti, persekitaran, satu faktor membantu, satu perhatian dan tema terdekat. Buka tempoh, asas analisis dan tindakan praktikal.",
+      "contents": "Kandungan laporan",
+      "sections": {
+        "overall": "Gambaran kehidupan",
+        "natal": "Corak carta kelahiran",
+        "love": "Cinta dan pasangan",
+        "career": "Kerja dan kewangan",
+        "opportunities": "Peluang dan perhatian",
+        "partnership": "Keutamaan hubungan"
+      },
+      "westernSections": {
+        "natal": "Corak diri",
+        "career": "Kerjaya",
+        "wealth": "Kewangan",
+        "love": "Cinta dan pasangan",
+        "risk": "Corak yang perlu diperhatikan",
+        "plan": "Cadangan praktikal"
+      },
+      "houses": {
+        "2": "Sumber dan kewangan",
+        "7": "Pasangan dan hubungan jangka panjang",
+        "10": "Kerjaya dan peranan awam"
+      },
+      "housesUnavailable": "Waktu lahir tepat diperlukan untuk memaparkan rumah tema ini",
+      "readingUnavailable": "Tiada bacaan bagi kedudukan yang disahkan untuk tema ini"
+    , "questions": {"who": "Siapakah saya?", "environment": "Persekitaran apa yang mungkin sesuai?", "influence": "Bagaimanakah ia boleh mempengaruhi saya?", "timing": "Bilakah perlu memberi perhatian?", "identityDetails": "Lihat personaliti, kekuatan dan batasan", "favorable": "Faktor yang membantu", "unfavorable": "Corak yang perlu diperhatikan", "window": "Tempoh pemerhatian", "eventDate": "Tarikh yang dikira", "timeUnknown": "Masa kelahiran tepat diperlukan untuk tempoh peribadi. Tambahkannya dan jana laporan baharu.", "unavailable": "Data masa belum tersedia semasa laporan ini dibuat, jadi trend mengikut masa tidak diandaikan.", "empty": "Tiada titik masa peribadi untuk dipaparkan dalam sampel percuma ini. Ini tidak bermakna kehidupan tidak akan berubah.", "legacy": "Laporan lama ini belum mengandungi bahagian ini. Jana laporan baharu untuk empat soalan.", "timingNote": "Gunakan tempoh ini untuk memerhatikan tema dan merancang perbualan, bukan jaminan peristiwa. Tarikh menggunakan UTC.", "freeResponse": "Satu tip kerjaya percuma", "freePeriod": "Satu tempoh kerjaya untuk diperhatikan"}},
+    "chart": {
+      "title": "Carta kelahiran anda",
+      "exact": "Suriyayatra Thai · Rumah tanda penuh",
+      "western": "Astrologi Barat · RoxyAPI · Placidus",
+      "dateOnly": "Anggaran waktu lahir: 12:00",
+      "wheel": "Carta kelahiran",
+      "noTime": "Boleh teruskan dengan anggaran 12:00 tempatan. Asenden, rumah dan bacaan mungkin kurang tepat.",
+      "selectPlanet": "Pilih planet",
+      "inSign": " dalam ",
+      "reading": "Baca tafsiran ringkas",
+      "readingLanguage": "",
+      "noReading": "Kedudukan ini berubah sepanjang hari. Masukkan waktu lahir tepat untuk tafsirannya.",
+      "factors": {
+        "favorable": "Faktor sokongan",
+        "unfavorable": "Faktor untuk diseimbangkan",
+        "empty": "Tiada aspek utama dalam kumpulan ini",
+        "noTime": "Waktu lahir tepat diperlukan untuk menilai faktor aspek",
+        "basis": "Berdasarkan carta dan bacaan laporan ini"
+      },
+      "note": "Untuk hiburan dan renungan diri"
+    },
+    "topics": {
+      "life": {
+        "label": "Gambaran carta kelahiran",
+        "action": "Terokai carta saya"
+      },
+      "love": {
+        "label": "Cinta dan hubungan",
+        "action": "Terokai corak hubungan saya"
+      },
+      "career": {
+        "label": "Hala tuju kerjaya",
+        "action": "Terokai hala tuju kerjaya saya"
+      }
+    }
+  },
+  "life": {
+    "title": "Laporan kehidupan",
+    "eyebrow": "Ditulis untuk saat kelahiran anda",
+    "subtitle": "Fahami tabiat dan terokai pilihan yang sesuai untuk anda.",
+    "generate": "Terokai carta saya",
+    "generating": "Mengira carta sebelum menulis bacaan",
+    "includes": "Terokai tujuh tema kehidupan",
+    "includesHint": "Ciri diri percuma; buka laporan penuh untuk membaca ketujuh-tujuh tema.",
+    "downloadApp": "Muat turun aplikasi untuk bacaan percuma",
+    "downloadAppShort": "Muat turun aplikasi",
+    "appFree": "Bacaan percuma",
+    "buyReading": "Beli bacaan",
+    "preview": "Pratonton percuma",
+    "takeaway": "Tema utama diri anda",
+    "traits": "Kenali tiga ciri diri",
+    "birth": "Butiran lahir yang digunakan",
+    "created": "Dicipta",
+    "number": "ID laporan",
+    "timeUnknown": "Waktu lahir tidak diketahui",
+    "name": "Nama",
+    "defaultName": "Saya",
+    "timeRange": "Tempoh rujukan",
+    "yearReference": "Tahun rujukan",
+    "freeContent": "Percuma untuk dibaca",
+    "priority": "Keutamaan",
+    "method": "Kaedah tafsiran",
+    "methodValue": "Suriyayatra Thai · Rumah tanda penuh",
+    "evidence": "Lihat rujukan carta",
+    "evidenceHint": "Faktor ini dikira untuk laporan ini. Makna kehidupannya ialah tafsiran tradisi, bukan pengesahan peristiwa sebenar.",
+    "summaryEvidence": "Rujukan perkara ini",
+    "feedback": "Adakah ciri ini menyerupai anda?",
+    "feedbackOptions": [
+      "Sangat dekat",
+      "Sebahagiannya",
+      "Tidak begitu"
+    ],
+    "feedbackSaved": "Disimpan. Terima kasih atas maklum balas anda.",
+    "feedbackHint": "Maklum balas membantu menilai kandungan tanpa mengubah pengiraan.",
+    "catalog": "Kandungan laporan",
+    "catalogHint": "Tiga bahagian awal percuma; buka lima tema lengkap.",
+    "locked": "Buka untuk membaca",
+    "available": "Sedia",
+    "chapter": "Tema",
+    "offerTitle": "Terokai kerja, kewangan dan hubungan",
+    "offerText": "Anda telah membaca tiga ciri diri. Laporan penuh meneroka pengaruh corak ini terhadap pilihan dan perkara yang boleh disesuaikan.",
+    "benefits": [
+      "Gaya kerja dan perkembangan",
+      "Tabiat kewangan dan perancangan",
+      "Keperluan hubungan dan komunikasi",
+      "Keutamaan semasa dan langkah praktikal"
+    ],
+    "unlock": "Buka laporan kehidupan penuh",
+    "direct": "Ini demonstrasi bayaran. Tiada caj dikenakan.",
+    "once": "Satu laporan penuh · Butiran lahir dan tahun ini",
+    "backgroundGenerating": "Laporan penuh dijana di latar belakang. Baca pratonton percuma dahulu.",
+    "backgroundReady": "Laporan penuh sedia dibuka.",
+    "backgroundRetry": "Pilih bacaan aplikasi percuma atau beli laporan web penuh.",
+    "unlocking": "Membuka laporan penuh…",
+    "full": "Laporan penuh dibuka",
+    "progress": "Menjana laporan penuh",
+    "progressHint": "Laporan dijana di latar belakang. Bab siap dipaparkan di sini; anda boleh kembali melalui Laporan saya.",
+    "pausedHint": "Teruskan bahagian yang belum siap sahaja. Bab lengkap disimpan dalam Laporan saya.",
+    "progressUnit": "selesai",
+    "retry": "Teruskan penjanaan",
+    "retryPreview": "Jana semula bacaan percuma",
+    "previewStates": {
+      "not_started": "Pratonton percuma belum bermula. Jana menggunakan butiran ini.",
+      "pending": "Pratonton dengan butiran sama sedang disiapkan. Buka semula kemudian.",
+      "generating": "Menjana pratonton percuma…",
+      "ready": "Pratonton percuma siap.",
+      "limited": "Had sementara pratonton dicapai. Butiran disimpan; cuba kemudian.",
+      "unavailable": "Pratonton belum lengkap. Butiran disimpan; cuba semula dengan butang di bawah.",
+      "unconfigured": "Carta dikira, tetapi perkhidmatan pratonton tidak tersedia."
+    },
+    "states": {
+      "not_started": "Buka untuk mula menjana laporan penuh.",
+      "pending": "Laporan sama sedang disediakan. Cuba kemudian.",
+      "generating": "Laporan penuh dijana di latar belakang. Baca pratonton percuma dahulu.",
+      "ready": "Laporan penuh siap.",
+      "limited": "Had sementara bacaan dicapai. Kandungan siap disimpan; teruskan kemudian.",
+      "unavailable": "Penjanaan belum selesai. Bab siap disimpan dan anda boleh teruskan.",
+      "unconfigured": "Carta siap tetapi perkhidmatan bacaan belum dikonfigurasi."
+    },
+    "plan": "Cadangan penutup",
+    "viewAction": "Kembali ke tema berkaitan",
+    "navigation": "Kandungan laporan",
+    "save": "Simpan laporan penuh (HTML)",
+    "savePreview": "Simpan pratonton percuma (HTML)",
+    "exportPdf": "Simpan sebagai PDF",
+    "pdfPreparing": "Mencipta PDF…",
+    "pdfSaved": "PDF disimpan di lokasi pilihan anda.",
+    "pdfDownloaded": "PDF dihantar ke pelayar. Tetapan muat turun menentukan lokasi simpanan.",
+    "pdfError": "PDF tidak dapat disimpan. Cuba lagi.",
+    "htmlPreparing": "Menyimpan laporan web…",
+    "htmlDownloaded": "Laporan dihantar ke pelayar untuk dimuat turun.",
+    "htmlError": "Laporan web tidak dapat disimpan. Cuba lagi.",
+    "history": "Laporan saya",
+    "historyHint": "Laporan yang dibuat pada peranti ini disimpan di sini.",
+    "emptyHistory": "Belum ada laporan tersimpan",
+    "close": "Tutup",
+    "open": "Terus membaca",
+    "historyError": "Senarai laporan tidak dapat dimuatkan. Cuba lagi.",
+    "previewVersion": "Pratonton percuma",
+    "fullVersion": "Dibuka",
+    "loading": "Membuka laporan…",
+    "printHint": "Sebelum dibuka, hanya kandungan percuma disimpan. Setelah laporan penuh dibuka dan siap, kedua-dua kandungan disimpan.",
+    "chapterCount": "Lapan bahagian laporan",
+    "source": "Rujukan carta",
+    "sourceVersion": "Versi pengiraan dan laporan",
+    "done": "Laporan penuh anda siap",
+    "resume": "Kandungan siap disimpan dalam senarai laporan peranti ini."
+  },
+  "western": {
+    "subtitle": "Terokai arah praktikal melalui corak diri, kerja, kewangan dan hubungan.",
+    "catalogHint": "Ciri diri percuma; buka enam bahagian bacaan lengkap.",
+    "chapterCount": "Ciri diri percuma · Enam bahagian penuh",
+    "offerTitle": "Buka enam bahagian lengkap",
+    "offerText": "Terokai corak diri, kerjaya, kewangan, cinta, perkara untuk diperhatikan dan cadangan praktikal.",
+    "benefits": [
+      "Corak diri dan hala tuju kerjaya",
+      "Tabiat kewangan dan keperluan hubungan",
+      "Perhatian dan langkah praktikal"
+    ],
+    "once": "Buka enam bahagian · Butiran kelahiran ini",
+    "plan": "Cadangan praktikal"
+  },
+  "generation": {
+    "title": "Menjana bacaan penuh",
+    "previewTitle": "Menjana bacaan percuma",
+    "previewFailed": "Bacaan percuma belum lengkap",
+    "sections": {
+      "preview_summary": "Siapa saya",
+      "preview_strength": "Persekitaran",
+      "preview_decisions": "Sokongan dan perhatian",
+      "preview_relationships": "Tema terdekat",
+      "work": "Perkembangan kerjaya",
+      "money": "Kewangan",
+      "relationships": "Cinta dan keluarga",
+      "annual": "Tema tahunan",
+      "overall": "Gambaran kehidupan",
+      "pattern": "Corak diri",
+      "marriage": "Hubungan jangka panjang",
+      "wealth": "Kewangan dan kerjaya",
+      "risk": "Corak yang perlu diperhatikan",
+      "romance": "Keutamaan hubungan",
+      "plan": "Cadangan penutup"
+    },
+    "returnReport": "Kembali ke pratonton",
+    "preview": "Mengira butiran lahir dan menulis ringkasan serta ciri diri…",
+    "full": "Menyediakan tema penuh dan cadangan praktikal…",
+    "reconnecting": "Sambungan terputus. Menyemak kemajuan semula…",
+    "waiting": "Semakan kemajuan dihadkan sementara. Laporan terus dijana di latar belakang…",
+    "queryError": "Kemajuan tidak tersedia. Kandungan siap disimpan; cuba kemudian.",
+    "ready": "Laporan siap. Sedang membuka…",
+    "failed": "Laporan belum lengkap",
+    "cancel": "Berhenti menunggu",
+    "back": "Kembali ke butiran lahir",
+    "retry": "Cuba lagi",
+    "missing": "Laporan tidak ditemui. Kembali ke borang untuk menjana laporan.",
+    "busy": "Perkhidmatan laporan sibuk. Teruskan kemudian; kandungan siap disimpan.",
+    "storage": "Pelayar tidak dapat menyimpan kunci akses. Benarkan storan laman sebelum mencuba lagi."
+  },
+  "ui": {
+    "date": "Tarikh lahir",
+    "ce": "Tahun Masihi",
+    "time": "Waktu lahir",
+    "unknown": "Saya tidak tahu waktu lahir tepat",
+    "timeNote": "Boleh teruskan dengan anggaran 12:00 tempatan. Asenden, rumah dan bacaan mungkin kurang tepat.",
+    "timeRequired": "Masukkan waktu lahir atau pilih tidak diketahui",
+    "city": "Bandar / daerah",
+    "country": "Negara kelahiran",
+    "countryPlaceholder": "Masukkan China atau Thailand",
+    "province": "Wilayah / negeri",
+    "provincePlaceholder": "Contohnya, Hebei",
+    "thaiProvincePlaceholder": "Contohnya, Chiang Mai",
+    "countryFirst": "Pilih negara dahulu",
+    "provinceFirst": "Pilih wilayah dahulu",
+    "invalidCountry": "China dan Thailand disokong. Masukkan nama dalam bahasa Cina, Thai atau Inggeris.",
+    "invalidProvince": "Pilih wilayah negara ini atau masukkan nama penuhnya.",
+    "cityPlaceholder": "Contohnya, Handan atau Congtai",
+    "thaiCityPlaceholder": "Contohnya, Mueang Chiang Mai",
+    "chooseCity": "Pilih lokasi kelahiran yang sepadan",
+    "searching": "Mencari tempat lahir…",
+    "placeHint": "Pilih negara, wilayah dan bandar. Carian menyokong bahasa Cina, Thai dan Inggeris.",
+    "noCity": "Tiada tempat sepadan. Tambah wilayah atau cuba nama lain.",
+    "locationError": "Carian lokasi tidak tersedia. Cuba lagi.",
+    "provinceNote": "Pengiraan menggunakan koordinat wakil ibu negeri yang dipilih.",
+    "areaNote": "Lokasi ini kawasan pentadbiran. Koordinat wakilnya digunakan.",
+    "areaLabel": "Kawasan pentadbiran",
+    "cityLabel": "Bandar",
+    "morePlaces": "Lokasi lain",
+    "retryPlaces": "Cari semula",
+    "selectedPlace": "Lokasi ditemui",
+    "invalidDate": "Pilih tarikh lahir sah dari 1901 hingga hari ini dalam zon waktu tempat lahir.",
+    "invalidPlace": "Masukkan tempat lahir dan sahkan hasil carian.",
+    "invalidTimezone": "Zon waktu lokasi tidak sah. Pilih semula.",
+    "invalidYear": "Pilih tahun antara 1901 hingga 2100.",
+    "theme": "Pilih tema untuk diterokai",
+    "themeSub": "Terokai soalan penting melalui carta kelahiran",
+    "formHint": "Butiran lahir ini hanya untuk bacaan ini dan tidak mengubah profil anda.",
+    "network": "Perkhidmatan bacaan tidak dapat dihubungi. Cuba kemudian.",
+    "badResult": "Bacaan tidak lengkap. Cuba lagi.",
+    "cancel": "Batal",
+    "cancelHint": "Penyediaan laporan mengambil masa. Batal untuk mengedit butiran.",
+    "close": "Tutup",
+    "confirm": "Sahkan",
+    "countryNames": {
+      "TH": "Thailand",
+      "CN": "China",
+      "VN": "Vietnam",
+      "US": "Amerika Syarikat"
+    }
+  },
+  "fortune": {
+    "title": "Bacaan peribadi",
+    "subtitle": "Terokai tema tahunan, hubungan dan pilihan.",
+    "catalog": "Kandungan bacaan",
+    "catalogHint": "Butiran lahir, ringkasan dan ciri diri percuma. Buka tujuh tema dan cadangan.",
+    "chapterCount": "Tiga bahagian percuma · Tujuh tema dibuka",
+    "takeaway": "Tema utama diri anda",
+    "offerTitle": "Buka tujuh tema lengkap",
+    "offerText": "Baca tema tahunan, gambaran hidup, corak diri, hubungan jangka panjang, kewangan dan kerjaya, perhatian serta keutamaan hubungan berdasarkan carta ini.",
+    "benefits": [
+      "Tema tahunan dan keutamaan diri",
+      "Kekuatan, kewangan dan kerjaya",
+      "Keperluan dan keutamaan hubungan",
+      "Perhatian dan langkah praktikal"
+    ],
+    "unlock": "Buka bacaan anda",
+    "full": "Laporan penuh dibuka",
+    "progress": "Menjana bacaan penuh",
+    "done": "Laporan penuh anda siap",
+    "once": "Tujuh tema sekali buka · Butiran lahir dan tahun ini"
+  },
+  "checkout": {"openCashier": "Buka halaman pembayaran", "loadingOrder": "Memuatkan pesanan tersimpan…", "cashierPreviewHint": "Bayar di halaman rasmi, kemudian kembali ke sini. Laporan dibuka selepas pembayaran disahkan.", "cashierUnavailable": "Pautan pembayaran belum tersedia. Hubungi sokongan dan jangan buat pesanan berulang.", "nationCode": "Kod negara", "mobile": "Nombor telefon (tanpa kod negara)", "life_order_phone_invalid": "Masukkan nombor telefon dan kod negara yang sah.", "cancelOrderEntry": "Batal dan kembali", "createOrderOnly": "Buat pesanan belum dibayar", "orderOnlyHint": "Masukkan nombor telefon untuk membuat pesanan, kemudian bayar di halaman rasmi.", "orderCreated": "Pesanan dibuat", "localOrder": "Nombor pesanan tempatan", "gatewayOrder": "Nombor pesanan platform", "pendingOrder": "Menunggu bayaran · Laporan dikunci", "accessDenied": "Akses pesanan belum diaktifkan. Hubungi sokongan sebelum mencuba lagi.", "orderRejected": "Pesanan belum berjaya dibuat. Hubungi sokongan untuk semakan.", "configurationRequired": "Persediaan pembayaran belum lengkap. Cuba lagi kemudian.", "channelInvalid": "Saluran pesanan perlu disemak. Nombor pesanan belum diterima; jangan hantar semula.", "orderNeedsReview": "Pesanan ini perlu disemak. Jangan buat pesanan lain.", "life_order_needs_review": "Laporan ini mempunyai pesanan sebenar yang menunggu semakan dan belum boleh dipadam.", "demoHint": "Simulasi pembayaran tempatan. Tiada wang dicaj.", "confirming": "Mengesahkan pembayaran simulasi…", "success": "Pembayaran berjaya", "demoSuccess": "Simulasi berjaya", "successHint": "Membuka laporan penuh…", "openReport": "Buka laporan penuh", "sunlandsWaiting": "Mengesahkan pembayaran. Laporan dibuka selepas pengesahan…", "checkPayment": "Semak pembayaran lagi",
+    "title": "Sahkan pesanan",
+    "demo": "Demonstrasi bayaran",
+    "order": "ID pesanan demo",
+    "once": "Buka sekali",
+    "close": "Kembali ke laporan",
+    "card": "Kad kredit / debit",
+    "cardNumber": "Nombor kad",
+    "expiry": "Tarikh luput",
+    "securityCode": "Kod keselamatan",
+    "fillCard": "Guna kad ujian",
+    "cardHint": "Pilih Guna kad ujian untuk mencuba aliran bayaran.",
+    "cardConfirm": "Simulasi bayaran",
+    "waiting": "Menunggu bayaran simulasi",
+    "link": "Salin pautan untuk teruskan di sini",
+    "copied": "Pautan disalin. Teruskan dalam pelayar ini.",
+    "payso": "Ujian Payso",
+    "paysoOpen": "Buka bayaran ujian Payso",
+    "preparing": "Mencipta pesanan ujian…",
+    "paysoHint": "Pilih bayaran kad dan guna kad ujian Payso di tab baharu. Kekalkan halaman ini terbuka; laporan dibuka selepas pengesahan.",
+    "paysoWaiting": "Menunggu pengesahan Payso",
+    "retry": "Cuba lagi"
+  },
+  "experience": {
+    "welcomeFirst": "Selamat datang",
+    "welcomeReturning": "Selamat kembali",
+    "welcomeFirstNote": "Terokai peta bintang anda",
+    "welcomeReturningNote": "Gembira bertemu anda lagi",
+    "start": "Mula meneroka",
+    "swipe": "Leret ke atas untuk bermula",
+    "privacy": "Privasi dan penggunaan data",
+    "support": "Hubungi sokongan",
+    "back": "Kembali ke laman utama",
+    "noticeTitle": "Sahkan penggunaan data",
+    "notice": "Tarikh, waktu, tempat lahir dan soalan digunakan untuk carta dan bacaan AI ini. Baca notis penggunaan data sebelum bermula.",
+    "agree": "Setuju dan mula",
+    "cancel": "Bukan sekarang",
+    "privacyParagraphs": [
+      "Butiran lahir digunakan untuk mengira carta; maklumat carta yang perlu dan soalan dihantar ke perkhidmatan AI yang dikonfigurasi untuk menulis bacaan.",
+      "Laporan disimpan pada pelayan projek ini. Pelayar menyimpan kunci rawak untuk membuka semula laporan anda. Kunci tidak dimasukkan dalam pautan kongsi. Mengosongkan storan pelayar mungkin menghilangkan akses laporan terdahulu.",
+      "Anda boleh memadam laporan dalam Laporan saya selepas penjanaan aktif selesai. Pemadaman tidak memulangkan penggunaan yang telah dikira.",
+      "Halaman boleh mengira lawatan, penyerahan dan paparan laporan tanpa butiran lahir, teks soalan atau respons AI. Statistik meliputi 30 hari terakhir; rekod lama dipadam pada lawatan baharu. Do Not Track dan Global Privacy Control dihormati.",
+      "Bayaran kini ialah demonstrasi atau ujian. Tiada alamat muat turun aplikasi sebenar. Data lokasi daripada GeoNames di bawah CC BY 4.0."
+    ],
+    "supportNote": "Untuk bantuan, berikan ID laporan dan terangkan masalah.",
+    "supportUnavailable": "Maklumat sokongan belum dikonfigurasi.",
+    "birthSummary": "Butiran untuk bacaan ini",
+    "question": "Soalan anda",
+    "delete": "Padam laporan",
+    "deleteTitle": "Padam laporan ini?",
+    "deleteNotice": "Anda tidak lagi dapat membuka laporan tersimpan ini daripada peranti ini.",
+    "keep": "Kekalkan laporan",
+    "life_report_generating": "Laporan masih dijana. Tunggu sehingga selesai sebelum memadam.",
+    "landing_consent_required": "Sahkan notis penggunaan data dahulu.",
+    "landing_visit_not_found": "Lawatan ini tidak dapat direkodkan."
+  },
+  "reading": {
+    "category": "Astrologi Thai",
+    "title": "Bacaan astrologi Thai anda",
+    "intro": "Pilih tema untuk menerokai ciri diri, perhatian dan langkah praktikal.",
+    "categoryTitle": "Carta kelahiran Thai · Tema peribadi",
+    "categoryIntro": "Daripada corak diri kepada pilihan harian",
+    "birth": "Butiran kelahiran",
+    "required": "Masukkan tarikh, waktu tepat dan tempat lahir untuk mengira carta.",
+    "generate": "Jana carta dan bacaan",
+    "loading": "Mengira carta dan menyediakan bacaan…",
+    "cancel": "Batal penjanaan",
+    "cancelNote": "Anda boleh mengedit selepas membatalkan. Penjanaan yang bermula mungkin selesai di latar belakang; butiran sama menggunakan hasil tersimpan.",
+    "results": "Butiran lahir yang digunakan",
+    "report": "Laporan bacaan peribadi",
+    "summary": "Inti utama",
+    "download": "Simpan laporan",
+    "downloadPreview": "Simpan pratonton",
+    "unlock": "Buka untuk membaca semua kandungan",
+    "lockedHint": "Buka perhatian terperinci dan pelan tindakan lengkap",
+    "lockedSave": "Perhatian terperinci dan pelan masih dikunci. Kembali ke halaman untuk membukanya sebelum menyimpan laporan penuh.",
+    "example": "Contoh harian",
+    "signals": "Tanda yang boleh diperhatikan",
+    "response": "Perkara untuk dicuba dahulu",
+    "pitfall": "Perkara yang mungkin terlepas pandang",
+    "check": "Cara menilai hasil",
+    "retry": "Jana semula bacaan percuma",
+    "year": "Tahun rujukan",
+    "error": "Perkhidmatan bacaan tidak dapat dihubungi. Cuba kemudian.",
+    "yearNote": "Terokai keutamaan dan langkah praktikal sepanjang tahun.",
+    "sections": {
+      "interpretation": "Makna yang mungkin untuk anda",
+      "opportunities": "Perkara untuk diperhatikan",
+      "advice": "Cadangan praktikal"
+    },
+    "states": {
+      "unconfigured": "Carta siap tetapi perkhidmatan bacaan belum dikonfigurasi.",
+      "pending": "Laporan sama sedang disediakan. Cuba kemudian.",
+      "limited": "Had sementara bacaan dicapai. Kandungan siap disimpan; teruskan kemudian.",
+      "unavailable": "Bacaan tidak lengkap. Cuba lagi."
+    },
+    "readings": {
+      "overview": {
+        "title": "Carta kelahiran",
+        "subtitle": "Ciri · Gaya kerja · Hubungan"
+      },
+      "annual": {
+        "title": "Tema tahunan",
+        "subtitle": "Keutamaan · Persediaan"
+      },
+      "money": {
+        "title": "Kewangan",
+        "subtitle": "Pendapatan · Sumber · Tabiat"
+      },
+      "love": {
+        "title": "Cinta",
+        "subtitle": "Tarikan · Komunikasi · Keintiman"
+      },
+      "work": {
+        "title": "Kerjaya",
+        "subtitle": "Kemahiran · Kerjasama · Hala tuju"
+      },
+      "family": {
+        "title": "Keluarga",
+        "subtitle": "Rumah · Sokongan · Tanggungjawab bersama"
+      }
+    },
+    "planets": {
+      "ascendant": "Asenden",
+      "sun": "Matahari",
+      "moon": "Bulan",
+      "mars": "Marikh",
+      "mercury": "Utarid",
+      "jupiter": "Musytari",
+      "venus": "Zuhrah",
+      "saturn": "Zuhal",
+      "rahu": "Rahu",
+      "ketu": "Ketu",
+      "uranus": "Uranus",
+      "neptune": "Neptun",
+      "pluto": "Pluto",
+      "midheaven": "Puncak langit"
+    },
+    "signs": [
+      "Aries",
+      "Taurus",
+      "Gemini",
+      "Cancer",
+      "Leo",
+      "Virgo",
+      "Libra",
+      "Scorpio",
+      "Sagittarius",
+      "Capricorn",
+      "Aquarius",
+      "Pisces"
+    ]
+  },
+  "reportContent": {
+    "sections": [
+      [
+        "basics",
+        "Butiran kelahiran",
+        "Nama, kaedah dan tempoh rujukan"
+      ],
+      [
+        "summary",
+        "Ringkasan laporan",
+        "Tema utama dan keutamaan"
+      ],
+      [
+        "traits",
+        "Ciri diri",
+        "Ciri, kekuatan dan ruang penyesuaian"
+      ],
+      [
+        "work",
+        "Perkembangan kerjaya",
+        "Gaya kerja dan perkembangan"
+      ],
+      [
+        "money",
+        "Kewangan",
+        "Tabiat dan perancangan"
+      ],
+      [
+        "relationships",
+        "Hubungan dan keluarga",
+        "Keperluan dan komunikasi"
+      ],
+      [
+        "recent",
+        "Keutamaan semasa",
+        "Tema dan langkah praktikal"
+      ],
+      [
+        "advice",
+        "Cadangan penutup",
+        "Keutamaan dan tindakan praktikal"
+      ]
+    ],
+    "groups": {
+      "work": [
+        "Gaya kerja",
+        "Cadangan perkembangan"
+      ],
+      "money": [
+        "Tabiat kewangan",
+        "Perancangan"
+      ],
+      "love": [
+        "Keperluan hubungan",
+        "Komunikasi"
+      ],
+      "family": [
+        "Keperluan dan tanggungjawab",
+        "Komunikasi keluarga"
+      ],
+      "annual": [
+        "Tema semasa",
+        "Langkah praktikal"
+      ]
+    },
+    "careerSummary": "Perkara untuk dibuat dahulu",
+    "careerDescription": "Bacaan ringkas transit semasa",
+    "careerTraits": "Kekal, berpindah dan langkah seterusnya",
+    "careerTraitsDescription": "Perkara untuk ditimbang bagi setiap arah",
+    "careerDates": "Tarikh dan tindakan praktikal",
+    "westernGroups": [
+      "Corak diri",
+      "Perhatian dan penyesuaian"
+    ],
+    "fortuneSummary": "Ringkasan laporan",
+    "natalReference": "Corak diri dan rujukan praktikal",
+    "fullVersion": "Laporan penuh"
+  },
+  "themes": {
+    "natal": "Corak diri",
+    "career": "Kerjaya**",
+    "finance": "Kewangan",
+    "love": "Cinta dan pasangan",
+    "warning": "***Perkara untuk diperhatikan",
+    "advice": "Cadangan praktikal"
+  },
+  "career": {
+    "chooseQuestion": "Soalan kerjaya (pilihan)",
+    "customQuestion": "Apakah yang penting bagi anda sekarang?",
+    "writeQuestion": "Tulis soalan saya",
+    "browseQuestions": "Pilih",
+    "questionSelected": "Dipilih",
+    "questionPurpose": "Pilih atau tulis soalan; bacaan percuma menjawabnya dahulu",
+    "questionHint": "Tatal untuk melihat. Ketik untuk memilih, ketik lagi untuk membuang.",
+    "situations": {
+      "unspecified": {
+        "label": "Kekal atau pergi",
+        "question": "Patutkah saya bertukar kerja?",
+        "details": {
+          "decision": "Bagaimana menilai ruang penambahbaikan?",
+          "stay": "Apa yang patut dibincangkan jika kekal?",
+          "move": "Bagaimana mengelakkan masalah sama di kerja baharu?",
+          "next": "Apa yang patut ditanya dahulu?"
+        }
+      },
+      "considering": {
+        "label": "Meletak jawatan",
+        "question": "Patutkah saya berhenti sebelum mendapat kerja baharu?",
+        "details": {
+          "decision": "Bolehkah saya berhenti sekarang tanpa kerja lain?",
+          "stay": "Bagaimana mengurangkan keletihan jika kekal?",
+          "move": "Di mana patut mula mencari?",
+          "next": "Apa yang patut disediakan hari ini?"
+        }
+      },
+      "searching": {
+        "label": "Menunggu",
+        "question": "Patutkah saya membuat susulan selepas temu duga?",
+        "details": {
+          "decision": "Patutkah saya susuli selepas tarikh dijanjikan?",
+          "stay": "Patutkah saya tunggu sebelum bercakap dengan majikan semasa?",
+          "move": "Patutkah saya terus memohon sambil menunggu?",
+          "next": "Apa yang patut ditulis dalam mesej susulan?"
+        }
+      },
+      "offer": {
+        "label": "Tawaran kerja",
+        "question": "Patutkah saya menerima tawaran ini?",
+        "details": {
+          "decision": "Adakah ia menyelesaikan sebab saya mahu pergi?",
+          "stay": "Bagaimana mengesahkan janji jika kekal?",
+          "move": "Apa yang patut dijelaskan sebelum menjawab?",
+          "next": "Bagaimana jika perkara penting masih tidak jelas?"
+        }
+      }
+    },
+    "generate": "Baca transit ini percuma",
+    "shortTitle": "Kekal atau bertukar kerja",
+    "subtitle": "Terokai langkah praktikal melalui transit kerjaya ini.",
+    "takeaway": "Titik mula bagi tempoh ini",
+    "offerTitle": "Bandingkan kedua-dua arah dalam 30 hari",
+    "offerText": "Terokai tempoh pemerhatian setiap arah dan masa membandingkan pilihan semula.",
+    "benefits": [
+      "Tempoh memerhatikan pilihan kekal",
+      "Tempoh memerhatikan pilihan berpindah",
+      "Rujukan transit",
+      "Titik untuk membandingkan semula"
+    ],
+    "unlock": "Buka perbandingan 30 hari",
+    "once": "Bacaan kerjaya ini · Sekali buka",
+    "catalogHint": "Baca kedua-dua arah percuma, kemudian buka perbandingan 30 hari.",
+    "chapterCount": "Kekal dan berpindah",
+    "feedback": "Adakah bacaan ini menjawab soalan anda?",
+    "previewHint": "Mengira transit semasa dan kedua-dua arah…",
+    "fullHint": "Menyediakan perbandingan 30 hari…"
+  }
+}

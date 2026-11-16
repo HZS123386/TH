@@ -10,7 +10,7 @@
   <meta property="og:title" content="FATE · วิเคราะห์ดวงชะตา">
   <meta property="og:description" content="อ่านลักษณะส่วนตัวฟรี แล้วเปิดอ่านดวงเจ็ดหัวข้อ">
   <title>FATE</title>
-  <script>document.documentElement.lang=new URLSearchParams(location.search).get('lang')==='zh'?'zh':'th';</script>
+  <script>const fateLanguage=new URLSearchParams(location.search).get('lang');document.documentElement.lang=['th','en','zh','vi','my','km','lo','ms','id'].includes(fateLanguage)?fateLanguage:'th';</script>
   <script src="browser.js"></script>
   <style>
     html,body{margin:0;background:#130c24;color-scheme:dark}
@@ -20,7 +20,8 @@
     .fate-startup-track{width:132px;height:3px;background:#463655;overflow:hidden;border-radius:4px}
     .fate-startup-track:after{content:"";display:block;width:40%;height:100%;background:#e4bc78;border-radius:4px;animation:fate-startup-motion 1.3s ease-in-out infinite alternate}
     #fate-startup-retry{padding:8px 22px;border:1px solid #806548;border-radius:8px;background:transparent;color:#f4d399;font:inherit;cursor:pointer}
-    html:lang(zh) .fate-startup-th,html:lang(th) .fate-startup-zh{display:none}
+    .fate-startup-zh,.fate-startup-th,.fate-startup-en,.fate-startup-vi,.fate-startup-my,.fate-startup-km,.fate-startup-lo,.fate-startup-ms,.fate-startup-id{display:none}
+    html:lang(zh) .fate-startup-zh,html:lang(th) .fate-startup-th,html:lang(en) .fate-startup-en,html:lang(vi) .fate-startup-vi,html:lang(my) .fate-startup-my,html:lang(km) .fate-startup-km,html:lang(lo) .fate-startup-lo,html:lang(ms) .fate-startup-ms,html:lang(id) .fate-startup-id{display:inline}
     @keyframes fate-startup-motion{to{transform:translateX(150%)}}
     @media(prefers-reduced-motion:reduce){.fate-startup-track:after{animation:none}}
   </style>
@@ -29,6 +30,8 @@
   <script>
     const fatePreload=(href,priority='high')=>{const link=document.createElement('link');link.rel='preload';link.href=href;link.as='fetch';link.crossOrigin='anonymous';link.fetchPriority=priority;document.head.append(link);};
     if(document.documentElement.lang==='zh')fatePreload('assets/assets/fonts/FateChineseUI.otf');
+    const regionalFont={my:'Myanmar',km:'Khmer',lo:'Lao'}[document.documentElement.lang];
+    if(regionalFont)fatePreload(`assets/assets/fonts/NotoSans${regionalFont}-Regular.ttf`);
     fatePreload('assets/FontManifest.json','low');
     fatePreload('assets/AssetManifest.bin.json','low');
     fatePreload('assets/assets/copy.json','low');
@@ -39,8 +42,8 @@
   <div id="fate-startup" role="status" aria-live="polite">
     <img src="assets/assets/images/fate-brand-gold.png" alt="FATE" width="112" height="26">
     <div class="fate-startup-track" aria-hidden="true"></div>
-    <p id="fate-startup-status"><span class="fate-startup-zh">正在开启你的星空</span><span class="fate-startup-th">กำลังเปิดท้องฟ้าของคุณ</span></p>
-    <button id="fate-startup-retry" type="button" hidden><span class="fate-startup-zh">重新加载</span><span class="fate-startup-th">ลองโหลดใหม่</span></button>
+    <p id="fate-startup-status"><span class="fate-startup-zh">正在开启你的星空</span><span class="fate-startup-th">กำลังเปิดท้องฟ้าของคุณ</span><span class="fate-startup-en">Opening your sky</span><span class="fate-startup-vi">Đang mở bầu trời của bạn</span><span class="fate-startup-my">သင့်ကြယ်ကောင်းကင်ကို ဖွင့်နေသည်</span><span class="fate-startup-km">កំពុងបើកមេឃរបស់អ្នក</span><span class="fate-startup-lo">ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ</span><span class="fate-startup-ms">Membuka langit anda</span><span class="fate-startup-id">Membuka langit Anda</span></p>
+    <button id="fate-startup-retry" type="button" hidden><span class="fate-startup-zh">重新加载</span><span class="fate-startup-th">ลองโหลดใหม่</span><span class="fate-startup-en">Reload</span><span class="fate-startup-vi">Tải lại</span><span class="fate-startup-my">ပြန်တင်မယ်</span><span class="fate-startup-km">ផ្ទុកឡើងវិញ</span><span class="fate-startup-lo">ໂຫຼດໃໝ່</span><span class="fate-startup-ms">Muat semula</span><span class="fate-startup-id">Muat ulang</span></button>
   </div>
   <script>{{flutter_bootstrap_js}}</script>
 </body>

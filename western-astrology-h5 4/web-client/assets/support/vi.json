@@ -1,0 +1,78 @@
+{
+  "intro": "Nếu gặp vấn đề khi tạo, xem hoặc quản lý báo cáo, hãy liên hệ email bên dưới hoặc xem các câu hỏi thường gặp.",
+  "labels": {
+    "contactTitle": "Liên hệ hỗ trợ FATE",
+    "emailAction": "Soạn email",
+    "emailSubject": "Yêu cầu hỗ trợ website FATE",
+    "operator": "Đơn vị vận hành",
+    "address": "Địa chỉ liên hệ",
+    "noContact": "Chưa hiển thị được liên hệ. Vui lòng thử lại sau.",
+    "requestTitle": "Nên nêu gì trong email",
+    "faqTitle": "Câu hỏi thường gặp",
+    "privacyLink": "Đọc chính sách quyền riêng tư",
+    "privacyHint": "Dùng cùng email để yêu cầu truy cập, sửa, xóa, rút đồng ý hay khiếu nại dữ liệu. Chính sách quyền riêng tư nêu quyền và thời hạn áp dụng."
+  },
+  "requestDetails": [
+    "Mô tả vấn đề và thời gian gần đúng, kèm mã báo cáo nếu có.",
+    "Cho biết thiết bị, trình duyệt và thông báo lỗi. Có thể kèm ảnh đã che thông tin cá nhân.",
+    "Không gửi toàn bộ thông tin sinh, giấy tờ tùy thân, thẻ, mật khẩu thanh toán, API key hay mã truy cập báo cáo trong trình duyệt."
+  ],
+  "sections": [
+    {
+      "id": "generation",
+      "title": "Báo cáo tải mãi hoặc tạo thất bại thì làm sao?",
+      "paragraphs": [
+        "Kiểm tra mạng rồi dùng Thử lại/Tiếp tục tạo trên trang. Phần đã lưu vẫn còn, thường không cần nhập lại toàn bộ. Hủy chờ chủ yếu dừng đợi trên trang, không bảo đảm hủy ngay tác vụ nền hay xóa dữ liệu. Nếu vẫn lỗi, gửi email kèm lỗi, thời gian và mã báo cáo thay vì gửi liên tục."
+      ]
+    },
+    {
+      "id": "history",
+      "title": "Xem báo cáo đã tạo ở đâu?",
+      "paragraphs": [
+        "Về trang chủ mở Báo cáo của tôi hoặc mở lại trang báo cáo gốc. Nên dùng cùng thiết bị, trình duyệt và địa chỉ trang. Quyền xem dựa vào mã ngẫu nhiên đã lưu; xóa dữ liệu trang, đổi trình duyệt hoặc dùng riêng tư có thể mất nhận dạng lịch sử. Một liên kết báo cáo không tự cấp quyền."
+      ]
+    },
+    {
+      "id": "birth-time",
+      "title": "Không biết giờ sinh chính xác vẫn được không?",
+      "paragraphs": [
+        "Được. Chọn không nhớ giờ chính xác. Hệ thống dùng 12:00 trưa địa phương làm tham chiếu, hạn chế hoặc đánh dấu kết luận nhạy theo giờ. Cung mọc, các nhà và chi tiết liên quan có thể thiếu hoặc sai lệch. Mốc này không phải giờ sinh thật đã xác nhận."
+      ]
+    },
+    {
+      "id": "change-details",
+      "title": "Nếu nhập sai ngày, giờ hoặc nơi sinh?",
+      "paragraphs": [
+        "Về trang chủ kiểm tra và tạo báo cáo mới với dữ liệu đúng. Báo cáo cũ dựa trên dữ liệu gửi lúc đó, không tự đổi khi sửa biểu mẫu sau. Chọn quốc gia, tỉnh/bang và thành phố tương ứng, dùng nơi sinh thay vì nơi đang ở."
+      ]
+    },
+    {
+      "id": "unlock",
+      "title": "Mở khóa có trừ tiền không?",
+      "paragraphs": [
+        "Bản hiện tại để thử nghiệm, số tiền là ví dụ; nút thanh toán/mở khóa không thu tiền thật mà tạo và mở bản đầy đủ. Chưa có thu tiền hay hoàn tiền trực tuyến thật. Khi mở thanh toán thật phải nêu giá, nhà cung cấp và điều khoản trước xác nhận."
+      ]
+    },
+    {
+      "id": "app",
+      "title": "Vì sao nút tải APP không tải?",
+      "paragraphs": [
+        "APP vẫn thử nghiệm, chưa mở tải. Nút chỉ hiện thông báo, không tải/cài hoặc tự mở khóa báo cáo. Khi phân phối sẽ cập nhật liên kết và thông tin tương ứng."
+      ]
+    },
+    {
+      "id": "delete",
+      "title": "Xóa báo cáo hay gửi yêu cầu dữ liệu thế nào?",
+      "paragraphs": [
+        "Dùng Xóa trên báo cáo/Báo cáo của tôi; có thể phải chờ tác vụ tạo xong. Xóa trình duyệt không xóa dữ liệu máy chủ. Yêu cầu truy cập, sửa, xóa thêm hoặc khiếu nại qua email trang này, bắt đầu bằng mã báo cáo và loại yêu cầu. Chính sách nêu phạm vi, giới hạn bộ nhớ đệm/sao lưu."
+      ]
+    },
+    {
+      "id": "meaning",
+      "title": "Có thể dựa báo cáo để quyết định quan trọng?",
+      "paragraphs": [
+        "Báo cáo dùng tính chiêm tinh phương Tây và ngôn ngữ AI cho giải trí, khám phá bản thân, có thể sai hay không phù hợp. Không bảo đảm sự kiện tương lai, không thay tư vấn y tế, luật, tài chính và không nên là căn cứ duy nhất cho việc làm, vay tiền hay quan hệ quan trọng."
+      ]
+    }
+  ]
+}

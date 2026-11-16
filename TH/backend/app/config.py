@@ -7,9 +7,11 @@ from dotenv import load_dotenv
 
 @dataclass
 class ProviderConfig:
-    key: str = ""
+    key: str = field(default="", repr=False)
     base_url: str = ""
     model: str = ""
+    proxy_url: str = field(default="", repr=False)
+    reasoning_effort: str = ""
 
     @property
     def enabled(self) -> bool:
@@ -28,6 +30,7 @@ class Settings:
     chat_per_minute: int = 8
     chat_per_day: int = 200
     fortune_provider: str = "qwen"
+    fortune_fallback_provider: str = ""
     fortune_per_minute: int = 3
     fortune_per_day: int = 12
     fortune_network_per_day: int = 120
@@ -38,11 +41,28 @@ class Settings:
     roxy_per_minute: int = 12
     roxy_per_day: int = 80
     bazi_report_provider: str = "qwen"
+    western_report_provider: str = "qwen"
+    western_report_model: str = ""
+    western_review_enabled: bool = False
+    western_review_provider: str = "kimi"
+    western_review_model: str = ""
+    western_review_fallback_provider: str = ""
+    western_review_fallback_model: str = ""
     bazi_reports_per_minute: int = 6
     bazi_reports_per_day: int = 80
     payso_test_merchant_id: str = ""
     payso_test_api_key: str = field(default="", repr=False)
     payso_test_secret_key: str = field(default="", repr=False)
+    sunlands_order_only: bool = False
+    sunlands_base_url: str = "https://api-prod.sunlands.com"
+    sunlands_app_key: str = "sunlands_fb_fate"
+    sunlands_app_secret: str = field(default="", repr=False)
+    sunlands_channel_code: str | None = None
+    sunlands_item_no: str = "193261112000101"
+    sunlands_product_no: str = "1932611120001"
+    sunlands_item_title: str = "测试产品包"
+    sunlands_province_id: str = ""
+    sunlands_merchant_notify_uri: str = ""
     support_email: str = ""
 
     @classmethod
@@ -57,7 +77,9 @@ class Settings:
             default_provider=os.getenv("DEFAULT_PROVIDER", "mock"),
             providers={
                 name: ProviderConfig(
-                    os.getenv(f"{name.upper()}_API_KEY", ""), os.getenv(f"{name.upper()}_BASE_URL", default), os.getenv(f"{name.upper()}_MODEL", "")
+                    os.getenv(f"{name.upper()}_API_KEY", ""), os.getenv(f"{name.upper()}_BASE_URL", default), os.getenv(f"{name.upper()}_MODEL", ""),
+                    proxy_url=os.getenv(f"{name.upper()}_PROXY_URL", ""),
+                    reasoning_effort=os.getenv(f"{name.upper()}_REASONING_EFFORT", ""),
                 )
                 for name, default in defaults.items()
             },
@@ -65,6 +87,7 @@ class Settings:
             chat_per_minute=max(0, int(os.getenv("CHAT_TURNS_PER_MINUTE", "8"))),
             chat_per_day=max(0, int(os.getenv("CHAT_TURNS_PER_DAY", "200"))),
             fortune_provider=os.getenv("FORTUNE_PROVIDER", "qwen"),
+            fortune_fallback_provider=os.getenv("FORTUNE_FALLBACK_PROVIDER", "").lower(),
             fortune_per_minute=max(0, int(os.getenv("FORTUNE_REPORTS_PER_MINUTE", "3"))),
             fortune_per_day=max(0, int(os.getenv("FORTUNE_REPORTS_PER_DAY", "12"))),
             fortune_network_per_day=max(0, int(os.getenv("FORTUNE_NETWORK_REPORTS_PER_DAY", "120"))),
@@ -75,10 +98,27 @@ class Settings:
             roxy_per_minute=max(0, int(os.getenv("ROXY_REQUESTS_PER_MINUTE", "12"))),
             roxy_per_day=max(0, int(os.getenv("ROXY_REQUESTS_PER_DAY", "80"))),
             bazi_report_provider=os.getenv("BAZI_REPORT_PROVIDER", "qwen"),
+            western_report_provider=os.getenv("WESTERN_REPORT_PROVIDER", "qwen"),
+            western_report_model=os.getenv("WESTERN_REPORT_MODEL", ""),
+            western_review_enabled=os.getenv("WESTERN_REVIEW_ENABLED", "false").lower() == "true",
+            western_review_provider=os.getenv("WESTERN_REVIEW_PROVIDER", "kimi"),
+            western_review_model=os.getenv("WESTERN_REVIEW_MODEL", ""),
+            western_review_fallback_provider=os.getenv("WESTERN_REVIEW_FALLBACK_PROVIDER", ""),
+            western_review_fallback_model=os.getenv("WESTERN_REVIEW_FALLBACK_MODEL", ""),
             bazi_reports_per_minute=max(0, int(os.getenv("BAZI_REPORTS_PER_MINUTE", "6"))),
             bazi_reports_per_day=max(0, int(os.getenv("BAZI_REPORTS_PER_DAY", "80"))),
             payso_test_merchant_id=os.getenv("PAYSO_TEST_MERCHANT_ID", ""),
             payso_test_api_key=os.getenv("PAYSO_TEST_API_KEY", ""),
             payso_test_secret_key=os.getenv("PAYSO_TEST_SECRET_KEY", ""),
+            sunlands_order_only=os.getenv("SUNLANDS_ORDER_ONLY", "false").lower() == "true",
+            sunlands_base_url=os.getenv("SUNLANDS_BASE_URL", "https://api-prod.sunlands.com"),
+            sunlands_app_key=os.getenv("SUNLANDS_APP_KEY", "sunlands_fb_fate"),
+            sunlands_app_secret=os.getenv("SUNLANDS_APP_SECRET", ""),
+            sunlands_channel_code=os.getenv("SUNLANDS_CHANNEL_CODE"),
+            sunlands_item_no=os.getenv("SUNLANDS_ITEM_NO", "193261112000101"),
+            sunlands_product_no=os.getenv("SUNLANDS_PRODUCT_NO", "1932611120001"),
+            sunlands_item_title=os.getenv("SUNLANDS_ITEM_TITLE", "测试产品包"),
+            sunlands_province_id=os.getenv("SUNLANDS_PROVINCE_ID", ""),
+            sunlands_merchant_notify_uri=os.getenv("SUNLANDS_MERCHANT_NOTIFY_URI", ""),
             support_email=os.getenv("FATE_SUPPORT_EMAIL", ""),
         )

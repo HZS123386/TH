@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../app/controller.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
@@ -31,9 +33,15 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   CancelToken? _generationRequest;
   final _anchors = <String, GlobalKey>{};
   final _deleteRequest = CancelToken();
-  bool _deleting = false;
+  bool _deleting = false, _paying = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
+
+  void _backHome() {
+    widget.h5.restoreLandingFromReport(_model.report);
+    context.go('/?lang=${widget.h5.language}');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -119,6 +127,29 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       }
     } finally {
       if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  Future<void> _pay() async {
+    final report = _model.report;
+    if (report == null ||
+        !report.canPay ||
+        report.full ||
+        _paying ||
+        _deleting) {
+      return;
+    }
+    setState(() => _paying = true);
+    try {
+      final paid = await showDialog<bool>(
+        context: context,
+        builder: (_) => ReportPaymentDialog(h5: widget.h5, report: report),
+      );
+      if (mounted && paid == true && _model.report?.ready != true) {
+        await _generate(true);
+      }
+    } finally {
+      if (mounted) setState(() => _paying = false);
     }
   }
 
@@ -255,6 +286,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _window(value, c),
         Text(
           text(value['text']),
           style: const TextStyle(fontSize: 14, height: 1.65),
@@ -263,6 +295,157 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       ],
     ),
   );
+
+  Widget _window(Json point, Copy c) {
+    final window = object(point['window']);
+    if (window.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${c.t('jy', 'report.questions.window')} · ${window['start']} – ${window['end']} (${window['timezone']})',
+            style: const TextStyle(color: gold, fontSize: 12, height: 1.6),
+          ),
+          Text(
+            '${c.t('jy', 'report.questions.eventDate')} · ${window['event_date']}',
+            style: const TextStyle(color: lavender, fontSize: 11, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _questionHeading(String key, int number, Copy c) => Padding(
+    padding: EdgeInsets.only(top: number == 1 ? 0 : 26, bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 25,
+          height: 25,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: gold.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '$number',
+            style: const TextStyle(
+              color: gold,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            c.t('jy', 'report.questions.$key'),
+            style: const TextStyle(
+              color: cream,
+              fontSize: 17,
+              height: 1.4,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  List<Widget> _fourQuestions(LifeReport report, Copy c) {
+    final preview = report.preview;
+    Widget answer(String key) => object(preview[key]).isEmpty
+        ? Text(
+            c.t('jy', 'report.questions.legacy'),
+            style: const TextStyle(color: lavender, fontSize: 12, height: 1.7),
+          )
+        : _summary(object(preview[key]), c);
+    final state = text(object(report.json['outlook'])['state']);
+    return [
+      _questionHeading('who', 1, c),
+      _summary(object(preview['summary']), c),
+      ExpansionTile(
+        key: const ValueKey('identity-details'),
+        tilePadding: EdgeInsets.zero,
+        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+        title: Text(
+          c.t('jy', 'report.questions.identityDetails'),
+          style: const TextStyle(color: gold, fontSize: 13),
+        ),
+        children: [
+          for (final trait in objects(preview['traits'])) _point(trait, c),
+        ],
+      ),
+      if (preview['career_answer'] != null)
+        _summary(object(preview['career_answer']), c),
+      _questionHeading('environment', 2, c),
+      answer('environment'),
+      _questionHeading('influence', 3, c),
+      for (final key in ['favorable', 'unfavorable']) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 8),
+          child: Text(
+            c.t('jy', 'report.questions.$key'),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        answer(key),
+      ],
+      if (object(preview['response']).isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
+          child: Text(
+            c.t('jy', 'report.questions.freeResponse'),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        answer('response'),
+      ],
+      _questionHeading('timing', 4, c),
+      if (preview['sample_topic'] == 'career' &&
+          object(preview['recent']).isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            c.t('jy', 'report.questions.freePeriod'),
+            style: const TextStyle(color: gold, fontSize: 13),
+          ),
+        ),
+      if (object(preview['recent']).isNotEmpty)
+        answer('recent')
+      else
+        Text(
+          c.t(
+            'jy',
+            'report.questions.${report.estimated
+                ? 'timeUnknown'
+                : state == 'ready'
+                ? 'empty'
+                : state == 'unavailable'
+                ? 'unavailable'
+                : 'legacy'}',
+          ),
+          style: const TextStyle(color: lavender, fontSize: 12, height: 1.7),
+        ),
+      const SizedBox(height: 12),
+      Text(
+        c.t('jy', 'report.questions.timingNote'),
+        style: const TextStyle(color: lavender, fontSize: 11, height: 1.6),
+      ),
+    ];
+  }
+
   Widget _freePreview(LifeReport report, Copy c) => JYCard(
     key: const ValueKey('free-report-content'),
     padding: const EdgeInsets.all(20),
@@ -288,37 +471,42 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 20),
         ],
-        Text(
-          text(report.input['user_question']).isNotEmpty
-              ? text(report.input['user_question'])
-              : c.t('report', 'takeaway'),
-          style: const TextStyle(
-            color: cream,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _summary(object(report.preview['summary']), c),
-        if (report.preview['career_answer'] != null) ...[
-          const SizedBox(height: 16),
+        if (report.western)
+          ..._fourQuestions(report, c)
+        else ...[
           Text(
-            c.t('report', 'careerQuestionTitle'),
-            style: const TextStyle(color: gold, fontSize: 15),
+            text(report.input['user_question']).isNotEmpty
+                ? text(report.input['user_question'])
+                : c.t('report', 'takeaway'),
+            style: const TextStyle(
+              color: cream,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(height: 8),
-          _summary(object(report.preview['career_answer']), c),
+          const SizedBox(height: 12),
+          _summary(object(report.preview['summary']), c),
+          if (report.preview['career_answer'] != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              c.t('report', 'careerQuestionTitle'),
+              style: const TextStyle(color: gold, fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            _summary(object(report.preview['career_answer']), c),
+          ],
+          const SizedBox(height: 24),
+          Text(
+            c.t('report', 'traits'),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          for (final trait in objects(report.preview['traits']))
+            _point(trait, c),
         ],
-        const SizedBox(height: 24),
-        Text(
-          c.t('report', 'traits'),
-          style: const TextStyle(
-            color: gold,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        for (final trait in objects(report.preview['traits'])) _point(trait, c),
       ],
     ),
   );
@@ -328,6 +516,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _window(point, c),
         if (text(point['title']).isNotEmpty)
           Text(
             text(point['title']),
@@ -373,7 +562,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
-                '${c.language == 'zh' ? {'example': '生活中的例子', 'pitfall': '避免这样做', 'check': '怎样检查效果'}[field] : {'example': 'ตัวอย่างในชีวิต', 'pitfall': 'สิ่งที่ควรเลี่ยง', 'check': 'วิธีสังเกตผล'}[field]}\n${point[field]}',
+                '${c.t('jy', 'pointFields.$field')}\n${point[field]}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -438,6 +627,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               for (final phase in objects(r.plan['phases'])) ...[
                 _point(phase, c),
                 for (final action in objects(phase['actions'])) ...[
+                  if (r.western) _window(action, c),
                   if (r.western)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -485,7 +675,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                     child: Text(c.t('generation', 'retry')),
                   ),
                 TextButton(
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
+                  onPressed: _backHome,
                   child: Text(c.t('jy', 'checkout.back')),
                 ),
               ],
@@ -498,11 +688,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           h5: widget.h5,
           report: r,
           freePreview: _freePreview(r, c),
-          busy: _deleting || _generating,
+          busy: _deleting || _generating || _paying,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
-          onBack: () => context.go('/?lang=${widget.h5.language}'),
+          onBack: _backHome,
           onErase: () => _erase(),
-          onUnlock: () => _generate(true),
+          onPay: r.canPay ? _pay : null,
         );
       }
       if (r.preview.isEmpty) {
@@ -521,7 +711,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   onPressed: _generating ? null : () => _generate(false),
                 ),
                 TextButton(
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
+                  onPressed: _backHome,
                   child: Text(c.t('jy', 'checkout.back')),
                 ),
               ],
@@ -552,13 +742,15 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           children: [
             Row(
               children: [
-                const FateBrand(),
-                const Spacer(),
                 IconButton(
+                  key: const ValueKey('report-back-home'),
                   tooltip: c.t('jy', 'checkout.back'),
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
+                  onPressed: _backHome,
                   icon: const Icon(Icons.arrow_back, color: gold, size: 19),
                 ),
+                const SizedBox(width: 8),
+                const FateBrand(),
+                const Spacer(),
                 IconButton(
                   tooltip: c.t('report', 'exportPdf'),
                   onPressed: _model.exporting
@@ -630,15 +822,16 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   JYCard(
                     radius: 15,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
+                      horizontal: 12,
                       vertical: 14,
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
                           c.t('jy', 'report.contents'),
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             color: gold,
                             fontWeight: FontWeight.w700,
                           ),
@@ -653,16 +846,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                  _sectionTitle(
-                    r.western ? 'chart' : 'overall',
-                    c.t('jy', 'chart.title'),
-                  ),
-                  if (r.western)
-                    Text(
-                      c.t('jy', 'chart.western'),
-                      style: const TextStyle(color: lavender, fontSize: 12),
+                  if (!r.western)
+                    _sectionTitle(
+                      'overall',
+                      c.t('jy', 'report.sections.overall'),
                     ),
-                  ChartView(report: r, copy: c),
                   for (final key
                       in r.western ? <String>[] : ['annual', 'overall'])
                     for (final item in r.catalog.where(

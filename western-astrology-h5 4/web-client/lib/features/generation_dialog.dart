@@ -194,6 +194,18 @@ class _GenerationDialogState extends State<GenerationDialog> {
                   builder: (context, box) {
                     final pad = (box.maxWidth * .05).clamp(14.0, 24.0);
                     final shortScreen = box.maxHeight < 720;
+                    final videoTop =
+                        (box.maxHeight * (shortScreen ? .66 : .52) - 40).clamp(
+                          0.0,
+                          360.0,
+                        );
+                    final videoHeight =
+                        ((box.maxHeight * (shortScreen ? .30 : .4)).clamp(
+                                  160.0,
+                                  340.0,
+                                ) +
+                                110)
+                            .clamp(0.0, box.maxHeight - videoTop);
                     return Stack(
                       children: [
                         SingleChildScrollView(
@@ -489,26 +501,17 @@ class _GenerationDialogState extends State<GenerationDialog> {
                         Positioned(
                           left: 0,
                           right: 0,
-                          top: box.maxHeight * (shortScreen ? .66 : .52),
-                          height: (box.maxHeight * (shortScreen ? .30 : .4))
-                              .clamp(160.0, 340.0),
+                          top: videoTop,
+                          height: videoHeight,
                           child: IgnorePointer(
                             child: ListenableBuilder(
                               listenable: widget.state,
-                              builder: (context, _) => Opacity(
-                                opacity: widget.state.error.isNotEmpty
-                                    ? 0
-                                    : shortScreen
-                                    ? .66
-                                    : .78,
-                                child: GenerationVideo(
-                                  active: widget.state.error.isEmpty,
-                                  finishing:
-                                      _loading &&
-                                      (_reduced || _playbackStarted),
-                                  reduced: _reduced,
-                                  onFinished: _finish,
-                                ),
+                              builder: (context, _) => GenerationVideo(
+                                active: widget.state.error.isEmpty,
+                                finishing:
+                                    _loading && (_reduced || _playbackStarted),
+                                reduced: _reduced,
+                                onFinished: _finish,
                               ),
                             ),
                           ),

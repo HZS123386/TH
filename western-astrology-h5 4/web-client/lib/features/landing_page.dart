@@ -12,7 +12,6 @@ import '../ui/site_header.dart';
 import 'birth_date_dialog.dart';
 import 'generation_dialog.dart';
 import 'history_dialog.dart';
-import 'information_page.dart';
 import 'place_picker.dart';
 
 class LandingPage extends StatefulWidget {
@@ -23,18 +22,37 @@ class LandingPage extends StatefulWidget {
 }
 
 class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
+  static const _stages = ['unspecified', 'considering', 'searching', 'offer'];
   String _date = '', _time = '', _error = '';
-  bool _unknown = false, _custom = false, _confirming = false;
+  bool _unknown = false, _custom = false, _restored = false;
   Place? _place;
   String? _question;
-  final _questionText = TextEditingController(),
-      _questionPages = PageController();
+  final _questionText = TextEditingController();
+  late final _questionPages = PageController(
+    initialPage: _stages.indexOf(_question ?? '').clamp(0, _stages.length - 1),
+  );
   CancelToken? _request;
   GenerationState? _generation;
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    unawaited(H5Scope.of(context).recordVisit());
+    final h5 = H5Scope.of(context);
+    if (!_restored) {
+      _restored = true;
+      final input = h5.landingInput;
+      if (input != null) {
+        final profile = object(input['profile']);
+        _date = text(profile['birth_date']);
+        _time = text(profile['birth_time']);
+        _unknown = _time.isEmpty;
+        _place = h5.landingPlace;
+        _questionText.text = text(input['user_question']);
+        _custom = _questionText.text.isNotEmpty;
+        final stage = text(object(input['career_question'])['stage']);
+        _question = _stages.contains(stage) ? stage : null;
+      }
+    }
+    unawaited(h5.recordVisit());
   }
 
   @override
@@ -80,19 +98,27 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
 
   Json _input(H5Controller h5) {
     final start = h5.browser.today('Asia/Bangkok');
+    final previous = object(h5.landingInput?['profile']);
+    final samePlace =
+        h5.landingPlace != null &&
+        _place!.id == h5.landingPlace!.id &&
+        _place!.zone == h5.landingPlace!.zone;
     return {
       'report_kind': 'fortune',
       'profile': {
         'display_name': '',
         'birth_date': _date,
         'birth_time': _unknown ? null : _time,
-        'birthplace': '${_place!.english}, ${_place!.country}',
+        'birthplace': samePlace && text(previous['birthplace']).isNotEmpty
+            ? previous['birthplace']
+            : '${_place!.english}, ${_place!.country}',
         'timezone': _place!.zone,
         'language': h5.language,
-        'country_code': _place!.country,
-        'location_id': _place!.id,
-        'latitude': null,
-        'longitude': null,
+        'country_code': _place!.country.isEmpty ? null : _place!.country,
+        'location_id': _place!.id.isEmpty ? null : _place!.id,
+        // Keep original coordinates until the user selects a different location.
+        'latitude': samePlace ? previous['latitude'] : null,
+        'longitude': samePlace ? previous['longitude'] : null,
       },
       'year': _question != null && !_custom
           ? int.parse(start.substring(0, 4))
@@ -105,7 +131,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   }
 
   Future<void> _generate(H5Controller h5) async {
-    if (_generation != null || _confirming) return;
+    if (_generation != null) return;
     final c = h5.copy;
     if (!validBirthDate(
       _date,
@@ -122,17 +148,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       setState(() => _error = c.t('ui', 'invalidPlace'));
       return;
     }
-    setState(() {
-      _error = '';
-      _confirming = true;
-    });
-    var accepted = false;
-    try {
-      accepted = await confirmDataUse(context, h5);
-    } finally {
-      if (mounted) setState(() => _confirming = false);
-    }
-    if (!mounted || !accepted) return;
+    setState(() => _error = '');
     final input = _input(h5);
     final state = GenerationState();
     _generation = state;
@@ -223,7 +239,6 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final h5 = H5Scope.of(context), c = h5.copy;
     final prompts = (c.value('jy', 'questions') as List).cast<List>();
-    const stages = ['unspecified', 'considering', 'searching', 'offer'];
     return LayoutBuilder(
       builder: (context, box) {
         final compact = box.maxWidth <= 360;
@@ -363,17 +378,25 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                           style: TextStyle(color: gold, fontSize: 16),
                         ),
                         const SizedBox(width: 7),
-                        Text(
-                          c.t('jy', 'date'),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            c.t('jy', 'date'),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                        Text(
-                          c.t('jy', 'calendar'),
-                          style: const TextStyle(fontSize: 10, color: lavender),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            c.t('jy', 'calendar'),
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: lavender,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -381,7 +404,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     _field(
                       'birth-date',
                       birthDateLabel(_date, c.language),
-                      c.language == 'zh' ? '年 / 月 / 日' : 'วัน / เดือน / ปี',
+                      c.t('jy', 'dateParts.placeholder'),
                       Icons.calendar_today_outlined,
                       () => _datePicker(h5),
                     ),
@@ -462,21 +485,10 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       Icons.schedule,
                       _unknown ? null : _timePicker,
                     ),
-                    if (_unknown)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 7),
-                        child: Text(
-                          c.t('jy', 'unknownNote'),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            height: 1.8,
-                            color: lavender,
-                          ),
-                        ),
-                      ),
                     const SizedBox(height: 13),
                     BirthplaceFields(
                       h5: h5,
+                      initialPlace: _place,
                       onSelected: (place) => setState(() => _place = place),
                     ),
                     const SizedBox(height: 16),
@@ -536,9 +548,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                                       key: ValueKey('question-$index'),
                                       onTap: () => setState(
                                         () => _question =
-                                            _question == stages[index]
+                                            _question == _stages[index]
                                             ? null
-                                            : stages[index],
+                                            : _stages[index],
                                       ),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -563,13 +575,14 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                                                   height: 1.4,
                                                   fontWeight: FontWeight.w600,
                                                   color:
-                                                      _question == stages[index]
+                                                      _question ==
+                                                          _stages[index]
                                                       ? gold
                                                       : cream,
                                                 ),
                                               ),
                                             ),
-                                            if (_question == stages[index])
+                                            if (_question == _stages[index])
                                               Text(
                                                 c.t('jy', 'selected'),
                                                 style: const TextStyle(
@@ -627,21 +640,12 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       label: c.t('jy', 'topics.${widget.topic}.action'),
                       icon: 'book',
                       bounce: true,
-                      onPressed: h5.languageLoading || _confirming
+                      onPressed: h5.languageLoading
                           ? null
                           : () => _generate(h5),
                     ),
                     const SizedBox(height: 19),
                     ThemeBoards(copy: c),
-                    const SizedBox(height: 16),
-                    Text(
-                      c.t('jy', 'formHint'),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        height: 1.8,
-                        color: lavender,
-                      ),
-                    ),
                   ],
                 ),
               ),

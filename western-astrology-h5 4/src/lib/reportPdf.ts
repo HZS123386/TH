@@ -2,6 +2,7 @@ import type { Content, ContentOrderedList, ContentStack, ContentText, TDocumentD
 import type { LifeLabels, LifeReport } from "./lifeReport";
 import { reportHtml, ui } from "./reading";
 import { reportContent, reportReference } from "./reportContent";
+import { additionalLocales, localeTag } from "./locales";
 
 type PdfEngine = typeof import("pdfmake/build/pdfmake");
 type SaveWindow = Window & { showSaveFilePicker?: (options: {
@@ -11,11 +12,25 @@ type SaveWindow = Window & { showSaveFilePicker?: (options: {
 
 let engine: Promise<PdfEngine> | undefined;
 const thaiWords = typeof Intl.Segmenter === "function" ? new Intl.Segmenter("th", { granularity: "word" }) : undefined;
+const regionalFonts = [
+  { script: /[\u1000-\u109f\uaa60-\uaa7f\ua9e0-\ua9ff]/u, font: "NotoMyanmar", file: "NotoSansMyanmar-Regular.ttf", locale: "my" },
+  { script: /[\u1780-\u17ff\u19e0-\u19ff]/u, font: "NotoKhmer", file: "NotoSansKhmer-Regular.ttf", locale: "km" },
+  { script: /[\u0e80-\u0eff]/u, font: "NotoLao", file: "NotoSansLao-Regular.ttf", locale: "lo" },
+];
+const regionalWords = new Map<string, Intl.Segmenter>();
 
 function textRuns(value: string, bold = false): ContentText[] {
   const text = value.replace(/[\u2010-\u2015\u2212]/g, "-");
-  return (text.match(/[\u0e00-\u0e7f]+|[^\u0e00-\u0e7f]+/gu) || []).map(part => {
+  return (text.match(/[\u0e00-\u0e7f]+|[\u1000-\u109f\uaa60-\uaa7f\ua9e0-\ua9ff]+|[\u1780-\u17ff\u19e0-\u19ff]+|[\u0e80-\u0eff]+|[^\u0e00-\u0eff\u1000-\u109f\uaa60-\uaa7f\ua9e0-\ua9ff\u1780-\u17ff\u19e0-\u19ff]+/gu) || []).map(part => {
     const thai = /[\u0e00-\u0e7f]/u.test(part);
+    const regional = regionalFonts.find(item => item.script.test(part));
+    if (regional) {
+      if (typeof Intl.Segmenter === "function" && !regionalWords.has(regional.locale)) {
+        regionalWords.set(regional.locale, new Intl.Segmenter(regional.locale, { granularity: "word" }));
+      }
+      const segmenter = regionalWords.get(regional.locale);
+      return { text: segmenter ? [...segmenter.segment(part)].map(word => word.segment).join("\u200b") : part, font: regional.font, bold };
+    }
     // Explicit vowel decomposition preserves the same glyphs without duplicate vowels when copying PDF text.
     const words = thai && thaiWords ? [...thaiWords.segment(part)].map(word => word.segment) : [part];
     const content = thai ? words.map(word => word.normalize("NFKD")).join(thaiWords ? "\u200b" : "") : part;
@@ -39,7 +54,7 @@ function star(x: number, y: number, radius: number, color: string) {
 }
 
 // Decorative vectors keep the astrology identity sharp without rasterizing report text.
-function pageArtwork(width: number, height: number, first: boolean): string {
+function pageArtwork(width: number, height: number, first: boolean, coverHeight: number): string {
   const centerX = width - 42, centerY = 100;
   const ticks = Array.from({ length: 48 }, (_, i) => {
     const angle = i * Math.PI / 24;
@@ -47,7 +62,7 @@ function pageArtwork(width: number, height: number, first: boolean): string {
     return `<line x1="${centerX + Math.cos(angle) * inner}" y1="${centerY + Math.sin(angle) * inner}" x2="${centerX + Math.cos(angle) * 108}" y2="${centerY + Math.sin(angle) * 108}"/>`;
   }).join("");
   const wheel = `<g stroke="${palette.paleGold}" stroke-opacity=".2" fill="none" stroke-width=".6"><circle cx="${centerX}" cy="${centerY}" r="108"/><circle cx="${centerX}" cy="${centerY}" r="91"/><circle cx="${centerX}" cy="${centerY}" r="62"/>${ticks}<ellipse cx="${centerX}" cy="${centerY}" rx="125" ry="32" transform="rotate(-28 ${centerX} ${centerY})"/></g>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="${palette.paper}"/>${first ? `<rect width="${width}" height="194" fill="${palette.night}"/><rect width="10" height="194" fill="${palette.purple}"/>${wheel}${star(width - 91, 114, 18, palette.paleGold)}${star(width - 132, 77, 6, palette.paleGold)}` : `<line x1="52" y1="49" x2="${width - 52}" y2="49" stroke="${palette.line}" stroke-width=".5"/>${star(width - 63, 74, 7, palette.line)}`}<line x1="52" y1="${height - 43}" x2="${width - 52}" y2="${height - 43}" stroke="${palette.line}" stroke-width=".5"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="${palette.paper}"/>${first ? `<rect width="${width}" height="${coverHeight}" fill="${palette.night}"/><rect width="10" height="${coverHeight}" fill="${palette.purple}"/>${wheel}${star(width - 91, 114, 18, palette.paleGold)}${star(width - 132, 77, 6, palette.paleGold)}` : `<line x1="52" y1="49" x2="${width - 52}" y2="49" stroke="${palette.line}" stroke-width=".5"/>${star(width - 63, 74, 7, palette.line)}`}<line x1="52" y1="${height - 43}" x2="${width - 52}" y2="${height - 43}" stroke="${palette.line}" stroke-width=".5"/></svg>`;
 }
 
 function panel(content: Content[], fill = palette.lavender, accent = palette.gold, compact = false): Content {
@@ -60,16 +75,18 @@ function panel(content: Content[], fill = palette.lavender, accent = palette.gol
 }
 
 function edition(report: LifeReport, labels: LifeLabels): string {
-  return report.access === "full" && report.full_state === "ready"
-    ? report.input.profile.language === "zh" ? "完整报告" : "ฉบับเต็ม"
-    : labels.previewVersion;
+  if (report.access !== "full" || report.full_state !== "ready") return labels.previewVersion;
+  const language = report.input.profile.language;
+  if (language === "zh") return "完整报告";
+  if (language === "th") return "ฉบับเต็ม";
+  return additionalLocales[language].reportContent.fullVersion;
 }
 
 function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
   const profile = report.input.profile;
   const language = profile.language;
   const version = edition(report, labels);
-  const created = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "th-TH", { dateStyle: "long", calendar: "gregory", timeZone: profile.timezone }).format(new Date(report.created_at));
+  const created = new Intl.DateTimeFormat(localeTag(language), { dateStyle: "long", calendar: "gregory", timeZone: profile.timezone }).format(new Date(report.created_at));
   const label = (value: string): Content => ({ text: textRuns(value), fontSize: 8, color: palette.gold, margin: [0, 0, 0, 5] });
   const value = (value: string, size = 10.5): Content => ({ text: textRuns(value), fontSize: size, color: palette.ink, lineHeight: 1.3, margin: [0, 0, 0, 4] });
   return [
@@ -221,7 +238,8 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
     pageSize: "A4", pageMargins: [52, 62, 52, 62],
     info: { title: labels.title, author: "FATE", subject: full ? labels.fullVersion : labels.previewVersion, keywords: `${report.method.version} / ${report.version}` },
     defaultStyle: { font: "NotoChinese", fontSize: 10.5, color: palette.ink, lineHeight: 1.5 },
-    background: (page, size) => ({ svg: pageArtwork(size.width, size.height, page === 1), width: size.width, height: size.height }),
+    // Stacked Myanmar marks require a taller title band to retain subtitle contrast.
+    background: (page, size) => ({ svg: pageArtwork(size.width, size.height, page === 1, report.input.profile.language === "my" ? 250 : 194), width: size.width, height: size.height }),
     header: page => page === 1 ? [] : ({ columns: [
       { text: "FATE", characterSpacing: 1.5, color: palette.gold },
       { text: textRuns(`${labels.title} · ${edition(report, labels)}`), alignment: "right", color: palette.muted },
@@ -258,6 +276,21 @@ function pdfEngine(): Promise<PdfEngine> {
   return engine;
 }
 
+const regionalFontLoads = new Map<string, Promise<void>>();
+async function ensureRegionalPdfFonts(pdf: PdfEngine, report: LifeReport, labels: LifeLabels) {
+  const content = reportHtml(report, labels);
+  await Promise.all(regionalFonts.filter(item => item.script.test(content)).map(item => {
+    if (!regionalFontLoads.has(item.font)) {
+      const pending = fontData(item.file).then(data => {
+        pdf.addVirtualFileSystem({ [item.file]: data });
+        pdf.addFonts({ [item.font]: { normal: item.file, bold: item.file, italics: item.file, bolditalics: item.file } });
+      }).catch(error => { regionalFontLoads.delete(item.font); throw error; });
+      regionalFontLoads.set(item.font, pending);
+    }
+    return regionalFontLoads.get(item.font)!;
+  }));
+}
+
 export async function saveReportPdf(report: LifeReport, labels: LifeLabels, signal: AbortSignal): Promise<"saved" | "downloaded" | "cancelled"> {
   const full = report.access === "full" && report.full_state === "ready";
   const id = report.id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48) || "report";
@@ -275,6 +308,7 @@ export async function saveReportPdf(report: LifeReport, labels: LifeLabels, sign
   }
   signal.throwIfAborted();
   const pdf = await pdfEngine();
+  await ensureRegionalPdfFonts(pdf, report, labels);
   signal.throwIfAborted();
   const blob = await pdf.createPdf(pdfDefinition(report, labels)).getBlob();
   signal.throwIfAborted();

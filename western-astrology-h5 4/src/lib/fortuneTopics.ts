@@ -1,19 +1,21 @@
 import catalog from "../../../TH/backend/content/fortune-topics.json" with { type: "json" };
+import { additionalCopy } from "./locales";
 import type { Language } from "./reading";
 
 export type FortuneTopicKey = "annual" | "overall" | "pattern" | "marriage" | "wealth" | "risk" | "romance";
 interface TopicCopy { title: string; subtitle: string; questions: string[]; groups: string[] }
-interface FortuneTopic { key: FortuneTopicKey; houses: number[]; zh: TopicCopy; th: TopicCopy }
+type FortuneTopic = { key: FortuneTopicKey; houses: number[] } & Record<Language, TopicCopy>;
 
 // The landing page, report outline and server use the same seven-topic catalog.
 export const fortuneTopics = catalog.topics as FortuneTopic[];
 export const fortuneTopicKeys = fortuneTopics.map(topic => topic.key);
 export function fortuneTopicTitle(key: FortuneTopicKey, language: Language, year: number): string {
-  if (key === "annual") return language === "zh" ? `${year}年运程` : `ดวงปี ${year}`;
+  if (key === "annual") return ({ zh: `${year}年运程`, th: `ดวงปี ${year}`, en: `${year} yearly themes`, vi: `Chủ đề năm ${year}`, my: `${year} နှစ်အလိုက်အကြောင်းအရာ`, km: `ប្រធានបទឆ្នាំ ${year}`, lo: `ຫົວຂໍ້ປີ ${year}`, ms: `Tema tahun ${year}`, id: `Tema tahun ${year}` })[language];
   return fortuneTopics.find(topic => topic.key === key)![language].title;
 }
 
 export const fortuneCopy = {
+  ...additionalCopy("fortune"),
   zh: {
     title: "运程解析", subtitle: "从年度节奏到关系与选择，读懂属于你的运程。",
     catalog: "运程解析目录", catalogHint: "基础信息、运程摘要与个人特点免费查看；七大运程主题及行动建议解锁后阅读。",

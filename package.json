@@ -1,0 +1,16 @@
+{
+  "name": "fate-workspace",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "pnpm --dir TH dev",
+    "dev:ready": "pnpm --dir TH dev --skip-build",
+    "dev:app": "pnpm --dir TH dev:app",
+    "dev:h5": "pnpm --dir \"western-astrology-h5 4\" dev",
+    "build:app": "pnpm --dir TH build:app:preview",
+    "build:h5": "pnpm --dir \"western-astrology-h5 4\" build:release",
+    "deploy:prepare": "pnpm --dir \"western-astrology-h5 4\" deploy:prepare",
+    "test:deployment": "pnpm --dir TH test:deployment",
+    "cleanup:legacy": "powershell.exe -NoProfile -File scripts/cleanup-old-paths.ps1"
+  }
+}
