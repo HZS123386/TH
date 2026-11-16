@@ -9,6 +9,486 @@ class AppLocalizationsVi extends AppLocalizations {
   AppLocalizationsVi([String locale = 'vi']) : super(locale);
 
   @override
+  String get actionTodo => 'Chờ thực hiện';
+
+  @override
+  String get actionReviewAvailable => 'Có thể xem lại';
+
+  @override
+  String get actionTypeService => 'Giúp đỡ và chia sẻ kiến thức';
+
+  @override
+  String get actionTypePractice => 'Rèn luyện bản thân';
+
+  @override
+  String get actionCompleted => 'Đã hoàn thành';
+
+  @override
+  String get newVisitorNote => 'Chọn người luận giải để bắt đầu';
+
+  @override
+  String get returningVisitorNote => 'Tiếp tục với bản luận giải trước';
+
+  @override
+  String get todayTab => 'Hôm nay';
+
+  @override
+  String get actionTab => 'Hành động';
+
+  @override
+  String get liveTab => 'Trực tiếp';
+
+  @override
+  String get objectsTab => 'Vật phẩm';
+
+  @override
+  String get todayQuestion => 'Hôm nay bạn muốn xem gì?';
+
+  @override
+  String get todayNote => 'Ba cách để tìm sự sáng tỏ';
+
+  @override
+  String get thaiGuide => 'Chiêm tinh Thái';
+
+  @override
+  String get sevenGuide => 'Thần số bảy số';
+
+  @override
+  String get tarotGuide => 'Bói bài Tarot';
+
+  @override
+  String get sirin => 'Sirin';
+
+  @override
+  String get arun => 'Arun';
+
+  @override
+  String get mira => 'Mira';
+
+  @override
+  String get sirinFocus => 'Vận hạn · Vận năm';
+
+  @override
+  String get arunFocus => 'Tính cách · Nhịp sống';
+
+  @override
+  String get miraFocus => 'Hiện tại · Bước tiếp theo';
+
+  @override
+  String get sirinHint => 'Xem vận gần đây để chọn thời điểm bước tiếp.';
+
+  @override
+  String get arunHint => 'Hiểu nhịp sống qua các con số ngày sinh.';
+
+  @override
+  String get miraHint => 'Mang theo một câu hỏi và rút lá bài cho hiện tại.';
+
+  @override
+  String get startThaiGuide => 'Nhập thông tin để xem chiêm tinh Thái';
+
+  @override
+  String get viewThaiGuide => 'Xem lá số Thái của tôi';
+
+  @override
+  String get startSevenGuide => 'Xem mẫu luận giải bảy số';
+
+  @override
+  String get startTarotGuide => 'Bắt đầu xem Tarot';
+
+  @override
+  String get textReading => 'Giải đáp qua tin nhắn';
+
+  @override
+  String get textReadingNote => 'Nhập câu hỏi và trò chuyện tiếp';
+
+  @override
+  String get voiceReading => 'Trò chuyện bằng giọng nói';
+
+  @override
+  String get voiceReadingNote => 'Nói ra điều đang băn khoăn';
+
+  @override
+  String get textChat => 'Nhắn tin';
+
+  @override
+  String get voiceChat => 'Đàm thoại';
+
+  @override
+  String get voicePreviewNotice =>
+      'Bản xem trước chưa có đàm thoại. Bạn có thể nhắn tin tiếp.';
+
+  @override
+  String guideChatHeading(String name) {
+    return 'Cùng $name gỡ rối';
+  }
+
+  @override
+  String get startReading => 'Bắt đầu xem';
+
+  @override
+  String get guideChatDemo => 'Trò chuyện mẫu · Tin nhắn chỉ lưu trên thiết bị';
+
+  @override
+  String get guideGreeting => 'Hôm nay bạn muốn cùng tôi suy nghĩ về điều gì?';
+
+  @override
+  String get guidePromptWork => 'Gần đây tôi thấy mông lung về công việc';
+
+  @override
+  String get guidePromptLove => 'Tôi có nên chủ động trong tình cảm?';
+
+  @override
+  String get guideWorkReply =>
+      'Hãy tách điều đã rõ khỏi điều còn chờ đợi. Tuần này bạn có thể chủ động xác nhận việc gì?';
+
+  @override
+  String get guideLoveReply =>
+      'Bạn muốn người ấy hiểu điều gì nhất? Hãy thử nhắn lời hỏi thăm và để ý cảm xúc của mình.';
+
+  @override
+  String guideReflectReply(String question) {
+    return 'Trong chuyện “$question”, hãy nghĩ xem hôm nay bạn làm chủ được điều gì. Việc nào có thể làm trong mười phút?';
+  }
+
+  @override
+  String get continueSample => 'Tiếp tục cùng bản luận giải mẫu';
+
+  @override
+  String get readingSampleQuestion =>
+      'Tôi đang chờ kết quả công việc. Tuần này có thể làm gì?';
+
+  @override
+  String get readingSampleLove => 'Bước tiếp theo trong mối quan hệ là gì?';
+
+  @override
+  String get readingSampleLife =>
+      'Nhịp sống đã thay đổi. Tôi nên bắt đầu từ đâu?';
+
+  @override
+  String get recoverReports => 'Báo cáo của tôi';
+
+  @override
+  String get recentReadings => 'Luận giải gần đây';
+
+  @override
+  String get reportLookup => 'Link hoặc mã báo cáo';
+
+  @override
+  String get findReport => 'Tìm';
+
+  @override
+  String get reportLookupDemo =>
+      'Dùng mã mẫu tại đây. Xem báo cáo cá nhân trong danh sách báo cáo.';
+
+  @override
+  String get reportCodeMissing =>
+      'Không tìm thấy mẫu này. Hãy thử FATE-THAI-001.';
+
+  @override
+  String get newVisitor => 'Tôi là người dùng mới';
+
+  @override
+  String get returningVisitor => 'Tôi đã từng sử dụng';
+
+  @override
+  String get guideWelcomeLabel => 'Ba người luận giải · Ba phương pháp';
+
+  @override
+  String get guideWelcomeTitle => 'Trò chuyện\nvới vận mệnh.';
+
+  @override
+  String get guideWelcomeNote =>
+      'Bắt đầu với một câu hỏi để nhìn lại bản thân.';
+
+  @override
+  String get onAirNow => 'Đang phát trực tiếp';
+
+  @override
+  String get demo => 'Mẫu';
+
+  @override
+  String get allItems => 'Tất cả';
+
+  @override
+  String get templeRoom => 'Lễ cầu phúc tại chùa';
+
+  @override
+  String get templeTeaser => 'Nghi lễ tại chùa';
+
+  @override
+  String get objectsRoom => 'Mở hộp vật phẩm';
+
+  @override
+  String get templeTeaserNote => 'Xem lễ · Nghe giới thiệu';
+
+  @override
+  String get objectsTeaserNote => 'Xem chi tiết · Cách dùng';
+
+  @override
+  String get templeRoomNote => 'Chùa đối tác A · Mẫu';
+
+  @override
+  String get switchRoom => 'Đổi phòng phát';
+
+  @override
+  String get templePosterTitle => 'Một điều ước,\nmột cuộc gặp trang trọng';
+
+  @override
+  String get objectsPosterTitle => 'Mang tâm ý\nvào mỗi ngày';
+
+  @override
+  String get liveDemoNotice => 'Xem thử · Cảnh minh họa';
+
+  @override
+  String get livestreamPause => 'Tạm dừng xem thử';
+
+  @override
+  String get livestreamPlay => 'Phát xem thử';
+
+  @override
+  String get fullScreenPreview => 'Mở rộng xem thử';
+
+  @override
+  String get templeRoomHeading => 'Mang điều ước đến chùa';
+
+  @override
+  String get templeService => 'Cầu phúc cá nhân';
+
+  @override
+  String get samplePrice => 'Giá mẫu';
+
+  @override
+  String get bookingInfo => 'Thông tin đặt lễ';
+
+  @override
+  String get bookingDemoNotice =>
+      'Xem quy trình đặt lễ và mô tả nghi lễ. Lịch chính thức chưa mở.';
+
+  @override
+  String get roomChat => 'Tương tác';
+
+  @override
+  String get ceremonyInfo => 'Về nghi lễ';
+
+  @override
+  String get roomObjectsInfo => 'Vật phẩm giới thiệu';
+
+  @override
+  String get roomWelcomeDemo =>
+      'Người dẫn · Mẫu    Chào mừng. Bạn có thể xem phần giới thiệu buổi này.';
+
+  @override
+  String get templeSegmentOne => 'Viết điều ước muốn mang đến chùa';
+
+  @override
+  String get templeSegmentTwo => 'Tìm hiểu quy trình lễ cầu phúc';
+
+  @override
+  String get templeSegmentThree => 'Lưu lại điều ước';
+
+  @override
+  String get roomMessageHint => 'Thử gửi một tin nhắn mẫu';
+
+  @override
+  String get myActions => 'Hành động của tôi';
+
+  @override
+  String get actionsIntro =>
+      'Một lời luận giải giúp bạn hiểu hoàn cảnh. Ghi lại những việc nhỏ đã làm để nhìn lại sau này.';
+
+  @override
+  String get actionPending => 'Chờ thực hiện';
+
+  @override
+  String get actionDone => 'Đã hoàn thành';
+
+  @override
+  String get actionReady => 'Có thể xem lại';
+
+  @override
+  String get chooseSmallAction => 'Chọn một việc nhỏ';
+
+  @override
+  String get chooseSmallActionNote => 'Một việc bạn chọn trong mười phút';
+
+  @override
+  String get chooseFamilyAction => 'Lên ngày hành động cho gia đình';
+
+  @override
+  String get chooseFamilyActionNote =>
+      'Làm vài việc vừa sức trong cùng một ngày';
+
+  @override
+  String get weeklyMoment => 'Dành một ngày để hành động';
+
+  @override
+  String get weeklyMomentNote =>
+      'Chọn một ngày mỗi tuần để làm vài việc tốt nhỏ. Bạn có thể linh hoạt.';
+
+  @override
+  String get myWeeklyDay => 'Ngày hành động của tôi';
+
+  @override
+  String get arrangeDay => 'Chọn ngày';
+
+  @override
+  String get actionLedger => 'Sổ hành động của tôi';
+
+  @override
+  String get newPlan => 'Kế hoạch mới';
+
+  @override
+  String get noActionPlan => 'Những việc nhỏ bạn chọn làm sẽ hiện ở đây.';
+
+  @override
+  String get actionRecord => 'Bản ghi hành động của tôi';
+
+  @override
+  String get actionTitle => 'Điều tôi muốn làm';
+
+  @override
+  String get careAction => 'Giúp đỡ một người bên cạnh';
+
+  @override
+  String get familyAction => 'Làm vài việc nhỏ cho gia đình';
+
+  @override
+  String get actionCategory => 'Loại hành động';
+
+  @override
+  String get beneficiary => 'Dành cho ai';
+
+  @override
+  String get forSelf => 'Bản thân';
+
+  @override
+  String get forOthers => 'Người bên cạnh';
+
+  @override
+  String get forFamily => 'Gia đình';
+
+  @override
+  String get recordMethod => 'Cách ghi';
+
+  @override
+  String get recordOnDevice => 'Ghi chú trên thiết bị';
+
+  @override
+  String get actionDate => 'Ngày hành động';
+
+  @override
+  String get reviewDate => 'Ngày xem lại';
+
+  @override
+  String get actionNotes => 'Điều tôi đã làm';
+
+  @override
+  String get actionReview => 'Suy ngẫm của tôi';
+
+  @override
+  String get questionProgress => 'Câu hỏi ban đầu đã tiến triển ra sao?';
+
+  @override
+  String get actionReviewed => 'Đã xem lại';
+
+  @override
+  String get recordAction => 'Lưu một việc nhỏ';
+
+  @override
+  String get clearPrototypeRecords => 'Xóa hành động và hội thoại mẫu';
+
+  @override
+  String get storeTitle => 'Vật phẩm tâm ý';
+
+  @override
+  String get storeIntro => 'Mang những điều yêu thích vào cuộc sống mỗi ngày.';
+
+  @override
+  String get storeSearch => 'Tìm sổ tay, hương thơm, trang sức…';
+
+  @override
+  String get scentCategory => 'Hương thơm';
+
+  @override
+  String get jewelryCategory => 'Trang sức';
+
+  @override
+  String get journalCategory => 'Sổ tay';
+
+  @override
+  String get lifeCategory => 'Đời sống';
+
+  @override
+  String get sampleCatalog => 'Danh mục mẫu';
+
+  @override
+  String get objectJournal => 'Sổ hành động tâm ý';
+
+  @override
+  String get objectCandle => 'Nến thơm thư giãn';
+
+  @override
+  String get objectBracelet => 'Vòng tay điều ước';
+
+  @override
+  String get objectDiffuser => 'Tinh dầu khuếch tán ban mai';
+
+  @override
+  String get objectJournalNote => 'Biến điều ước thành bước tiếp theo';
+
+  @override
+  String get objectCandleNote => 'Dành cho mình một lúc yên tĩnh';
+
+  @override
+  String get objectBraceletNote => 'Mang theo một điều ước nhỏ';
+
+  @override
+  String get objectDiffuserNote => 'Bắt đầu ngày mới với mùi hương quen thuộc';
+
+  @override
+  String get shopOrders => 'Đơn của tôi';
+
+  @override
+  String get shopCart => 'Giỏ hàng';
+
+  @override
+  String get addToCart => 'Thêm vào giỏ';
+
+  @override
+  String get cartEmpty => 'Giỏ hàng còn trống';
+
+  @override
+  String get shopEmpty => 'Không tìm thấy vật phẩm phù hợp';
+
+  @override
+  String get shopOrdersEmpty => 'Chưa có đơn vật phẩm';
+
+  @override
+  String get shopDemoNotice => 'Đây là cửa hàng mẫu, chưa mở đặt hàng.';
+
+  @override
+  String get mySpace => 'Luận giải và ghi chép của tôi';
+
+  @override
+  String get mySpaceIntro => 'Báo cáo, hành động và dự định của bạn ở đây.';
+
+  @override
+  String get actionsAndReviews => 'Hành động và nhìn lại';
+
+  @override
+  String get resumeCompanion => 'Tiếp tục trò chuyện';
+
+  @override
+  String get fortunePeriods => 'Vận hôm nay, tuần, tháng và năm';
+
+  @override
+  String get thaiChartIntro => 'Xem lá số Thái theo ngày, giờ và nơi sinh.';
+
+  @override
+  String get sevenPreviewNote =>
+      'Bản xem trước chưa tính được bảy số. Hãy thử trò chuyện mẫu với Arun.';
+
+  @override
   String get country => 'Quốc gia / khu vực';
 
   @override
@@ -398,7 +878,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get privacyText =>
-      'Bản nháp và thông tin truy cập được lưu trên thiết bị. Thông tin sinh, bản đồ sao và báo cáo thuộc phiên khách hoặc tài khoản hiện tại. RoxyAPI tính bản đồ sao; dịch vụ trí tuệ nhân tạo chỉ nhận dữ kiện bản đồ sao, không nhận tên, tên thành phố hay lịch sử trò chuyện. Xóa dữ liệu cục bộ không xóa bản ghi trên máy chủ.';
+      'Bản nháp và thông tin truy cập được lưu trên thiết bị. Thông tin sinh, bản đồ sao và báo cáo thuộc phiên khách hoặc tài khoản hiện tại. RoxyAPI tính bản đồ sao; AI tạo báo cáo chỉ nhận dữ kiện bản đồ sao, không nhận tên, tên thành phố hay lịch sử trò chuyện.\n\nTrò chuyện với thần hộ mệnh sẽ gửi tin nhắn, thông tin sinh, hội thoại liên quan, ký ức đã xác nhận và nội dung bạn chọn đã được phép xem tới dịch vụ AI để trả lời và tiếp tục câu chuyện. Xóa dữ liệu cục bộ không xóa bản ghi trên máy chủ.';
 
   @override
   String get clearBirth => 'Xóa thông tin sinh trong máy';
@@ -1526,4 +2006,611 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get optionalLogin => 'Đăng nhập hoặc đăng ký (không bắt buộc)';
+
+  @override
+  String get templeNav => 'Đền';
+
+  @override
+  String get divinationNav => 'Khám phá';
+
+  @override
+  String get bondNav => 'Gắn kết';
+
+  @override
+  String get moreNav => 'Thêm';
+
+  @override
+  String get templeWelcome => 'Chậm lại một chút.\nMình lắng nghe.';
+
+  @override
+  String get templeIntro => 'Một nơi bình yên\ncho những điều trong lòng.';
+
+  @override
+  String get chooseGuardian => 'Hôm nay bạn muốn trò chuyện cùng ai?';
+
+  @override
+  String get aiCompanionNotice =>
+      'Bạn đồng hành AI · giải trí và tự chiêm nghiệm';
+
+  @override
+  String get loveGuardian => 'Thần tình yêu';
+
+  @override
+  String get careerGuardian => 'Thần sự nghiệp';
+
+  @override
+  String get wealthGuardian => 'Thần tài vận';
+
+  @override
+  String get wellbeingGuardian => 'Thần an lành';
+
+  @override
+  String get loveGuardianNote => 'Tình yêu · kết nối';
+
+  @override
+  String get careerGuardianNote => 'Định hướng · phát triển';
+
+  @override
+  String get wealthGuardianNote => 'Tài chính · cân bằng';
+
+  @override
+  String get wellbeingGuardianNote => 'Nghỉ ngơi · chăm sóc bản thân';
+
+  @override
+  String get continueConversation => 'Tiếp tục câu chuyện';
+
+  @override
+  String get startConversation => 'Bắt đầu trò chuyện';
+
+  @override
+  String get listenIntro =>
+      'Không cần tìm lời hoàn hảo. Hãy bắt đầu từ điều bạn muốn nói.';
+
+  @override
+  String get messageHint => 'Bạn đang nghĩ gì…';
+
+  @override
+  String get sendMessage => 'Gửi';
+
+  @override
+  String get assistantListening => 'Đang lắng nghe và chuẩn bị trả lời…';
+
+  @override
+  String get chatUnavailable =>
+      'Trò chuyện hiện chưa khả dụng. Vui lòng thử lại sau.';
+
+  @override
+  String get chatProfileNeeded =>
+      'Thêm thông tin ngày sinh để kết nối các bài đọc với bạn.';
+
+  @override
+  String get chatFailure =>
+      'Câu trả lời chưa hoàn tất. Hãy thử lại; lượt này chưa được tính.';
+
+  @override
+  String get selectedReading => 'Bài đọc này';
+
+  @override
+  String get continueReading => 'Cùng thần tìm hiểu thêm';
+
+  @override
+  String get readingQuestion => 'Mình nên suy ngẫm điều gì trong bài đọc này?';
+
+  @override
+  String get divinationTitle => 'Một góc nhìn mới';
+
+  @override
+  String get divinationIntro =>
+      'Rút một lá bài, khám phá các vì sao rồi cùng trò chuyện.';
+
+  @override
+  String get dailyDraw => 'Lá bài hôm nay';
+
+  @override
+  String get dailyDrawNote => 'Dành chút thời gian lắng nghe lòng mình';
+
+  @override
+  String get weeklyEvents => 'Tuần này';
+
+  @override
+  String get weeklyNote => 'Điều bạn quan tâm tuần này';
+
+  @override
+  String get weeklyPrompt =>
+      'Tuần này có điều gì mình nên chú ý? Cùng suy nghĩ nhé.';
+
+  @override
+  String get lovePrompt => 'Mình muốn nói về một chuyện tình cảm.';
+
+  @override
+  String get careerPrompt => 'Gần đây mình phân vân về hướng đi công việc.';
+
+  @override
+  String get wealthPrompt => 'Mình muốn nhìn lại những áp lực tiền bạc.';
+
+  @override
+  String get wellbeingPrompt => 'Gần đây mình hơi mệt và muốn tâm sự.';
+
+  @override
+  String get bondTitle => 'Dần hiểu nhau hơn';
+
+  @override
+  String get bondIntro => 'Sự gắn kết đến từ những điều bạn chọn chia sẻ.';
+
+  @override
+  String get bondNew => 'Lần đầu gặp gỡ';
+
+  @override
+  String get bondFamiliar => 'Bắt đầu quen biết';
+
+  @override
+  String get bondGrowing => 'Dần thấu hiểu';
+
+  @override
+  String get bondCount => 'cuộc trò chuyện gần đây';
+
+  @override
+  String get bondRecentNote =>
+      'Giai đoạn dựa trên các cuộc trò chuyện đã hoàn tất, không phải độ chính xác dự đoán.';
+
+  @override
+  String get bondMemory => 'Những điều bạn muốn được ghi nhớ';
+
+  @override
+  String get memoryEmpty =>
+      'Chưa có ký ức được xác nhận. Hãy chia sẻ điều quan trọng với bạn.';
+
+  @override
+  String get addMemory => 'Thêm một ký ức';
+
+  @override
+  String get memoryHint => 'Ví dụ: Mình đang cân nhắc đổi công việc.';
+
+  @override
+  String get memoryHelp =>
+      'Do bạn xác nhận, dùng chung cho bốn vị thần. Có thể sửa hoặc xóa bất cứ lúc nào.';
+
+  @override
+  String get recentConversations => 'Trò chuyện gần đây';
+
+  @override
+  String get noConversations => 'Sự gắn kết bắt đầu từ lời chào đầu tiên.';
+
+  @override
+  String get profileSelf => 'Về bạn';
+
+  @override
+  String get memoryDeleteConfirm => 'Xóa ký ức đã xác nhận này?';
+
+  @override
+  String get sharedHistory => 'Bốn vị thần dùng chung ký ức trò chuyện.';
+
+  @override
+  String get editMemory => 'Sửa ký ức';
+
+  @override
+  String get saveMemory => 'Lưu ký ức';
+
+  @override
+  String get guardianSectionNote => 'Bốn vị thần, cùng lắng nghe những tâm tư';
+
+  @override
+  String get dailyHoroscopeEmpty =>
+      'Chọn cung hoàng đạo để xem gợi ý về tình yêu, công việc và cuộc sống hôm nay.';
+
+  @override
+  String get appleLoginUnavailable =>
+      'Thiết bị này chưa hỗ trợ đăng nhập bằng Apple. Bạn có thể tiếp tục với tư cách khách.';
+
+  @override
+  String get purchaseUnavailable =>
+      'Dịch vụ mua chưa khả dụng. Vui lòng quay lại sau.';
+
+  @override
+  String get chatTryAgain => 'Kết nối lại';
+
+  @override
+  String get copyLink => 'Sao chép liên kết';
+
+  @override
+  String get privacyCenter => 'Quyền riêng tư và cho phép';
+
+  @override
+  String get privacyIntro =>
+      'Thông tin của bạn, lựa chọn của bạn. Xem và quản lý dữ liệu FATE sử dụng.';
+
+  @override
+  String get dataProfileTitle => 'Thông tin ngày sinh';
+
+  @override
+  String get dataProfileBody =>
+      'Ngày, giờ, nơi sinh và múi giờ được lưu để lập bản đồ sao, gắn với phiên khách hoặc tài khoản đăng nhập.';
+
+  @override
+  String get dataChatTitle => 'Trò chuyện và bài đọc AI';
+
+  @override
+  String get dataChatBody =>
+      'Sau khi bạn đồng ý, dữ liệu sao đã tính được gửi cho AI để viết báo cáo. Trò chuyện còn gửi tin nhắn, hồ sơ, hội thoại gần đây, ký ức đã lưu và bài đọc bạn chọn. Tránh nhập thông tin bạn không muốn AI xử lý.';
+
+  @override
+  String get dataPurchaseTitle => 'Giao dịch và quyền truy cập';
+
+  @override
+  String get dataPurchaseBody =>
+      'Cửa hàng xử lý thanh toán. FATE xác minh giao dịch trên máy chủ trước khi cấp quyền. Ứng dụng không yêu cầu số thẻ; bản xem mẫu không tạo giao dịch.';
+
+  @override
+  String get dataControlTitle => 'Quản lý dữ liệu';
+
+  @override
+  String get dataControlBody =>
+      'Bạn có thể sửa hồ sơ và ký ức, xóa lịch sử trò chuyện và rút quyền cho các cuộc trò chuyện AI sau này. Xóa thông tin ngày sinh tại đây chỉ xóa bản trên thiết bị. Xóa tài khoản là thao tác riêng cần máy chủ xác nhận.';
+
+  @override
+  String get aiPermission => 'Trước khi trò chuyện';
+
+  @override
+  String aiPermissionBody(String provider) {
+    return 'Tin nhắn, hồ sơ ngày sinh, hội thoại gần đây, ký ức và bài đọc đã chọn sẽ được dịch vụ AI ($provider) xử lý để trả lời. Câu trả lời có thể sai. Bạn có thể từ chối và dùng công cụ khác, hoặc rút quyền trong mục Riêng tư. Rút quyền dừng việc chia sẻ tiếp theo trên thiết bị, không xóa dữ liệu đã xử lý.';
+  }
+
+  @override
+  String get aiAllow => 'Đồng ý và tiếp tục';
+
+  @override
+  String get aiEnabled => 'Đã cho phép trò chuyện AI';
+
+  @override
+  String get aiPaused => 'Chưa cho phép trò chuyện AI';
+
+  @override
+  String get aiRevoke => 'Rút quyền trò chuyện';
+
+  @override
+  String get aiRevoked =>
+      'Đã rút quyền. Ứng dụng sẽ hỏi lại trước tin nhắn mới.';
+
+  @override
+  String get privacyPolicy => 'Chính sách quyền riêng tư đầy đủ';
+
+  @override
+  String get policyUnavailable => 'Chưa có liên kết chính sách đã công bố.';
+
+  @override
+  String get termsTitle => 'Sử dụng FATE';
+
+  @override
+  String get termsBody =>
+      'FATE cung cấp bạn đồng hành AI và chiêm tinh để suy ngẫm, giải trí. Bài đọc không phải dự đoán chắc chắn hay tư vấn y tế, tài chính, pháp lý. Các vị thần là nhân vật AI hư cấu. Nội dung trả phí chỉ mở sau khi xác minh thanh toán; giá và khả năng mua do cửa hàng cung cấp. Không dùng để quấy rối hoặc gửi nội dung trái pháp luật.';
+
+  @override
+  String get supportTitle => 'Trợ giúp và hỗ trợ';
+
+  @override
+  String get supportIntro => 'Hướng dẫn khi bạn cần.';
+
+  @override
+  String get supportUnavailable =>
+      'Chưa có thông tin liên hệ hỗ trợ. Vui lòng thử lại sau.';
+
+  @override
+  String get supportContact => 'Liên hệ hỗ trợ';
+
+  @override
+  String get copyAddress => 'Sao chép email';
+
+  @override
+  String get copied => 'Đã sao chép';
+
+  @override
+  String get openFailed =>
+      'Không mở được liên kết. Bạn có thể sao chép địa chỉ.';
+
+  @override
+  String get faqReportTitle => 'Bài đọc của tôi ở đâu?';
+
+  @override
+  String get faqReportBody =>
+      'Mở Báo cáo để xem bài đọc đã lưu. Dùng cùng tài khoản và ngôn ngữ. Bài mẫu được gắn nhãn riêng, không phải kết quả cá nhân.';
+
+  @override
+  String get faqChatTitle => 'Tôi có thể tiếp tục cuộc trò chuyện cũ không?';
+
+  @override
+  String get faqChatBody =>
+      'Dùng cùng trình duyệt hoặc bản cài ứng dụng và chọn cùng vị thần. Khách có thể mất quyền truy cập sau khi xóa dữ liệu hoặc cài lại. Xem và xóa ký ức trong Gắn kết.';
+
+  @override
+  String get faqPurchaseTitle => 'Đã trả tiền nhưng vẫn bị khóa?';
+
+  @override
+  String get faqPurchaseBody =>
+      'Không mua lại khi đang chờ xác minh. Mở Mua và khôi phục, thử xác minh lại rồi làm mới báo cáo. Khôi phục yêu cầu kiểm tra với cửa hàng; chỉ máy chủ xác nhận quyền truy cập.';
+
+  @override
+  String get licenses => 'Giấy phép mã nguồn mở';
+
+  @override
+  String get deleteAccountBody =>
+      'Thao tác này xóa vĩnh viễn tài khoản hiện tại cùng hồ sơ, hội thoại và ký ức khỏi dịch vụ. Dữ liệu cần cho hồ sơ giao dịch có thể được giữ lại. Xóa tài khoản không hoàn tiền. Phiên khách đã xóa không thể khôi phục.';
+
+  @override
+  String get deleteUnavailable =>
+      'Dịch vụ chưa hỗ trợ xóa tài khoản. Chưa có dữ liệu nào bị xóa. Xóa dữ liệu cục bộ hoặc đăng xuất không xóa tài khoản.';
+
+  @override
+  String get deleteAcknowledge => 'Tôi hiểu rằng không thể hoàn tác.';
+
+  @override
+  String get deleteNow => 'Xóa vĩnh viễn';
+
+  @override
+  String get deleteSuccess => 'Đã xác nhận xóa tài khoản.';
+
+  @override
+  String get deleteFailure =>
+      'Chưa xác nhận xóa. Phiên của bạn vẫn được giữ. Hãy thử lại hoặc liên hệ hỗ trợ.';
+
+  @override
+  String get clearHistory => 'Xóa hội thoại';
+
+  @override
+  String get clearHistoryBody =>
+      'Thao tác này xóa lịch sử trò chuyện với cả bốn vị thần khỏi dịch vụ và không thể hoàn tác. Ký ức đã lưu vẫn ở Gắn kết và có thể xóa tại đó.';
+
+  @override
+  String get clearHistoryDone => 'Đã xóa lịch sử trò chuyện.';
+
+  @override
+  String get contentReport => 'Báo cáo nội dung';
+
+  @override
+  String get contentReportIntro =>
+      'Cho chúng tôi biết vấn đề của câu trả lời AI này. Chỉ gửi mã tham chiếu và chi tiết bạn nhập, không đính kèm toàn bộ hội thoại.';
+
+  @override
+  String get reportReason => 'Lý do';
+
+  @override
+  String get reasonHarmful => 'Gây hại hoặc không an toàn';
+
+  @override
+  String get reasonSexual => 'Nội dung tình dục';
+
+  @override
+  String get reasonHate => 'Thù ghét hoặc quấy rối';
+
+  @override
+  String get reasonPrivacy => 'Thông tin cá nhân';
+
+  @override
+  String get reasonMisleading => 'Lời khuyên sai lệch';
+
+  @override
+  String get reasonOther => 'Vấn đề khác';
+
+  @override
+  String get reportDetails => 'Chi tiết thêm (không bắt buộc)';
+
+  @override
+  String get reportSend => 'Gửi báo cáo';
+
+  @override
+  String get reportUnavailable =>
+      'Tạm thời không thể báo cáo. Chưa gửi báo cáo nào. Hãy thử lại sau hoặc xem Trợ giúp.';
+
+  @override
+  String reportReceived(String receipt) {
+    return 'Đã nhận báo cáo · $receipt';
+  }
+
+  @override
+  String get purchaseCenter => 'Mua và khôi phục';
+
+  @override
+  String get purchaseCenterIntro =>
+      'Kiểm tra quyền truy cập và khôi phục giao dịch.';
+
+  @override
+  String get restoreCheck => 'Đang kiểm tra giao dịch…';
+
+  @override
+  String get restoreChecked =>
+      'Đã kiểm tra với cửa hàng. Làm mới báo cáo để xem quyền đã xác minh. Thông báo này không xác nhận mua hàng.';
+
+  @override
+  String get verifiedContent => 'Thư viện báo cáo';
+
+  @override
+  String get verifiedContentIntro =>
+      'Mở báo cáo để xem quyền hiện tại. Báo cáo đã lưu hay bài mẫu không đồng nghĩa đã mua.';
+
+  @override
+  String get reportLeave => 'Bỏ bản nháp báo cáo này?';
+
+  @override
+  String get serviceRetry => 'Thử lại';
+
+  @override
+  String get deleteCleanup =>
+      'Máy chủ đã xác nhận xóa, nhưng một số dữ liệu cục bộ chưa xóa được. Phiên trong bộ nhớ đã kết thúc; hãy xóa bộ nhớ ứng dụng trên thiết bị này.';
+
+  @override
+  String get storeBuy => 'Mua qua cửa hàng';
+
+  @override
+  String get restoreUnavailable =>
+      'Thiết bị hoặc tài khoản này chưa hỗ trợ khôi phục. Hãy dùng thiết bị được hỗ trợ, cùng tài khoản cửa hàng và FATE ban đầu.';
+
+  @override
+  String get calendarTitle => 'Lịch chiêm tinh';
+
+  @override
+  String get calendarOpen => 'Xem lịch';
+
+  @override
+  String get calendarToday => 'Hôm nay';
+
+  @override
+  String get calendarSubtitle => 'Chọn một ngày để lên kế hoạch';
+
+  @override
+  String calendarYears(int be, int ce) {
+    return 'Phật lịch $be · Dương lịch $ce';
+  }
+
+  @override
+  String calendarSmallEra(int year) {
+    return 'Tiểu lịch $year';
+  }
+
+  @override
+  String get calendarSelectHint => 'Chạm ngày để xem năm mục chi tiết';
+
+  @override
+  String get calendarLoading => 'Đang mở lịch…';
+
+  @override
+  String get calendarUnavailable =>
+      'Không thể tải tháng này. Vui lòng thử lại.';
+
+  @override
+  String calendarRange(int start, int end) {
+    return 'Xem ngoại tuyến · $start–$end';
+  }
+
+  @override
+  String get calendarOutOfRange => 'Ngày này nằm ngoài phạm vi lịch.';
+
+  @override
+  String get calendarWanPhra => 'Ngày lễ Phật';
+
+  @override
+  String get calendarKalayokTitle => 'Kalayok · Loại ngày';
+
+  @override
+  String calendarFlag(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'thongchai': 'Ngày thắng lợi',
+      'athibodi': 'Ngày chủ trì',
+      'ubat': 'Ngày cần cẩn trọng',
+      'other': 'Ngày tránh việc lớn',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String calendarFlagBody(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'thongchai': 'Theo truyền thống, gắn với việc khởi đầu.',
+      'athibodi': 'Theo truyền thống, gắn với dẫn dắt và tổ chức.',
+      'ubat': 'Theo truyền thống, nên xem xét kế hoạch cẩn thận.',
+      'other': 'Theo truyền thống, tránh vội quyết định việc lớn.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get calendarNoKalayok => 'Không có dấu hiệu Kalayok';
+
+  @override
+  String get calendarMixedNote =>
+      'Ngày này có nhiều dấu hiệu; tất cả đều được hiển thị.';
+
+  @override
+  String get calendarLunarTitle => 'Ngày âm lịch';
+
+  @override
+  String get calendarRiangMon => 'Dithi Riang Mon';
+
+  @override
+  String get calendarRiangMonBody =>
+      'Ngày âm lịch được tham khảo khi chọn ngày cưới theo truyền thống.';
+
+  @override
+  String get calendarLunarOrdinary => 'Không phải ngày Dithi Riang Mon.';
+
+  @override
+  String get calendarUbakong => 'Ubakong · Giờ tốt';
+
+  @override
+  String get calendarDaylight => 'Ban ngày · 06:00–18:00 · Bangkok';
+
+  @override
+  String get calendarMansion => '27 cung Mặt Trăng';
+
+  @override
+  String calendarMansionPosition(int index, int quarter) {
+    return 'Cung $index / 27 · Phần $quarter';
+  }
+
+  @override
+  String get calendarMansionReference =>
+      'Vị trí Mặt Trăng lúc trưa Bangkok; cung có thể đổi trong ngày.';
+
+  @override
+  String get calendarReference =>
+      'Lịch Thái truyền thống · tham khảo văn hóa và giải trí';
+
+  @override
+  String calendarLunarShort(String phase, int day) {
+    String _temp0 = intl.Intl.selectLogic(phase, {'waxing': 'T', 'other': 'G'});
+    return '$_temp0$day';
+  }
+
+  @override
+  String calendarMonth(String month) {
+    String _temp0 = intl.Intl.selectLogic(month, {
+      '1': 'Tháng Một',
+      '2': 'Tháng Hai',
+      '3': 'Tháng Ba',
+      '4': 'Tháng Tư',
+      '5': 'Tháng Năm',
+      '6': 'Tháng Sáu',
+      '7': 'Tháng Bảy',
+      '8': 'Tháng Tám',
+      '9': 'Tháng Chín',
+      '10': 'Tháng Mười',
+      '11': 'Tháng Mười Một',
+      '12': 'Tháng Mười Hai',
+      'other': '',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String calendarMansionName(String index) {
+    String _temp0 = intl.Intl.selectLogic(index, {
+      '1': 'Ashwini',
+      '2': 'Bharani',
+      '3': 'Krittika',
+      '4': 'Rohini',
+      '5': 'Mrigashira',
+      '6': 'Ardra',
+      '7': 'Punarvasu',
+      '8': 'Pushya',
+      '9': 'Ashlesha',
+      '10': 'Magha',
+      '11': 'Purva Phalguni',
+      '12': 'Uttara Phalguni',
+      '13': 'Hasta',
+      '14': 'Chitra',
+      '15': 'Swati',
+      '16': 'Vishakha',
+      '17': 'Anuradha',
+      '18': 'Jyeshtha',
+      '19': 'Mula',
+      '20': 'Purva Ashadha',
+      '21': 'Uttara Ashadha',
+      '22': 'Shravana',
+      '23': 'Dhanishta',
+      '24': 'Shatabhisha',
+      '25': 'Purva Bhadrapada',
+      '26': 'Uttara Bhadrapada',
+      '27': 'Revati',
+      'other': '',
+    });
+    return '$_temp0';
+  }
 }

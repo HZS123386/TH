@@ -9,7 +9,7 @@
 | `western-astrology-h5 4/web-client/` | 实际运行的 Flutter H5，包含资料表单、免费试读、收银台、完整报告和导出 |
 | `TH/app/` | Flutter App，包含首页、星盘、报告、账户和原生平台工程 |
 | `TH/backend/app/` | 共用 FastAPI 后端、排盘、报告、支付确认和持久化 |
-| `TH/data/` | 本地数据库与出生地索引，保留在本机且不提交 Git |
+| `TH/data/` | 本机只读出生地索引及运行资源，保留在本机且不提交 Git |
 
 ## 已包含的报告流程
 
@@ -20,7 +20,7 @@
 
 ## 本地启动
 
-需要 Node.js 22.21 或更新版本、pnpm、Python 3.12 或更新版本及 Flutter SDK。以下安装命令在首次准备环境时执行，日常启动使用上面的统一命令。
+需要 Node.js 22.21 或更新版本、pnpm、Python 3.12 或更新版本、Flutter SDK 和 PostgreSQL 16。以下安装命令在首次准备环境时执行，日常启动使用上面的统一命令。
 
 先构建落地页：
 
@@ -43,7 +43,9 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }
 
 在 `TH/.env` 中填写本地使用的服务端模型配置。人生报告使用 `FORTUNE_PROVIDER` 选择提供商及相应的提供商配置；未配置时接口会说明生成服务不可用。地点索引命令会下载 GeoNames 的公开数据并在本机生成数据库。
 
-在 `TH/.env` 中保留正在使用的 `DATABASE_PATH`。本机已设为 `data/sunlands-order-only-20261112.db`，其中含当前订单、到账记录和解锁状态；不要随意切换为新空库。
+在 `TH/.env` 中设置 `DATABASE_URL` 指向已迁移的 PostgreSQL 业务库。本机复用原 PostgreSQL 容器 `fate-db-1`，业务库为 `fate_business`。本机使用 Docker 时可配置 `FATE_POSTGRES_CONTAINER=fate-db-1`，统一启动命令会等待这个数据库实例就绪。
+
+首次初始化已确认的 PostgreSQL 目标库，在 `TH/` 中执行 `node scripts/python.mjs -m alembic -c backend/alembic.ini upgrade head`。现有业务迁移须先备份和核对数据，再切换连接。后端启动时会检查数据库迁移版本。
 
 回到仓库根目录启动所有服务：
 
@@ -56,6 +58,7 @@ node TH/scripts/dev.mjs
 - 已构建落地页：<http://127.0.0.1:8000/thai-landing/?lang=zh>
 - App 网页预览：<http://127.0.0.1:5176/>
 - 共用后端健康检查：<http://127.0.0.1:8000/health>
+- H5 运营后台：<http://127.0.0.1:8000/admin/>，页面、接口、测试和资料统一在 `TH/h5_admin/`，配置与数据口径见 [后台说明](TH/h5_admin/README.md)。
 
 H5 的真实入口是 `western-astrology-h5 4/web-client/lib/main.dart`，构建输出为 `western-astrology-h5 4/site/`。`dist/` 保留原有素材；修改页面请沿用 `web-client/` 的实际调用链。后端默认定位本仓库内的 `site/`，无需引用旧目录。
 
@@ -70,6 +73,8 @@ pnpm test:api
 pnpm test:app
 ```
 
+后端测试通过 `FATE_TEST_DATABASE_URL` 使用单独的 `fate_test` PostgreSQL 库，在每个用例独立建表。此电脑的测试配置在忽略提交的 `TH/data/.postgres-test.env`。
+
 更多接口和模型配置说明见 [TH 项目说明](TH/README.md) 与 [落地页说明](western-astrology-h5%204/README.md)。
 
 ## 本地配置和数据
@@ -79,6 +84,10 @@ pnpm test:app
 第三方依赖及素材授权说明保留在 `TH/public/licenses/`、`TH/backend/vendor/` 和落地页的字体目录中。
 
 ## 迁移备份
+
+2026-11-16 PostgreSQL 迁移的源码与数据库备份位于 `D:/Backups/FATE-postgresql-20261116-105559`。源库是原启动配置指定的 `sunlands-order-only-20261112.db`，迁移涵盖 32 张表、232 条记录。旧原型与历史数据库的副本保留作恢复资料。
+
+一次性导入使用 `TH/scripts/migrate-sqlite-to-postgres.py --source <SQLite备份>`，要求目标已应用上述迁移且未写入业务数据。加 `--verify-only` 可只读逐行比对，适用于切换前对账。切换后如果已产生新数据，应先备份最新 PostgreSQL 数据及核对新增业务记录，再决定回退；直接恢复旧 SQLite 文件会丢掉后续写入。
 
 迁移前的两份源码快照、三份 SQLite 数据库和校验清单位于 `D:\Backups\FATE-unification-20261113`。旧独立原型的完整目录归档位于 `C:\Users\32668\Desktop\git\backups\FATE-unification-20261113\original-prototype`。备份只用于核查和恢复，后续开发统一在本目录进行。
 

@@ -36,8 +36,8 @@ def story(bundle):
 
 
 @pytest.fixture
-def app(tmp_path):
-    settings = Settings(database_path=str(tmp_path / "app.db"), roxy_enabled=True, roxy_api_key="test-not-a-real-key",
+def app(postgres_url):
+    settings = Settings(database_url=postgres_url, roxy_enabled=True, roxy_api_key="test-not-a-real-key",
                         providers={"qwen": ProviderConfig("test-key", "https://example.com/v1", "test-model")})
     return create_app(settings)
 
@@ -176,7 +176,7 @@ def test_guest_can_read_own_report_and_explicit_registration_keeps_ownership(app
         headers = {"Authorization": "Bearer " + identity["token"]}
         assert client.get("/api/auth/me", headers=headers).json()["kind"] == "guest"
         with app.state.store.connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM accounts").fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) FROM accounts").fetchone()["count"] == 0
         profile = save(client, headers)
         result = client.post("/api/calculations", headers=headers, json={
             "system": "western_natal", "profile_id": profile["profile_id"], "profile_revision": 1}).json()

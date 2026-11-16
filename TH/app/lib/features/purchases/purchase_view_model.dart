@@ -12,22 +12,45 @@ class PurchaseViewModel extends ChangeNotifier {
   final PurchaseRepository repository;
   final SessionViewModel session;
   String? error;
+  bool restoring = false, restoreChecked = false, _disposed = false;
+  String _owner = '';
+  bool get storeEnabled =>
+      !kIsWeb &&
+      switch (defaultTargetPlatform) {
+        TargetPlatform.iOS => session.capabilities.applePurchase,
+        TargetPlatform.android => session.capabilities.googlePurchase,
+        _ => false,
+      };
   String _orderRequestKey = newRequestKey(), _reportId = '';
   bool get canPurchase =>
       repository.nativeAvailable &&
-      session.capabilities.applePurchase &&
+      storeEnabled &&
       session.auth.signedIn &&
       repository.product != null &&
       !repository.needsVerification &&
-      !repository.busy;
-  bool get busy => repository.busy;
+      !busy;
+  bool get busy => repository.busy || restoring;
+  bool get canRestore =>
+      repository.nativeAvailable &&
+      storeEnabled &&
+      session.auth.signedIn &&
+      !repository.needsVerification &&
+      !busy;
   String? get price => repository.product?.price;
   String? get status => error ?? repository.errorCode;
   void _configure() {
-    repository.configure(session.owner, session.capabilities.applePurchase);
+    if (_owner != session.owner) {
+      _owner = session.owner;
+      error = null;
+      restoring = restoreChecked = false;
+      _reportId = '';
+      _orderRequestKey = newRequestKey();
+    }
+    repository.configure(session.owner, storeEnabled && session.auth.signedIn);
   }
 
   Future<void> prepare(String reportId) async {
+    final owner = session.owner;
     if (_reportId != reportId) {
       _reportId = reportId;
       _orderRequestKey = newRequestKey();
@@ -36,8 +59,10 @@ class PurchaseViewModel extends ChangeNotifier {
     try {
       await repository.prepare(reportId, _orderRequestKey);
     } catch (_) {
-      error = 'purchase_unavailable';
-      notifyListeners();
+      if (!_disposed && session.owner == owner) {
+        error = 'purchase_unavailable';
+        notifyListeners();
+      }
     }
   }
 
@@ -45,17 +70,28 @@ class PurchaseViewModel extends ChangeNotifier {
   bool get needsVerification => repository.needsVerification;
   Future<void> retryVerification() => repository.retryVerification();
   Future<void> restore() async {
+    if (!canRestore) return;
+    final owner = session.owner;
     error = null;
+    restoring = true;
+    restoreChecked = false;
+    notifyListeners();
     try {
-      await repository.restore();
+      await repository.restore().timeout(const Duration(seconds: 35));
+      if (!_disposed && session.owner == owner) restoreChecked = true;
     } catch (_) {
-      error = 'restore_unavailable';
-      notifyListeners();
+      if (!_disposed && session.owner == owner) error = 'restore_unavailable';
+    } finally {
+      if (!_disposed && session.owner == owner) {
+        restoring = false;
+        notifyListeners();
+      }
     }
   }
 
   @override
   void dispose() {
+    _disposed = true;
     session.removeListener(_configure);
     repository.removeListener(notifyListeners);
     super.dispose();

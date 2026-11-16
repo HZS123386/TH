@@ -73,16 +73,16 @@ def transport(monkeypatch):
     return calls, mode
 
 
-def settings(tmp_path):
-    return Settings(database_path=str(tmp_path / "roxy.db"), life_astrology_provider="roxy", roxy_enabled=True,
+def settings(postgres_url):
+    return Settings(database_url=postgres_url, life_astrology_provider="roxy", roxy_enabled=True,
                     roxy_api_key="roxy-server-test-key", providers={"qwen": ProviderConfig("writer-test-key", "https://model.example/v1", "qwen3.7-plus")},
                     bazi_reports_per_minute=100, bazi_reports_per_day=100)
 
 
 @pytest.mark.parametrize("known", [True, False])
-def test_natal_contract_is_reused_and_unknown_time_excludes_sensitive_factors(tmp_path, transport, known):
-    config = settings(tmp_path)
-    adapter = RoxyAstrology(config, Storage(config.database_path))
+def test_natal_contract_is_reused_and_unknown_time_excludes_sensitive_factors(postgres_url, transport, known):
+    config = settings(postgres_url)
+    adapter = RoxyAstrology(config, Storage(config.database_url))
     profile = {**PROFILE, "birth_time": PROFILE["birth_time"] if known else None}
     body = LifeInput.model_validate({"profile": profile, "year": 2026, "report_kind": "fortune"})
     async def calculate():
@@ -110,9 +110,9 @@ def test_natal_contract_is_reused_and_unknown_time_excludes_sensitive_factors(tm
     ("CN", "geonames:1816670", "Asia/Shanghai", 39.9075, 116.39723),
     ("TH", "geonames:1609350", "Asia/Bangkok", 13.75398, 100.50144),
 ])
-def test_selected_city_supplies_coordinates_and_original_local_timezone(tmp_path, transport, country, identifier, zone, latitude, longitude):
-    config = settings(tmp_path)
-    adapter = RoxyAstrology(config, Storage(config.database_path))
+def test_selected_city_supplies_coordinates_and_original_local_timezone(postgres_url, transport, country, identifier, zone, latitude, longitude):
+    config = settings(postgres_url)
+    adapter = RoxyAstrology(config, Storage(config.database_url))
     profile = {key: value for key, value in PROFILE.items() if key not in ("latitude", "longitude")}
     profile.update(country_code=country, location_id=identifier, timezone=zone)
     body = LifeInput.model_validate({"profile": profile, "year": 2026})
@@ -138,13 +138,13 @@ def test_natal_response_rejects_mismatched_or_invalid_calculations(change):
         validate_natal("natal", result, body)
 
 
-def test_report_unlock_contains_all_six_topics_without_recalculating(tmp_path, monkeypatch, transport):
+def test_report_unlock_contains_all_six_topics_without_recalculating(postgres_url, monkeypatch, transport):
     calls = []
     async def write(self, bundle, **kwargs):
         calls.append(deepcopy(bundle))
         return self.validate(json.dumps(draft(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
-    config = settings(tmp_path)
+    config = settings(postgres_url)
     with TestClient(create_app(config)) as client:
         body = {"profile": PROFILE, "year": 2026, "report_kind": "fortune"}
         response = client.post("/api/life-reports", json=body, headers=HEADERS)
@@ -180,12 +180,12 @@ def test_report_unlock_contains_all_six_topics_without_recalculating(tmp_path, m
                 assert 90 <= writing_progress(json.dumps(draft(b), ensure_ascii=False), "chapter", compact=True) < 100
 
 
-def test_roxy_failure_does_not_fall_back_to_thai_or_call_writer(tmp_path, monkeypatch, transport):
+def test_roxy_failure_does_not_fall_back_to_thai_or_call_writer(postgres_url, monkeypatch, transport):
     transport[1]["status"] = 503
     async def forbidden(*args, **kwargs):
         pytest.fail("the writer must not run without calculated evidence")
     monkeypatch.setattr(LifeWriter, "write", forbidden)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         response = client.post("/api/life-reports", json={"profile": PROFILE, "year": 2026}, headers=HEADERS)
         assert response.status_code == 503 and "roxy_unavailable" in response.text
 

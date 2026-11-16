@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 
 import '../core/network/api_client.dart';
@@ -46,11 +47,15 @@ class PurchaseRepository extends ChangeNotifier {
   final ApiClient api;
   final LocalDraftStore drafts;
   final InAppPurchase? _injectedStore;
-  static const _draft = 'pending-apple-order';
+  String get storeName =>
+      defaultTargetPlatform == TargetPlatform.android ? 'google_play' : 'apple';
+  String get _draft => storeName == 'apple'
+      ? 'pending-apple-order'
+      : 'pending-google-play-order';
 
   InAppPurchase? _store;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
-  SK2PurchaseDetails? _pending;
+  PurchaseDetails? _pending;
   int _generation = 0;
   String _owner = 'guest';
   bool _enabled = false, _working = false, _awaitingStore = false;
@@ -83,7 +88,10 @@ class PurchaseRepository extends ChangeNotifier {
         !enabled ||
         owner == 'guest' ||
         kIsWeb ||
-        defaultTargetPlatform != TargetPlatform.iOS) {
+        ![
+          TargetPlatform.iOS,
+          TargetPlatform.android,
+        ].contains(defaultTargetPlatform)) {
       return;
     }
 
@@ -102,6 +110,12 @@ class PurchaseRepository extends ChangeNotifier {
       _store = store;
       _subscription = store.purchaseStream.listen(
         (events) => unawaited(_receive(events, generation)),
+        onError: (Object _) {
+          if (generation != _generation) return;
+          _awaitingStore = false;
+          errorCode = 'purchase_unavailable';
+          notifyListeners();
+        },
       );
       notifyListeners();
     } catch (_) {
@@ -132,7 +146,7 @@ class PurchaseRepository extends ChangeNotifier {
           requestKey: key,
           body: {
             'report_id': reportId,
-            'store': 'apple',
+            'store': storeName,
             'catalog_sku': 'western_natal',
           },
         ),
@@ -171,10 +185,15 @@ class PurchaseRepository extends ChangeNotifier {
     notifyListeners();
     try {
       final requested = await store.buyNonConsumable(
-        purchaseParam: Sk2PurchaseParam(
-          productDetails: sku,
-          applicationUserName: order.accountRef,
-        ),
+        purchaseParam: storeName == 'apple'
+            ? Sk2PurchaseParam(
+                productDetails: sku,
+                applicationUserName: order.accountRef,
+              )
+            : GooglePlayPurchaseParam(
+                productDetails: sku,
+                applicationUserName: order.accountRef,
+              ),
       );
       if (!requested) throw const ApiFailure('purchase_unavailable');
     } catch (_) {
@@ -201,11 +220,17 @@ class PurchaseRepository extends ChangeNotifier {
         notifyListeners();
         continue;
       }
-      if (event is! SK2PurchaseDetails ||
-          event.appAccountToken?.toLowerCase() !=
-              order.accountRef.toLowerCase() ||
+      final matchingAccount = storeName == 'apple'
+          ? event is SK2PurchaseDetails &&
+                event.appAccountToken?.toLowerCase() ==
+                    order.accountRef.toLowerCase()
+          : event is GooglePlayPurchaseDetails &&
+                event.billingClientPurchase.obfuscatedAccountId ==
+                    order.accountRef;
+      if (!matchingAccount ||
           event.purchaseID == null ||
           event.verificationData.serverVerificationData.isEmpty) {
+        _awaitingStore = false;
         errorCode = 'purchase_verification_required';
         notifyListeners();
         continue;
@@ -233,9 +258,16 @@ class PurchaseRepository extends ChangeNotifier {
         'POST',
         '/api/orders/${Uri.encodeComponent(order.id)}/verify',
         requestKey: key.toString(),
-        body: {
-          'signed_transaction': event.verificationData.serverVerificationData,
-        },
+        body: event is GooglePlayPurchaseDetails
+            ? {
+                'store': 'google_play',
+                'product_id': event.productID,
+                'purchase_token': event.verificationData.serverVerificationData,
+              }
+            : {
+                'signed_transaction':
+                    event.verificationData.serverVerificationData,
+              },
       );
       if (generation != _generation) return;
       if (result['state'] != 'paid') {

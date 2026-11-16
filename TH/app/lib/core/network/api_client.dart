@@ -41,11 +41,13 @@ class ApiClient {
     String path, {
     bool authenticated = true,
     bool allowEmpty = false,
+    bool readList = false,
   }) => request(
     'GET',
     path,
     authenticated: authenticated,
     allowEmpty: allowEmpty,
+    readList: readList,
   );
   Future<Map<String, dynamic>> request(
     String method,
@@ -55,6 +57,8 @@ class ApiClient {
     bool authenticated = true,
     bool allowEmpty = false,
     bool retryAuth = true,
+    bool readList = false,
+    bool readEvents = false,
   }) async {
     if (!path.startsWith('/api/')) {
       throw ArgumentError('Only business API paths are allowed');
@@ -62,7 +66,7 @@ class ApiClient {
     final uri = Uri.parse('$baseUrl$path');
     final requestSessionVersion = sessionVersion;
     final headers = <String, String>{
-      'Accept': 'application/json',
+      'Accept': readEvents ? 'text/event-stream' : 'application/json',
       'Content-Type': 'application/json',
       'Accept-Language': locale,
       if (authenticated && accessToken != null)
@@ -75,7 +79,7 @@ class ApiClient {
       if (body != null) request.body = jsonEncode(body);
       response = await http.Response.fromStream(
         await _client.send(request).timeout(const Duration(seconds: 35)),
-      ).timeout(const Duration(seconds: 35));
+      ).timeout(Duration(seconds: readEvents ? 75 : 35));
     } on TimeoutException {
       throw const ApiFailure('timeout', retryable: true);
     } on http.ClientException {
@@ -105,12 +109,17 @@ class ApiClient {
             authenticated: true,
             allowEmpty: allowEmpty,
             retryAuth: false,
+            readList: readList,
+            readEvents: readEvents,
           );
         }
       }
       onSessionExpired?.call();
     }
     dynamic decoded;
+    if (readEvents && response.statusCode >= 200 && response.statusCode < 300) {
+      return _chatReply(response.body);
+    }
     try {
       decoded = response.body.isEmpty
           ? <String, dynamic>{}
@@ -134,6 +143,7 @@ class ApiClient {
       );
     }
     if (decoded == null && allowEmpty) return {};
+    if (readList && decoded is List) return {'items': decoded};
     if (decoded is! Map<String, dynamic>) {
       throw const ApiFailure('invalid_response');
     }
@@ -141,4 +151,39 @@ class ApiClient {
   }
 
   void close() => _client.close();
+
+  // Only the server's final done event confirms a saved conversation.
+  Map<String, dynamic> _chatReply(String body) {
+    var event = '';
+    final answer = StringBuffer();
+    String? messageId;
+    try {
+      for (final line in const LineSplitter().convert(body)) {
+        if (line.startsWith('event:')) event = line.substring(6).trim();
+        if (!line.startsWith('data:')) continue;
+        final data = jsonDecode(line.substring(5).trim());
+        if (data is! Map<String, dynamic>) {
+          throw const FormatException('invalid_event');
+        }
+        if (event == 'error') {
+          throw ApiFailure(data['code'] as String? ?? 'request_failed');
+        }
+        if (event == 'token') answer.write(data['text'] as String);
+        if (answer.length > 24000) {
+          throw const FormatException('reply_too_long');
+        }
+        if (event == 'done') messageId = data['message_id'] as String?;
+      }
+    } on FormatException {
+      throw const ApiFailure('invalid_response');
+    } on TypeError {
+      throw const ApiFailure('invalid_response');
+    }
+    if (messageId == null ||
+        messageId.isEmpty ||
+        answer.toString().trim().isEmpty) {
+      throw const ApiFailure('reply_incomplete', retryable: true);
+    }
+    return {'id': messageId, 'content': answer.toString()};
+  }
 }

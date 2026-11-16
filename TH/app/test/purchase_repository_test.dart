@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:fate_app/core/network/api_client.dart';
 import 'package:fate_app/core/storage/session_store.dart';
@@ -16,10 +18,17 @@ const accountRef = '11111111-1111-4111-8111-111111111111';
 class FakeStore extends Fake implements InAppPurchase {
   final events = StreamController<List<PurchaseDetails>>.broadcast();
   int completed = 0;
+  PurchaseParam? lastPurchase;
   @override
   Stream<List<PurchaseDetails>> get purchaseStream => events.stream;
   @override
   Future<bool> isAvailable() async => true;
+  @override
+  Future<bool> buyNonConsumable({required PurchaseParam purchaseParam}) async {
+    lastPurchase = purchaseParam;
+    return true;
+  }
+
   @override
   Future<ProductDetailsResponse> queryProductDetails(
     Set<String> identifiers,
@@ -62,6 +71,91 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
   });
   tearDown(() => debugDefaultTargetPlatformOverride = null);
+  test(
+    'Google Play binds checkout to the owner and acknowledges only after server verification',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      var paid = false, verifications = 0;
+      final store = FakeStore();
+      final api = ApiClient(
+        'https://api.example.test',
+        client: MockClient((request) async {
+          final body = jsonDecode(request.body) as Map;
+          if (request.url.path.endsWith('/verify')) {
+            verifications++;
+            expect(body, {
+              'store': 'google_play',
+              'product_id': 'fate.natal',
+              'purchase_token': 'play-fixture-token',
+            });
+            return http.Response(
+              jsonEncode({'state': paid ? 'paid' : 'pending'}),
+              200,
+            );
+          }
+          expect(body['store'], 'google_play');
+          return http.Response(
+            jsonEncode({
+              'order_id': 'play-order',
+              'store_product_id': 'fate.natal',
+              'app_account_ref': accountRef,
+            }),
+            201,
+          );
+        }),
+      );
+      final repo = PurchaseRepository(
+        api,
+        LocalDraftStore(await SharedPreferences.getInstance()),
+        store: store,
+      );
+      await repo.configure('owner-play', true);
+      await repo.prepare('report1', 'order-key');
+      await repo.buy();
+      expect(store.lastPurchase, isA<GooglePlayPurchaseParam>());
+      expect(store.lastPurchase!.applicationUserName, accountRef);
+      GooglePlayPurchaseDetails playEvent(String account) =>
+          GooglePlayPurchaseDetails.fromPurchase(
+            PurchaseWrapper(
+              orderId: 'GPA.fixture',
+              packageName: 'app.fate.fate_app',
+              purchaseTime: 1,
+              purchaseToken: 'play-fixture-token',
+              signature: 'fixture',
+              products: ['fate.natal'],
+              isAutoRenewing: false,
+              originalJson: '{}',
+              isAcknowledged: false,
+              purchaseState: PurchaseStateWrapper.purchased,
+              obfuscatedAccountId: account,
+            ),
+          ).single;
+      final rejected = Completer<void>(), pending = Completer<void>();
+      repo.addListener(() {
+        if (repo.errorCode == 'purchase_verification_required' &&
+            !rejected.isCompleted) {
+          rejected.complete();
+        }
+        if (repo.errorCode == 'purchase_verifying' && !pending.isCompleted) {
+          pending.complete();
+        }
+      });
+      store.events.add([playEvent('different-owner')]);
+      await rejected.future;
+      expect(verifications, 0);
+      expect(store.completed, 0);
+      store.events.add([playEvent(accountRef)]);
+      await pending.future;
+      expect(store.completed, 0);
+      paid = true;
+      await repo.retryVerification();
+      expect(store.completed, 1);
+      expect(repo.intent, isNull);
+      repo.dispose();
+      api.close();
+      await store.events.close();
+    },
+  );
   test(
     'a pending verification cannot finish or unlock a purchase; a verified retry can finish once',
     () async {

@@ -49,7 +49,7 @@ def story_for(bundle):
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
+def client(postgres_url, monkeypatch):
     calls = []
     mode = {"fail": None}
     async def write(self, bundle, **kwargs):
@@ -58,7 +58,7 @@ def client(tmp_path, monkeypatch):
             raise InvalidBaziReport("synthetic unavailable")
         return self.validate(json.dumps(story_for(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
-    settings = Settings(database_path=str(tmp_path / "life.db"), app_env="production", providers={"qwen": ProviderConfig("test-key", "https://model.example/v1", "test")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
+    settings = Settings(database_url=postgres_url, app_env="production", providers={"qwen": ProviderConfig("test-key", "https://model.example/v1", "test")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
     app = create_app(settings)
     app.state.life_report_gate = asyncio.Event()
     parts_writer = app.state.life_reports.parts_writer
@@ -113,7 +113,7 @@ def test_fortune_topics_unlock_with_distinct_evidence_and_content_progress(clien
     unlocked = http.post(f"/api/life-reports/{report['id']}/unlock", json={}, headers=HEADERS).json()
     assert unlocked["progress"] == {"completed": 0, "total": 8}
     with app.state.life_reports.store.connect() as db:
-        lease = db.execute("SELECT lease FROM life_reports WHERE id=?", (report["id"],)).fetchone()[0]
+        lease = db.execute("SELECT lease FROM life_reports WHERE id=%s", (report["id"],)).fetchone()["lease"]
     app.state.life_reports.record_progress(report["id"], lease, {"annual": 25, "overall": 50})
     partial = http.get(f"/api/life-reports/{report['id']}", headers=HEADERS).json()
     assert partial["generation_progress"]["percent"] == 9
@@ -666,7 +666,7 @@ def test_sunlands_settlement_rejects_mismatched_payment(sunlands_settlement, mis
     elif mismatch == "signaling_nan": row["paidAmount"] = "sNaN"
     elif mismatch == "provider_conflict":
         with payments.store.connect() as db:
-            db.execute("UPDATE life_card_payments SET provider_order='OTHER_PROVIDER_ORDER' WHERE report_id=?", (report["id"],))
+            db.execute("UPDATE life_card_payments SET provider_order='OTHER_PROVIDER_ORDER' WHERE report_id=%s", (report["id"],))
     checked = http.post(path + "/payment/check", headers=HEADERS)
     assert checked.status_code == 409 and checked.json()["code"] == "life_payment_verification_failed"
     saved = payments.order_for(report["id"])
@@ -775,7 +775,7 @@ def test_sunlands_failure_receipts_are_durable_and_redacted(client, monkeypatch,
         legacy["responseSummary"].pop("flag")
         legacy["failureStage"] = "validation"
         with payments.store.connect() as db:
-            db.execute("UPDATE life_card_payments SET sunlands_order=? WHERE reference=?",
+            db.execute("UPDATE life_card_payments SET sunlands_order=%s WHERE reference=%s",
                        (json.dumps(legacy), saved["reference"]))
         restarted = LifeCardPayments(payments.store, payments.settings)
         monkeypatch.setattr(app.state.life_reports, "card_payments", restarted)
@@ -794,7 +794,7 @@ def test_sunlands_failure_receipts_are_durable_and_redacted(client, monkeypatch,
 
 @pytest.mark.parametrize("duplicate_field", ("orderNumber", "payNumber"))
 def test_sunlands_platform_numbers_cannot_bind_two_reports(client, monkeypatch, duplicate_field):
-    import sqlite3
+    from psycopg.errors import UniqueViolation
     from backend.app.life_card_payments import LifeCardPayments
 
     http, app, _, _ = client
@@ -823,8 +823,8 @@ def test_sunlands_platform_numbers_cannot_bind_two_reports(client, monkeypatch, 
     assert saved["sunlands_order_number"] is None and saved["sunlands_pay_number"] is None
     # The database, not only the API check, rejects a second binding.
     column = "sunlands_order_number" if duplicate_field == "orderNumber" else "sunlands_pay_number"
-    with payments.store.connect() as db, pytest.raises(sqlite3.IntegrityError):
-        db.execute(f"UPDATE life_card_payments SET sunlands_gateway=?,{column}=? WHERE reference=?",
+    with payments.store.connect() as db, pytest.raises(UniqueViolation):
+        db.execute(f"UPDATE life_card_payments SET sunlands_gateway=%s,{column}=%s WHERE reference=%s",
                    (payments.settings.sunlands_base_url, "SHARED_PLATFORM_NUMBER", saved["reference"]))
     restarted = LifeCardPayments(payments.store, payments.settings)
     monkeypatch.setattr(app.state.life_reports, "card_payments", restarted)
@@ -885,33 +885,53 @@ def test_sunlands_cancelled_request_is_recorded_without_retry(client, monkeypatc
     assert len(calls) == 1
 
 
-def test_sunlands_additive_schema_preserves_legacy_receipts_and_reserves_numbers(tmp_path):
+def test_postgres_import_preserves_sunlands_receipt_and_unlock(tmp_path, postgres_url):
+    from contextlib import closing
+    import os
+    from pathlib import Path
+    import sqlite3
+    import subprocess
+    import sys
+
     from backend.app.life_card_payments import LifeCardPayments
     from backend.app.storage import Storage
 
-    store = Storage(str(tmp_path / "legacy-payments.db"))
+    store = Storage(postgres_url)
     gateway = "https://api-prod.sunlands.com"
-    old = {"state": "CREATED", "gateway": gateway, "orderNumber": "LEGACY_ORDER", "payNumber": "LEGACY_PAY", "stuId": "12345"}
-    unknown = {"state": "UNKNOWN", "gateway": gateway, "createdAt": 123, "paymentStatus": "NOT_CHECKED"}
+    receipt = json.dumps({"state": "CREATED", "gateway": gateway, "orderNumber": "LEGACY_ORDER",
+                          "payNumber": "LEGACY_PAY", "paymentStatus": "PAID", "paidAt": 123.5})
+    source_file = tmp_path / "business.db"
     with store.connect() as db:
-        db.execute("CREATE TABLE life_reports(id TEXT PRIMARY KEY)")
-        db.execute("CREATE TABLE life_card_payments(reference TEXT PRIMARY KEY,report_id TEXT UNIQUE REFERENCES life_reports(id),"
-                   "network TEXT,merchant TEXT,amount INTEGER,provider_order TEXT,sunlands_order TEXT DEFAULT '{}')")
-        for reference, receipt in (("000000000001", old), ("000000000002", old), ("000000000003", unknown)):
-            db.execute("INSERT INTO life_reports VALUES(?)", (reference,))
-            db.execute("INSERT INTO life_card_payments VALUES(?,?,?,?,?,?,?)",
-                       (reference, reference, "network", "sunlands:sunlands_fb_fate", 3000, None, json.dumps(receipt)))
-    payments = LifeCardPayments(store, Settings())
-    assert json.loads(payments.order_for("000000000001")["sunlands_order"]) == old
-    assert payments.order_for("000000000001")["sunlands_order_number"] == "LEGACY_ORDER"
-    conflict = payments.order_for("000000000002")
-    assert json.loads(conflict["sunlands_order"])["state"] == "UNKNOWN"
-    assert json.loads(conflict["sunlands_order"])["stuId"] == "12345"
-    assert json.loads(conflict["sunlands_order"])["orderNumber"] == "LEGACY_ORDER"
-    assert conflict["sunlands_order_number"] is None
-    assert payments.order_for("000000000003")["sunlands_order"] == json.dumps(unknown)
-    restarted = LifeCardPayments(store, Settings())
-    assert restarted.order_for("000000000002")["sunlands_order"] == conflict["sunlands_order"]
+        fields = db.execute("SELECT table_name,column_name FROM information_schema.columns "
+                            "WHERE table_schema=current_schema() AND table_name<>'alembic_version' "
+                            "ORDER BY table_name,ordinal_position").fetchall()
+    tables = {}
+    for field in fields:
+        tables.setdefault(field["table_name"], []).append(field["column_name"])
+    with closing(sqlite3.connect(source_file)) as source, source:
+        for table in ["life_reports", *(name for name in tables if name != "life_reports")]:
+            source.execute(f"CREATE TABLE {table} ({','.join(tables[table])})")
+        source.execute("INSERT INTO life_simulated_payment_sequence VALUES (17)")
+        source.execute(
+            "INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview_state,chapters,"
+            "unlocked,full_state,lease,lease_until,generation_progress) "
+            "VALUES ('report-a','life:owner','key','{}','{}',100,'ready','{}',1,'ready','',0,'{}')"
+        )
+        source.execute("INSERT INTO life_card_payments VALUES (?,?,?,?,?,?,?,?,?,?)",
+                       ("000000000017", "report-a", "network", "sunlands:sunlands_fb_fate", 3000,
+                        gateway + "/LEGACY_ORDER", receipt, gateway, "LEGACY_ORDER", "LEGACY_PAY"))
+    script = Path(__file__).resolve().parents[2] / "scripts/migrate-sqlite-to-postgres.py"
+    job = subprocess.run([sys.executable, str(script), "--source", str(source_file)],
+                         env={**os.environ, "DATABASE_URL": postgres_url}, capture_output=True, text=True)
+    assert job.returncode == 0, job.stderr
+    assert json.loads(job.stdout)["unlocked_life_reports"] == 1
+    payments = LifeCardPayments(Storage(postgres_url), Settings())
+    old = payments.order_for("report-a")
+    assert (old["reference"], old["amount"], old["sunlands_order"], old["provider_order"]) == (
+        "000000000017", 3000, receipt, gateway + "/LEGACY_ORDER")
+    with store.connect() as db:
+        assert db.execute("SELECT unlocked FROM life_reports WHERE id='report-a'").fetchone()["unlocked"] == 1
+        assert db.execute("SELECT number FROM life_simulated_payment_sequence").fetchone()["number"] == 17
 
 
 @pytest.mark.parametrize("report_kind", ("life", "fortune"))
@@ -1179,11 +1199,11 @@ def test_saved_advice_resolves_its_source_even_when_that_source_is_not_a_paid_se
     http.post(f"/api/life-reports/{report['id']}/unlock", json={}, headers=HEADERS)
     finish(http, app)
     with app.state.store.connect() as db:
-        row = db.execute("SELECT chapters,plan FROM life_reports WHERE id=?", (report["id"],)).fetchone()
+        row = db.execute("SELECT chapters,plan FROM life_reports WHERE id=%s", (report["id"],)).fetchone()
         records, plan = json.loads(row["chapters"]), json.loads(row["plan"])
         records["overview"] = deepcopy(records["work"])
         plan["phases"][0]["action_ids"][0] = "overview:0"
-        db.execute("UPDATE life_reports SET chapters=?,plan=? WHERE id=?", (json.dumps(records), json.dumps(plan), report["id"]))
+        db.execute("UPDATE life_reports SET chapters=%s,plan=%s WHERE id=%s", (json.dumps(records), json.dumps(plan), report["id"]))
     result = http.post(f"/api/life-reports/{report['id']}/unlock", json={}, headers=HEADERS).json()
     assert result["full_state"] == "ready" and len(result["chapters"]) == 5
     assert result["progress"] == {"completed": 5, "total": 5}
@@ -1224,7 +1244,7 @@ def test_unknown_birth_time_generates_an_explicit_noon_estimate_without_changing
     assert all(fact["time_estimated"] for fact in calls[0]["evidence"].values())
     assert all("12:00" in fact["detail"] for fact in result["preview"]["summary"]["evidence"])
     with app.state.store.connect() as db:
-        stored = json.loads(db.execute("SELECT chart FROM life_reports WHERE id=?", (result["id"],)).fetchone()[0])
+        stored = json.loads(db.execute("SELECT chart FROM life_reports WHERE id=%s", (result["id"],)).fetchone()["chart"])
     assert stored["time_known"] is False
     assert stored["calculation_input"]["time_precision"] == "estimated-noon"
     assert "T12:00" in stored["calculation_input"]["local_datetime"]
@@ -1291,7 +1311,7 @@ def test_parallel_chapters_keep_the_lease_alive_and_save_every_completed_topic(c
         await asyncio.wait_for(started.wait(), 2)
         await asyncio.sleep(0.24)
         with service.store.connect() as db:
-            row = db.execute("SELECT full_state,lease_until FROM life_reports WHERE id=?", (result["id"],)).fetchone()
+            row = db.execute("SELECT full_state,lease_until FROM life_reports WHERE id=%s", (result["id"],)).fetchone()
         assert row["full_state"] == "generating" and row["lease_until"] > time.time()
         assert active == 3
         release.set()
@@ -1402,7 +1422,7 @@ def test_one_complete_report_fits_the_default_six_run_budget(client):
     assert len(calls) == 7
     with app.state.store.connect() as db:
         counts = db.execute("SELECT COUNT(*) FROM bazi_report_usage GROUP BY scope").fetchall()
-    assert [row[0] for row in counts] == [2, 2]
+    assert [row["count"] for row in counts] == [2, 2]
 
 
 def test_unlimited_testing_allows_preview_and_full_report_after_shared_network_quota(client):
@@ -1411,7 +1431,7 @@ def test_unlimited_testing_allows_preview_and_full_report_after_shared_network_q
     settings.bazi_reports_per_minute = settings.bazi_reports_per_day = 0
     network = "network:" + app.state.store.hash("testclient")
     with app.state.store.connect() as db:
-        db.executemany("INSERT INTO bazi_report_usage VALUES(?,?)", [(network, time.time())] * 100)
+        db.cursor().executemany("INSERT INTO bazi_report_usage VALUES(%s,%s)", [(network, time.time())] * 100)
     result = preview(http)
     http.post(f"/api/life-reports/{result['id']}/unlock", json={}, headers=HEADERS)
     finish(http, app)
@@ -1471,6 +1491,8 @@ def test_provider_usage_is_scoped_to_preview_full_and_repairs_without_charging_c
     assert {row["report_id"] for row in rows} == {result["id"]}
     assert [row["phase"] for row in rows] == ["preview"] * 2 + ["full"] * 6
     assert [row["validated"] for row in rows] == [0] + [1] * 7
+    assert rows[0]["error_code"] and all(row["error_code"] == "" for row in rows[1:])
+    assert all(isinstance(row["duration_ms"], int) and row["duration_ms"] >= 0 for row in rows)
     assert all((row["prompt_tokens"], row["completion_tokens"], row["cached_tokens"], row["usage_received"]) == (100, 50, 20, 1) for row in rows)
     assert preview(http)["id"] == result["id"]
     http.post(f"/api/life-reports/{result['id']}/unlock", json={}, headers=HEADERS)
@@ -1489,7 +1511,7 @@ def test_concurrent_identical_previews_share_one_preview_without_starting_paid_w
     assert len(calls) == 1
     with app.state.store.connect() as db:
         counts = db.execute("SELECT COUNT(*) FROM bazi_report_usage GROUP BY scope").fetchall()
-    assert [row[0] for row in counts] == [1, 1]
+    assert [row["count"] for row in counts] == [1, 1]
 
 
 def test_thai_preview_chapters_and_plan_use_the_same_validated_pipeline(client, monkeypatch):
@@ -1696,5 +1718,5 @@ def test_expired_preview_snapshot_does_not_clear_a_lease_renewed_before_update(c
     snapshot = http.get(f"/api/life-reports/{result['id']}", headers=HEADERS).json()
     assert snapshot["preview_state"] == "generating"
     with service.store.connect() as db:
-        row = db.execute("SELECT lease,lease_until FROM life_reports WHERE id=?", (result["id"],)).fetchone()
+        row = db.execute("SELECT lease,lease_until FROM life_reports WHERE id=%s", (result["id"],)).fetchone()
     assert row["lease"] == "renewed-preview" and row["lease_until"] > time.time()

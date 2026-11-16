@@ -8,7 +8,6 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
@@ -43,8 +42,9 @@ def main():
     if options.provider != "mock" and not configured:
         raise SystemExit("Provider is not configured. Fill the matching API_KEY, BASE_URL and MODEL in .env first.")
     results = []
-    with TemporaryDirectory(prefix="wanjai-chat-eval-") as directory:
-        settings.database_path = str(Path(directory) / "evaluation.db")
+    from backend.tests.postgres_fixture import isolated_database
+    with isolated_database() as database_url:
+        settings.database_url = database_url
         settings.app_env = "development"
         with TestClient(create_app(settings)) as client:
             for name, language, note, question, known in CASES:

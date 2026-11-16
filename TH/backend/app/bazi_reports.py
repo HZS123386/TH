@@ -226,22 +226,6 @@ class BaziReports:
     def __init__(self, store, settings, slots):
         self.store, self.settings, self.slots = store, settings, slots
         self.inflight = {}
-        with store.connect() as db:
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS bazi_reports(cache_key TEXT PRIMARY KEY,expires REAL NOT NULL,pending_until REAL NOT NULL DEFAULT 0,retry_after REAL NOT NULL DEFAULT 0,payload TEXT,lease TEXT NOT NULL DEFAULT '');
-                CREATE TABLE IF NOT EXISTS bazi_report_usage(scope TEXT NOT NULL,created REAL NOT NULL);
-                CREATE INDEX IF NOT EXISTS bazi_report_usage_scope_created ON bazi_report_usage(scope,created);
-                CREATE TABLE IF NOT EXISTS report_model_usage(
-                    id INTEGER PRIMARY KEY,created REAL NOT NULL,report_id TEXT NOT NULL,phase TEXT NOT NULL,
-                    stage TEXT NOT NULL,reading TEXT NOT NULL,provider TEXT NOT NULL,model TEXT NOT NULL,request_id TEXT,
-                    prompt_tokens INTEGER NOT NULL,completion_tokens INTEGER NOT NULL,cached_tokens INTEGER NOT NULL,
-                    usage_received INTEGER NOT NULL,validated INTEGER NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS report_model_usage_report ON report_model_usage(report_id,phase,created);
-            """)
-            db.execute("BEGIN IMMEDIATE")
-            if "lease" not in {row["name"] for row in db.execute("PRAGMA table_info(bazi_reports)")}:
-                db.execute("ALTER TABLE bazi_reports ADD COLUMN lease TEXT NOT NULL DEFAULT ''")
 
     @property
     def provider(self):
@@ -257,26 +241,27 @@ class BaziReports:
 
     def reserve_run(self, owner, network):
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
+            db.execute("LOCK TABLE bazi_report_usage IN SHARE ROW EXCLUSIVE MODE")
             return self.admit(db, owner, network, time.time())
 
     def admit(self, db, owner, network, now):
-        db.execute("DELETE FROM bazi_report_usage WHERE created<?", (now - 86400,))
+        db.execute("DELETE FROM bazi_report_usage WHERE created<%s", (now - 86400,))
         for scope in set((owner, network)):
-            minute, day = db.execute("SELECT COALESCE(SUM(created>=?),0),COUNT(*) FROM bazi_report_usage WHERE scope=? AND created>=?", (now - 60, scope, now - 86400)).fetchone()
-            if (self.settings.bazi_reports_per_minute > 0 and minute >= self.settings.bazi_reports_per_minute
-                    or self.settings.bazi_reports_per_day > 0 and day >= self.settings.bazi_reports_per_day):
+            usage = db.execute("SELECT COUNT(*) FILTER (WHERE created>=%s) AS minute,COUNT(*) AS day "
+                               "FROM bazi_report_usage WHERE scope=%s AND created>=%s", (now - 60, scope, now - 86400)).fetchone()
+            if (self.settings.bazi_reports_per_minute > 0 and usage["minute"] >= self.settings.bazi_reports_per_minute
+                    or self.settings.bazi_reports_per_day > 0 and usage["day"] >= self.settings.bazi_reports_per_day):
                 return False
-        db.executemany("INSERT INTO bazi_report_usage VALUES (?,?)", [(scope, now) for scope in set((owner, network))])
+        db.cursor().executemany("INSERT INTO bazi_report_usage VALUES (%s,%s)", [(scope, now) for scope in set((owner, network))])
         return True
 
     def claim(self, key, owner, network, *, charge=True):
         now, lease = time.time(), secrets.token_hex(12)
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            db.execute("DELETE FROM bazi_report_usage WHERE created<?", (now - 86400,))
-            db.execute("DELETE FROM bazi_reports WHERE expires<?", (now,))
-            row = db.execute("SELECT * FROM bazi_reports WHERE cache_key=?", (key,)).fetchone()
+            db.execute("LOCK TABLE bazi_report_usage, bazi_reports IN SHARE ROW EXCLUSIVE MODE")
+            db.execute("DELETE FROM bazi_report_usage WHERE created<%s", (now - 86400,))
+            db.execute("DELETE FROM bazi_reports WHERE expires<%s", (now,))
+            row = db.execute("SELECT * FROM bazi_reports WHERE cache_key=%s", (key,)).fetchone()
             if row:
                 if row["payload"]:
                     return "cached", json.loads(row["payload"]), ""
@@ -286,13 +271,13 @@ class BaziReports:
                     return "unavailable", None, ""
             if charge and not self.admit(db, owner, network, now):
                 return "limited", None, ""
-            db.execute("DELETE FROM bazi_reports WHERE cache_key IN (SELECT cache_key FROM bazi_reports WHERE pending_until<? ORDER BY expires DESC LIMIT -1 OFFSET 255)", (now,))
-            db.execute("INSERT INTO bazi_reports(cache_key,expires,pending_until,lease) VALUES (?,?,?,?) ON CONFLICT(cache_key) DO UPDATE SET expires=excluded.expires,pending_until=excluded.pending_until,retry_after=0,lease=excluded.lease", (key, now + 86400, now + self.generation_timeout + 15, lease))
+            db.execute("DELETE FROM bazi_reports WHERE cache_key IN (SELECT cache_key FROM bazi_reports WHERE pending_until<%s ORDER BY expires DESC OFFSET 255)", (now,))
+            db.execute("INSERT INTO bazi_reports(cache_key,expires,pending_until,lease) VALUES (%s,%s,%s,%s) ON CONFLICT(cache_key) DO UPDATE SET expires=excluded.expires,pending_until=excluded.pending_until,retry_after=0,lease=excluded.lease", (key, now + 86400, now + self.generation_timeout + 15, lease))
         return "claimed", None, lease
 
     def finish(self, key, lease, story=None):
         with self.store.connect() as db:
-            db.execute("UPDATE bazi_reports SET payload=?,pending_until=0,retry_after=? WHERE cache_key=? AND lease=?", (json.dumps(story, ensure_ascii=False) if story else None, 0 if story else time.time() + 20, key, lease))
+            db.execute("UPDATE bazi_reports SET payload=%s,pending_until=0,retry_after=%s WHERE cache_key=%s AND lease=%s", (json.dumps(story, ensure_ascii=False) if story else None, 0 if story else time.time() + 20, key, lease))
 
     def guide(self, language):
         return {
@@ -308,7 +293,7 @@ class BaziReports:
     def response_format(self, bundle):
         return {"type": "json_object"}
 
-    def record_model_usage(self, bundle, usage, request_id, validated):
+    def record_model_usage(self, bundle, usage, request_id, validated, *, error_code="", duration_ms=None):
         report_id, phase = report_usage_context.get()
         usage = usage if isinstance(usage, dict) else {}
         def count(value):
@@ -316,12 +301,12 @@ class BaziReports:
         details = usage.get("prompt_tokens_details") or {}
         with self.store.connect() as db:
             db.execute("INSERT INTO report_model_usage(created,report_id,phase,stage,reading,provider,model,request_id,"
-                       "prompt_tokens,completion_tokens,cached_tokens,usage_received,validated) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                       "prompt_tokens,completion_tokens,cached_tokens,usage_received,validated,error_code,duration_ms) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                        (time.time(), report_id, phase, bundle.get("stage", "reading"), bundle["reading"], self.provider, self.config.model,
                         request_id[:200] if isinstance(request_id, str) else None,
                         count(usage.get("prompt_tokens")), count(usage.get("completion_tokens")),
                         count(details.get("cached_tokens")) if isinstance(details, dict) else 0,
-                        int(type(usage.get("prompt_tokens")) is int and type(usage.get("completion_tokens")) is int), int(validated)))
+                        int(type(usage.get("prompt_tokens")) is int and type(usage.get("completion_tokens")) is int), int(validated), error_code, duration_ms))
 
     async def write(self, bundle, *, correction=None):
         config = self.config
@@ -341,6 +326,7 @@ class BaziReports:
             payload["max_completion_tokens"] = payload.pop("max_tokens")
             payload["reasoning_effort"] = "low"
         usage, request_id, validated = None, None, False
+        started, error_code = time.monotonic(), ""
         try:
             finished = False
             async with httpx.AsyncClient(timeout=httpx.Timeout(25, connect=15), follow_redirects=False) as client:
@@ -405,11 +391,20 @@ class BaziReports:
             except InvalidBaziReport as error:
                 error.candidate = raw[:16000]
                 raise
+        except InvalidBaziReport as error:
+            # Keep validation rule identifiers, never model prose or upstream response bodies.
+            error_code = str(error) if re.fullmatch(r"[A-Za-z0-9_.:, -]{1,160}", str(error)) else "validation_failed"
+            raise
+        except (httpx.HTTPError, TimeoutError, asyncio.CancelledError) as error:
+            error_code = type(error).__name__
+            raise
         except (ValueError, TypeError, KeyError, IndexError, AttributeError, RecursionError, OverflowError):
+            error_code = "protocol"
             raise InvalidBaziReport("protocol") from None
         finally:
             # Provider tokens include failed validation and repair calls as well.
-            self.record_model_usage(bundle, usage, request_id, validated)
+            self.record_model_usage(bundle, usage, request_id, validated, error_code=error_code,
+                                    duration_ms=round((time.monotonic() - started) * 1000))
 
 
     async def generate(self, bundle, owner, network):
@@ -437,7 +432,7 @@ class BaziReports:
                 return {"state": "ready", "cached": True, "attempts": 0, "story": current}
             except InvalidBaziReport:
                 with self.store.connect() as db:
-                    db.execute("UPDATE bazi_reports SET payload=NULL,retry_after=0 WHERE cache_key=? AND payload=?", (key, json.dumps(story, ensure_ascii=False)))
+                    db.execute("UPDATE bazi_reports SET payload=NULL,retry_after=0 WHERE cache_key=%s AND payload=%s", (key, json.dumps(story, ensure_ascii=False)))
                 state, story, lease = self.claim(key, owner, network)
                 if state == "cached":
                     return {"state": "pending"}

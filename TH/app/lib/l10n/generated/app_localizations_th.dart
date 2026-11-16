@@ -9,6 +9,482 @@ class AppLocalizationsTh extends AppLocalizations {
   AppLocalizationsTh([String locale = 'th']) : super(locale);
 
   @override
+  String get actionTodo => 'รอลงมือ';
+
+  @override
+  String get actionReviewAvailable => 'พร้อมทบทวน';
+
+  @override
+  String get actionTypeService => 'ช่วยเหลือและแบ่งปันความรู้';
+
+  @override
+  String get actionTypePractice => 'การฝึกฝนตนเอง';
+
+  @override
+  String get actionCompleted => 'ทำเสร็จแล้ว';
+
+  @override
+  String get newVisitorNote => 'เลือกนักพยากรณ์แล้วเริ่มดูดวง';
+
+  @override
+  String get returningVisitorNote => 'คุยต่อและดูรายงานเดิม';
+
+  @override
+  String get todayTab => 'วันนี้';
+
+  @override
+  String get actionTab => 'ลงมือทำ';
+
+  @override
+  String get liveTab => 'ไลฟ์';
+
+  @override
+  String get objectsTab => 'ของดี';
+
+  @override
+  String get todayQuestion => 'วันนี้อยากดูเรื่องอะไร';
+
+  @override
+  String get todayNote => 'สามศาสตร์คอยอยู่เคียงข้าง';
+
+  @override
+  String get thaiGuide => 'โหราศาสตร์ไทย';
+
+  @override
+  String get sevenGuide => 'เลข 7 ตัว';
+
+  @override
+  String get tarotGuide => 'ไพ่ทาโรต์';
+
+  @override
+  String get sirin => 'สิริน';
+
+  @override
+  String get arun => 'อรุณ';
+
+  @override
+  String get mira => 'มีรา';
+
+  @override
+  String get sirinFocus => 'ดูดวง · ดวงรายปี';
+
+  @override
+  String get arunFocus => 'นิสัย · จังหวะชีวิต';
+
+  @override
+  String get miraFocus => 'ปัจจุบัน · ก้าวต่อไป';
+
+  @override
+  String get sirinHint => 'ดูดวงช่วงนี้และหาจังหวะสำหรับก้าวต่อไป';
+
+  @override
+  String get arunHint => 'รู้จักจังหวะชีวิตผ่านตัวเลขวันเกิด';
+
+  @override
+  String get miraHint => 'ตั้งคำถามแล้วลองเปิดไพ่สำหรับตอนนี้';
+
+  @override
+  String get startThaiGuide => 'กรอกข้อมูลเพื่อเริ่มดูดวงไทย';
+
+  @override
+  String get viewThaiGuide => 'ดูผังดวงไทยของฉัน';
+
+  @override
+  String get startSevenGuide => 'ดูตัวอย่างเลข 7 ตัว';
+
+  @override
+  String get startTarotGuide => 'เริ่มดูไพ่ทาโรต์';
+
+  @override
+  String get textReading => 'คุยผ่านข้อความ';
+
+  @override
+  String get textReadingNote => 'พิมพ์ถามและคุยต่อ';
+
+  @override
+  String get voiceReading => 'คุยด้วยเสียง';
+
+  @override
+  String get voiceReadingNote => 'เล่าเรื่องที่ค้างใจ';
+
+  @override
+  String get textChat => 'แชตข้อความ';
+
+  @override
+  String get voiceChat => 'แชตเสียง';
+
+  @override
+  String get voicePreviewNotice =>
+      'ตัวอย่างนี้ยังไม่รองรับแชตเสียง คุยต่อด้วยข้อความได้';
+
+  @override
+  String guideChatHeading(String name) {
+    return 'คุยเรื่องที่ค้างใจกับ$name';
+  }
+
+  @override
+  String get startReading => 'เริ่มดูดวง';
+
+  @override
+  String get guideChatDemo => 'แชตตัวอย่าง · คำตอบและประวัติอยู่ในเครื่องนี้';
+
+  @override
+  String get guideGreeting => 'วันนี้มีเรื่องไหนอยากคุยกันไหม';
+
+  @override
+  String get guidePromptWork => 'ช่วงนี้สับสนเรื่องงาน';
+
+  @override
+  String get guidePromptLove => 'ความสัมพันธ์นี้ควรเป็นฝ่ายเริ่มไหม';
+
+  @override
+  String get guideWorkReply =>
+      'ลองแยกว่าเรื่องไหนแน่นอนแล้ว เรื่องไหนยังรออยู่ สัปดาห์นี้คุณถามให้ชัดได้เรื่องไหน';
+
+  @override
+  String get guideLoveReply =>
+      'ลองคิดว่าคุณอยากให้อีกฝ่ายรู้อะไรมากที่สุด อาจเริ่มทักสั้น ๆ แล้วสังเกตความรู้สึกตัวเอง';
+
+  @override
+  String guideReflectReply(String question) {
+    return 'ลองมองว่าเรื่อง “$question” ส่วนไหนที่คุณทำได้วันนี้ คุณจะเลือกเรื่องเล็ก ๆ อะไรที่ทำได้ในสิบนาที';
+  }
+
+  @override
+  String get continueSample => 'คุยต่อจากคำทำนายตัวอย่าง';
+
+  @override
+  String get readingSampleQuestion =>
+      'กำลังรอผลเรื่องงาน สัปดาห์นี้ทำอะไรได้บ้าง';
+
+  @override
+  String get readingSampleLove => 'ความสัมพันธ์นี้ควรเดินต่ออย่างไร';
+
+  @override
+  String get readingSampleLife => 'จังหวะชีวิตเปลี่ยนไป ควรเริ่มจากอะไร';
+
+  @override
+  String get recoverReports => 'รายงานของฉัน';
+
+  @override
+  String get recentReadings => 'คำทำนายล่าสุด';
+
+  @override
+  String get reportLookup => 'ลิงก์หรือรหัสรายงาน';
+
+  @override
+  String get findReport => 'ค้นหา';
+
+  @override
+  String get reportLookupDemo =>
+      'ใส่รหัสรายงานตัวอย่างที่นี่ ดูรายงานส่วนตัวได้ในรายการรายงาน';
+
+  @override
+  String get reportCodeMissing => 'ไม่พบตัวอย่างนี้ ลอง FATE-THAI-001';
+
+  @override
+  String get newVisitor => 'ฉันเป็นผู้ใช้ใหม่';
+
+  @override
+  String get returningVisitor => 'ฉันเคยใช้แล้ว';
+
+  @override
+  String get guideWelcomeLabel => 'นักพยากรณ์ 3 คน · 3 ศาสตร์';
+
+  @override
+  String get guideWelcomeTitle => 'มาคุยกัน\nเรื่องโชคชะตา';
+
+  @override
+  String get guideWelcomeNote => 'เริ่มจากคำถามหนึ่งข้อ แล้วกลับมามองตัวเอง';
+
+  @override
+  String get onAirNow => 'กำลังไลฟ์ตอนนี้';
+
+  @override
+  String get demo => 'ตัวอย่าง';
+
+  @override
+  String get allItems => 'ทั้งหมด';
+
+  @override
+  String get templeRoom => 'พิธีขอพรที่วัด';
+
+  @override
+  String get templeTeaser => 'พิธีที่วัด';
+
+  @override
+  String get objectsRoom => 'ไลฟ์แกะกล่องของดี';
+
+  @override
+  String get templeTeaserNote => 'ชมพิธี · ฟังคำอธิบาย';
+
+  @override
+  String get objectsTeaserNote => 'ดูรายละเอียด · วิธีใช้';
+
+  @override
+  String get templeRoomNote => 'วัดคู่ค้า A · ตัวอย่าง';
+
+  @override
+  String get switchRoom => 'เปลี่ยนห้องไลฟ์';
+
+  @override
+  String get templePosterTitle => 'หนึ่งคำอธิษฐาน\nหนึ่งการพบกันที่มีความหมาย';
+
+  @override
+  String get objectsPosterTitle => 'เก็บความตั้งใจดี ๆ\nไว้ในชีวิตประจำวัน';
+
+  @override
+  String get liveDemoNotice => 'ตัวอย่างไลฟ์ · ไม่ได้ถ่ายทอดสด';
+
+  @override
+  String get livestreamPause => 'หยุดตัวอย่าง';
+
+  @override
+  String get livestreamPlay => 'เล่นตัวอย่าง';
+
+  @override
+  String get fullScreenPreview => 'ขยายตัวอย่าง';
+
+  @override
+  String get templeRoomHeading => 'นำคำอธิษฐานไปที่วัด';
+
+  @override
+  String get templeService => 'พิธีขอพรส่วนตัว';
+
+  @override
+  String get samplePrice => 'ราคาตัวอย่าง';
+
+  @override
+  String get bookingInfo => 'ข้อมูลการจอง';
+
+  @override
+  String get bookingDemoNotice =>
+      'ดูรายละเอียดพิธีและขั้นตอนการจองตัวอย่าง รอบจริงยังไม่เปิด';
+
+  @override
+  String get roomChat => 'พูดคุยในห้อง';
+
+  @override
+  String get ceremonyInfo => 'เกี่ยวกับพิธี';
+
+  @override
+  String get roomObjectsInfo => 'ของดีในรอบนี้';
+
+  @override
+  String get roomWelcomeDemo =>
+      'ผู้ดำเนินรายการ · ตัวอย่าง    ยินดีต้อนรับ ลองดูรายละเอียดรอบนี้';
+
+  @override
+  String get templeSegmentOne => 'เขียนคำอธิษฐานที่จะนำไปวัด';
+
+  @override
+  String get templeSegmentTwo => 'เรียนรู้ขั้นตอนพิธีขอพร';
+
+  @override
+  String get templeSegmentThree => 'เก็บบันทึกคำอธิษฐาน';
+
+  @override
+  String get roomMessageHint => 'ลองพิมพ์ข้อความตัวอย่าง';
+
+  @override
+  String get myActions => 'การลงมือทำของฉัน';
+
+  @override
+  String get actionsIntro =>
+      'คำทำนายช่วยให้เห็นสถานการณ์ ลงมือทำสิ่งเล็ก ๆ แล้วบันทึกไว้กลับมาทบทวน';
+
+  @override
+  String get actionPending => 'รอลงมือ';
+
+  @override
+  String get actionDone => 'ทำแล้ว';
+
+  @override
+  String get actionReady => 'พร้อมทบทวน';
+
+  @override
+  String get chooseSmallAction => 'เลือกสิ่งเล็ก ๆ ทำ';
+
+  @override
+  String get chooseSmallActionNote => 'เลือกตามใจ ใช้เวลาไม่เกินสิบนาที';
+
+  @override
+  String get chooseFamilyAction => 'วางแผนวันลงมือทำให้ครอบครัว';
+
+  @override
+  String get chooseFamilyActionNote => 'ทำสิ่งที่ทำได้สักสองสามอย่างในวันเดียว';
+
+  @override
+  String get weeklyMoment => 'เก็บวันลงมือทำไว้ให้ตัวเอง';
+
+  @override
+  String get weeklyMomentNote =>
+      'เลือกหนึ่งวันต่อสัปดาห์ทำสิ่งดี ๆ เล็ก ๆ วันอื่นยืดหยุ่นได้';
+
+  @override
+  String get myWeeklyDay => 'วันลงมือทำของฉัน';
+
+  @override
+  String get arrangeDay => 'เลือกวัน';
+
+  @override
+  String get actionLedger => 'สมุดบันทึกการลงมือทำ';
+
+  @override
+  String get newPlan => 'แผนใหม่';
+
+  @override
+  String get noActionPlan => 'สิ่งเล็ก ๆ ที่คุณเลือกทำจะอยู่ที่นี่';
+
+  @override
+  String get actionRecord => 'บันทึกการลงมือทำของฉัน';
+
+  @override
+  String get actionTitle => 'สิ่งที่อยากทำ';
+
+  @override
+  String get careAction => 'ช่วยคนรอบตัวสักเรื่อง';
+
+  @override
+  String get familyAction => 'ทำสิ่งเล็ก ๆ ให้ครอบครัว';
+
+  @override
+  String get actionCategory => 'ประเภทกิจกรรม';
+
+  @override
+  String get beneficiary => 'ทำเพื่อใคร';
+
+  @override
+  String get forSelf => 'ตัวเอง';
+
+  @override
+  String get forOthers => 'คนรอบตัว';
+
+  @override
+  String get forFamily => 'ครอบครัว';
+
+  @override
+  String get recordMethod => 'วิธีบันทึก';
+
+  @override
+  String get recordOnDevice => 'ข้อความในเครื่องนี้';
+
+  @override
+  String get actionDate => 'วันที่ลงมือทำ';
+
+  @override
+  String get reviewDate => 'วันที่ทบทวน';
+
+  @override
+  String get actionNotes => 'สิ่งที่ได้ทำ';
+
+  @override
+  String get actionReview => 'สิ่งที่บันทึกเมื่อทบทวน';
+
+  @override
+  String get questionProgress => 'เรื่องเดิมมีความคืบหน้าอย่างไร';
+
+  @override
+  String get actionReviewed => 'ทบทวนแล้ว';
+
+  @override
+  String get recordAction => 'บันทึกสิ่งเล็ก ๆ ที่จะทำ';
+
+  @override
+  String get clearPrototypeRecords => 'ลบบันทึกการลงมือทำและแชตตัวอย่าง';
+
+  @override
+  String get storeTitle => 'ของดีเติมใจ';
+
+  @override
+  String get storeIntro => 'นำสิ่งที่ชอบกลับมาเติมใจในทุกวัน';
+
+  @override
+  String get storeSearch => 'ค้นหาสมุด เทียนหอม เครื่องประดับ…';
+
+  @override
+  String get scentCategory => 'เครื่องหอม';
+
+  @override
+  String get jewelryCategory => 'เครื่องประดับ';
+
+  @override
+  String get journalCategory => 'สมุดบันทึก';
+
+  @override
+  String get lifeCategory => 'ไลฟ์สไตล์';
+
+  @override
+  String get sampleCatalog => 'แค็ตตาล็อกตัวอย่าง';
+
+  @override
+  String get objectJournal => 'สมุดตั้งใจลงมือทำ';
+
+  @override
+  String get objectCandle => 'เทียนหอมค่ำสงบ';
+
+  @override
+  String get objectBracelet => 'สร้อยข้อมือดาวอธิษฐาน';
+
+  @override
+  String get objectDiffuser => 'ก้านหอมยามเช้า';
+
+  @override
+  String get objectJournalNote => 'เขียนความตั้งใจให้เป็นก้าวต่อไป';
+
+  @override
+  String get objectCandleNote => 'ให้เวลาสงบกับตัวเอง';
+
+  @override
+  String get objectBraceletNote => 'พกคำอธิษฐานเล็ก ๆ ไว้ข้างตัว';
+
+  @override
+  String get objectDiffuserNote => 'เริ่มวันด้วยกลิ่นที่คุ้นเคย';
+
+  @override
+  String get shopOrders => 'คำสั่งซื้อของฉัน';
+
+  @override
+  String get shopCart => 'ตะกร้า';
+
+  @override
+  String get addToCart => 'ใส่ตะกร้า';
+
+  @override
+  String get cartEmpty => 'ยังไม่มีสินค้าในตะกร้า';
+
+  @override
+  String get shopEmpty => 'ไม่พบของที่ตรงกับการค้นหา';
+
+  @override
+  String get shopOrdersEmpty => 'ยังไม่มีคำสั่งซื้อ';
+
+  @override
+  String get shopDemoNotice => 'ร้านนี้เป็นตัวอย่าง ยังไม่เปิดสั่งซื้อ';
+
+  @override
+  String get mySpace => 'พื้นที่ของฉัน';
+
+  @override
+  String get mySpaceIntro => 'รายงาน การลงมือทำ และสิ่งที่วางแผนไว้อยู่ที่นี่';
+
+  @override
+  String get actionsAndReviews => 'การลงมือทำและทบทวน';
+
+  @override
+  String get resumeCompanion => 'คุยต่อจากครั้งก่อน';
+
+  @override
+  String get fortunePeriods => 'ดวงวันนี้ สัปดาห์ เดือน และปี';
+
+  @override
+  String get thaiChartIntro => 'ดูผังดวงไทยจากวัน เวลา และสถานที่เกิด';
+
+  @override
+  String get sevenPreviewNote =>
+      'ตัวอย่างนี้ยังคำนวณเลข 7 ตัวไม่ได้ ลองคุยกับอรุณได้';
+
+  @override
   String get country => 'ประเทศ / ภูมิภาค';
 
   @override
@@ -394,7 +870,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get privacyText =>
-      'ฉบับร่างและข้อมูลเข้าถึงเก็บในอุปกรณ์ ข้อมูลเกิด ดวงและรายงานผูกกับการใช้งานแบบผู้เยี่ยมชมหรือบัญชีปัจจุบัน RoxyAPI คำนวณดวง ส่วนบริการปัญญาประดิษฐ์รับเฉพาะข้อเท็จจริงของดวงโดยไม่รับชื่อ ข้อความชื่อเมือง หรือประวัติแชต การลบข้อมูลในเครื่องไม่ลบข้อมูลบนเซิร์ฟเวอร์';
+      'ฉบับร่างและข้อมูลเข้าถึงเก็บในอุปกรณ์ ข้อมูลเกิด ดวงและรายงานผูกกับการใช้งานแบบผู้เยี่ยมชมหรือบัญชีปัจจุบัน RoxyAPI คำนวณดวง ส่วน AI สำหรับรายงานดวงใช้ข้อเท็จจริงของดวงโดยไม่รับชื่อ ข้อความชื่อเมือง หรือประวัติแชต\n\nการคุยกับเทพจะส่งข้อความ ข้อมูลเกิด บทสนทนาที่เกี่ยวข้อง ความทรงจำที่ยืนยัน และคำอ่านที่คุณเลือกและเปิดอ่านได้แล้ว ให้บริการ AI เพื่อช่วยตอบและคุยต่อเนื่อง การลบข้อมูลในเครื่องไม่ลบข้อมูลบนเซิร์ฟเวอร์';
 
   @override
   String get clearBirth => 'ลบข้อมูลเกิดในเครื่อง';
@@ -1495,4 +1971,603 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get optionalLogin => 'เข้าสู่ระบบหรือสมัครบัญชี (ไม่บังคับ)';
+
+  @override
+  String get templeNav => 'วิหาร';
+
+  @override
+  String get divinationNav => 'ดูดวง';
+
+  @override
+  String get bondNav => 'สายสัมพันธ์';
+
+  @override
+  String get moreNav => 'เพิ่มเติม';
+
+  @override
+  String get templeWelcome => 'พักใจสักนิด\nแล้วค่อยเล่า';
+
+  @override
+  String get templeIntro => 'พื้นที่สงบให้เรื่องราว\nที่อยู่ในใจคุณ';
+
+  @override
+  String get chooseGuardian => 'วันนี้อยากคุยกับใคร';
+
+  @override
+  String get aiCompanionNotice => 'เทพ AI · เพื่อความบันเทิงและทบทวนตัวเอง';
+
+  @override
+  String get loveGuardian => 'เทพความรัก';
+
+  @override
+  String get careerGuardian => 'เทพการงาน';
+
+  @override
+  String get wealthGuardian => 'เทพการเงิน';
+
+  @override
+  String get wellbeingGuardian => 'เทพสุขภาวะ';
+
+  @override
+  String get loveGuardianNote => 'ความรัก · ความสัมพันธ์';
+
+  @override
+  String get careerGuardianNote => 'ทิศทาง · การเติบโต';
+
+  @override
+  String get wealthGuardianNote => 'การเงิน · ความสมดุล';
+
+  @override
+  String get wellbeingGuardianNote => 'พักใจ · ดูแลตัวเอง';
+
+  @override
+  String get continueConversation => 'คุยต่อจากครั้งก่อน';
+
+  @override
+  String get startConversation => 'เริ่มเล่าเรื่อง';
+
+  @override
+  String get listenIntro =>
+      'ไม่ต้องเรียบเรียงให้ดี เริ่มจากเรื่องที่อยากเล่าได้เลย';
+
+  @override
+  String get messageHint => 'วันนี้มีอะไรอยู่ในใจ…';
+
+  @override
+  String get sendMessage => 'ส่ง';
+
+  @override
+  String get assistantListening => 'กำลังฟังและเรียบเรียงคำตอบ…';
+
+  @override
+  String get chatUnavailable => 'ขณะนี้ยังคุยไม่ได้ ลองใหม่ภายหลังนะ';
+
+  @override
+  String get chatProfileNeeded => 'เพิ่มข้อมูลเกิดเพื่อให้คำอ่านตรงกับคุณ';
+
+  @override
+  String get chatFailure =>
+      'คำตอบยังไม่เสร็จ ลองใหม่ได้ ครั้งนี้ยังไม่นับเป็นการสนทนา';
+
+  @override
+  String get selectedReading => 'คำอ่านครั้งนี้';
+
+  @override
+  String get continueReading => 'คุยต่อกับเทพ';
+
+  @override
+  String get readingQuestion => 'คำอ่านนี้มีเรื่องไหนที่ควรใส่ใจ';
+
+  @override
+  String get divinationTitle => 'ลองมองอีกมุม';
+
+  @override
+  String get divinationIntro => 'เปิดไพ่ ดูดวงดาว แล้วค่อยคุยกันต่อ';
+
+  @override
+  String get dailyDraw => 'ไพ่ประจำวัน';
+
+  @override
+  String get dailyDrawNote => 'พักใจสักครู่ แล้วฟังเสียงข้างใน';
+
+  @override
+  String get weeklyEvents => 'เรื่องในสัปดาห์นี้';
+
+  @override
+  String get weeklyNote => 'เรื่องสำคัญในสัปดาห์นี้';
+
+  @override
+  String get weeklyPrompt => 'สัปดาห์นี้มีอะไรที่ควรใส่ใจ อยากลองทบทวนด้วยกัน';
+
+  @override
+  String get lovePrompt => 'มีเรื่องความสัมพันธ์ที่อยากเล่า';
+
+  @override
+  String get careerPrompt => 'ช่วงนี้ลังเลเรื่องทิศทางการงาน';
+
+  @override
+  String get wealthPrompt => 'อยากค่อย ๆ ทบทวนความกังวลเรื่องเงิน';
+
+  @override
+  String get wellbeingPrompt => 'ช่วงนี้เหนื่อยนิดหน่อย อยากเล่าความรู้สึก';
+
+  @override
+  String get bondTitle => 'ค่อย ๆ รู้จักกัน';
+
+  @override
+  String get bondIntro => 'เรื่องที่คุณเลือกเล่า ค่อย ๆ กลายเป็นความเข้าใจ';
+
+  @override
+  String get bondNew => 'แรกพบ';
+
+  @override
+  String get bondFamiliar => 'เริ่มคุ้นเคย';
+
+  @override
+  String get bondGrowing => 'ค่อย ๆ เข้าใจ';
+
+  @override
+  String get bondCount => 'บทสนทนาล่าสุด';
+
+  @override
+  String get bondRecentNote =>
+      'ระดับสัมพันธ์อิงบทสนทนาที่เสร็จแล้ว ไม่ใช่ความแม่นยำ';
+
+  @override
+  String get bondMemory => 'สิ่งที่อยากให้จดจำ';
+
+  @override
+  String get memoryEmpty => 'ยังไม่มีความทรงจำที่ยืนยัน เล่าสิ่งสำคัญกับคุณได้';
+
+  @override
+  String get addMemory => 'เพิ่มความทรงจำ';
+
+  @override
+  String get memoryHint => 'เช่น กำลังคิดจะเปลี่ยนงาน อยากคุยเรื่องทิศทางอาชีพ';
+
+  @override
+  String get memoryHelp =>
+      'คุณเป็นผู้ยืนยัน เทพทั้งสี่ใช้ร่วมกัน แก้ไขหรือลบได้เสมอ';
+
+  @override
+  String get recentConversations => 'เรื่องที่คุยล่าสุด';
+
+  @override
+  String get noConversations => 'สายสัมพันธ์เริ่มจากคำทักทายแรก';
+
+  @override
+  String get profileSelf => 'เกี่ยวกับคุณ';
+
+  @override
+  String get memoryDeleteConfirm => 'ลบความทรงจำที่ยืนยันนี้หรือไม่';
+
+  @override
+  String get sharedHistory => 'เทพทั้งสี่ใช้ความทรงจำจากบทสนทนาร่วมกัน';
+
+  @override
+  String get editMemory => 'แก้ไขความทรงจำ';
+
+  @override
+  String get saveMemory => 'บันทึกความทรงจำ';
+
+  @override
+  String get guardianSectionNote => 'เลือกเทพที่พร้อมรับฟังเรื่องในใจคุณ';
+
+  @override
+  String get dailyHoroscopeEmpty =>
+      'เลือกราศีของคุณ แล้วดูแนวทางความรัก การงาน และชีวิตวันนี้';
+
+  @override
+  String get appleLoginUnavailable =>
+      'ยังใช้ Apple เข้าสู่ระบบบนอุปกรณ์นี้ไม่ได้ คุณใช้งานแบบผู้เยี่ยมชมต่อได้';
+
+  @override
+  String get purchaseUnavailable =>
+      'บริการซื้อยังไม่เปิดให้ใช้งาน โปรดกลับมาตรวจสอบภายหลัง';
+
+  @override
+  String get chatTryAgain => 'เชื่อมต่อใหม่';
+
+  @override
+  String get copyLink => 'คัดลอกลิงก์';
+
+  @override
+  String get privacyCenter => 'ความเป็นส่วนตัวและสิทธิ์';
+
+  @override
+  String get privacyIntro =>
+      'ข้อมูลของคุณ คุณเลือกได้ ตรวจสอบและจัดการข้อมูลที่ FATE ใช้ได้ที่นี่';
+
+  @override
+  String get dataProfileTitle => 'ข้อมูลวันเกิด';
+
+  @override
+  String get dataProfileBody =>
+      'วัน เวลา สถานที่เกิด และเขตเวลาจะถูกบันทึกเพื่อคำนวณดวง ข้อมูลเชื่อมกับเซสชันผู้เยี่ยมชมหรือบัญชีที่เข้าสู่ระบบ';
+
+  @override
+  String get dataChatTitle => 'บทสนทนาและคำอ่านจาก AI';
+
+  @override
+  String get dataChatBody =>
+      'รายงานส่งข้อมูลดวงที่คำนวณแล้วให้ผู้ให้บริการ AI หลังได้รับอนุญาต การสนทนายังส่งข้อความ โปรไฟล์ บทสนทนาล่าสุด ความทรงจำที่บันทึก และคำอ่านที่คุณเลือกคุยต่อ กรุณาไม่ใส่ข้อมูลที่ไม่ต้องการให้ AI ประมวลผล';
+
+  @override
+  String get dataPurchaseTitle => 'การซื้อและสิทธิ์ใช้งาน';
+
+  @override
+  String get dataPurchaseBody =>
+      'ร้านค้าเป็นผู้ดำเนินการชำระเงิน FATE ตรวจสอบธุรกรรมกับเซิร์ฟเวอร์ก่อนเปิดสิทธิ์ แอปไม่ขอเลขบัตรของคุณ ตัวอย่างในเครื่องไม่ถือเป็นการซื้อ';
+
+  @override
+  String get dataControlTitle => 'จัดการข้อมูลของคุณ';
+
+  @override
+  String get dataControlBody =>
+      'คุณแก้ไขโปรไฟล์และความทรงจำ ล้างประวัติสนทนา และถอนสิทธิ์การส่งข้อมูลให้ AI ในครั้งต่อไปได้ การลบข้อมูลวันเกิดในหน้านี้ลบเฉพาะสำเนาในเครื่อง การลบบัญชีเป็นอีกขั้นตอนและต้องได้รับการยืนยันจากบริการ';
+
+  @override
+  String get aiPermission => 'ก่อนเริ่มสนทนา';
+
+  @override
+  String aiPermissionBody(String provider) {
+    return 'ข้อความ โปรไฟล์วันเกิด บทสนทนาล่าสุด ความทรงจำ และคำอ่านที่เลือกจะส่งให้บริการ AI ($provider) เพื่อสร้างคำตอบ ซึ่งอาจผิดพลาดได้ คุณปฏิเสธแล้วยังใช้เครื่องมืออื่นได้ หรือถอนสิทธิ์ในหน้าความเป็นส่วนตัว การถอนสิทธิ์หยุดการส่งข้อมูลครั้งต่อไปบนอุปกรณ์นี้ ไม่ได้ลบข้อมูลที่ประมวลผลแล้ว';
+  }
+
+  @override
+  String get aiAllow => 'อนุญาตและดำเนินการต่อ';
+
+  @override
+  String get aiEnabled => 'อนุญาตให้ส่งข้อมูลสนทนาแก่ AI แล้ว';
+
+  @override
+  String get aiPaused => 'ยังไม่ได้อนุญาตการสนทนากับ AI';
+
+  @override
+  String get aiRevoke => 'ถอนสิทธิ์การสนทนา';
+
+  @override
+  String get aiRevoked => 'ถอนสิทธิ์แล้ว ระบบจะขออนุญาตก่อนส่งข้อความใหม่';
+
+  @override
+  String get privacyPolicy => 'นโยบายความเป็นส่วนตัวฉบับเต็ม';
+
+  @override
+  String get policyUnavailable => 'ยังไม่มีลิงก์นโยบายฉบับเผยแพร่';
+
+  @override
+  String get termsTitle => 'การใช้งาน FATE';
+
+  @override
+  String get termsBody =>
+      'FATE ให้บริการเพื่อนคุย AI และโหราศาสตร์เพื่อการไตร่ตรองและความบันเทิง ไม่ใช่คำทำนายที่รับประกันหรือคำแนะนำทางการแพทย์ การเงิน หรือกฎหมาย เทพผู้พิทักษ์เป็นตัวละคร AI สมมติ เนื้อหาที่ซื้อเปิดได้หลังตรวจสอบการชำระเงินเท่านั้น ราคาและความพร้อมขึ้นอยู่กับร้านค้า ห้ามใช้เพื่อคุกคามผู้อื่นหรือส่งเนื้อหาผิดกฎหมาย';
+
+  @override
+  String get supportTitle => 'ช่วยเหลือและติดต่อเรา';
+
+  @override
+  String get supportIntro => 'คำแนะนำเล็ก ๆ ในเวลาที่คุณต้องการ';
+
+  @override
+  String get supportUnavailable =>
+      'ยังไม่มีข้อมูลติดต่อฝ่ายช่วยเหลือ กรุณาลองใหม่ภายหลัง';
+
+  @override
+  String get supportContact => 'ติดต่อฝ่ายช่วยเหลือ';
+
+  @override
+  String get copyAddress => 'คัดลอกอีเมล';
+
+  @override
+  String get copied => 'คัดลอกแล้ว';
+
+  @override
+  String get openFailed => 'เปิดลิงก์ไม่ได้ คุณคัดลอกที่อยู่แทนได้';
+
+  @override
+  String get faqReportTitle => 'คำอ่านของฉันอยู่ที่ไหน';
+
+  @override
+  String get faqReportBody =>
+      'เปิดหน้ารายงานเพื่อดูคำอ่านที่บันทึก ใช้บัญชีและภาษาเดียวกัน รายงานตัวอย่างมีป้ายกำกับและไม่ใช่ผลคำนวณส่วนบุคคล';
+
+  @override
+  String get faqChatTitle => 'คุยต่อจากครั้งก่อนได้ไหม';
+
+  @override
+  String get faqChatBody =>
+      'ใช้เบราว์เซอร์หรือแอปที่ติดตั้งเดิม และเลือกผู้พิทักษ์องค์เดิม ผู้เยี่ยมชมอาจเข้าถึงข้อมูลเดิมไม่ได้หลังล้างข้อมูลหรือติดตั้งใหม่ ตรวจสอบและลบความทรงจำได้ในหน้าสายสัมพันธ์';
+
+  @override
+  String get faqPurchaseTitle => 'ชำระแล้วแต่ยังเปิดไม่ได้';
+
+  @override
+  String get faqPurchaseBody =>
+      'อย่าซื้อซ้ำระหว่างรอตรวจสอบ เปิดหน้าการซื้อและกู้คืนเพื่อตรวจสอบอีกครั้ง จากนั้นรีเฟรชรายงาน การกู้คืนเป็นการขอตรวจสอบกับร้านค้า สิทธิ์จะเปิดเมื่อเซิร์ฟเวอร์ยืนยันเท่านั้น';
+
+  @override
+  String get licenses => 'ใบอนุญาตโอเพนซอร์ส';
+
+  @override
+  String get deleteAccountBody =>
+      'การดำเนินการนี้ลบบัญชีปัจจุบัน รวมถึงโปรไฟล์ บทสนทนา และความทรงจำออกจากบริการอย่างถาวร อาจเก็บข้อมูลที่จำเป็นสำหรับบันทึกธุรกรรมไว้ การลบไม่ใช่การขอคืนเงิน และไม่สามารถกู้คืนเซสชันผู้เยี่ยมชมที่ลบแล้วได้';
+
+  @override
+  String get deleteUnavailable =>
+      'บริการยังไม่รองรับการลบบัญชี ยังไม่มีข้อมูลถูกลบ การล้างข้อมูลในเครื่องหรือออกจากระบบไม่ใช่การลบบัญชี';
+
+  @override
+  String get deleteAcknowledge => 'ฉันเข้าใจว่าไม่สามารถย้อนกลับได้';
+
+  @override
+  String get deleteNow => 'ลบอย่างถาวร';
+
+  @override
+  String get deleteSuccess => 'ยืนยันการลบบัญชีแล้ว';
+
+  @override
+  String get deleteFailure =>
+      'ยังไม่ได้รับการยืนยันการลบ เซสชันยังคงอยู่ กรุณาลองใหม่หรือติดต่อฝ่ายช่วยเหลือ';
+
+  @override
+  String get clearHistory => 'ล้างประวัติสนทนา';
+
+  @override
+  String get clearHistoryBody =>
+      'การดำเนินการนี้ลบประวัติสนทนากับผู้พิทักษ์ทั้งสี่ออกจากบริการ ความทรงจำที่บันทึกยังอยู่ในหน้าสายสัมพันธ์และลบได้ที่นั่น ไม่สามารถย้อนกลับได้';
+
+  @override
+  String get clearHistoryDone => 'ล้างประวัติสนทนาแล้ว';
+
+  @override
+  String get contentReport => 'รายงานเนื้อหา';
+
+  @override
+  String get contentReportIntro =>
+      'แจ้งปัญหาของคำตอบ AI นี้ ระบบส่งเฉพาะรหัสอ้างอิงและรายละเอียดที่คุณกรอก โดยไม่แนบบทสนทนาทั้งหมด';
+
+  @override
+  String get reportReason => 'เหตุผล';
+
+  @override
+  String get reasonHarmful => 'เป็นอันตราย';
+
+  @override
+  String get reasonSexual => 'เนื้อหาทางเพศ';
+
+  @override
+  String get reasonHate => 'เกลียดชังหรือคุกคาม';
+
+  @override
+  String get reasonPrivacy => 'ข้อมูลส่วนบุคคล';
+
+  @override
+  String get reasonMisleading => 'คำแนะนำที่ทำให้เข้าใจผิด';
+
+  @override
+  String get reasonOther => 'อื่น ๆ';
+
+  @override
+  String get reportDetails => 'รายละเอียดเพิ่มเติม (ไม่บังคับ)';
+
+  @override
+  String get reportSend => 'ส่งรายงาน';
+
+  @override
+  String get reportUnavailable =>
+      'ยังไม่สามารถส่งรายงานได้ ข้อมูลยังไม่ถูกส่ง กรุณาลองใหม่ภายหลังหรือดูหน้าช่วยเหลือ';
+
+  @override
+  String reportReceived(String receipt) {
+    return 'ได้รับรายงานแล้ว · $receipt';
+  }
+
+  @override
+  String get purchaseCenter => 'การซื้อและกู้คืน';
+
+  @override
+  String get purchaseCenterIntro => 'ตรวจสอบสิทธิ์และกู้คืนการซื้อเดิม';
+
+  @override
+  String get restoreCheck => 'กำลังตรวจสอบการซื้อ…';
+
+  @override
+  String get restoreChecked =>
+      'ตรวจสอบกับร้านค้าแล้ว รีเฟรชรายงานเพื่อดูสิทธิ์ที่เซิร์ฟเวอร์ยืนยัน ข้อความนี้ไม่ใช่การยืนยันการซื้อ';
+
+  @override
+  String get verifiedContent => 'คลังรายงานของคุณ';
+
+  @override
+  String get verifiedContentIntro =>
+      'เปิดรายงานเพื่อดูสิทธิ์ปัจจุบัน รายงานที่บันทึกหรือตัวอย่างไม่ได้หมายความว่าซื้อแล้ว';
+
+  @override
+  String get reportLeave => 'ทิ้งร่างรายงานนี้หรือไม่';
+
+  @override
+  String get serviceRetry => 'ลองอีกครั้ง';
+
+  @override
+  String get deleteCleanup =>
+      'เซิร์ฟเวอร์ยืนยันการลบแล้ว แต่ล้างข้อมูลในเครื่องบางส่วนไม่สำเร็จ ระบบออกจากเซสชันในหน่วยความจำแล้ว กรุณาล้างพื้นที่เก็บข้อมูลของแอปบนอุปกรณ์นี้';
+
+  @override
+  String get storeBuy => 'ซื้อผ่านร้านค้า';
+
+  @override
+  String get restoreUnavailable =>
+      'อุปกรณ์หรือบัญชีนี้ยังไม่รองรับการกู้คืน กรุณาใช้อุปกรณ์ที่รองรับ บัญชีร้านค้าและบัญชี FATE เดิม';
+
+  @override
+  String get calendarTitle => 'ปฏิทินโหร';
+
+  @override
+  String get calendarOpen => 'ดูปฏิทิน';
+
+  @override
+  String get calendarToday => 'วันนี้';
+
+  @override
+  String get calendarSubtitle => 'เลือกวัน แล้วค่อย ๆ วางแผนไปด้วยกัน';
+
+  @override
+  String calendarYears(int be, int ce) {
+    return 'พ.ศ. $be · ค.ศ. $ce';
+  }
+
+  @override
+  String calendarSmallEra(int year) {
+    return 'จ.ศ. $year';
+  }
+
+  @override
+  String get calendarSelectHint => 'แตะวันที่เพื่อดูรายละเอียดทั้ง 5 ส่วน';
+
+  @override
+  String get calendarLoading => 'กำลังเปิดปฏิทิน…';
+
+  @override
+  String get calendarUnavailable => 'โหลดเดือนนี้ไม่สำเร็จ กรุณาลองอีกครั้ง';
+
+  @override
+  String calendarRange(int start, int end) {
+    return 'ดูแบบออฟไลน์ได้ · ค.ศ. $start–$end';
+  }
+
+  @override
+  String get calendarOutOfRange => 'วันที่นี้อยู่นอกช่วงปฏิทินที่มี';
+
+  @override
+  String get calendarWanPhra => 'วันพระ';
+
+  @override
+  String get calendarKalayokTitle => 'กาลโยคประจำวัน';
+
+  @override
+  String calendarFlag(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'thongchai': 'วันธงชัย',
+      'athibodi': 'วันอธิบดี',
+      'ubat': 'วันอุบาทว์',
+      'other': 'วันโลกาวินาศ',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String calendarFlagBody(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'thongchai': 'ตามคตินิยม เหมาะกับการเริ่มต้นสิ่งใหม่',
+      'athibodi': 'ตามคตินิยม เกี่ยวข้องกับการนำและการจัดการ',
+      'ubat': 'ตามคตินิยม ควรทบทวนแผนอย่างรอบคอบ',
+      'other': 'ตามคตินิยม ควรหลีกเลี่ยงการเร่งตัดสินใจเรื่องใหญ่',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get calendarNoKalayok => 'ไม่มีวันกาลโยคกำกับ';
+
+  @override
+  String get calendarMixedNote => 'วันนี้มีหลายเกณฑ์ตรงกัน จึงแสดงทุกเกณฑ์';
+
+  @override
+  String get calendarLunarTitle => 'ดิถีจันทรคติ';
+
+  @override
+  String get calendarRiangMon => 'ดิถีเรียงหมอน';
+
+  @override
+  String get calendarRiangMonBody =>
+      'เป็นดิถีที่ตำรานิยมใช้ประกอบการเลือกวันแต่งงาน';
+
+  @override
+  String get calendarLunarOrdinary => 'ไม่ตรงกับดิถีเรียงหมอน';
+
+  @override
+  String get calendarUbakong => 'ยามอุบากอง';
+
+  @override
+  String get calendarDaylight => 'ยามกลางวัน · 06:00–18:00 · กรุงเทพฯ';
+
+  @override
+  String get calendarMansion => 'นักษัตรทั้ง 27';
+
+  @override
+  String calendarMansionPosition(int index, int quarter) {
+    return 'นักษัตรที่ $index จาก 27 · บาทที่ $quarter';
+  }
+
+  @override
+  String get calendarMansionReference =>
+      'ตำแหน่งจันทร์เวลาเที่ยงกรุงเทพฯ นักษัตรอาจเปลี่ยนระหว่างวัน';
+
+  @override
+  String get calendarReference =>
+      'ปฏิทินโหราศาสตร์ไทย เพื่อการเรียนรู้วัฒนธรรมและความบันเทิง';
+
+  @override
+  String calendarLunarShort(String phase, int day) {
+    String _temp0 = intl.Intl.selectLogic(phase, {
+      'waxing': 'ขึ้น',
+      'other': 'แรม',
+    });
+    return '$_temp0$day';
+  }
+
+  @override
+  String calendarMonth(String month) {
+    String _temp0 = intl.Intl.selectLogic(month, {
+      '1': 'มกราคม',
+      '2': 'กุมภาพันธ์',
+      '3': 'มีนาคม',
+      '4': 'เมษายน',
+      '5': 'พฤษภาคม',
+      '6': 'มิถุนายน',
+      '7': 'กรกฎาคม',
+      '8': 'สิงหาคม',
+      '9': 'กันยายน',
+      '10': 'ตุลาคม',
+      '11': 'พฤศจิกายน',
+      '12': 'ธันวาคม',
+      'other': '',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String calendarMansionName(String index) {
+    String _temp0 = intl.Intl.selectLogic(index, {
+      '1': 'Ashwini',
+      '2': 'Bharani',
+      '3': 'Krittika',
+      '4': 'Rohini',
+      '5': 'Mrigashira',
+      '6': 'Ardra',
+      '7': 'Punarvasu',
+      '8': 'Pushya',
+      '9': 'Ashlesha',
+      '10': 'Magha',
+      '11': 'Purva Phalguni',
+      '12': 'Uttara Phalguni',
+      '13': 'Hasta',
+      '14': 'Chitra',
+      '15': 'Swati',
+      '16': 'Vishakha',
+      '17': 'Anuradha',
+      '18': 'Jyeshtha',
+      '19': 'Mula',
+      '20': 'Purva Ashadha',
+      '21': 'Uttara Ashadha',
+      '22': 'Shravana',
+      '23': 'Dhanishta',
+      '24': 'Shatabhisha',
+      '25': 'Purva Bhadrapada',
+      '26': 'Uttara Bhadrapada',
+      '27': 'Revati',
+      'other': '',
+    });
+    return '$_temp0';
+  }
 }

@@ -64,34 +64,6 @@ class LifeCardPayments:
                              not re.fullmatch(r"[0-9]{8}", self.merchant) or
                              not self.api_key or not self.secret_key):
             raise RuntimeError("Payso Demo requires development mode and all PAYSO_TEST credentials")
-        with store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            db.execute("""
-                CREATE TABLE IF NOT EXISTS life_card_payments(
-                    reference TEXT PRIMARY KEY, report_id TEXT NOT NULL UNIQUE REFERENCES life_reports(id),
-                    network TEXT NOT NULL, merchant TEXT NOT NULL, amount INTEGER NOT NULL,
-                    provider_order TEXT, UNIQUE(merchant, provider_order)
-                )
-            """)
-            db.execute("CREATE TABLE IF NOT EXISTS life_simulated_payment_sequence (number INTEGER NOT NULL)")
-            db.execute("INSERT INTO life_simulated_payment_sequence SELECT 0 "
-                       "WHERE NOT EXISTS (SELECT 1 FROM life_simulated_payment_sequence)")
-            if "sunlands_order" not in {row["name"] for row in db.execute("PRAGMA table_info(life_card_payments)")}:
-                db.execute("ALTER TABLE life_card_payments ADD COLUMN sunlands_order TEXT NOT NULL DEFAULT '{}'")
-            columns = {row["name"] for row in db.execute("PRAGMA table_info(life_card_payments)")}
-            for name in ("sunlands_gateway", "sunlands_order_number", "sunlands_pay_number"):
-                if name not in columns:
-                    db.execute(f"ALTER TABLE life_card_payments ADD COLUMN {name} TEXT")
-            for name in ("sunlands_order_number", "sunlands_pay_number"):
-                db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS unique_{name} "
-                           f"ON life_card_payments(sunlands_gateway,merchant,{name})")
-            # Reserve legacy platform numbers without deleting receipts or treating them as payments.
-            for order in db.execute("SELECT * FROM life_card_payments WHERE merchant LIKE 'sunlands:%' "
-                                    "AND sunlands_gateway IS NULL ORDER BY reference").fetchall():
-                details = json.loads(order["sunlands_order"])
-                if (isinstance(details, dict) and details.get("gateway") and not details.get("associationConflict")
-                        and any(_platform_number(details.get(key)) for key in ("orderNumber", "payNumber"))):
-                    self._save_sunlands(db, order["reference"], order["merchant"], details)
 
     @property
     def sunlands_ready(self):
@@ -145,9 +117,9 @@ class LifeCardPayments:
     def _save_sunlands(self, db, reference, merchant, details, *, record_attempt=False):
         gateway = details["gateway"]
         order_number, pay_number = (_platform_number(details.get(key)) for key in ("orderNumber", "payNumber"))
-        # The caller holds BEGIN IMMEDIATE; unique indexes also protect other database writers.
-        conflicts = db.execute("SELECT reference FROM life_card_payments WHERE reference<>? AND merchant=? "
-                               "AND sunlands_gateway=? AND (sunlands_order_number=? OR sunlands_pay_number=?)",
+        # The caller locks payment writes while reserving the platform identifiers.
+        conflicts = db.execute("SELECT reference FROM life_card_payments WHERE reference<>%s AND merchant=%s "
+                               "AND sunlands_gateway=%s AND (sunlands_order_number=%s OR sunlands_pay_number=%s)",
                                (reference, merchant, gateway, order_number, pay_number)).fetchall()
         if conflicts:
             details.update(state="UNKNOWN", failureStage="association",
@@ -155,8 +127,8 @@ class LifeCardPayments:
             gateway = order_number = pay_number = None
         if record_attempt:
             details["attempts"] = [*details.get("attempts", [])[-9:], self._sunlands_attempt(details)]
-        db.execute("UPDATE life_card_payments SET sunlands_order=?,sunlands_gateway=?,"
-                   "sunlands_order_number=?,sunlands_pay_number=? WHERE reference=?",
+        db.execute("UPDATE life_card_payments SET sunlands_order=%s,sunlands_gateway=%s,"
+                   "sunlands_order_number=%s,sunlands_pay_number=%s WHERE reference=%s",
                    (json.dumps(details, ensure_ascii=False), gateway, order_number, pay_number, reference))
 
     def _sunlands_view(self, order):
@@ -215,8 +187,8 @@ class LifeCardPayments:
                    "currency": "THB", "paymentStatus": "NOT_CHECKED",
                    "attemptCount": 1, "attemptStartedAt": time.time(), "attempts": []}
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            order = db.execute("SELECT * FROM life_card_payments WHERE report_id=?", (report_id,)).fetchone()
+            db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
+            order = db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
             if order:
                 saved = json.loads(order["sunlands_order"])
                 if order["merchant"] != merchant or saved.get("gateway") != s.sunlands_base_url:
@@ -229,14 +201,13 @@ class LifeCardPayments:
                 details["createdAt"] = saved.get("createdAt", details["createdAt"])
                 details["attemptCount"] = saved.get("attemptCount", 1) + 1
                 details["attempts"] = saved.get("attempts") or [self._sunlands_attempt(saved)]
-                db.execute("UPDATE life_card_payments SET sunlands_order=? WHERE reference=?",
+                db.execute("UPDATE life_card_payments SET sunlands_order=%s WHERE reference=%s",
                            (json.dumps(details), reference))
             else:
-                db.execute("UPDATE life_simulated_payment_sequence SET number=number+1")
-                number = db.execute("SELECT number FROM life_simulated_payment_sequence").fetchone()[0]
+                number = db.execute("UPDATE life_simulated_payment_sequence SET number=number+1 RETURNING number").fetchone()["number"]
                 reference = f"{number:012d}"
                 db.execute("INSERT INTO life_card_payments(reference,report_id,network,merchant,amount,sunlands_order) "
-                           "VALUES(?,?,?,?,?,?)", (reference, report_id, network, merchant, SUNLANDS_AMOUNT, json.dumps(details)))
+                           "VALUES(%s,%s,%s,%s,%s,%s)", (reference, report_id, network, merchant, SUNLANDS_AMOUNT, json.dumps(details)))
         # Use the phone-order contract; overseas enum values were documented only for the old endpoint.
         form = {"orderType": "NORMAL", "termType": "mobile",
                 "nationCode": nation_code, "mobile": mobile,
@@ -337,7 +308,7 @@ class LifeCardPayments:
             details["elapsedMs"] = round((time.monotonic() - started) * 1000)
         details["updatedAt"] = time.time()
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
+            db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
             self._save_sunlands(db, reference, merchant, details, record_attempt=True)
         if cancelled is not None:
             raise cancelled
@@ -347,7 +318,7 @@ class LifeCardPayments:
         with self.store.connect() as db:
             return db.execute("SELECT p.*,r.owner FROM life_card_payments p "
                               "JOIN life_reports r ON r.id=p.report_id "
-                              "WHERE p.sunlands_order_number=? AND p.sunlands_gateway=? AND p.merchant=?",
+                              "WHERE p.sunlands_order_number=%s AND p.sunlands_gateway=%s AND p.merchant=%s",
                               (number, self.settings.sunlands_base_url,
                                "sunlands:" + self.settings.sunlands_app_key)).fetchone()
 
@@ -461,8 +432,8 @@ class LifeCardPayments:
 
         # Persist verified settlement and the report entitlement together, preserving creation receipts.
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            current = db.execute("SELECT * FROM life_card_payments WHERE reference=?", (order["reference"],)).fetchone()
+            db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
+            current = db.execute("SELECT * FROM life_card_payments WHERE reference=%s", (order["reference"],)).fetchone()
             if not current or any(current[key] != order[key] for key in (
                     "report_id", "merchant", "amount", "sunlands_gateway", "sunlands_order_number", "sunlands_pay_number")):
                 raise HTTPException(409, "life_payment_verification_failed")
@@ -473,9 +444,7 @@ class LifeCardPayments:
             saved["paymentChecks"] = [*saved.get("paymentChecks", [])[-9:], check]
             saved["paymentStatus"] = check["status"]
             if paid:
-                updated = db.execute("UPDATE OR IGNORE life_card_payments SET provider_order=? "
-                                     "WHERE reference=? AND provider_order IS NULL", (provider_order, order["reference"]))
-                if updated.rowcount != 1:
+                if not self._assign_receipt(db, order, provider_order):
                     paid = False
                     error_code = "life_payment_verification_failed"
                     check.update(status="CHECK_FAILED", errorCode=error_code, validationErrors=["providerOrderConflict"])
@@ -483,8 +452,8 @@ class LifeCardPayments:
                 else:
                     saved["paidAt"] = time.time()
                     saved["verifiedSubOrderNumber"] = check["subOrderNumber"]
-                    db.execute("UPDATE life_reports SET unlocked=1 WHERE id=?", (order["report_id"],))
-            db.execute("UPDATE life_card_payments SET sunlands_order=? WHERE reference=?",
+                    db.execute("UPDATE life_reports SET unlocked=1 WHERE id=%s", (order["report_id"],))
+            db.execute("UPDATE life_card_payments SET sunlands_order=%s WHERE reference=%s",
                        (json.dumps(saved, ensure_ascii=False), order["reference"]))
         if check["status"] == "CHECK_FAILED":
             raise HTTPException(503 if error_code != "life_payment_verification_failed" else 409, error_code)
@@ -492,14 +461,14 @@ class LifeCardPayments:
 
     def order_for(self, report_id):
         with self.store.connect() as db:
-            return db.execute("SELECT * FROM life_card_payments WHERE report_id=?", (report_id,)).fetchone()
+            return db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
 
     def _create_order(self, report_id, network, merchant, amount):
         with self.store.connect() as db:
             db.execute("INSERT INTO life_card_payments(reference,report_id,network,merchant,amount) "
-                       "VALUES(?,?,?,?,?) ON CONFLICT(report_id) DO NOTHING",
+                       "VALUES(%s,%s,%s,%s,%s) ON CONFLICT(report_id) DO NOTHING",
                        (str(100000000000 + secrets.randbelow(900000000000)), report_id, network, merchant, amount))
-            order = db.execute("SELECT * FROM life_card_payments WHERE report_id=?", (report_id,)).fetchone()
+            order = db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
         if not order or order["merchant"] != merchant:
             raise HTTPException(409, "life_payment_unavailable")
         return order
@@ -516,14 +485,13 @@ class LifeCardPayments:
     def create_simulated(self, report_id, network):
         with self.store.connect() as db:
             # Reserve the next number only when a report has no order yet.
-            db.execute("BEGIN IMMEDIATE")
-            order = db.execute("SELECT * FROM life_card_payments WHERE report_id=?", (report_id,)).fetchone()
+            db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
+            order = db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
             if order is None:
-                db.execute("UPDATE life_simulated_payment_sequence SET number=number+1")
-                number = db.execute("SELECT number FROM life_simulated_payment_sequence").fetchone()[0]
-                db.execute("INSERT INTO life_card_payments(reference,report_id,network,merchant,amount) VALUES(?,?,?,?,?)",
+                number = db.execute("UPDATE life_simulated_payment_sequence SET number=number+1 RETURNING number").fetchone()["number"]
+                db.execute("INSERT INTO life_card_payments(reference,report_id,network,merchant,amount) VALUES(%s,%s,%s,%s,%s)",
                            (f"{number:012d}", report_id, network, SIMULATED_MERCHANT, SIMULATED_AMOUNT))
-                order = db.execute("SELECT * FROM life_card_payments WHERE report_id=?", (report_id,)).fetchone()
+                order = db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
         if order["merchant"] != SIMULATED_MERCHANT:
             raise HTTPException(409, "life_payment_unavailable")
         return {"reference": order["reference"], "amount": order["amount"], "currency": "THB"}
@@ -538,7 +506,7 @@ class LifeCardPayments:
         with self.store.connect() as db:
             return db.execute("SELECT life_card_payments.*, life_reports.owner FROM life_card_payments "
                               "JOIN life_reports ON life_reports.id=life_card_payments.report_id "
-                              "WHERE reference=? AND merchant=?", (reference, self.merchant)).fetchone()
+                              "WHERE reference=%s AND merchant=%s", (reference, self.merchant)).fetchone()
 
     async def inquiry(self, reference):
         merchant_suffix = self.merchant[-5:]
@@ -581,11 +549,19 @@ class LifeCardPayments:
     def _record_payment(self, order, provider_order):
         # Record the payment and report entitlement in the same transaction.
         with self.store.connect() as db:
-            db.execute("UPDATE OR IGNORE life_card_payments SET provider_order=? "
-                       "WHERE reference=? AND provider_order IS NULL", (provider_order, order["reference"]))
-            recorded = db.execute("SELECT provider_order FROM life_card_payments WHERE reference=?",
+            db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
+            self._assign_receipt(db, order, provider_order)
+            recorded = db.execute("SELECT provider_order FROM life_card_payments WHERE reference=%s",
                                   (order["reference"],)).fetchone()
             paid = recorded is not None and recorded["provider_order"] == provider_order
             if paid:
-                db.execute("UPDATE life_reports SET unlocked=1 WHERE id=?", (order["report_id"],))
+                db.execute("UPDATE life_reports SET unlocked=1 WHERE id=%s", (order["report_id"],))
         return paid
+
+    @staticmethod
+    def _assign_receipt(db, order, provider_order):
+        return db.execute(
+            "UPDATE life_card_payments SET provider_order=%s WHERE reference=%s AND provider_order IS NULL "
+            "AND NOT EXISTS (SELECT 1 FROM life_card_payments WHERE merchant=%s AND provider_order=%s)",
+            (provider_order, order["reference"], order["merchant"], provider_order),
+        ).rowcount == 1

@@ -37,6 +37,7 @@ from .life_reports import LifeReports, life_report_router
 from .landing_features import LandingFeatures, landing_router
 from .western_app import NOTICE as WESTERN_NOTICE, WesternApp, WesternProfileInput, western_router
 from .static_assets import LandingStaticFiles
+from h5_admin.service import H5Admin, admin_page_router, admin_router
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,8 @@ def create_app(settings: Settings | None = None):
     if settings.bazi_provider not in ("github", "roxy"):
         raise RuntimeError("BAZI_PROVIDER must be github or roxy")
     app = FastAPI(title="Sabai API", version="0.1.0")
-    store, registry = Storage(settings.database_path), ProviderRegistry(settings)
+    store, registry = Storage(settings.database_url), ProviderRegistry(settings)
+    store.verify_schema()
     models = CompanionModels(registry)
     roxy = RoxyBazi(settings, store)
     app.state.roxy = roxy
@@ -83,6 +85,9 @@ def create_app(settings: Settings | None = None):
     app.state.life_reports = life_reports
     app.include_router(life_report_router(life_reports))
     app.include_router(landing_router(LandingFeatures(store, settings, life_reports)))
+    app.state.h5_admin = H5Admin(store, settings, life_reports)
+    app.include_router(admin_router(app.state.h5_admin))
+    app.include_router(admin_page_router())
 
     async def load_thai(user_id: str, current: dict):
         profile = current["profile"]
@@ -101,6 +106,7 @@ def create_app(settings: Settings | None = None):
     rates: dict[tuple[str, str], deque] = defaultdict(deque)
 
     def error_response(code: str, status: int, request: Request):
+        request.state.failure_code = code
         language = request_language(request)
         return JSONResponse({"detail": message(code, language), "code": code}, status_code=status, headers={"Content-Language": LOCALES[language]})
 
@@ -137,13 +143,18 @@ def create_app(settings: Settings | None = None):
 
     @app.middleware("http")
     async def boundaries(request: Request, call_next):
+        started = time.monotonic()
+        h5_request = request.url.path == "/api/life-reports" or request.url.path.startswith(("/api/life-reports/", "/api/landing/"))
         if request.url.path.startswith("/api/"):
             # Read a bounded body before validation, including chunked requests.
             body = bytearray()
             async for chunk in request.stream():
                 body.extend(chunk)
                 if len(body) > 65536:
-                    return error_response("request_too_large", 413, request)
+                    response = error_response("request_too_large", 413, request)
+                    if h5_request:
+                        app.state.h5_admin.record_failure(request, 413, round((time.monotonic() - started) * 1000))
+                    return response
             request._body = bytes(body)
             key = (request.client.host if request.client else "unknown", request.url.path)
             now = time.monotonic()
@@ -153,6 +164,8 @@ def create_app(settings: Settings | None = None):
             if len(rates) >= 2000 and key not in rates:
                 response = error_response("busy", 429, request)
                 response.headers["Retry-After"] = "60"
+                if h5_request:
+                    app.state.h5_admin.record_failure(request, 429, round((time.monotonic() - started) * 1000))
                 return response
             bucket = rates[key]
             while bucket and bucket[0] < now - 60:
@@ -160,12 +173,30 @@ def create_app(settings: Settings | None = None):
             if len(bucket) >= 30:
                 response = error_response("too_many_requests", 429, request)
                 response.headers["Retry-After"] = str(max(1, int(bucket[0] + 60 - now) + 1))
+                if h5_request:
+                    app.state.h5_admin.record_failure(request, 429, round((time.monotonic() - started) * 1000))
                 return response
             bucket.append(now)
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            if h5_request:
+                app.state.h5_admin.record_failure(request, 500, round((time.monotonic() - started) * 1000))
+            raise
+        if h5_request and response.status_code >= 400:
+            app.state.h5_admin.record_failure(request, response.status_code, round((time.monotonic() - started) * 1000))
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Content-Language"] = LOCALES[request_language(request)]
+        if request.url.path == "/admin" or request.url.path.startswith(("/admin/", "/api/admin/")):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Content-Language"] = "zh-CN"
+            response.headers["Referrer-Policy"] = "no-referrer"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+            )
         return response
 
     def token_value(authorization: str | None):

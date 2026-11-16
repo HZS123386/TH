@@ -25,15 +25,15 @@ class H5Controller extends ChangeNotifier {
   final BrowserPort browser;
   final Future<void> Function(String)? ensureFont;
   final Future<void> Function(String, String)? ensureTextFont;
-  static const noticeVersion = 'h5-data-use-2';
+  static const noticeVersion = 'h5-data-use-3';
+  static const _visitTimeout = Duration(seconds: 8);
   late bool welcomeOpen, noticeAccepted;
   late final bool returningVisitor;
   bool welcomePortraitRevealed = false;
   bool landingPrepared = false;
   Future<void>? _visitRequest;
   Json _visit = {};
-  final _events = <String>{};
-  final _submissions = <String, Future<void>>{};
+  final _events = <String, Future<bool>>{};
   final _background = CancelToken();
 
   void enterLanding() {
@@ -62,12 +62,26 @@ class H5Controller extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> recordVisit() => _visitRequest ??= _recordVisit();
+  Future<void> recordVisit() async {
+    if (_visit.isNotEmpty) return;
+    final request = _visitRequest ??= _recordVisit();
+    try {
+      await request;
+    } finally {
+      if (identical(_visitRequest, request)) _visitRequest = null;
+    }
+  }
+
   Future<void> _recordVisit() async {
     try {
       final value = browser.visitContext();
       if (value.isEmpty) return;
-      await repository.request('/api/landing/visits', _background, body: value);
+      await repository.request(
+        '/api/landing/visits',
+        _background,
+        body: value,
+        timeout: _visitTimeout,
+      );
       _visit = value;
     } catch (_) {
       // First-party counts are best effort and never delay report generation.
@@ -75,25 +89,40 @@ class H5Controller extends ChangeNotifier {
   }
 
   Future<void> trackReport(String id, String event) async {
-    if (event == 'submitted') {
-      await _submissions.putIfAbsent(id, () => _sendReportEvent(id, event));
+    if (event == 'seen' &&
+        _events.containsKey('submitted:$id') &&
+        !await _recordReportEvent(id, 'submitted')) {
       return;
     }
-    await _submissions[id];
-    await _sendReportEvent(id, event);
+    await _recordReportEvent(id, event);
   }
 
-  Future<void> _sendReportEvent(String id, String event) async {
+  Future<bool> _recordReportEvent(String id, String event) async {
+    final key = '$event:$id';
+    final previous = _events[key];
+    if (previous != null) {
+      if (await previous) return true;
+      if (!identical(_events[key], previous)) return _events[key]!;
+    }
+    return _events[key] = _sendReportEvent(id, event);
+  }
+
+  Future<bool> _sendReportEvent(String id, String event) async {
     await recordVisit();
-    if (_visit.isEmpty || !_events.add('$event:$id')) return;
+    if (_visit.isEmpty) return false;
     try {
-      await repository.request(
-        '/api/landing/visits/${_visit['id']}/events',
-        _background,
-        body: {'report_id': id, 'event': event},
+      final result = object(
+        await repository.request(
+          '/api/landing/visits/${_visit['id']}/events',
+          _background,
+          body: {'report_id': id, 'event': event},
+          timeout: _visitTimeout,
+        ),
       );
+      return result['recorded'] == true;
     } catch (_) {
       // The report remains usable when traffic counting is unavailable.
+      return false;
     }
   }
 

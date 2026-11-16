@@ -175,7 +175,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
         color: const Color(0xFF0B0715),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450),
+            constraints: const BoxConstraints(maxWidth: h5PageMaxWidth),
             child: DecoratedBox(
               decoration: const BoxDecoration(
                 gradient: RadialGradient(
@@ -504,14 +504,27 @@ class _GenerationDialogState extends State<GenerationDialog> {
                           top: videoTop,
                           height: videoHeight,
                           child: IgnorePointer(
-                            child: ListenableBuilder(
-                              listenable: widget.state,
-                              builder: (context, _) => GenerationVideo(
-                                active: widget.state.error.isEmpty,
-                                finishing:
-                                    _loading && (_reduced || _playbackStarted),
-                                reduced: _reduced,
-                                onFinished: _finish,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: pad,
+                                vertical: 16,
+                              ),
+                              child: Center(
+                                // The video and fallback artwork are both 768 x 512.
+                                child: AspectRatio(
+                                  aspectRatio: 3 / 2,
+                                  child: ListenableBuilder(
+                                    listenable: widget.state,
+                                    builder: (context, _) => GenerationVideo(
+                                      active: widget.state.error.isEmpty,
+                                      finishing:
+                                          _loading &&
+                                          (_reduced || _playbackStarted),
+                                      reduced: _reduced,
+                                      onFinished: _finish,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),

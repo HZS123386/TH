@@ -56,7 +56,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            PageHeading(s.account, s.accountText),
+            PageHeading(s.account, s.accountText, icon: Icons.lock_outline),
             FateCard(
               child: Column(
                 children: [
@@ -79,11 +79,16 @@ class _LoginPageState extends State<LoginPage> {
                     icon: const Icon(Icons.apple),
                     label: Text(s.appleLogin),
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    s.nativeSetup,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  if (!d.session.capabilities.appleLogin ||
+                      kIsWeb ||
+                      defaultTargetPlatform != TargetPlatform.iOS) ...[
+                    const SizedBox(height: 14),
+                    Text(
+                      s.appleLoginUnavailable,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -145,6 +150,20 @@ class _LoginPageState extends State<LoginPage> {
                   style: const TextStyle(color: Colors.redAccent),
                 ),
               ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              children: [
+                TextButton(
+                  onPressed: busy ? null : () => context.push('/privacy'),
+                  child: Text(s.privacyCenter),
+                ),
+                TextButton(
+                  onPressed: busy ? null : () => context.push('/support'),
+                  child: Text(s.termsTitle),
+                ),
+              ],
+            ),
           ],
         ),
       ),

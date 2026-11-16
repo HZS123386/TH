@@ -9,6 +9,487 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get actionTodo => 'To do';
+
+  @override
+  String get actionReviewAvailable => 'Ready to review';
+
+  @override
+  String get actionTypeService => 'Help and share knowledge';
+
+  @override
+  String get actionTypePractice => 'Personal practice';
+
+  @override
+  String get actionCompleted => 'Completed';
+
+  @override
+  String get newVisitorNote => 'Choose a reader to begin';
+
+  @override
+  String get returningVisitorNote => 'Continue with a previous reading';
+
+  @override
+  String get todayTab => 'Today';
+
+  @override
+  String get actionTab => 'Actions';
+
+  @override
+  String get liveTab => 'Live';
+
+  @override
+  String get objectsTab => 'Objects';
+
+  @override
+  String get todayQuestion => 'What would you like to explore today?';
+
+  @override
+  String get todayNote => 'Three ways to find clarity';
+
+  @override
+  String get thaiGuide => 'Thai astrology';
+
+  @override
+  String get sevenGuide => 'Seven characters';
+
+  @override
+  String get tarotGuide => 'Tarot reading';
+
+  @override
+  String get sirin => 'Sirin';
+
+  @override
+  String get arun => 'Arun';
+
+  @override
+  String get mira => 'Mira';
+
+  @override
+  String get sirinFocus => 'Fortune · Year ahead';
+
+  @override
+  String get arunFocus => 'Character · Life rhythms';
+
+  @override
+  String get miraFocus => 'The present · The next step';
+
+  @override
+  String get sirinHint => 'Explore your timing for the next step.';
+
+  @override
+  String get arunHint => 'Explore your rhythms through birth numbers.';
+
+  @override
+  String get miraHint => 'Bring a question and see what the cards say.';
+
+  @override
+  String get startThaiGuide => 'Enter birth details to begin';
+
+  @override
+  String get viewThaiGuide => 'View my Thai chart';
+
+  @override
+  String get startSevenGuide => 'Preview seven-character readings';
+
+  @override
+  String get startTarotGuide => 'Start a tarot reading';
+
+  @override
+  String get textReading => 'Text reading';
+
+  @override
+  String get textReadingNote => 'Ask and keep talking';
+
+  @override
+  String get voiceReading => 'Voice chat';
+
+  @override
+  String get voiceReadingNote => 'Talk through your question';
+
+  @override
+  String get textChat => 'Text chat';
+
+  @override
+  String get voiceChat => 'Voice chat';
+
+  @override
+  String get voicePreviewNotice =>
+      'Voice chat is unavailable in this preview. You can continue by text.';
+
+  @override
+  String guideChatHeading(String name) {
+    return 'Talk it through with $name';
+  }
+
+  @override
+  String get startReading => 'Start reading';
+
+  @override
+  String get guideChatDemo =>
+      'Demo chat · Replies and history stay on this device';
+
+  @override
+  String get guideGreeting => 'What’s on your mind today?';
+
+  @override
+  String get guidePromptWork => 'I feel unsure about work';
+
+  @override
+  String get guidePromptLove => 'Should I take the lead in my relationship?';
+
+  @override
+  String get guideWorkReply =>
+      'Separate what you know from what you’re waiting for. What could you clarify this week?';
+
+  @override
+  String get guideLoveReply =>
+      'What would you like the other person to know? Start with a simple hello and notice how you feel.';
+
+  @override
+  String guideReflectReply(String question) {
+    return 'Think about what you can control in “$question”. What’s one thing you could do in ten minutes?';
+  }
+
+  @override
+  String get continueSample => 'Continue with your example reading';
+
+  @override
+  String get readingSampleQuestion =>
+      'I’m waiting to hear back about work. What can I do this week?';
+
+  @override
+  String get readingSampleLove => 'What’s the next step in this relationship?';
+
+  @override
+  String get readingSampleLife => 'My routine changed. Where should I start?';
+
+  @override
+  String get recoverReports => 'My reports';
+
+  @override
+  String get recentReadings => 'Recent readings';
+
+  @override
+  String get reportLookup => 'Report link or code';
+
+  @override
+  String get findReport => 'Look up';
+
+  @override
+  String get reportLookupDemo =>
+      'Use an example code here. Personal reports are in your report library.';
+
+  @override
+  String get reportCodeMissing => 'Example not found. Try FATE-THAI-001.';
+
+  @override
+  String get newVisitor => 'I’m new here';
+
+  @override
+  String get returningVisitor => 'I’m returning';
+
+  @override
+  String get guideWelcomeLabel => 'Three readers · Three traditions';
+
+  @override
+  String get guideWelcomeTitle => 'A conversation\nwith destiny.';
+
+  @override
+  String get guideWelcomeNote =>
+      'Start with one question and see where you stand.';
+
+  @override
+  String get onAirNow => 'On air now';
+
+  @override
+  String get demo => 'Demo';
+
+  @override
+  String get allItems => 'All';
+
+  @override
+  String get templeRoom => 'Temple blessing';
+
+  @override
+  String get templeTeaser => 'Temple ceremony';
+
+  @override
+  String get objectsRoom => 'Objects unboxing';
+
+  @override
+  String get templeTeaserNote => 'Watch the ritual';
+
+  @override
+  String get objectsTeaserNote => 'See how it’s used';
+
+  @override
+  String get templeRoomNote => 'Partner Temple A · Example';
+
+  @override
+  String get switchRoom => 'Switch room';
+
+  @override
+  String get templePosterTitle => 'One wish,\none special encounter';
+
+  @override
+  String get objectsPosterTitle => 'Bring a little intention\ninto every day';
+
+  @override
+  String get liveDemoNotice => 'Live preview · Illustrative scenes';
+
+  @override
+  String get livestreamPause => 'Pause preview';
+
+  @override
+  String get livestreamPlay => 'Play preview';
+
+  @override
+  String get fullScreenPreview => 'Enlarge preview';
+
+  @override
+  String get templeRoomHeading => 'Bring your wish to the temple';
+
+  @override
+  String get templeService => 'Personal blessing';
+
+  @override
+  String get samplePrice => 'Sample price';
+
+  @override
+  String get bookingInfo => 'Booking information';
+
+  @override
+  String get bookingDemoNotice =>
+      'Preview the ceremony and booking steps. Actual dates are pending.';
+
+  @override
+  String get roomChat => 'Room chat';
+
+  @override
+  String get ceremonyInfo => 'About the ceremony';
+
+  @override
+  String get roomObjectsInfo => 'Featured objects';
+
+  @override
+  String get roomWelcomeDemo =>
+      'Host · Demo    Welcome. Take a look at the room details below.';
+
+  @override
+  String get templeSegmentOne => 'Write down your wish';
+
+  @override
+  String get templeSegmentTwo => 'Learn about the blessing ritual';
+
+  @override
+  String get templeSegmentThree => 'Keep a record of your wish';
+
+  @override
+  String get roomMessageHint => 'Try a local chat message';
+
+  @override
+  String get myActions => 'My actions';
+
+  @override
+  String get actionsIntro =>
+      'A reading helps you see where you stand. Record the small things you do and come back to reflect.';
+
+  @override
+  String get actionPending => 'To do';
+
+  @override
+  String get actionDone => 'Completed';
+
+  @override
+  String get actionReady => 'Ready to review';
+
+  @override
+  String get chooseSmallAction => 'Choose a small action';
+
+  @override
+  String get chooseSmallActionNote => 'Ten minutes, at your own pace';
+
+  @override
+  String get chooseFamilyAction => 'Plan a day for family';
+
+  @override
+  String get chooseFamilyActionNote => 'Do a few manageable things together';
+
+  @override
+  String get weeklyMoment => 'Set aside a day for action';
+
+  @override
+  String get weeklyMomentNote =>
+      'Pick one day a week for a few small acts. Keep it flexible.';
+
+  @override
+  String get myWeeklyDay => 'My action day';
+
+  @override
+  String get arrangeDay => 'Set a day';
+
+  @override
+  String get actionLedger => 'My action journal';
+
+  @override
+  String get newPlan => 'New plan';
+
+  @override
+  String get noActionPlan =>
+      'The small things you choose to do will appear here.';
+
+  @override
+  String get actionRecord => 'My action record';
+
+  @override
+  String get actionTitle => 'What I want to do';
+
+  @override
+  String get careAction => 'Give someone a helping hand';
+
+  @override
+  String get familyAction => 'Do a few small things for family';
+
+  @override
+  String get actionCategory => 'Action type';
+
+  @override
+  String get beneficiary => 'Who it’s for';
+
+  @override
+  String get forSelf => 'Myself';
+
+  @override
+  String get forOthers => 'Someone nearby';
+
+  @override
+  String get forFamily => 'Family';
+
+  @override
+  String get recordMethod => 'Recording method';
+
+  @override
+  String get recordOnDevice => 'Notes on this device';
+
+  @override
+  String get actionDate => 'Action date';
+
+  @override
+  String get reviewDate => 'Review date';
+
+  @override
+  String get actionNotes => 'What I did';
+
+  @override
+  String get actionReview => 'My reflection on this action';
+
+  @override
+  String get questionProgress => 'What changed about the original question?';
+
+  @override
+  String get actionReviewed => 'Reviewed';
+
+  @override
+  String get recordAction => 'Save a small action';
+
+  @override
+  String get clearPrototypeRecords => 'Clear local actions and demo chats';
+
+  @override
+  String get storeTitle => 'Objects with intention';
+
+  @override
+  String get storeIntro => 'Bring the things you love into everyday life.';
+
+  @override
+  String get storeSearch => 'Search journals, scents, jewelry…';
+
+  @override
+  String get scentCategory => 'Fragrance';
+
+  @override
+  String get jewelryCategory => 'Jewelry';
+
+  @override
+  String get journalCategory => 'Journals';
+
+  @override
+  String get lifeCategory => 'Living';
+
+  @override
+  String get sampleCatalog => 'Sample catalog';
+
+  @override
+  String get objectJournal => 'Action journal';
+
+  @override
+  String get objectCandle => 'Evening candle';
+
+  @override
+  String get objectBracelet => 'Wish bracelet';
+
+  @override
+  String get objectDiffuser => 'Morning diffuser';
+
+  @override
+  String get objectJournalNote => 'Turn a wish into a next step';
+
+  @override
+  String get objectCandleNote => 'Give yourself a quiet moment';
+
+  @override
+  String get objectBraceletNote => 'Carry a little wish with you';
+
+  @override
+  String get objectDiffuserNote => 'Start the day with a familiar scent';
+
+  @override
+  String get shopOrders => 'My orders';
+
+  @override
+  String get shopCart => 'Cart';
+
+  @override
+  String get addToCart => 'Add to cart';
+
+  @override
+  String get cartEmpty => 'Your cart is empty';
+
+  @override
+  String get shopEmpty => 'No matching objects';
+
+  @override
+  String get shopOrdersEmpty => 'No object orders yet';
+
+  @override
+  String get shopDemoNotice =>
+      'This sample shop is browsing-only. Orders are unavailable.';
+
+  @override
+  String get mySpace => 'My readings and records';
+
+  @override
+  String get mySpaceIntro => 'Find your reports, actions, and plans here.';
+
+  @override
+  String get actionsAndReviews => 'Actions & review';
+
+  @override
+  String get resumeCompanion => 'Continue your conversation';
+
+  @override
+  String get fortunePeriods => 'Today, week, month & year outlook';
+
+  @override
+  String get thaiChartIntro =>
+      'See the Thai chart for your birth date, time, and place.';
+
+  @override
+  String get sevenPreviewNote =>
+      'Seven-character calculations are unavailable in this preview. Try a demo conversation with Arun.';
+
+  @override
   String get country => 'Country / region';
 
   @override
@@ -398,7 +879,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyText =>
-      'Drafts and access credentials stay on this device. Birth details, charts and reports belong to your current guest session or account. RoxyAPI calculates charts; the AI service receives chart facts without your name, city text or chat history. Clearing local details does not delete server records.';
+      'Drafts and access credentials stay on this device. Birth details, charts and reports belong to your current guest session or account. RoxyAPI calculates charts; AI chart reports use chart facts without your name, city text or chat history.\n\nGuardian chat sends your messages, birth details, relevant conversations, confirmed memories and selected visible readings to the AI service for replies and continuity. Clearing local details does not delete server records.';
 
   @override
   String get clearBirth => 'Clear local birth details';
@@ -1528,4 +2009,614 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get optionalLogin => 'Sign in or register (optional)';
+
+  @override
+  String get templeNav => 'Temple';
+
+  @override
+  String get divinationNav => 'Discover';
+
+  @override
+  String get bondNav => 'Our bond';
+
+  @override
+  String get moreNav => 'More';
+
+  @override
+  String get templeWelcome => 'Take a breath.\nYou are heard.';
+
+  @override
+  String get templeIntro => 'A quiet place for\nwhatever is on your mind.';
+
+  @override
+  String get chooseGuardian => 'Who is on your mind today?';
+
+  @override
+  String get aiCompanionNotice =>
+      'AI companions · for entertainment and reflection';
+
+  @override
+  String get loveGuardian => 'Love guardian';
+
+  @override
+  String get careerGuardian => 'Career guardian';
+
+  @override
+  String get wealthGuardian => 'Wealth guardian';
+
+  @override
+  String get wellbeingGuardian => 'Wellbeing guardian';
+
+  @override
+  String get loveGuardianNote => 'Love · connection';
+
+  @override
+  String get careerGuardianNote => 'Direction · growth';
+
+  @override
+  String get wealthGuardianNote => 'Resources · balance';
+
+  @override
+  String get wellbeingGuardianNote => 'Rest · self-care';
+
+  @override
+  String get continueConversation => 'Pick up our conversation';
+
+  @override
+  String get startConversation => 'Start a conversation';
+
+  @override
+  String get listenIntro =>
+      'You do not need the perfect words. Start wherever you like.';
+
+  @override
+  String get messageHint => 'What is on your mind?';
+
+  @override
+  String get sendMessage => 'Send';
+
+  @override
+  String get assistantListening => 'Listening and putting thoughts together…';
+
+  @override
+  String get chatUnavailable =>
+      'Conversation is unavailable right now. Please try again later.';
+
+  @override
+  String get chatProfileNeeded =>
+      'Add your birth details to connect readings to you.';
+
+  @override
+  String get chatFailure =>
+      'The reply did not finish. Please retry; this turn is not counted.';
+
+  @override
+  String get selectedReading => 'This reading';
+
+  @override
+  String get continueReading => 'Discuss with a guardian';
+
+  @override
+  String get readingQuestion => 'What in this reading should I reflect on?';
+
+  @override
+  String get divinationTitle => 'A little perspective';
+
+  @override
+  String get divinationIntro =>
+      'Draw a card, explore your stars, then talk it through.';
+
+  @override
+  String get dailyDraw => 'A card for today';
+
+  @override
+  String get dailyDrawNote => 'A quiet moment to reflect';
+
+  @override
+  String get weeklyEvents => 'This week';
+
+  @override
+  String get weeklyNote => 'Your week, in perspective';
+
+  @override
+  String get weeklyPrompt =>
+      'What should I pay attention to this week? Let us think it through.';
+
+  @override
+  String get lovePrompt =>
+      'There is something about a relationship I want to talk about.';
+
+  @override
+  String get careerPrompt => 'I have been unsure about my direction at work.';
+
+  @override
+  String get wealthPrompt => 'I want to think through some money worries.';
+
+  @override
+  String get wellbeingPrompt => 'I have been tired lately and want to talk.';
+
+  @override
+  String get bondTitle => 'Getting to know you';
+
+  @override
+  String get bondIntro =>
+      'A connection built from the things you choose to share.';
+
+  @override
+  String get bondNew => 'First meeting';
+
+  @override
+  String get bondFamiliar => 'Getting acquainted';
+
+  @override
+  String get bondGrowing => 'Growing understanding';
+
+  @override
+  String get bondCount => 'recent conversations';
+
+  @override
+  String get bondRecentNote =>
+      'Stages reflect recent completed conversations, not prediction accuracy.';
+
+  @override
+  String get bondMemory => 'What you want remembered';
+
+  @override
+  String get memoryEmpty =>
+      'No confirmed memories yet. Share what matters to you.';
+
+  @override
+  String get addMemory => 'Add a memory';
+
+  @override
+  String get memoryHint => 'For example: I am considering a job change.';
+
+  @override
+  String get memoryHelp =>
+      'Confirmed by you, shared by all four guardians. Edit or delete anytime.';
+
+  @override
+  String get recentConversations => 'Recent conversations';
+
+  @override
+  String get noConversations => 'Every connection starts with a hello.';
+
+  @override
+  String get profileSelf => 'About you';
+
+  @override
+  String get memoryDeleteConfirm => 'Delete this confirmed memory?';
+
+  @override
+  String get sharedHistory => 'The four guardians share conversation memory.';
+
+  @override
+  String get editMemory => 'Edit memory';
+
+  @override
+  String get saveMemory => 'Save memory';
+
+  @override
+  String get guardianSectionNote => 'Four guardians, a place for every feeling';
+
+  @override
+  String get dailyHoroscopeEmpty =>
+      'Choose your zodiac sign for today\'s love, work and life guidance.';
+
+  @override
+  String get appleLoginUnavailable =>
+      'Apple sign-in is unavailable on this device. You can continue as a guest.';
+
+  @override
+  String get purchaseUnavailable =>
+      'Purchases are not available yet. Please check back later.';
+
+  @override
+  String get chatTryAgain => 'Reconnect';
+
+  @override
+  String get copyLink => 'Copy link';
+
+  @override
+  String get privacyCenter => 'Privacy & permissions';
+
+  @override
+  String get privacyIntro =>
+      'Your information, your choices. Review what FATE uses and manage it here.';
+
+  @override
+  String get dataProfileTitle => 'Birth information';
+
+  @override
+  String get dataProfileBody =>
+      'Your date, time, birthplace and time zone are saved to prepare your chart. Your saved profile is linked to your guest session or signed-in account.';
+
+  @override
+  String get dataChatTitle => 'AI conversations & readings';
+
+  @override
+  String get dataChatBody =>
+      'Chart reports send calculated chart facts to an AI provider after your permission. Companion chat also shares your message, profile, recent conversation, saved memories and any reading you choose to discuss. Avoid entering information you do not want processed by AI.';
+
+  @override
+  String get dataPurchaseTitle => 'Purchases & access';
+
+  @override
+  String get dataPurchaseBody =>
+      'The store handles payment. FATE verifies the transaction with its server before granting access. This app does not ask for your card number. Local previews do not create a purchase.';
+
+  @override
+  String get dataControlTitle => 'Managing your data';
+
+  @override
+  String get dataControlBody =>
+      'You can edit your profile and saved memories, clear conversation history, and withdraw permission for future AI chats. Clearing birth information here removes only the local copy. Account deletion is a separate action and requires confirmation from the service.';
+
+  @override
+  String get aiPermission => 'Before you talk';
+
+  @override
+  String aiPermissionBody(String provider) {
+    return 'Your message, birth profile, recent chats, saved memories and selected reading will be processed by the configured AI service ($provider) to reply to you. Replies may be inaccurate. You can decline and still use other tools, or withdraw permission in Privacy at any time. Withdrawal stops future sharing on this device; it does not delete data already processed.';
+  }
+
+  @override
+  String get aiAllow => 'Allow & continue';
+
+  @override
+  String get aiEnabled => 'AI chat permission is on';
+
+  @override
+  String get aiPaused => 'AI chat permission is off';
+
+  @override
+  String get aiRevoke => 'Withdraw chat permission';
+
+  @override
+  String get aiRevoked => 'Permission withdrawn. New messages will ask again.';
+
+  @override
+  String get privacyPolicy => 'Full privacy policy';
+
+  @override
+  String get policyUnavailable =>
+      'The published policy link is not available yet.';
+
+  @override
+  String get termsTitle => 'Using FATE';
+
+  @override
+  String get termsBody =>
+      'FATE offers AI companionship and astrology for reflection and entertainment. Readings are not guaranteed predictions or medical, financial or legal advice. Guardians are fictional AI characters. Paid content is available only after verified payment; price and availability come from the store. Do not use FATE to harass others or submit unlawful content.';
+
+  @override
+  String get supportTitle => 'Help & support';
+
+  @override
+  String get supportIntro => 'A little guidance, whenever you need it.';
+
+  @override
+  String get supportUnavailable =>
+      'Support contact details are not available yet. Please try again later.';
+
+  @override
+  String get supportContact => 'Contact support';
+
+  @override
+  String get copyAddress => 'Copy email address';
+
+  @override
+  String get copied => 'Copied';
+
+  @override
+  String get openFailed =>
+      'Unable to open this link. You can copy the address instead.';
+
+  @override
+  String get faqReportTitle => 'Where are my readings?';
+
+  @override
+  String get faqReportBody =>
+      'Open Readings to view your saved reports. Use the same account and language. Example readings are labelled separately and do not represent a personal calculation.';
+
+  @override
+  String get faqChatTitle => 'Can I continue an earlier chat?';
+
+  @override
+  String get faqChatBody =>
+      'Use the same browser or app installation and choose the same guardian. Guests may lose access after clearing app data or reinstalling. Saved memories can be reviewed and removed in Bonds.';
+
+  @override
+  String get faqPurchaseTitle => 'Paid but still locked?';
+
+  @override
+  String get faqPurchaseBody =>
+      'Do not buy again while verification is pending. Open Purchases & restore and retry verification, then refresh your report. Restoring requests a store check; only the server can confirm access.';
+
+  @override
+  String get licenses => 'Open-source licenses';
+
+  @override
+  String get deleteAccountBody =>
+      'This permanently removes the current account and associated profile, conversations and memories from the service. Data required for transaction records may be retained. Deletion does not issue a refund. A guest session cannot be recovered after deletion.';
+
+  @override
+  String get deleteUnavailable =>
+      'Account deletion is not available from the service yet. Nothing has been deleted. Clearing local information or signing out does not delete your account.';
+
+  @override
+  String get deleteAcknowledge => 'I understand that this cannot be undone.';
+
+  @override
+  String get deleteNow => 'Permanently delete';
+
+  @override
+  String get deleteSuccess => 'Account deletion confirmed.';
+
+  @override
+  String get deleteFailure =>
+      'Deletion was not confirmed. Your session has been kept. Please retry or contact support.';
+
+  @override
+  String get clearHistory => 'Clear conversations';
+
+  @override
+  String get clearHistoryBody =>
+      'This deletes your conversation history from the service for all four guardians. Saved memories remain in Bonds and can be deleted there. This cannot be undone.';
+
+  @override
+  String get clearHistoryDone => 'Conversation history cleared.';
+
+  @override
+  String get contentReport => 'Report content';
+
+  @override
+  String get contentReportIntro =>
+      'Tell us what is wrong with this AI response. Only its reference and the details you enter are included; your full conversation is not attached.';
+
+  @override
+  String get reportReason => 'Reason';
+
+  @override
+  String get reasonHarmful => 'Harmful or unsafe';
+
+  @override
+  String get reasonSexual => 'Sexual content';
+
+  @override
+  String get reasonHate => 'Hate or harassment';
+
+  @override
+  String get reasonPrivacy => 'Personal information';
+
+  @override
+  String get reasonMisleading => 'Misleading advice';
+
+  @override
+  String get reasonOther => 'Something else';
+
+  @override
+  String get reportDetails => 'More details (optional)';
+
+  @override
+  String get reportSend => 'Submit report';
+
+  @override
+  String get reportUnavailable =>
+      'Reporting is temporarily unavailable. No report has been sent. You can try again later or check Help & support.';
+
+  @override
+  String reportReceived(String receipt) {
+    return 'Report received · $receipt';
+  }
+
+  @override
+  String get purchaseCenter => 'Purchases & restore';
+
+  @override
+  String get purchaseCenterIntro =>
+      'Check access and recover an existing purchase.';
+
+  @override
+  String get restoreCheck => 'Checking your purchases…';
+
+  @override
+  String get restoreChecked =>
+      'The store check has finished. Refresh your reports to see server-confirmed access. This message is not a purchase confirmation.';
+
+  @override
+  String get verifiedContent => 'Your report library';
+
+  @override
+  String get verifiedContentIntro =>
+      'Open a report to see its current access. A saved report or example does not by itself mean it has been purchased.';
+
+  @override
+  String get reportLeave => 'Discard this report draft?';
+
+  @override
+  String get serviceRetry => 'Try again';
+
+  @override
+  String get deleteCleanup =>
+      'The server confirmed deletion, but some local data could not be cleared. Sign-in has been cleared from memory; clear this app’s storage on this device.';
+
+  @override
+  String get storeBuy => 'Buy in the store';
+
+  @override
+  String get restoreUnavailable =>
+      'Restore is unavailable on this device or account. Use a supported device with the original store and FATE account.';
+
+  @override
+  String get calendarTitle => 'Astrology calendar';
+
+  @override
+  String get calendarOpen => 'View calendar';
+
+  @override
+  String get calendarToday => 'Today';
+
+  @override
+  String get calendarSubtitle => 'A little space to plan your days';
+
+  @override
+  String calendarYears(int be, int ce) {
+    return 'B.E. $be · C.E. $ce';
+  }
+
+  @override
+  String calendarSmallEra(int year) {
+    return 'Chula Sakarat $year';
+  }
+
+  @override
+  String get calendarSelectHint => 'Choose a date to explore its five details';
+
+  @override
+  String get calendarLoading => 'Opening your calendar…';
+
+  @override
+  String get calendarUnavailable =>
+      'This month could not be loaded. Please try again.';
+
+  @override
+  String calendarRange(int start, int end) {
+    return 'Available offline · $start–$end C.E.';
+  }
+
+  @override
+  String get calendarOutOfRange =>
+      'This date is outside the available calendar.';
+
+  @override
+  String get calendarWanPhra => 'Buddhist observance';
+
+  @override
+  String get calendarKalayokTitle => 'Kalayok · day indications';
+
+  @override
+  String calendarFlag(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'thongchai': 'Thongchai · victory',
+      'athibodi': 'Athibodi · authority',
+      'ubat': 'Ubat · caution',
+      'other': 'Lokawinas · caution',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String calendarFlagBody(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'thongchai': 'Traditionally associated with a new beginning.',
+      'athibodi': 'Traditionally associated with leading and organising.',
+      'ubat': 'Traditionally a day to review plans with care.',
+      'other': 'Traditionally a day to avoid rushing major commitments.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get calendarNoKalayok => 'No Kalayok day indication';
+
+  @override
+  String get calendarMixedNote =>
+      'More than one tradition applies today; all indications are shown.';
+
+  @override
+  String get calendarLunarTitle => 'Lunar day';
+
+  @override
+  String get calendarRiangMon => 'Dithi Riang Mon';
+
+  @override
+  String get calendarRiangMonBody =>
+      'A lunar date traditionally considered when choosing a wedding day.';
+
+  @override
+  String get calendarLunarOrdinary => 'Not a Dithi Riang Mon date.';
+
+  @override
+  String get calendarUbakong => 'Ubakong · good hours';
+
+  @override
+  String get calendarDaylight => 'Daytime · 06:00–18:00 · Bangkok';
+
+  @override
+  String get calendarMansion => 'The 27 lunar mansions';
+
+  @override
+  String calendarMansionPosition(int index, int quarter) {
+    return 'Mansion $index of 27 · quarter $quarter';
+  }
+
+  @override
+  String get calendarMansionReference =>
+      'Moon position at Bangkok noon; the mansion may change within the day.';
+
+  @override
+  String get calendarReference =>
+      'Traditional Thai calendar · for cultural reference and entertainment.';
+
+  @override
+  String calendarLunarShort(String phase, int day) {
+    String _temp0 = intl.Intl.selectLogic(phase, {'waxing': 'W', 'other': 'D'});
+    return '$_temp0$day';
+  }
+
+  @override
+  String calendarMonth(String month) {
+    String _temp0 = intl.Intl.selectLogic(month, {
+      '1': 'January',
+      '2': 'February',
+      '3': 'March',
+      '4': 'April',
+      '5': 'May',
+      '6': 'June',
+      '7': 'July',
+      '8': 'August',
+      '9': 'September',
+      '10': 'October',
+      '11': 'November',
+      '12': 'December',
+      'other': '',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String calendarMansionName(String index) {
+    String _temp0 = intl.Intl.selectLogic(index, {
+      '1': 'Ashwini',
+      '2': 'Bharani',
+      '3': 'Krittika',
+      '4': 'Rohini',
+      '5': 'Mrigashira',
+      '6': 'Ardra',
+      '7': 'Punarvasu',
+      '8': 'Pushya',
+      '9': 'Ashlesha',
+      '10': 'Magha',
+      '11': 'Purva Phalguni',
+      '12': 'Uttara Phalguni',
+      '13': 'Hasta',
+      '14': 'Chitra',
+      '15': 'Swati',
+      '16': 'Vishakha',
+      '17': 'Anuradha',
+      '18': 'Jyeshtha',
+      '19': 'Mula',
+      '20': 'Purva Ashadha',
+      '21': 'Uttara Ashadha',
+      '22': 'Shravana',
+      '23': 'Dhanishta',
+      '24': 'Shatabhisha',
+      '25': 'Purva Bhadrapada',
+      '26': 'Uttara Bhadrapada',
+      '27': 'Revati',
+      'other': '',
+    });
+    return '$_temp0';
+  }
 }

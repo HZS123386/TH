@@ -72,7 +72,11 @@ class _WelcomePageState extends State<WelcomePage>
           child: LayoutBuilder(
             builder: (context, box) {
               final w = box.maxWidth, h = box.maxHeight;
-              final portraitWidth = (h * .64).clamp(w * 1.18, w * 1.44);
+              final artworkWidth = w.clamp(0.0, h5PortraitMaxWidth);
+              final portraitWidth = (h * .64).clamp(
+                artworkWidth * 1.18,
+                artworkWidth * 1.44,
+              );
               final from = Rect.fromLTWH(
                 (w - portraitWidth) / 2,
                 0,
@@ -80,16 +84,12 @@ class _WelcomePageState extends State<WelcomePage>
                 portraitWidth * 1312 / 1199,
               );
               final to = Rect.fromLTWH(
-                0,
+                (w - artworkWidth) / 2,
                 47 + MediaQuery.paddingOf(context).top,
-                w,
-                w * 1312 / 1199,
+                artworkWidth,
+                artworkWidth * 1312 / 1199,
               );
-              final heroHeight = w <= 360
-                  ? 276.0
-                  : MediaQuery.sizeOf(context).width >= 700
-                  ? 326.0
-                  : 304.0;
+              final heroHeight = landingHeroHeight(w);
               return AnimatedBuilder(
                 animation: _motion,
                 builder: (context, _) {
@@ -193,168 +193,197 @@ class _WelcomePageState extends State<WelcomePage>
                             ignoring: _leaving,
                             child: Opacity(
                               opacity: fade,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight:
+                                      (h -
+                                              44 -
+                                              MediaQuery.paddingOf(
+                                                context,
+                                              ).bottom)
+                                          .clamp(0.0, h),
+                                ),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Container(
-                                        width: 62,
-                                        height: 1,
-                                        decoration: const BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Colors.transparent,
-                                              Color(0xFFC36BFA),
-                                            ],
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            width: 62,
+                                            height: 1,
+                                            decoration: const BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.transparent,
+                                                  Color(0xFFC36BFA),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          const Padding(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                            ),
+                                            child: Text(
+                                              '✦',
+                                              style: TextStyle(
+                                                color: Color(0xFFF3B5FF),
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ),
+                                          Container(
+                                            width: 62,
+                                            height: 1,
+                                            decoration: const BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Color(0xFFC36BFA),
+                                                  Colors.transparent,
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8,
+                                          bottom: 10,
+                                        ),
+                                        child: ShaderMask(
+                                          shaderCallback: (rect) =>
+                                              const LinearGradient(
+                                                colors: [
+                                                  Color(0xFFFFD0F6),
+                                                  Color(0xFFF78DF8),
+                                                  Color(0xFFED23ED),
+                                                ],
+                                              ).createShader(rect),
+                                          blendMode: BlendMode.srcIn,
+                                          child: Text(
+                                            c.t(
+                                              'jy',
+                                              'welcome.${widget.h5.returningVisitor ? 'returning' : 'first'}',
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: (w * .088).clamp(
+                                                30.4,
+                                                45.6,
+                                              ),
+                                              height: 1.23,
+                                              fontWeight: FontWeight.w800,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 10,
+                                      Text(
+                                        c.t(
+                                          'jy',
+                                          'welcome.${widget.h5.returningVisitor ? 'returningNote' : 'firstNote'}',
                                         ),
-                                        child: Text(
-                                          '✦',
-                                          style: TextStyle(
-                                            color: Color(0xFFF3B5FF),
-                                            fontSize: 16,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: const Color(0xFFE4CDEA),
+                                          fontSize: (w * .036).clamp(
+                                            14.08,
+                                            16.0,
                                           ),
                                         ),
                                       ),
-                                      Container(
-                                        width: 62,
-                                        height: 1,
-                                        decoration: const BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Color(0xFFC36BFA),
-                                              Colors.transparent,
+                                      SizedBox(
+                                        height: (h * .05).clamp(24.0, 44.0),
+                                      ),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 310,
+                                        ),
+                                        child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                              color: const Color(0x6BFCA4FF),
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color(0xFF7B14E8),
+                                                Color(0xFFCA0AF1),
+                                                Color(0xFFE900CE),
+                                              ],
+                                            ),
+                                            boxShadow: const [
+                                              BoxShadow(
+                                                color: Color(0x4DB900F3),
+                                                offset: Offset(0, 7),
+                                                blurRadius: 30,
+                                              ),
                                             ],
                                           ),
+                                          child: FilledButton(
+                                            key: const ValueKey(
+                                              'welcome-start',
+                                            ),
+                                            onPressed: _leaving
+                                                ? null
+                                                : () => unawaited(_enter()),
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              disabledBackgroundColor:
+                                                  Colors.transparent,
+                                              foregroundColor: const Color(
+                                                0xFFFFF8FF,
+                                              ),
+                                              minimumSize:
+                                                  const Size.fromHeight(55),
+                                              shape: const StadiumBorder(),
+                                              textStyle: const TextStyle(
+                                                fontFamily: h5FontFamily,
+                                                fontFamilyFallback:
+                                                    h5FontFallback,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                const Text(
+                                                  '✧',
+                                                  style: TextStyle(
+                                                    fontSize: 22,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Flexible(
+                                                  child: Text(
+                                                    c.t('jy', 'welcome.start'),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        '↑ ${c.t('jy', 'welcome.swipe')}',
+                                        style: const TextStyle(
+                                          color: Color(0xFFD5B7E0),
+                                          fontSize: 11.5,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      top: 8,
-                                      bottom: 10,
-                                    ),
-                                    child: ShaderMask(
-                                      shaderCallback: (rect) =>
-                                          const LinearGradient(
-                                            colors: [
-                                              Color(0xFFFFD0F6),
-                                              Color(0xFFF78DF8),
-                                              Color(0xFFED23ED),
-                                            ],
-                                          ).createShader(rect),
-                                      blendMode: BlendMode.srcIn,
-                                      child: Text(
-                                        c.t(
-                                          'jy',
-                                          'welcome.${widget.h5.returningVisitor ? 'returning' : 'first'}',
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: (w * .088).clamp(
-                                            30.4,
-                                            45.6,
-                                          ),
-                                          height: 1.23,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    c.t(
-                                      'jy',
-                                      'welcome.${widget.h5.returningVisitor ? 'returningNote' : 'firstNote'}',
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: const Color(0xFFE4CDEA),
-                                      fontSize: (w * .036).clamp(14.08, 16.0),
-                                    ),
-                                  ),
-                                  SizedBox(height: (h * .05).clamp(24.0, 44.0)),
-                                  ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 310,
-                                    ),
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: const Color(0x6BFCA4FF),
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            Color(0xFF7B14E8),
-                                            Color(0xFFCA0AF1),
-                                            Color(0xFFE900CE),
-                                          ],
-                                        ),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x4DB900F3),
-                                            offset: Offset(0, 7),
-                                            blurRadius: 30,
-                                          ),
-                                        ],
-                                      ),
-                                      child: FilledButton(
-                                        key: const ValueKey('welcome-start'),
-                                        onPressed: _leaving
-                                            ? null
-                                            : () => unawaited(_enter()),
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: Colors.transparent,
-                                          disabledBackgroundColor:
-                                              Colors.transparent,
-                                          foregroundColor: const Color(
-                                            0xFFFFF8FF,
-                                          ),
-                                          minimumSize: const Size.fromHeight(
-                                            55,
-                                          ),
-                                          shape: const StadiumBorder(),
-                                          textStyle: const TextStyle(
-                                            fontFamily: h5FontFamily,
-                                            fontFamilyFallback: h5FontFallback,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Text(
-                                              '✧',
-                                              style: TextStyle(fontSize: 22),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Text(c.t('jy', 'welcome.start')),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    '↑ ${c.t('jy', 'welcome.swipe')}',
-                                    style: const TextStyle(
-                                      color: Color(0xFFD5B7E0),
-                                      fontSize: 11.5,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                           ),

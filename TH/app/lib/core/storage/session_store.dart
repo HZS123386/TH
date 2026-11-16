@@ -42,6 +42,8 @@ class SecureSessionStore implements SessionStore {
 /// Preferences contain local drafts and example bookmarks, never entitlements.
 class LocalDraftStore {
   LocalDraftStore(this.preferences);
+  static const actionLedger = 'action-ledger';
+  static const guideConversations = 'guide-conversations';
   final SharedPreferences preferences;
   Map<String, dynamic>? read(String owner, String kind) {
     final raw = preferences.getString('fate.$kind.$owner');
@@ -64,6 +66,8 @@ class LocalDraftStore {
   }
 
   Future<void> remove(String owner, String kind) async {
-    await preferences.remove('fate.$kind.$owner');
+    if (!await preferences.remove('fate.$kind.$owner')) {
+      throw StateError('storage_failed');
+    }
   }
 }

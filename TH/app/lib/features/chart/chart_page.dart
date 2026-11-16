@@ -54,7 +54,11 @@ class _ChartPageState extends State<ChartPage> {
                 style: const TextStyle(color: goldColor, fontSize: 11),
               ),
               const SizedBox(height: 8),
-              PageHeading(s.myChart, s.myChartText),
+              PageHeading(
+                s.myChart,
+                s.myChartText,
+                icon: Icons.explore_outlined,
+              ),
               if (widget.example)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 20),
@@ -183,24 +187,27 @@ class _ChartPageState extends State<ChartPage> {
                 const SizedBox(height: 12),
                 if (planet != null)
                   FateCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${planet.symbol}  ${s.planetName(planet.key)}',
-                          style: const TextStyle(
-                            fontSize: 19,
-                            color: goldColor,
+                    child: FateEntrance(
+                      key: ValueKey(planet.key),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${planet.symbol}  ${s.planetName(planet.key)}',
+                            style: const TextStyle(
+                              fontSize: 19,
+                              color: goldColor,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(s.position(planet.longitude)),
-                        const SizedBox(height: 10),
-                        Text(
-                          s.planetMeaning(planet.key),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(s.position(planet.longitude)),
+                          const SizedBox(height: 10),
+                          Text(
+                            s.planetMeaning(planet.key),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 const SizedBox(height: 16),
@@ -246,69 +253,78 @@ class _ChartPageState extends State<ChartPage> {
                     horizontal: 14,
                     vertical: 6,
                   ),
-                  child: Column(
-                    children: [
-                      if (tab == 0)
-                        for (final p in result.planets)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: Text(
-                              p.symbol,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                color: goldColor,
-                              ),
-                            ),
-                            title: Text(
-                              '${s.planetName(p.key)}${p.retrograde ? ' · ${s.retrograde}' : ''}',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            trailing: Text(
-                              '${s.position(p.longitude)}${p.house == null ? '' : '\n${s.house} ${p.house}'}',
-                              textAlign: TextAlign.end,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: mutedColor,
-                              ),
-                            ),
-                            onTap: () => setState(() => selected = p.key),
-                          ),
-                      if (tab == 1)
-                        if (result.houses.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Text(s.emptyValue),
-                          )
-                        else
-                          for (final h in result.houses.entries)
-                            ListTile(
-                              title: Text('${s.house} ${h.key}'),
-                              trailing: Text(s.position(h.value)),
-                            ),
-                      if (tab == 2)
-                        if (result.aspects.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Text(s.emptyValue),
-                          )
-                        else
-                          for (final a in result.aspects)
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(
-                                '${s.planetName(a.from)} · ${s.planetName(a.to)}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              trailing: Text(
-                                '${s.aspectName(a.angle)}\n${a.orb == null ? '${a.angle.toInt()}°' : '${s.orb} ${a.orb!.toStringAsFixed(2)}°'}',
-                                textAlign: TextAlign.end,
-                                style: const TextStyle(
-                                  color: goldColor,
-                                  fontSize: 11,
+                  child: AnimatedSize(
+                    duration: FateMotion.duration(context, FateMotion.change),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: FateEntrance(
+                      key: ValueKey(tab),
+                      child: Column(
+                        children: [
+                          if (tab == 0)
+                            for (final p in result.planets)
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Text(
+                                  p.symbol,
+                                  style: const TextStyle(
+                                    fontFamily: 'NotoSansSymbols',
+                                    fontSize: 22,
+                                    color: goldColor,
+                                  ),
                                 ),
+                                title: Text(
+                                  '${s.planetName(p.key)}${p.retrograde ? ' · ${s.retrograde}' : ''}',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                trailing: Text(
+                                  '${s.position(p.longitude)}${p.house == null ? '' : '\n${s.house} ${p.house}'}',
+                                  textAlign: TextAlign.end,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: mutedColor,
+                                  ),
+                                ),
+                                onTap: () => setState(() => selected = p.key),
                               ),
-                            ),
-                    ],
+                          if (tab == 1)
+                            if (result.houses.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(15),
+                                child: Text(s.emptyValue),
+                              )
+                            else
+                              for (final h in result.houses.entries)
+                                ListTile(
+                                  title: Text('${s.house} ${h.key}'),
+                                  trailing: Text(s.position(h.value)),
+                                ),
+                          if (tab == 2)
+                            if (result.aspects.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(15),
+                                child: Text(s.emptyValue),
+                              )
+                            else
+                              for (final a in result.aspects)
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    '${s.planetName(a.from)} · ${s.planetName(a.to)}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  trailing: Text(
+                                    '${s.aspectName(a.angle)}\n${a.orb == null ? '${a.angle.toInt()}°' : '${s.orb} ${a.orb!.toStringAsFixed(2)}°'}',
+                                    textAlign: TextAlign.end,
+                                    style: const TextStyle(
+                                      color: goldColor,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),

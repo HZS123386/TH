@@ -34,7 +34,7 @@ def fixture_for(operation, body):
 
 
 @pytest.fixture
-def roxy_client(tmp_path, monkeypatch):
+def roxy_client(postgres_url, monkeypatch):
     requests = []
     real_client = httpx.AsyncClient
 
@@ -47,7 +47,7 @@ def roxy_client(tmp_path, monkeypatch):
         return httpx.Response(200, json=fixture_for(request.url.path.rsplit("/", 1)[-1], body))
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
-    settings = Settings(database_path=str(tmp_path / "test.db"), roxy_api_key="private-test-secret", roxy_enabled=True)
+    settings = Settings(database_url=postgres_url, roxy_api_key="private-test-secret", roxy_enabled=True)
     with TestClient(create_app(settings)) as client:
         yield client, requests
 
@@ -153,24 +153,24 @@ def test_public_config_exposes_capability_but_no_key(roxy_client):
 
 
 @pytest.mark.parametrize("status,code", [(401, "roxy_auth_failed"), (429, "roxy_quota"), (500, "roxy_unavailable"), (400, "roxy_input_rejected")])
-def test_upstream_error_details_are_not_exposed(tmp_path, monkeypatch, status, code):
+def test_upstream_error_details_are_not_exposed(postgres_url, monkeypatch, status, code):
     real_client = httpx.AsyncClient
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(lambda req: httpx.Response(status, text="private upstream content")), **kwargs))
-    client = RoxyBazi(Settings(roxy_api_key="secret", roxy_enabled=True), Storage(str(tmp_path / "test.db")))
+    client = RoxyBazi(Settings(roxy_api_key="secret", roxy_enabled=True), Storage(postgres_url))
     async def run():
         with pytest.raises(RoxyError, match=code):
             await client.request("chart", {"date": "1995-08-17", "time": "10:30:00", "timezone": "Asia/Shanghai", **CONVENTIONS}, "zh", "one", "network")
     asyncio.run(run())
 
 
-def test_wrong_birth_or_malformed_pillars_cannot_become_successful_report(tmp_path, monkeypatch):
+def test_wrong_birth_or_malformed_pillars_cannot_become_successful_report(postgres_url, monkeypatch):
     real_client = httpx.AsyncClient
     def handler(req):
         data = fixture_for("chart", json.loads(req.content))
         data["pillars"][0]["stem"]["chinese"] = ""
         return httpx.Response(200, json=data)
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "test.db"), roxy_api_key="secret", roxy_enabled=True))) as client:
+    with TestClient(create_app(Settings(database_url=postgres_url, roxy_api_key="secret", roxy_enabled=True))) as client:
         result = client.post("/api/bazi/test", json={"profile": PROFILE}).json()
         assert result["sources"]["roxy"]["errors"]["chart"] == "roxy_invalid_response"
         assert result["sources"]["roxy"]["chart"] is None
@@ -178,7 +178,7 @@ def test_wrong_birth_or_malformed_pillars_cannot_become_successful_report(tmp_pa
 
 
 @pytest.mark.parametrize("bad", ["keynote", "nan", "seconds", "huge-offset"])
-def test_malformed_nested_or_nonfinite_results_are_not_reported(tmp_path, monkeypatch, bad):
+def test_malformed_nested_or_nonfinite_results_are_not_reported(postgres_url, monkeypatch, bad):
     real_client = httpx.AsyncClient
     def handler(req):
         data = fixture_for("chart", json.loads(req.content))
@@ -192,13 +192,13 @@ def test_malformed_nested_or_nonfinite_results_are_not_reported(tmp_path, monkey
             data["birthData"]["timezone"] = 10 ** 400
         return httpx.Response(200, content=json.dumps(data).encode())
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "test.db"), roxy_api_key="secret", roxy_enabled=True))) as client:
+    with TestClient(create_app(Settings(database_url=postgres_url, roxy_api_key="secret", roxy_enabled=True))) as client:
         response = client.post("/api/bazi/test", json={"profile": PROFILE, "focus": "money"})
         assert response.status_code == 200
         assert response.json()["sources"]["roxy"]["errors"] == {"chart": "roxy_invalid_response"}
 
 
-def test_async_roxy_profile_save_reserves_the_account_until_commit(tmp_path, monkeypatch):
+def test_async_roxy_profile_save_reserves_the_account_until_commit(postgres_url, monkeypatch):
     entered, release = Event(), Event()
     real_client = httpx.AsyncClient
     async def handler(req):
@@ -206,7 +206,7 @@ def test_async_roxy_profile_save_reserves_the_account_until_commit(tmp_path, mon
         await asyncio.to_thread(release.wait, 5)
         return httpx.Response(200, json=fixture_for("chart", json.loads(req.content)))
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
-    settings = Settings(database_path=str(tmp_path / "race.db"), roxy_api_key="secret", roxy_enabled=True)
+    settings = Settings(database_url=postgres_url, roxy_api_key="secret", roxy_enabled=True)
     with TestClient(create_app(settings)) as client:
         headers = {"Authorization": "Bearer " + client.post("/api/auth/demo").json()["token"]}
         assert client.put("/api/profile", json=PROFILE, headers=headers).status_code == 200
@@ -222,14 +222,14 @@ def test_async_roxy_profile_save_reserves_the_account_until_commit(tmp_path, mon
             assert future.result(timeout=10).status_code == 200
 
 
-def test_concurrent_calls_coalesce_and_caches_are_owner_isolated_with_network_quota(tmp_path, monkeypatch):
+def test_concurrent_calls_coalesce_and_caches_are_owner_isolated_with_network_quota(postgres_url, monkeypatch):
     calls = []
     real_client = httpx.AsyncClient
     def handler(req):
         calls.append(req)
         return httpx.Response(200, json=fixture_for("chart", json.loads(req.content)))
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
-    service = RoxyBazi(Settings(roxy_api_key="secret", roxy_enabled=True, roxy_per_day=2), Storage(str(tmp_path / "test.db")))
+    service = RoxyBazi(Settings(roxy_api_key="secret", roxy_enabled=True, roxy_per_day=2), Storage(postgres_url))
     body = {"date": "1995-08-17", "time": "10:30:00", "timezone": "Asia/Shanghai", **CONVENTIONS}
     async def run():
         await asyncio.gather(*(service.request("chart", deepcopy(body), "zh", "one", "network") for _ in range(3)))

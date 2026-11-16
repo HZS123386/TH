@@ -14,7 +14,7 @@ APP 浏览器预览使用 release / WebAssembly 构建，支持的浏览器自�
 
 界面品牌统一为「ASTRO · AI」，四种语言共用四角星标记与深紫暖金主题，与落地页保持一致。副标题、聊天署名、分享卡和浏览器标题同步切换。品牌设计与可导出矢量资产见 [docs/BRAND_DESIGN.md](docs/BRAND_DESIGN.md)；项目原有 WANJAI 技术标识和数据键保持兼容。
 
-按提供的 WANJAI 离线 App 与可行性报告改造的本地项目，现已对照 GitHub JY 分支移植页面及交互。主界面采用深紫、暖金与浅奶油文字；桌面与移动端统一为 JY 的居中 App 布局和“运势 / 星盘 / 聊聊 / 好物 / 我的”底部五栏。首次打开保留本地四语言弹窗，确认后记住语言，之后可在“我的”中再次打开；Logo 和生辰滚轮也保留本地实现。使用 React 18、TypeScript、Tailwind、pnpm、Vitest 与 FastAPI / SQLite 技术栈。合并来源、页面对应、服务衔接与验收步骤见 [docs/JY_MERGE.md](docs/JY_MERGE.md)。
+按提供的 WANJAI 离线 App 与可行性报告改造的本地项目，现已对照 GitHub JY 分支移植页面及交互。主界面采用深紫、暖金与浅奶油文字；桌面与移动端统一为 JY 的居中 App 布局和“运势 / 星盘 / 聊聊 / 好物 / 我的”底部五栏。首次打开保留本地四语言弹窗，确认后记住语言，之后可在“我的”中再次打开；Logo 和生辰滚轮也保留本地实现。使用 React 18、TypeScript、Tailwind、pnpm、Vitest 与 FastAPI / PostgreSQL 技术栈。合并来源、页面对应、服务衔接与验收步骤见 [docs/JY_MERGE.md](docs/JY_MERGE.md)。
 
 ## 快速开始
 
@@ -34,13 +34,13 @@ pnpm dev
 
 出生日期、时间、国家与城市、时区使用米白砖红主题的滚轮弹窗，支持触摸上下滑动、鼠标滚轮或拖动，以及方向键操作；点击“完成”才回填，关闭或按 Escape 放弃本次修改。日期限制为 1901 年起至出生地今天，闰年与每月天数自动联动；可切换公历／佛历年份，存储统一使用公历。出生地先内置中国、泰国、越南、美国的常用城市，选择城市会带入 IANA 时区；其他地点可手动填写，并单独搜索和选择时区。城市名以稳定标识保存，显示名称随全局语言变化，常用城市之外可展开“泰式排盘地点与坐标”，搜索离线目录或手动提供经纬度；未知地点不会默认套用曼谷。
 
-再次登录同一账号会恢复原来的生辰、命盘、对话和记忆，已有档案时不再显示建档引导。未完成建档就退出的账号，下次登录继续建档。浏览器会话令牌保存在 localStorage；账号、密码摘要和生辰资料保存在 `data/sabai.db`。清除浏览器数据、会话过期或换浏览器后，可用原账号密码重新登录。旧版匿名会话仍有效时，创建账号会将该匿名用户已有资料一起绑定，避免丢失。
+再次登录同一账号会恢复原来的生辰、命盘、对话和记忆，已有档案时不再显示建档引导。未完成建档就退出的账号，下次登录继续建档。浏览器会话令牌保存在 localStorage；账号、密码摘要和生辰资料保存在 `DATABASE_URL` 指定的 PostgreSQL 业务库。清除浏览器数据、会话过期或换浏览器后，可用原账号密码重新登录。旧版匿名会话仍有效时，创建账号会将该匿名用户已有资料一起绑定，避免丢失。
 
 这些账号目前只用于本地开发体验，`production` 模式关闭注册、登录与开发会话。未实现找回密码、邮件验证和正式账号生命周期。LINE / LIFF 身份接入仍未实现。
 
 ## 本次实现
 
-新增泰式引擎、个人盘和验证报告，详见 [docs/GITHUB_INTEGRATION.md](docs/GITHUB_INTEGRATION.md)。现已从 ai-spiritual-companion 固定提交移植温和角色、回答前召回／成功后记录、语义检索失败回退和按用户限额的核心流程，适配现有 FastAPI／SQLite 与本地泰式工具；不调用付费 RoxyAPI，不需要它的密钥。源码归属、配置和验收见 [docs/CHAT_INTEGRATION.md](docs/CHAT_INTEGRATION.md)。另已接入 OpAstro 免费开源的周期事件筛选与去重，用已有 Qwen 写四语言日、周、月解读，保留泰式计算；支持账号隔离、缓存及失败回退，详见 [docs/OPASTRO_INTEGRATION.md](docs/OPASTRO_INTEGRATION.md)。
+新增泰式引擎、个人盘和验证报告，详见 [docs/GITHUB_INTEGRATION.md](docs/GITHUB_INTEGRATION.md)。现已从 ai-spiritual-companion 固定提交移植温和角色、回答前召回／成功后记录、语义检索失败回退和按用户限额的核心流程，适配现有 FastAPI／PostgreSQL 与本地泰式工具；不调用付费 RoxyAPI，不需要它的密钥。源码归属、配置和验收见 [docs/CHAT_INTEGRATION.md](docs/CHAT_INTEGRATION.md)。另已接入 OpAstro 免费开源的周期事件筛选与去重，用已有 Qwen 写四语言日、周、月解读，保留泰式计算；支持账号隔离、缓存及失败回退，详见 [docs/OPASTRO_INTEGRATION.md](docs/OPASTRO_INTEGRATION.md)。
 
 - 泰式สุริยยาตร์本命与上升、十颗星体、整星座十二宫和宫主、九分盘、三分盘、ทักษา、泰历与此刻行运。泰式圆盘结构与标记按 GitHub 引擎示例实现，使用个人计算数据。
 - 首页今日、本周、本月从出生资料与实际行运位置生成四主题规则解读。生日简版保留未知时间和地点的范围；完整资料使用泰式本命上升与整宫制。规则、取样、边界与复现见 [docs/FORTUNE_RULES.md](docs/FORTUNE_RULES.md)。今日陪伴、七步路径和长篇报告的正文仍是明确标注的编辑建议。
@@ -114,7 +114,7 @@ backend/app/
   accounts.py       # scrypt 密码摘要与验证
   i18n.py           # 四语言 API 校验、错误与响应语言
   bazi.py           # 确定性排盘
-  storage.py        # SQLite 仓储
+  storage.py        # PostgreSQL 仓储
   providers.py      # 上下文、Mock 和模型流式适配
   config.py         # 服务端环境配置
 backend/tests/      # 后端集成和协议测试
@@ -154,4 +154,4 @@ pnpm build
 node scripts/python.mjs -m uvicorn backend.app.main:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-这是单进程开发框架。SQLite、进程内锁和限流尚未验证多实例或正式容量；部署升级时需配套共享存储、正式认证和数据生命周期。详细验收结果见 [docs/VALIDATION.md](docs/VALIDATION.md)。
+这是单进程开发框架。PostgreSQL 已用于业务数据，应用的进程内任务和限流仍需在多实例部署前验收；部署升级时需配套共享存储、正式认证和数据生命周期。详细验收结果见 [docs/VALIDATION.md](docs/VALIDATION.md)。

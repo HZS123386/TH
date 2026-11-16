@@ -152,12 +152,13 @@ class ReportRepository {
   Future<LifeReport> generate(
     Json input,
     CancelToken token,
-    void Function(LifeReport, double, String) progress,
-  ) async {
+    void Function(LifeReport, double, String) progress, {
+    Json visit = const {},
+  }) async {
     final initial = await request(
       '/api/life-reports?wait=false',
       token,
-      body: input,
+      body: {...input, if (visit.isNotEmpty) 'landing_visit': visit},
     );
     return _wait(initial, input, token, false, progress);
   }

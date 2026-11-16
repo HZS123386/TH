@@ -22,6 +22,9 @@ external JSBoolean? get _privacyControl;
 external JSString? get _doNotTrack;
 
 class WebBrowserPort implements BrowserPort {
+  final _entryUrl = Uri.base;
+  Json? _visitContext;
+
   void startupFailed() => _startupFailed();
 
   @override
@@ -120,7 +123,40 @@ class WebBrowserPort implements BrowserPort {
     if (_privacyControl?.toDart == true || _doNotTrack?.toDart == '1') {
       return {};
     }
-    var id = readSetting('fate-visit', session: true);
+    if (_visitContext != null) return _visitContext!;
+    String tag(String name) => (_entryUrl.queryParameters[name] ?? '')
+        .replaceAll(RegExp(r'[^A-Za-z0-9_.~-]'), '')
+        .split('')
+        .take(64)
+        .join();
+    final source = tag('utm_source');
+    final campaign = tag('utm_campaign');
+    final regionTag = _entryUrl.queryParameters['utm_region']
+        ?.trim()
+        .toUpperCase();
+    final region =
+        regionTag != null && RegExp(r'^[A-Z]{2}$').hasMatch(regionTag)
+        ? regionTag
+        : null;
+    final tagged = source.isNotEmpty || campaign.isNotEmpty || region != null;
+    const storageKey = 'fate-visit-context';
+    Json previous = {};
+    try {
+      previous = object(
+        jsonDecode(readSetting(storageKey, session: true) ?? '{}'),
+      );
+    } on FormatException {
+      // A corrupted session setting must not interrupt the report flow.
+    }
+    if (text(previous['id']).isNotEmpty &&
+        (!tagged ||
+            (previous['source'] == source &&
+                previous['campaign'] == campaign &&
+                previous['region'] == region))) {
+      return _visitContext = previous;
+    }
+    // A different tagged entry in the same tab is a separate visit.
+    var id = tagged ? null : readSetting('fate-visit', session: true);
     if (id == null) {
       final bytes = List.generate(16, (_) => Random.secure().nextInt(256));
       bytes[6] = (bytes[6] & 15) | 64;
@@ -129,16 +165,13 @@ class WebBrowserPort implements BrowserPort {
       id =
           '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
     }
-    writeSetting('fate-visit', id, session: true);
-    String tag(String name) => (Uri.base.queryParameters[name] ?? '')
-        .replaceAll(RegExp(r'[^A-Za-z0-9_.~-]'), '')
-        .split('')
-        .take(64)
-        .join();
-    return {
+    final context = <String, dynamic>{
       'id': id,
-      'source': tag('utm_source'),
-      'campaign': tag('utm_campaign'),
+      'source': source,
+      'campaign': campaign,
+      if (region != null) 'region': region,
     };
+    writeSetting(storageKey, jsonEncode(context), session: true);
+    return _visitContext = context;
   }
 }

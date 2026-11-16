@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo
 
+import psycopg
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import Field, model_validator
@@ -18,6 +19,7 @@ from pydantic import Field, model_validator
 from . import thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
 from .bazi_reports import report_progress_context, report_usage_context
+from .landing_features import VisitInput, record_visit
 from .life_card_payments import CARD_AMOUNT, SIMULATED_AMOUNT, SIMULATED_MERCHANT, SUNLANDS_AMOUNT, LifeCardPayments
 from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
 from .schemas import Input, ProfileInput, ThaiReadingInput
@@ -49,6 +51,7 @@ class LifeInput(Input):
     career: CareerInput | None = None
     career_question: CareerInput | None = None
     user_question: str | None = Field(default=None, min_length=1, max_length=120, pattern=r"^[^\x00-\x1f\x7f]+$")
+    landing_visit: VisitInput | None = Field(default=None, exclude=True)
 
     @model_validator(mode="after")
     def supported_input(self):
@@ -146,26 +149,11 @@ class LifeReports:
         self.parts_writer = LifeWriter(store, settings, model_slots, charge=False)
         self.tasks = {}
         self.preview_tasks = {}
-        with store.connect() as db:
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS life_reports(
-                    id TEXT PRIMARY KEY,owner TEXT NOT NULL,fingerprint TEXT NOT NULL,
-                    input TEXT NOT NULL,chart TEXT NOT NULL,created REAL NOT NULL,
-                    preview TEXT,preview_state TEXT NOT NULL DEFAULT 'pending',
-                    chapters TEXT NOT NULL DEFAULT '{}',plan TEXT,unlocked INTEGER NOT NULL DEFAULT 0,
-                    full_state TEXT NOT NULL DEFAULT 'not_started',lease TEXT NOT NULL DEFAULT '',
-                    lease_until REAL NOT NULL DEFAULT 0,feedback TEXT,
-                    UNIQUE(owner,fingerprint)
-                );
-                CREATE INDEX IF NOT EXISTS life_reports_owner ON life_reports(owner,created);
-            """)
-            if "generation_progress" not in {row["name"] for row in db.execute("PRAGMA table_info(life_reports)")}:
-                db.execute("ALTER TABLE life_reports ADD COLUMN generation_progress TEXT NOT NULL DEFAULT '{}'")
         self.card_payments = LifeCardPayments(store, settings)
 
     def row(self, report_id, owner):
         with self.store.connect() as db:
-            result = db.execute("SELECT * FROM life_reports WHERE id=? AND owner=?", (report_id, owner)).fetchone()
+            result = db.execute("SELECT * FROM life_reports WHERE id=%s AND owner=%s", (report_id, owner)).fetchone()
         if not result:
             raise HTTPException(404, "life_report_not_found")
         return dict(result)
@@ -175,8 +163,8 @@ class LifeReports:
         if not values or not set(values) <= allowed:
             raise ValueError("invalid report update")
         with self.store.connect() as db:
-            condition = " AND lease=?" if expected_lease is not None else ""
-            cursor = db.execute("UPDATE life_reports SET " + ",".join(f"{key}=?" for key in values) + " WHERE id=?" + condition,
+            condition = " AND lease=%s" if expected_lease is not None else ""
+            cursor = db.execute("UPDATE life_reports SET " + ",".join(f"{key}=%s" for key in values) + " WHERE id=%s" + condition,
                                 [*values.values(), report_id, *([expected_lease] if expected_lease is not None else [])])
             if expected_lease is not None and not cursor.rowcount:
                 raise ReportLeaseLost()
@@ -217,7 +205,7 @@ class LifeReports:
         version = WESTERN_VERSION if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
         fingerprint = hashlib.sha256(encoded([version, snapshot]).encode()).hexdigest()
         with self.store.connect() as db:
-            existing = db.execute("SELECT id FROM life_reports WHERE owner=? AND fingerprint=?", (owner, fingerprint)).fetchone()
+            existing = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s", (owner, fingerprint)).fetchone()
         if existing:
             row = self.row(existing["id"], owner)
             if row["preview"]:
@@ -234,16 +222,36 @@ class LifeReports:
                 chart["calculation_input"]["time_precision"] = "estimated-noon"
             report_id = secrets.token_hex(16)
             with self.store.connect() as db:
-                db.execute("INSERT OR IGNORE INTO life_reports(id,owner,fingerprint,input,chart,created) VALUES (?,?,?,?,?,?)",
-                           (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time()))
-                report_id = db.execute("SELECT id FROM life_reports WHERE owner=? AND fingerprint=?", (owner, fingerprint)).fetchone()["id"]
+                attribution = {}
+                if body.landing_visit is not None:
+                    try:
+                        with db.transaction():
+                            record_visit(db, body.landing_visit, owner)
+                            attribution = db.execute("""
+                                SELECT visitor_number,first_source,first_campaign,region_code
+                                FROM landing_visitors WHERE owner=%s
+                            """, (owner,)).fetchone() or {}
+                    except (psycopg.Error, HTTPException):
+                        logger.warning("H5 attribution was unavailable during report creation")
+                db.execute("""
+                    INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,
+                                             landing_visitor_number,landing_source,landing_campaign,landing_region)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING
+                """, (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time(),
+                      attribution.get("visitor_number"), attribution.get("first_source"),
+                      attribution.get("first_campaign"), attribution.get("region_code")))
+                report_id = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s", (owner, fingerprint)).fetchone()["id"]
             row = self.row(report_id, owner)
+        return await self.start_preview_generation(row, body, owner, network, wait=wait)
+
+    async def start_preview_generation(self, row, body, owner, network, *, wait=False):
+        # Public creation and administrator retries share the same snapshot and lease.
         task = self.preview_tasks.get(row["id"])
         if task is None and not row["preview"]:
             lease = secrets.token_hex(16)
             with self.store.connect() as db:
-                claimed = db.execute("UPDATE life_reports SET preview_state='generating',lease=?,lease_until=? "
-                                     "WHERE id=? AND preview IS NULL AND lease_until<?",
+                claimed = db.execute("UPDATE life_reports SET preview_state='generating',lease=%s,lease_until=%s "
+                                     "WHERE id=%s AND preview IS NULL AND lease_until<%s",
                                      (lease, time.time() + self.lease_seconds, row["id"], time.time()))
             if claimed.rowcount:
                 task = asyncio.create_task(self.generate_preview(row, body, owner, network, lease))
@@ -318,7 +326,7 @@ class LifeReports:
 
     def record_progress(self, report_id, lease, updates):
         with self.store.connect() as db:
-            row = db.execute("SELECT generation_progress FROM life_reports WHERE id=? AND lease=?", (report_id, lease)).fetchone()
+            row = db.execute("SELECT generation_progress FROM life_reports WHERE id=%s AND lease=%s", (report_id, lease)).fetchone()
             if not row:
                 return
             marks = json.loads(row["generation_progress"])
@@ -326,7 +334,7 @@ class LifeReports:
             if not changes:
                 return
             marks.update(changes)
-            db.execute("UPDATE life_reports SET generation_progress=? WHERE id=? AND lease=?", (encoded(marks), report_id, lease))
+            db.execute("UPDATE life_reports SET generation_progress=%s WHERE id=%s AND lease=%s", (encoded(marks), report_id, lease))
 
     async def write_part(self, report_id, lease, bundle, owner, network):
         key = "plan" if bundle["stage"] == "plan" else bundle["reading"]
@@ -460,30 +468,30 @@ class LifeReports:
         if not row["preview"] and row["preview_state"] == "generating" and row["lease_until"] < time.time():
             with self.store.connect() as db:
                 db.execute("UPDATE life_reports SET preview_state='unavailable',lease='',lease_until=0 "
-                           "WHERE id=? AND lease=? AND preview IS NULL AND preview_state='generating' AND lease_until<?",
+                           "WHERE id=%s AND lease=%s AND preview IS NULL AND preview_state='generating' AND lease_until<%s",
                            (report_id, row["lease"], time.time()))
             row = self.row(report_id, owner)
         if row["full_state"] == "generating" and row["lease_until"] < time.time():
             with self.store.connect() as db:
                 db.execute("UPDATE life_reports SET full_state='unavailable',lease='',lease_until=0 "
-                           "WHERE id=? AND owner=? AND full_state='generating' AND lease_until<?", (report_id, owner, time.time()))
+                           "WHERE id=%s AND owner=%s AND full_state='generating' AND lease_until<%s", (report_id, owner, time.time()))
             row = self.row(report_id, owner)
         return self.public(row)
 
     def list(self, owner):
         with self.store.connect() as db:
-            rows = db.execute("SELECT id,input,created,unlocked,full_state FROM life_reports WHERE owner=? ORDER BY created DESC LIMIT 30", (owner,)).fetchall()
+            rows = db.execute("SELECT id,input,created,unlocked,full_state FROM life_reports WHERE owner=%s ORDER BY created DESC LIMIT 30", (owner,)).fetchall()
         return [{"id": row["id"], "input": json.loads(row["input"]), "created_at": stamp(row["created"]),
                  "access": "full" if row["unlocked"] else "preview", "full_state": row["full_state"]} for row in rows]
 
     def delete(self, report_id, owner):
         # Verify ownership and generation state inside the same write transaction.
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT * FROM life_reports WHERE id=? AND owner=?", (report_id, owner)).fetchone()
+            db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
+            row = db.execute("SELECT * FROM life_reports WHERE id=%s AND owner=%s FOR UPDATE", (report_id, owner)).fetchone()
             if row is None:
                 raise HTTPException(404, "life_report_not_found")
-            payment = db.execute("SELECT merchant FROM life_card_payments WHERE report_id=?", (report_id,)).fetchone()
+            payment = db.execute("SELECT merchant FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
             if payment and payment["merchant"].startswith("sunlands:"):
                 raise HTTPException(409, "life_order_needs_review")
             active_task = any(task is not None and not task.done()
@@ -491,8 +499,8 @@ class LifeReports:
             claimed = (row["preview_state"] in ("pending", "generating") or row["full_state"] == "generating")
             if active_task or (claimed and row["lease_until"] > time.time()):
                 raise HTTPException(409, "life_report_generating")
-            db.execute("DELETE FROM life_card_payments WHERE report_id=?", (report_id,))
-            db.execute("DELETE FROM life_reports WHERE id=? AND owner=?", (report_id, owner))
+            db.execute("DELETE FROM life_card_payments WHERE report_id=%s", (report_id,))
+            db.execute("DELETE FROM life_reports WHERE id=%s AND owner=%s", (report_id, owner))
 
     async def unlock(self, report_id, owner, network):
         row = self.row(report_id, owner)
@@ -554,8 +562,8 @@ class LifeReports:
             return
         lease = secrets.token_hex(16)
         with self.store.connect() as db:
-            cursor = db.execute("UPDATE life_reports SET full_state='generating',lease=?,lease_until=? "
-                                "WHERE id=? AND owner=? AND lease_until<? AND full_state<>'ready'", (lease, time.time() + self.lease_seconds, report_id, owner, time.time()))
+            cursor = db.execute("UPDATE life_reports SET full_state='generating',lease=%s,lease_until=%s "
+                                "WHERE id=%s AND owner=%s AND lease_until<%s AND full_state<>'ready'", (lease, time.time() + self.lease_seconds, report_id, owner, time.time()))
         if cursor.rowcount:
             if not json.loads(row["input"]).get("career") and self.writer.enabled and not self.writer.reserve_run(owner, network):
                 self.update(report_id, expected_lease=lease, full_state="limited", lease="", lease_until=0)
@@ -647,11 +655,11 @@ class LifeReports:
 
     def fail_lease(self, report_id, lease):
         with self.store.connect() as db:
-            db.execute("UPDATE life_reports SET full_state='unavailable',lease='',lease_until=0 WHERE id=? AND lease=?", (report_id, lease))
+            db.execute("UPDATE life_reports SET full_state='unavailable',lease='',lease_until=0 WHERE id=%s AND lease=%s", (report_id, lease))
 
     def fail_preview(self, report_id, lease):
         with self.store.connect() as db:
-            db.execute("UPDATE life_reports SET preview_state='unavailable',lease='',lease_until=0 WHERE id=? AND lease=? AND preview IS NULL", (report_id, lease))
+            db.execute("UPDATE life_reports SET preview_state='unavailable',lease='',lease_until=0 WHERE id=%s AND lease=%s AND preview IS NULL", (report_id, lease))
 
     async def close(self):
         tasks = [*self.tasks.values(), *self.preview_tasks.values()]

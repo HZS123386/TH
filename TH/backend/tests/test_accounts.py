@@ -1,4 +1,4 @@
-import sqlite3
+import psycopg
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,8 +12,8 @@ PROFILE = {**BASE_PROFILE, "gender": None}
 
 
 @pytest.fixture
-def settings(tmp_path):
-    return Settings(database_path=str(tmp_path / "accounts.db"))
+def settings(postgres_url):
+    return Settings(database_url=postgres_url)
 
 
 def auth(client, path, username="nok", password="my secret password"):
@@ -59,7 +59,7 @@ def test_passwords_are_salted_and_wrong_credentials_do_not_create_sessions(setti
     with TestClient(create_app(settings)) as client:
         auth(client, "register")
         auth(client, "register", username="second")
-        with sqlite3.connect(settings.database_path) as db:
+        with psycopg.connect(settings.database_url) as db:
             hashes = [row[0] for row in db.execute("SELECT password_hash FROM accounts")]
             session_count = db.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
         assert hashes[0] != hashes[1]
@@ -68,7 +68,7 @@ def test_passwords_are_salted_and_wrong_credentials_do_not_create_sessions(setti
         missing = client.post("/api/auth/login", json={"username": "missing", "password": "wrong password"})
         assert wrong.status_code == missing.status_code == 401
         assert wrong.json() == missing.json()
-        with sqlite3.connect(settings.database_path) as db:
+        with psycopg.connect(settings.database_url) as db:
             assert db.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == session_count
 
 

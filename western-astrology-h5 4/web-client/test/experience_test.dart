@@ -345,7 +345,7 @@ void main() {
           final name = text(body['event']);
           events.add(name.isEmpty ? 'visit' : name);
           if (name == 'submitted') await gate.future;
-          return reply({'ok': true});
+          return reply({'ok': true, 'recorded': true});
         }),
       );
       final h5 = H5Controller(translations(), repo, browser);
@@ -357,6 +357,35 @@ void main() {
       await Future.wait([submitted, seen]);
       await h5.trackReport('report-id', 'seen');
       expect(events, ['visit', 'submitted', 'seen']);
+      h5.dispose();
+    },
+  );
+
+  test(
+    'funnel retries a failed visit and submission before recording a preview',
+    () async {
+      final browser = TestBrowser()
+        ..visit = {'id': 'visit-retry', 'region': 'TH'};
+      final attempts = <String>[];
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          final body = object(jsonDecode(request.body));
+          final event = text(body['event']);
+          final step = event.isEmpty ? 'visit' : event;
+          if (event.isEmpty) expect(body['region'], 'TH');
+          final first = !attempts.contains(step);
+          attempts.add(step);
+          if (first && step != 'seen') return reply({'code': 'temporary'}, 503);
+          return reply({'ok': true, 'recorded': true});
+        }),
+      );
+      final h5 = H5Controller(translations(), repo, browser);
+      await h5.recordVisit();
+      await h5.trackReport('report-retry', 'submitted');
+      await h5.trackReport('report-retry', 'seen');
+      expect(attempts, ['visit', 'visit', 'submitted', 'submitted', 'seen']);
       h5.dispose();
     },
   );
@@ -376,6 +405,10 @@ void main() {
               visits++;
               throw Exception('offline analytics');
             }
+            expect(
+              object(jsonDecode(request.body))['landing_visit'],
+              enabled ? browser.visit : isNull,
+            );
             return reply(fixture());
           }),
         );
@@ -385,6 +418,7 @@ void main() {
           object(fixture()['input']),
           CancelToken(),
           (_, _, _) {},
+          visit: browser.visitContext(),
         );
         expect(report.preview, isNotEmpty);
         expect(visits, enabled ? 1 : 0);

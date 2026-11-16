@@ -149,7 +149,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         ) {
           state.update(report, percent, phase);
           unawaited(h5.trackReport(report.id, 'submitted'));
-        });
+        }, visit: h5.browser.visitContext());
         await h5.prepareText(
           jsonEncode(report.json),
           language: report.language,
@@ -227,12 +227,19 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     return LayoutBuilder(
       builder: (context, box) {
         final compact = box.maxWidth <= 360;
-        final margin = compact ? 12.0 : 17.0, padding = compact ? 16.0 : 20.0;
-        final heroHeight = compact
-            ? 276.0
-            : MediaQuery.sizeOf(context).width >= 700
-            ? 326.0
-            : 304.0;
+        final wide = box.maxWidth >= 700;
+        final margin = wide
+            ? 32.0
+            : compact
+            ? 12.0
+            : 17.0;
+        final padding = wide
+            ? 28.0
+            : compact
+            ? 16.0
+            : 20.0;
+        final portraitWidth = box.maxWidth.clamp(0.0, h5PortraitMaxWidth);
+        final heroHeight = landingHeroHeight(box.maxWidth);
         return SingleChildScrollView(
           key: const ValueKey('landing-scroll'),
           child: Column(
@@ -245,8 +252,8 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                   clipBehavior: Clip.hardEdge,
                   children: [
                     Positioned(
-                      left: 0,
-                      right: 0,
+                      left: (box.maxWidth - portraitWidth) / 2,
+                      width: portraitWidth,
                       top: -11,
                       child: Opacity(
                         opacity: h5.welcomeOpen && !h5.welcomePortraitRevealed
@@ -506,119 +513,132 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _custom
-                              ? TextField(
-                                  key: const ValueKey('custom-question'),
-                                  controller: _questionText,
-                                  maxLength: 120,
-                                  style: const TextStyle(fontSize: 12),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.deny(
-                                      RegExp(r'[\x00-\x1f\x7f]'),
-                                      replacementString: ' ',
-                                    ),
-                                  ],
-                                  decoration: InputDecoration(
-                                    hintText: c.t('jy', 'questionTitle'),
-                                    counterText: '',
-                                  ),
-                                )
-                              : SizedBox(
-                                  height: 44,
-                                  child: PageView.builder(
-                                    controller: _questionPages,
-                                    scrollDirection: Axis.vertical,
-                                    itemCount: 4,
-                                    itemBuilder: (context, index) => InkWell(
-                                      key: ValueKey('question-$index'),
-                                      onTap: () => setState(
-                                        () => _question =
-                                            _question == stages[index]
-                                            ? null
-                                            : stages[index],
+                    LayoutBuilder(
+                      builder: (context, box) => Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: box.maxWidth < 480
+                                ? box.maxWidth
+                                : box.maxWidth - 140,
+                            child: _custom
+                                ? TextField(
+                                    key: const ValueKey('custom-question'),
+                                    controller: _questionText,
+                                    maxLength: 120,
+                                    style: const TextStyle(fontSize: 12),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.deny(
+                                        RegExp(r'[\x00-\x1f\x7f]'),
+                                        replacementString: ' ',
                                       ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: c.t('jy', 'questionTitle'),
+                                      counterText: '',
+                                    ),
+                                  )
+                                : SizedBox(
+                                    height: 64,
+                                    child: PageView.builder(
+                                      controller: _questionPages,
+                                      scrollDirection: Axis.vertical,
+                                      itemCount: 4,
+                                      itemBuilder: (context, index) => InkWell(
+                                        key: ValueKey('question-$index'),
+                                        onTap: () => setState(
+                                          () => _question =
+                                              _question == stages[index]
+                                              ? null
+                                              : stages[index],
                                         ),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              '${prompts[index][0]}',
-                                              style: const TextStyle(
-                                                fontSize: 10,
-                                                color: gold,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                '${prompts[index][1]}',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  height: 1.4,
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      _question == stages[index]
-                                                      ? gold
-                                                      : cream,
-                                                ),
-                                              ),
-                                            ),
-                                            if (_question == stages[index])
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                          child: Row(
+                                            children: [
                                               Text(
-                                                c.t('jy', 'selected'),
+                                                '${prompts[index][0]}',
                                                 style: const TextStyle(
-                                                  fontSize: 9,
+                                                  fontSize: 10,
                                                   color: gold,
                                                 ),
                                               ),
-                                          ],
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  '${prompts[index][1]}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    height: 1.4,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        _question ==
+                                                            stages[index]
+                                                        ? gold
+                                                        : cream,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (_question == stages[index])
+                                                Text(
+                                                  c.t('jy', 'selected'),
+                                                  style: const TextStyle(
+                                                    fontSize: 9,
+                                                    color: gold,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (_custom)
-                          TextButton(
-                            onPressed: () => setState(() {
-                              _custom = false;
-                              _question = null;
-                              _questionText.clear();
-                            }),
-                            child: Text(
-                              c.t('jy', 'browseQuestions'),
-                              style: const TextStyle(fontSize: 10, color: gold),
-                            ),
-                          )
-                        else
-                          SizedBox(
-                            width: 84,
-                            height: 46,
-                            child: TextField(
-                              readOnly: true,
-                              key: const ValueKey('write-question'),
-                              onTap: () => setState(() {
-                                _custom = true;
-                                _question = null;
-                              }),
-                              textAlign: TextAlign.center,
-                              decoration: InputDecoration(
-                                hintText: c.t('jy', 'writeQuestion'),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 12,
-                                ),
-                              ),
-                            ),
                           ),
-                      ],
+                          SizedBox(
+                            width: 132,
+                            child: _custom
+                                ? TextButton(
+                                    onPressed: () => setState(() {
+                                      _custom = false;
+                                      _question = null;
+                                      _questionText.clear();
+                                    }),
+                                    child: Text(
+                                      c.t('jy', 'browseQuestions'),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: gold,
+                                      ),
+                                    ),
+                                  )
+                                : SizedBox(
+                                    height: 46,
+                                    child: TextField(
+                                      readOnly: true,
+                                      key: const ValueKey('write-question'),
+                                      onTap: () => setState(() {
+                                        _custom = true;
+                                        _question = null;
+                                      }),
+                                      textAlign: TextAlign.center,
+                                      decoration: InputDecoration(
+                                        hintText: c.t('jy', 'writeQuestion'),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                              vertical: 12,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ),
                     ),
                     errorMessage(_error),
                     const SizedBox(height: 21),

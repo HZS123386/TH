@@ -1,13 +1,17 @@
 import json
+import os
 import subprocess
 import sys
 import time
+from datetime import date, datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
-from backend.tests.test_life_reports import HEADERS, client, preview
+from backend.tests.test_life_reports import HEADERS, PROFILE, client, preview
+from backend.app import landing_features
 
 
 OTHER = {**HEADERS, "X-Report-Key": "another-device-owner-key-with-over-thirty-two-characters"}
@@ -27,22 +31,22 @@ def event(http, visit_id, report_id, name, headers=HEADERS):
 def test_config_exposes_only_public_support_and_notice_version(client):
     http, _, _, _ = client
     response = http.get("/api/landing/config")
-    assert response.json() == {"support_email": "", "notice_version": "h5-data-use-2"}
+    assert response.json() == {"support_email": "", "notice_version": "h5-data-use-3"}
     assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_confirmation_is_owned_versioned_strict_and_idempotent(client):
     http, app, _, _ = client
-    body = {"notice_version": "h5-data-use-2", "granted": True}
+    body = {"notice_version": "h5-data-use-3", "granted": True}
     assert http.post("/api/landing/consents", json=body).status_code == 422
     for bad in [{**body, "granted": False}, {**body, "granted": "true"}, {**body, "notice_version": ""}, {**body, "notice_version": 2}]:
         assert http.post("/api/landing/consents", json=bad, headers=HEADERS).status_code == 422
-    for version in ("h5-data-use-1", "old"):
+    for version in ("h5-data-use-2", "old"):
         result = http.post("/api/landing/consents", json={**body, "notice_version": version}, headers=HEADERS)
         assert result.status_code == 409
         assert result.json()["code"] == "landing_notice_outdated"
     with app.state.life_reports.store.connect() as db:
-        assert db.execute("SELECT COUNT(*) FROM landing_consents").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM landing_consents").fetchone()["count"] == 0
     for _ in range(2):
         assert http.post("/api/landing/consents", json=body, headers=HEADERS).status_code == 200
     with app.state.life_reports.store.connect() as db:
@@ -64,21 +68,84 @@ def test_visit_is_deduplicated_immutable_and_rejects_personal_fields(client):
     assert len(rows) == 1 and rows[0]["source"] == "facebook"
 
 
+def test_visitor_number_keeps_first_region_and_beijing_date(client, monkeypatch):
+    http, app, _, _ = client
+    now = datetime(2026, 11, 15, 16, 5, tzinfo=timezone.utc).timestamp()
+    monkeypatch.setattr(landing_features, "time", SimpleNamespace(time=lambda: now))
+    url = "/api/landing/visits"
+
+    assert http.post(url, json={"id": str(uuid4()), "region": "TH"}, headers=HEADERS).status_code == 200
+    assert http.post(url, json={"id": str(uuid4()), "region": "TH"}, headers=OTHER).status_code == 200
+    now += 86400
+    assert http.post(url, json={"id": str(uuid4()), "region": "VN"}, headers=HEADERS).status_code == 200
+
+    owner = landing_features.owner_for(HEADERS["X-Report-Key"])
+    with app.state.store.connect() as db:
+        rows = db.execute("SELECT * FROM landing_visitors ORDER BY serial").fetchall()
+    assert len(rows) == 2
+    assert rows[0]["owner"] == owner
+    assert rows[0]["region_code"] == "TH"
+    assert rows[0]["first_visit_date"] == date(2026, 11, 16)
+    assert rows[0]["last_visited_at"] == now
+    assert rows[0]["visitor_number"] == "TH-20261116-0001"
+    assert rows[1]["visitor_number"] == "TH-20261116-0002"
+
+
+def test_new_report_saves_first_entry_and_reuse_preserves_attribution(client):
+    http, app, _, _ = client
+    first = {"id": str(uuid4()), "source": "facebook", "campaign": "fortune_th_nov", "region": "TH"}
+    assert http.post("/api/landing/visits", json=first, headers=HEADERS).status_code == 200
+    later = {"id": str(uuid4()), "source": "tiktok", "campaign": "new-promo", "region": "VN"}
+    body = {"profile": PROFILE, "year": 2027}
+    created = http.post("/api/life-reports", json={**body, "landing_visit": later}, headers=HEADERS)
+    assert created.status_code == 200, created.text
+    report_id = created.json()["id"]
+    assert created.json()["preview_state"] == "ready"
+    assert "landing_visit" not in created.json()["input"]
+
+    with app.state.store.connect() as db:
+        row = db.execute("SELECT * FROM life_reports WHERE id=%s", (report_id,)).fetchone()
+        assert row["landing_visitor_number"] == db.execute("SELECT visitor_number FROM landing_visitors").fetchone()["visitor_number"]
+        assert (row["landing_source"], row["landing_campaign"], row["landing_region"]) == ("facebook", "fortune_th_nov", "TH")
+        assert "landing_visit" not in json.loads(row["input"])
+        assert db.execute("SELECT region_code FROM landing_visits WHERE id=%s", (later["id"],)).fetchone()["region_code"] == "VN"
+
+    reused = http.post("/api/life-reports", json=body, headers=HEADERS)
+    assert reused.status_code == 200 and reused.json()["id"] == report_id
+    assert app.state.life_reports.row(report_id, landing_features.owner_for(HEADERS["X-Report-Key"]))["landing_source"] == "facebook"
+
+
+def test_historical_report_and_unowned_visit_do_not_gain_attribution(client):
+    http, app, _, _ = client
+    legacy = preview(http)
+    qr = {"id": str(uuid4()), "source": "qr", "campaign": "fortune_th_nov", "region": "TH"}
+    assert http.post("/api/landing/visits", json=qr, headers=OTHER).status_code == 200
+    reused = http.post("/api/life-reports", json={"profile": PROFILE, "year": 2027, "landing_visit": qr}, headers=HEADERS)
+    assert reused.status_code == 200 and reused.json()["id"] == legacy["id"]
+    created = http.post("/api/life-reports", json={"profile": PROFILE, "year": 2028, "landing_visit": qr}, headers=HEADERS)
+    assert created.status_code == 200 and created.json()["preview_state"] == "ready"
+    owner = landing_features.owner_for(HEADERS["X-Report-Key"])
+    for report_id in (legacy["id"], created.json()["id"]):
+        row = app.state.life_reports.row(report_id, owner)
+        assert row["landing_visitor_number"] is None and row["landing_source"] is None
+
+
 def test_funnel_requires_owned_report_and_submission_in_same_visit(client):
     http, app, _, _ = client
     report_id = preview(http)["id"]
     visit_id = visit(http)
     assert event(http, visit_id, report_id, "seen", OTHER).status_code == 404
+    ignored = event(http, visit_id, report_id, "seen")
+    assert ignored.status_code == 200 and ignored.json()["recorded"] is False
+    with app.state.life_reports.store.connect() as db:
+        assert db.execute("SELECT seen_at FROM landing_visits WHERE id=%s", (visit_id,)).fetchone()["seen_at"] is None
+    assert event(http, visit_id, report_id, "submitted").json()["recorded"] is True
+    assert event(http, visit_id, report_id, "seen").json()["recorded"] is True
+    with app.state.life_reports.store.connect() as db:
+        original = dict(db.execute("SELECT * FROM landing_visits WHERE id=%s", (visit_id,)).fetchone())
     assert event(http, visit_id, report_id, "seen").status_code == 200
     with app.state.life_reports.store.connect() as db:
-        assert db.execute("SELECT seen_at FROM landing_visits WHERE id=?", (visit_id,)).fetchone()[0] is None
-    assert event(http, visit_id, report_id, "submitted").status_code == 200
-    assert event(http, visit_id, report_id, "seen").status_code == 200
-    with app.state.life_reports.store.connect() as db:
-        original = dict(db.execute("SELECT * FROM landing_visits WHERE id=?", (visit_id,)).fetchone())
-    assert event(http, visit_id, report_id, "seen").status_code == 200
-    with app.state.life_reports.store.connect() as db:
-        assert dict(db.execute("SELECT * FROM landing_visits WHERE id=?", (visit_id,)).fetchone()) == original
+        assert dict(db.execute("SELECT * FROM landing_visits WHERE id=%s", (visit_id,)).fetchone()) == original
     assert original["visited_at"] <= original["submitted_at"] <= original["seen_at"]
     assert event(http, str(uuid4()), report_id, "submitted").status_code == 404
 
@@ -89,11 +156,11 @@ def test_old_visits_and_associations_are_pruned_without_removing_reports(client)
     visit_id = visit(http)
     assert event(http, visit_id, report_id, "submitted").status_code == 200
     with app.state.life_reports.store.connect() as db:
-        db.execute("UPDATE landing_visits SET visited_at=?", (time.time() - 31 * 86400,))
+        db.execute("UPDATE landing_visits SET visited_at=%s", (time.time() - 31 * 86400,))
     assert event(http, visit_id, report_id, "seen").status_code == 404
     visit(http)
     with app.state.life_reports.store.connect() as db:
-        assert db.execute("SELECT COUNT(*) FROM landing_visit_reports").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM landing_visit_reports").fetchone()["count"] == 0
     assert http.get(f"/api/life-reports/{report_id}", headers=HEADERS).status_code == 200
 
 
@@ -127,12 +194,15 @@ def test_stale_interrupted_report_with_no_live_task_can_be_deleted(client):
     assert http.delete(f"/api/life-reports/{report_id}", headers=HEADERS).status_code == 204
 
 
-def test_metrics_are_read_only_aggregates_without_report_or_device_data(client):
-    http, app, _, _ = client
+def test_metrics_are_read_only_aggregates_without_report_or_device_data(client, postgres_url):
+    http, _, _, _ = client
     visit(http)
     script = Path(__file__).resolve().parents[2] / "scripts" / "landing-metrics.py"
-    result = subprocess.run([sys.executable, str(script), app.state.life_reports.store.path], capture_output=True, text=True, check=True)
-    assert json.loads(result.stdout) == {"days": 30, "channels": [{"source": "facebook", "campaign": "fortune-th", "visits": 1, "submitted": 0, "seen": 0}]}
+    result = subprocess.run([sys.executable, str(script)], env={**os.environ, "DATABASE_URL": postgres_url},
+                            capture_output=True, text=True, check=True)
+    assert json.loads(result.stdout) == {"days": 30, "channels": [{
+        "source": "facebook", "campaign": "fortune-th", "visits": 1, "visitors": 1, "submitted": 0, "seen": 0,
+    }]}
 
 
 def test_native_chart_view_reuses_stored_calculation_without_exposing_worker_input(client):
@@ -141,7 +211,7 @@ def test_native_chart_view_reuses_stored_calculation_without_exposing_worker_inp
     chart = report["chart"]
     assert chart["precision"] == "exact" and len(chart["houses"]) == 12
     with app.state.life_reports.store.connect() as db:
-        stored = json.loads(db.execute("SELECT chart FROM life_reports WHERE id=?", (report["id"],)).fetchone()[0])
+        stored = json.loads(db.execute("SELECT chart FROM life_reports WHERE id=%s", (report["id"],)).fetchone()["chart"])
     for planet in chart["planets"]:
         actual = stored["chart"]["points"][planet["id"]]
         assert planet["longitude"] == actual["longitudeDegrees"] and planet["house"] == actual["house"]
@@ -159,7 +229,7 @@ def test_estimated_chart_does_not_present_time_sensitive_houses_as_exact(client)
     assert all(p["house"] is None and p["id"] != "ascendant" for p in chart["planets"])
 
 
-def test_minimal_server_serves_font_and_image_mime_types(tmp_path, monkeypatch):
+def test_minimal_server_serves_font_and_image_mime_types(tmp_path, monkeypatch, postgres_url):
     import mimetypes
     from fastapi.testclient import TestClient
     from backend.app.config import Settings
@@ -177,7 +247,7 @@ def test_minimal_server_serves_font_and_image_mime_types(tmp_path, monkeypatch):
     monkeypatch.setattr(mimetypes, "types_map", database.types_map[True])
     for extension in (".otf", ".ttf", ".woff2", ".webp"):
         mimetypes.add_type("application/octet-stream", extension)
-    settings = Settings(database_path=str(tmp_path / "font-test.db"), thai_landing_dir=str(static))
+    settings = Settings(database_url=postgres_url, thai_landing_dir=str(static))
     with TestClient(create_app(settings)) as http:
         for name, expected in assets.items():
             response = http.get("/thai-landing/" + name)

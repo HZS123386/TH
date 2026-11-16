@@ -142,9 +142,9 @@ def test_concurrent_turns_never_share_candidate_answers_or_personal_notes():
 
 
 @pytest.mark.parametrize("both_fail", [False, True])
-def test_api_persists_only_one_final_pair_with_truthful_workflow_evidence(tmp_path, both_fail):
+def test_api_persists_only_one_final_pair_with_truthful_workflow_evidence(postgres_url, both_fail):
     settings = registry().settings
-    settings.database_path = str(tmp_path / "cooperative.db")
+    settings.database_url = postgres_url
     with TestClient(create_app(settings)) as client:
         headers = login(client)
         client.put("/api/profile", headers=headers, json=PROFILE).raise_for_status()

@@ -9,7 +9,8 @@ from pydantic import Field, StrictBool
 
 from .schemas import Input
 
-NOTICE_VERSION = "h5-data-use-2"
+NOTICE_VERSION = "h5-data-use-3"
+VISIT_RETENTION_SECONDS = 30 * 86400
 Key = Annotated[str, Header(alias="X-Report-Key", min_length=32, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")]
 
 
@@ -21,6 +22,7 @@ class VisitInput(Input):
     id: UUID
     source: str = Field(default="", max_length=64, pattern=r"^[A-Za-z0-9_.~-]*$")
     campaign: str = Field(default="", max_length=64, pattern=r"^[A-Za-z0-9_.~-]*$")
+    region: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
 
 
 class VisitEvent(Input):
@@ -33,37 +35,36 @@ class ConsentInput(Input):
     granted: StrictBool
 
 
+def record_visit(db, body, owner):
+    now = time.time()
+    cutoff = now - VISIT_RETENTION_SECONDS
+    db.execute("DELETE FROM landing_visits WHERE visited_at < %s", (cutoff,))
+    db.execute("DELETE FROM landing_visitors WHERE last_visited_at < %s", (cutoff,))
+    db.execute("""
+        INSERT INTO landing_visits(id,owner,source,campaign,visited_at,region_code)
+        VALUES(%s,%s,%s,%s,%s,%s) ON CONFLICT(id) DO NOTHING
+    """, (str(body.id), owner, body.source, body.campaign, now, body.region))
+    row = db.execute("SELECT owner,visited_at,source,campaign,region_code FROM landing_visits WHERE id=%s",
+                     (str(body.id),)).fetchone()
+    if row is None or row["owner"] != owner:
+        raise HTTPException(404, "landing_visit_not_found")
+    visited_at = row["visited_at"]
+    # Later visits refresh the retention window without redefining first-touch tags.
+    db.execute("""
+        INSERT INTO landing_visitors(owner,region_code,first_visit_date,last_visited_at,first_source,first_campaign)
+        VALUES(%s,%s,(to_timestamp(%s) AT TIME ZONE 'Asia/Shanghai')::date,%s,%s,%s)
+        ON CONFLICT(owner) DO UPDATE SET last_visited_at=EXCLUDED.last_visited_at
+        WHERE landing_visitors.last_visited_at < EXCLUDED.last_visited_at
+    """, (owner, row["region_code"], visited_at, visited_at, row["source"], row["campaign"]))
+
+
 class LandingFeatures:
     def __init__(self, store, settings, reports):
         self.store, self.settings, self.reports = store, settings, reports
-        with store.connect() as db:
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS landing_visits(
-                    id TEXT PRIMARY KEY, owner TEXT NOT NULL, source TEXT NOT NULL,
-                    campaign TEXT NOT NULL, visited_at REAL NOT NULL,
-                    submitted_at REAL, seen_at REAL
-                );
-                CREATE INDEX IF NOT EXISTS landing_visits_created ON landing_visits(visited_at);
-                CREATE TABLE IF NOT EXISTS landing_visit_reports(
-                    visit_id TEXT NOT NULL REFERENCES landing_visits(id) ON DELETE CASCADE,
-                    report_id TEXT NOT NULL,
-                    PRIMARY KEY(visit_id, report_id)
-                );
-                CREATE TABLE IF NOT EXISTS landing_consents(
-                    owner TEXT NOT NULL, notice_version TEXT NOT NULL, agreed_at REAL NOT NULL,
-                    PRIMARY KEY(owner, notice_version)
-                );
-            """)
 
     def visit(self, body, owner):
-        now = time.time()
         with self.store.connect() as db:
-            db.execute("DELETE FROM landing_visits WHERE visited_at < ?", (now - 30 * 86400,))
-            db.execute("INSERT INTO landing_visits(id,owner,source,campaign,visited_at) VALUES(?,?,?,?,?) "
-                       "ON CONFLICT(id) DO NOTHING", (str(body.id), owner, body.source, body.campaign, now))
-            row = db.execute("SELECT owner FROM landing_visits WHERE id=?", (str(body.id),)).fetchone()
-            if row["owner"] != owner:
-                raise HTTPException(404, "landing_visit_not_found")
+            record_visit(db, body, owner)
 
     def event(self, visit_id, body, owner):
         report = self.reports.row(body.report_id, owner)
@@ -71,20 +72,21 @@ class LandingFeatures:
             raise HTTPException(409, "life_preview_required")
         column = "submitted_at" if body.event == "submitted" else "seen_at"
         with self.store.connect() as db:
-            visit = db.execute("SELECT 1 FROM landing_visits WHERE id=? AND owner=? AND visited_at>=?",
-                               (str(visit_id), owner, time.time() - 30 * 86400)).fetchone()
+            visit = db.execute("SELECT 1 FROM landing_visits WHERE id=%s AND owner=%s AND visited_at>=%s FOR UPDATE",
+                               (str(visit_id), owner, time.time() - VISIT_RETENTION_SECONDS)).fetchone()
             if visit is None:
                 raise HTTPException(404, "landing_visit_not_found")
             if body.event == "submitted":
-                db.execute("INSERT INTO landing_visit_reports(visit_id,report_id) VALUES(?,?) "
+                db.execute("INSERT INTO landing_visit_reports(visit_id,report_id) VALUES(%s,%s) "
                            "ON CONFLICT DO NOTHING", (str(visit_id), body.report_id))
-            elif not db.execute("SELECT 1 FROM landing_visit_reports WHERE visit_id=? AND report_id=?",
+            elif not db.execute("SELECT 1 FROM landing_visit_reports WHERE visit_id=%s AND report_id=%s",
                                 (str(visit_id), body.report_id)).fetchone():
                 # Reopening an older saved report is not a new conversion.
-                return
+                return False
             # The column comes from the event whitelist, never from raw input.
-            db.execute(f"UPDATE landing_visits SET {column}=COALESCE({column},?) WHERE id=? AND owner=?",
+            db.execute(f"UPDATE landing_visits SET {column}=COALESCE({column},%s) WHERE id=%s AND owner=%s",
                        (time.time(), str(visit_id), owner))
+        return True
 
     def consent(self, body, owner):
         if not body.granted:
@@ -92,7 +94,7 @@ class LandingFeatures:
         if body.notice_version != NOTICE_VERSION:
             raise HTTPException(409, "landing_notice_outdated")
         with self.store.connect() as db:
-            db.execute("INSERT INTO landing_consents(owner,notice_version,agreed_at) VALUES(?,?,?) "
+            db.execute("INSERT INTO landing_consents(owner,notice_version,agreed_at) VALUES(%s,%s,%s) "
                        "ON CONFLICT(owner,notice_version) DO NOTHING", (owner, body.notice_version, time.time()))
 
 
@@ -116,7 +118,6 @@ def landing_router(service):
 
     @router.post("/visits/{visit_id}/events")
     async def event(visit_id: UUID, body: VisitEvent, key: Key):
-        service.event(visit_id, body, owner_for(key))
-        return {"ok": True}
+        return {"ok": True, "recorded": service.event(visit_id, body, owner_for(key))}
 
     return router

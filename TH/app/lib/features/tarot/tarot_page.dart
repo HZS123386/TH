@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
+import '../companion/guardian.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../l10n/generated/app_localizations.dart';
@@ -131,7 +132,11 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_seer == null && !MediaQuery.disableAnimationsOf(context)) {
+    if (FateMotion.reduced(context)) {
+      if (_flightMotion.isAnimating) _flightMotion.value = 1;
+      if (_readingMotion.isAnimating) _readingMotion.value = 1;
+      unawaited(_pauseSeer());
+    } else if (_seer == null) {
       final player = VideoPlayerController.asset('assets/tarot/seer.mp4');
       _seer = player;
       unawaited(_prepareSeer(player));
@@ -156,7 +161,11 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
     if (player == null || !_seerReady) return;
     try {
       await player.seekTo(Duration.zero);
-      if (mounted && _phase == _TarotPhase.reading) await player.play();
+      if (mounted &&
+          !FateMotion.reduced(context) &&
+          _phase == _TarotPhase.reading) {
+        await player.play();
+      }
     } catch (_) {
       // The reading animation can finish with the static portrait.
     }
@@ -391,7 +400,8 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           for (var i = 0; i < _drawCount; i++)
-            Container(
+            AnimatedContainer(
+              duration: FateMotion.duration(context, FateMotion.settle),
               width: 23,
               height: 4,
               margin: const EdgeInsets.only(right: 5),
@@ -512,7 +522,7 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
           return Column(
             children: [
               AnimatedSwitcher(
-                duration: const Duration(milliseconds: 230),
+                duration: FateMotion.duration(context, FateMotion.change),
                 child: Text(
                   word,
                   key: ValueKey(word),
@@ -581,6 +591,23 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
                   if (i > 0) const Divider(height: 18),
                   _readingRow(s, i),
                 ],
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: () => openGuardian(
+                    context,
+                    reading: ReadingHandoff(
+                      title: s.tarotResult,
+                      text: _drawn
+                          .map((card) {
+                            final reading = card.reading(s);
+                            return '${reading.name}: ${reading.meaning}';
+                          })
+                          .join('\n'),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: Text(s.continueReading),
+                ),
               ],
             ),
           ),

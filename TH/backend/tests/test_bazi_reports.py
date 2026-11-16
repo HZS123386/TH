@@ -40,7 +40,7 @@ def story_for(bundle):
 
 
 @pytest.fixture
-def client_with_writer(tmp_path, monkeypatch):
+def client_with_writer(postgres_url, monkeypatch):
     requests, bundles = [], []
     state = {"mode": "normal"}
     real_client = httpx.AsyncClient
@@ -99,7 +99,7 @@ def client_with_writer(tmp_path, monkeypatch):
             return httpx.Response(200, text="".join("data: " + json.dumps(packet, ensure_ascii=False) + "\n\n" for packet in packets) + "data: [DONE]\n\n", headers={"content-type": "text/event-stream"})
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(story, ensure_ascii=False)}}]})
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
-    settings = Settings(database_path=str(tmp_path / "reports.db"), roxy_enabled=True, roxy_api_key="roxy-private-key", providers={"qwen": ProviderConfig("model-private-key", "https://model.example/v1", "test-model")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
+    settings = Settings(database_url=postgres_url, roxy_enabled=True, roxy_api_key="roxy-private-key", providers={"qwen": ProviderConfig("model-private-key", "https://model.example/v1", "test-model")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
     with TestClient(create_app(settings)) as client:
         yield client, bundles, state, requests
 
@@ -149,7 +149,7 @@ def test_bad_writing_never_becomes_a_report_and_releases_pending(client_with_wri
     assert result["report"]["sections"] == []
     assert result["sources"]["roxy"]["chart"]["pillars"] == EXPECTED
     with client.app.state.store.connect() as db:
-        assert db.execute("SELECT MAX(pending_until) FROM bazi_reports").fetchone()[0] == 0
+        assert db.execute("SELECT MAX(pending_until) FROM bazi_reports").fetchone()["max"] == 0
     client.post("/api/bazi/test", json=body)
     assert len(bundles) == (1 if mode in ("recursion", "sse-recursion", "incomplete-sse") else 2)
 

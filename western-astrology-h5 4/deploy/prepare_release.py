@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import tarfile
 from datetime import datetime
@@ -21,6 +22,9 @@ def copy_tree(source: Path, target: Path):
 
 
 def main():
+    database_url = os.environ.get('FATE_DEPLOY_DATABASE_URL', '')
+    if not database_url.startswith(('postgresql://', 'postgres://')) or any(char in database_url for char in '\r\n'):
+        raise SystemExit('Set FATE_DEPLOY_DATABASE_URL to the migrated server PostgreSQL database.')
     version = datetime.now().strftime('%Y%m%d-%H%M%S')
     release = PRIVATE / version
     context = release / 'context'
@@ -28,6 +32,7 @@ def main():
     for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip'):
         shutil.copy2(ROOT / 'deploy' / name, context / name)
     copy_tree(TH / 'backend', context / 'TH' / 'backend')
+    copy_tree(TH / 'h5_admin', context / 'TH' / 'h5_admin')
     copy_tree(TH / 'scripts', context / 'TH' / 'scripts')
     for directory in ('content', 'locales', 'data'):
         copy_tree(TH / 'src' / directory, context / 'TH' / 'src' / directory)
@@ -44,7 +49,7 @@ def main():
     assert all(env.get(key) for key in ('QWEN_API_KEY', 'QWEN_BASE_URL', 'QWEN_MODEL'))
     config = {
         'APP_ENV': 'production',
-        'DATABASE_PATH': 'data/sabai.db',
+        'DATABASE_URL': database_url,
         'DEFAULT_PROVIDER': 'mock',
         'SESSION_HOURS': '168',
         'FORTUNE_PROVIDER': 'qwen',
@@ -61,7 +66,8 @@ def main():
     (release / 'runtime.env').write_text(''.join(f'{key}={value}\n' for key, value in config.items()), encoding='utf-8', newline='\n')
     (context / '.dockerignore').write_text('*.env\n.env*\ndata/\n*.pem\n*.key\n', encoding='utf-8')
 
-    sensitive = [value for key, value in env.items() if value and any(part in key for part in ('API_KEY', 'SECRET', 'PASSWORD', 'TOKEN'))]
+    sensitive = [database_url, *(value for key, value in env.items() if value and
+                                any(part in key for part in ('API_KEY', 'SECRET', 'PASSWORD', 'TOKEN', 'DATABASE_URL')))]
     manifest = []
     for path in sorted(context.rglob('*')):
         if not path.is_file():

@@ -18,7 +18,7 @@ class ProviderConfig:
 
 @dataclass
 class Settings:
-    database_path: str = "data/sabai.db"
+    database_url: str = field(default="", repr=False)
     app_env: str = "development"
     thai_landing_dir: str = ""
     session_hours: int = 168
@@ -54,13 +54,15 @@ class Settings:
     sunlands_province_id: str = ""
     sunlands_merchant_notify_uri: str = ""
     support_email: str = ""
+    admin_username: str = ""
+    admin_password_hash: str = field(default="", repr=False)
 
     @classmethod
     def from_env(cls):
         load_dotenv()
         defaults = {"openai": "https://api.openai.com/v1", "deepseek": "https://api.deepseek.com", "qwen": "", "kimi": "https://api.moonshot.cn/v1"}
         return cls(
-            database_path=os.getenv("DATABASE_PATH", "data/sabai.db"),
+            database_url=os.getenv("DATABASE_URL", ""),
             app_env=os.getenv("APP_ENV", "development"),
             thai_landing_dir=os.getenv("THAI_LANDING_DIR", str(Path(__file__).resolve().parents[3] / "western-astrology-h5 4" / "site")),
             session_hours=int(os.getenv("SESSION_HOURS", "168")),
@@ -101,4 +103,6 @@ class Settings:
             sunlands_province_id=os.getenv("SUNLANDS_PROVINCE_ID", ""),
             sunlands_merchant_notify_uri=os.getenv("SUNLANDS_MERCHANT_NOTIFY_URI", ""),
             support_email=os.getenv("FATE_SUPPORT_EMAIL", ""),
+            admin_username=os.getenv("ADMIN_USERNAME", ""),
+            admin_password_hash=os.getenv("ADMIN_PASSWORD_HASH", ""),
         )

@@ -1,12 +1,13 @@
 # FATE APP 主架构与迁移记录
 
-依据用户提供的《泰国占星 App 首版技术方案 v1.0》，迁移 APP 端技术框架；首版业务范围按后续明确指示限定为西洋占星、报告、Apple 内购和登录。H5 与后端继续由现有工程承载，服务端 PostgreSQL、Worker、LINE 和支付回调不是这次 APP 端修改的交付范围。
+依据用户提供的《泰国占星 App 首版技术方案 v1.0》，迁移 APP 端技术框架。2026-11-11 的首版范围为西洋占星、报告、Apple 内购和登录；2026-11-15 按后续要求加入神殿、四神明陪聊、占卜工具和羁绊，视觉沿用实际 H5。H5 与后端继续由现有工程承载，服务端 PostgreSQL、Worker、LINE 和支付回调不是这次 APP 视觉修改的交付范围。
 
 ## 运行入口
 
 - APP 主工程：`app/lib/main.dart` → `app/lib/app/fate_app.dart`。
-- 默认开发命令：根目录 `pnpm dev`，启动现有 FastAPI 和 Flutter APP 预览。
-- 单独启动：`pnpm dev:app`，默认端口 5174；需要已有 FastAPI 8000 服务。
+- 唯一开发和启动目录：`C:\Users\32668\Desktop\海外-玄学`。
+- 统一开发命令：根目录 `node TH/scripts/dev.mjs`，启动现有 FastAPI、Flutter App 和 H5。App 默认 5176，API 默认 8000，支持指定本地端口。
+- 仅重建 App 预览：`node TH/scripts/flutter-app.mjs build-preview`；已构建后统一启动可带 `--skip-build`。
 - 原 React 比对预览：`pnpm dev:react-preview`，端口 5175。它作为迁移保留项，不承担原生内购。
 - 现有 React 构建和 Vitest 命令保留，供依赖核查与旧功能对照。
 
@@ -109,7 +110,7 @@ APP 使用 `/api/calculations` 和 `/api/western/reports`。`/api/life-reports` 
 
 官方依据：[西洋占星](https://roxyapi.com/docs/guides/astrology)、[结构化计算与解读](https://roxyapi.com/docs/guides/calculation-engine)、[语言覆盖](https://roxyapi.com/docs/guides/localization)、[OpenAPI](https://roxyapi.com/api/v2/openapi.json)。
 
-塔罗、数字命理仅在能力目录标记 planned，暂无可执行入口。后续分别接入自己的抽牌/牌位规则和姓名/生日数值体系；复用账号、报告任务、语言、付费权限与限流基础设施，不混用西洋行星和宫位规则。
+2026-11-11 的能力目录中塔罗、数字命理标记 planned。后续神殿前端已加入本地塔罗抽牌和按日期计算的幸运数字；七字数字命理尚未接入，不能把这些轻工具说成已完成七字算法。原生页面继续复用账号、报告任务、语言和服务端付费权限。
 
 2026-11-11 本机验证：Flutter 23 项测试通过，相关后端 71 项测试通过，Web release/Wasm 构建完成。用虚构出生资料实际调用 Roxy；完整盘返回 14 个天体、12 宫和 37 个全部相位，APP 筛选后输出 32 条规范事实。另一组未知时分资料只返回部分行星事实。首次 APP 排盘约 3.23 秒，同资料缓存读取约 18 毫秒；四种语言的六维报告实测约 28–35 秒。已在浏览器确认真实星盘、相位、中文/泰语正文、语言隔离和刷新后恢复所选报告。这些是本机单次链路测量，不代表移动网络或 iOS 真机性能。
 
@@ -136,3 +137,69 @@ APP 使用 `/api/calculations` 和 `/api/western/reports`。`/api/life-reports` 
 5. StoreKit 的成功、取消、待处理、恢复、退款与多账号隔离测试。
 
 以上是发布依赖，不应在依赖完成前打开收费开关或宣称已经可以提交商店审核。
+
+## 2026-11-15 神殿视觉与交互落地
+
+本次在现有 `app/lib/main.dart` 调用链内修改，没有另建原型。修改前 App 源码已备份到 `D:/Backups/FATE-app-ui-20261115/`；未操作业务订单数据库或创建真实支付订单。
+
+### 已确定的页面结构
+
+- 首页保持「神庙欢迎 → 今日泰历及星盘入口 → 每日运势 → 有历史时接着聊 → 四神明两列卡片 → 每日一签 → 原有功能入口」。出生资料、幸运数字、星盘、报告和完整解读入口均保留。
+- 四位神明为原创拟人半写实插画：爱情、事业、财运、健康。人设切换留在下一版；当前图片和界面动效不是实时虚拟人或口型动画。
+- 占卜页保留每日一签、幸运数字、每周事件、星座运势、星盘、报告及泰历。周度入口携带问题和周期进入既有陪聊；没有伪造独立周报。尚未加入 H5 WebView 桥接。
+- 羁绊显示实际已完成对话对应的关系阶段、共同记忆与近期对话；首次使用显示空状态，不填充虚构的关系百分比。
+- 更多页统一账号、出生资料、报告、购买、语言与数据说明。陪聊与报告的数据使用说明分开陈述；现有本机清除功能不等同于服务器账号删除。
+
+### 视觉及交互
+
+直接采用 H5 源码中的深紫 `#130C24`、面板 `#211733`、香槟金 `#E4BC78`、米白 `#FFF5DF` 和淡紫 `#B4A8C6`。使用真实 H5 品牌字标、原创泰式神庙画面、拱形神明人像、细边框和轻渐变；字体为本地 Noto Sans Thai / SC。星座符号使用本地 Noto Sans Symbols，避免系统彩色 Emoji 回退，字体及许可随包分发。
+
+| 操作 | 实际效果 |
+| --- | --- |
+| 卡片按压、悬停、键盘聚焦 | 120ms 缩放与边框反馈 |
+| 主导航切换 | 180ms 淡入淡出，选中状态过渡 |
+| 详情进入、返回 | 300ms 轻位移及淡入，保留 iOS 侧滑返回 |
+| 神明进入聊天 | 同一头像的 Hero 过渡；聊天内容及输入保持原状态 |
+| 内容与记忆出现 | 380ms 入场，编辑时尺寸与文字过渡 |
+| 弹窗与底部面板 | 240ms 打开、180ms 关闭，统一圆角与遮罩 |
+| 抽牌 | 沿用现有洗牌、选牌飞入、翻牌与解读过程 |
+| 等待回复与失败 | 真实请求期间显示倾听状态；失败保留草稿，可重连 |
+| 键盘、小屏幕 | 引导和提示随聊天内容滚动，输入区留在可见位置 |
+
+系统要求减少动态效果时关闭装饰性动效，不延长操作等待。不播放开场片时，首页新图和神明图在首帧前解码；开场片继续使用原有的视频过渡。交互时长以 `FateMotion` 和对应控件源码为准。
+
+FATE 星芒图标已替换 Flutter 默认图标，涵盖 Android 各密度及自适应资源、iOS 的 25 个图标规格和 Web favicon / PWA 图标。源图为 `assets/images/fate-app-icon.png`，用 `dart run flutter_launcher_icons` 从现有 `pubspec.yaml` 配置生成。Android 与 iOS 启动背景改为同一深紫色。尺寸、iOS 商店图标无透明通道及 XML 引用已静态核对，仍需原生真机启动验收。
+
+图标工具 0.14.4 存在 [上游问题 #634](https://github.com/fluttercommunity/flutter_launcher_icons/issues/634)，会把 Xcode 的 `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS` 误写成图标名称。本次已精确恢复为 `YES`；再次生成图标后应检查该字段，`ASSETCATALOG_COMPILER_APPICON_NAME` 则保持 `AppIcon`。
+
+### 设计借鉴与素材
+
+- [MUToday](https://mutoday.com/)：借鉴每日内容、泰历和小工具的层次，以及祈愿过程的仪式感。
+- [Horoworld](https://www.horoworld.com/)：借鉴服务分类、人物入口和工具聚合方式。
+- [Dribbble Astrology Tarot UI](https://dribbble.com/shots/26352427-Astrology-Tarot-App-UI-Design)：参考暗色界面、留白和金色焦点。同行的浅色品牌方案没有替换用户已确定的 H5 配色。
+- 神明与 `temple-sanctuary.png` 为内置 imagegen 生成的原创插画；提示词和输出文件记录在 `app/assets/images/guardian-art-prompts.txt`。未复制同行商标、人像或付费素材。
+- [Noto Sans Symbols](https://github.com/google/fonts/blob/main/ofl/notosanssymbols/METADATA.pb)：372684 字节的原始字体，12 个星座字形均存在；许可在 `assets/fonts/OFL-Symbols.txt`。
+
+### 上架边界复核
+
+截至本次代码核查，仍不能把本地预览称为商店可发布版本：
+
+1. `backend/app/main.py:user` 在 production 返回 `production_disabled`；现有陪聊、历史和记忆接口依赖该入口。需要单独完成生产能力设计和验收，不能直接删掉保护条件来宣称完成。
+2. Android release 已移除调试签名回退，从被 Git 忽略的 `android/key.properties` 读取 `storeFile/storePassword/keyAlias/keyPassword`。没有正式密钥时不会生成带调试签名的 release；本机尚未配置 Android SDK，也未验证 AAB。签名文件不得提交 Git。参考 [Flutter 发布文档](https://docs.flutter.dev/deployment/android)。
+3. iOS 工程已有 Apple 登录 entitlement，但没有开发团队配置；需要 macOS/Xcode 真机、签名、正式 App 标识及商店商品。此次只验证 Flutter Web，不代表原生构建通过。
+4. 本轮前端已在原购买模块接入 StoreKit / Google Play 两个平台分支；Google Play 功能开关默认关闭，服务端验单与原生账号登录仍需接通。Apple / Google 真实购买、恢复、退款、跨设备及跨账号验单不能由本地替身测试代替。
+5. 本轮已补齐隐私、帮助、AI 陪聊授权和撤回、账号删除确认、AI 内容举报前端。正式公开隐私政策、运营主体和联系方式，及账号删除与举报服务仍需发布闭环；清除本机资料不能作为账号删除。参见 [Google 用户数据政策](https://support.google.com/googleplay/android-developer/answer/10144311) 和 [AI 内容政策](https://support.google.com/googleplay/android-developer/answer/13985936)。
+6. Apple 对占卜等成熟类别要求明确的体验改进或差异；需要把持续陪伴、记忆和解读接续做成生产可验证能力。视觉精致不保证审核通过。参见 [App Review Guidelines 4.3](https://developer.apple.com/app-store/review/guidelines/#spam)。
+
+仍需泰语母语审校，以及真实 Android/iOS 设备上的字体、键盘、手势和性能验收。没有提交商店、发布生产环境或发起真实支付。
+
+### 本次验证记录
+
+- `node TH/scripts/flutter-app.mjs analyze`：无问题。
+- `node TH/scripts/flutter-app.mjs test test/app_flow_test.dart test/companion_test.dart`：6 项通过；覆盖主页与工具入口、每日运势选择、资料表单、聊天草稿和回复状态、iOS 返回手势、减少动态效果、记忆与会话行为。本次补充了 320×640 窗口和 280 像素键盘遮挡下输入框仍可见的检查。
+- `node TH/scripts/flutter-app.mjs build-preview`：最终 release / Wasm 构建通过；补齐 Cupertino 字体后不再出现缺失图标字体警告。
+- 用统一启动命令在 5196 / 8016 / 5197 运行 App / API / H5，使用临时 SQLite `fate-temple-ui-01a1d57c.db`；App 页面 HTTP 200，未创建真实订单或付款。
+- 浏览器已检查泰语、中文首页，390×844 主布局、320×640 聊天布局、泰历及真实星座运势、四神明、占卜、羁绊、更多、出生资料、日期面板、明确标记的示例星盘及报告、禁用真实支付的预览购买面板。视觉检查没有冒充原生真机验收。
+- iOS 25 个图标条目尺寸均匹配、商店大图没有透明通道；本次修改的原生 XML 均解析成功。Android SDK 缺失由 `flutter doctor -v` 确认，因此未构建或签名 APK/AAB；Windows 环境无法完成 iOS 真机签名。
+- 自查实际修改与本次备份之间的差异：没有移除首页入口、改写服务端付费权限或操作生产数据库；图标工具误改的 Xcode 布尔设置已恢复。
+- 最终浏览器流程完成三次选牌、落位和结果展示；“继续与神明聊”实际带入三张牌及可见解读，没有发送聊天或创建付费订单。星座和星盘的新符号字体已目视确认，检查过程没有记录到 RenderFlex 溢出错误。最终首页预览已保留在应用内浏览器。

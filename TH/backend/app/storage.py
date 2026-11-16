@@ -1,94 +1,81 @@
 import hashlib
 import json
 import secrets
-import sqlite3
 import time
 from contextlib import contextmanager
-from pathlib import Path
 from uuid import uuid4
+
+import psycopg
+from psycopg.conninfo import conninfo_to_dict
+from psycopg.rows import dict_row
 
 from .accounts import DUMMY_PASSWORD_HASH, password_hash, password_matches
 
 
 class Storage:
-    def __init__(self, path: str):
-        self.path = path
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        with self.connect() as db:
-            db.executescript("""
-                PRAGMA journal_mode=WAL;
-                CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, created REAL NOT NULL);
-                CREATE TABLE IF NOT EXISTS accounts(user_id TEXT PRIMARY KEY REFERENCES users(id), username TEXT UNIQUE COLLATE NOCASE NOT NULL, password_hash TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS preferences(user_id TEXT PRIMARY KEY REFERENCES users(id), language TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS companion(user_id TEXT PRIMARY KEY REFERENCES users(id), payload TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS thai_charts(user_id TEXT PRIMARY KEY REFERENCES users(id), fingerprint TEXT NOT NULL, payload TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires REAL NOT NULL);
-                CREATE TABLE IF NOT EXISTS profiles(user_id TEXT PRIMARY KEY REFERENCES users(id), revision INTEGER NOT NULL, payload TEXT NOT NULL, chart TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS messages(seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL REFERENCES users(id), role TEXT NOT NULL, content TEXT NOT NULL, provider TEXT NOT NULL, created REAL NOT NULL);
-                CREATE INDEX IF NOT EXISTS messages_user_seq ON messages(user_id, seq);
-                CREATE TABLE IF NOT EXISTS memories(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), content TEXT NOT NULL, created REAL NOT NULL);
-                CREATE INDEX IF NOT EXISTS memories_user ON memories(user_id);
-                CREATE TABLE IF NOT EXISTS chat_readings(message_id TEXT PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id), content TEXT NOT NULL, evidence TEXT NOT NULL, created REAL NOT NULL);
-                CREATE INDEX IF NOT EXISTS readings_user_created ON chat_readings(user_id, created);
-                CREATE TABLE IF NOT EXISTS reading_vectors(message_id TEXT PRIMARY KEY REFERENCES chat_readings(message_id) ON DELETE CASCADE, signature TEXT NOT NULL, embedding TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS chat_usage(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), created REAL NOT NULL);
-                CREATE INDEX IF NOT EXISTS chat_usage_user_created ON chat_usage(user_id, created);
-                CREATE TABLE IF NOT EXISTS roxy_usage(scope TEXT NOT NULL, created REAL NOT NULL);
-                CREATE INDEX IF NOT EXISTS roxy_usage_scope_created ON roxy_usage(scope,created);
-            """)
+    def __init__(self, database_url: str):
+        if not database_url.startswith(("postgresql://", "postgres://")):
+            raise RuntimeError("DATABASE_URL must point to the FATE PostgreSQL database.")
+        self._database_url = database_url
+        self.database_name = conninfo_to_dict(database_url).get("dbname") or "PostgreSQL"
 
     @contextmanager
     def connect(self):
-        db = sqlite3.connect(self.path, timeout=5)
+        with psycopg.connect(self._database_url, row_factory=dict_row, connect_timeout=5) as db:
+            db.execute("SET LOCAL lock_timeout = '5s'")
+            yield db
+
+    def verify_schema(self):
         try:
-            db.row_factory = sqlite3.Row
-            db.execute("PRAGMA foreign_keys=ON")
-            with db:
-                yield db
-        finally:
-            db.close()
+            with self.connect() as db:
+                version = db.execute("SELECT version_num FROM alembic_version").fetchone()
+        except psycopg.Error:
+            raise RuntimeError("PostgreSQL is unavailable or the FATE schema has not been installed.") from None
+        if version is None or version["version_num"] != "20261116_report_attribution":
+            raise RuntimeError("Apply the FATE PostgreSQL migrations before starting the backend.")
 
     def login(self, hours: int):
         user_id, token = str(uuid4()), secrets.token_urlsafe(32)
         with self.connect() as db:
-            db.execute("DELETE FROM sessions WHERE expires < ?", (time.time(),))
-            db.execute("INSERT INTO users VALUES (?, ?)", (user_id, time.time()))
-            db.execute("INSERT INTO sessions VALUES (?, ?, ?)", (self.hash(token), user_id, time.time() + hours * 3600))
+            db.execute("DELETE FROM sessions WHERE expires < %s", (time.time(),))
+            db.execute("INSERT INTO users VALUES (%s, %s)", (user_id, time.time()))
+            db.execute("INSERT INTO sessions VALUES (%s, %s, %s)", (self.hash(token), user_id, time.time() + hours * 3600))
         return {"token": token, "user_id": user_id}
 
     def account(self, user_id: str):
         with self.connect() as db:
-            row = db.execute("SELECT username FROM accounts WHERE user_id=?", (user_id,)).fetchone()
+            row = db.execute("SELECT username FROM accounts WHERE user_id=%s", (user_id,)).fetchone()
         return {"user_id": user_id, "username": row["username"] if row else None, "kind": "account" if row else "guest"}
 
     def register(self, username: str, password: str, hours: int, existing_user: str | None = None):
         encoded = password_hash(password)
         user_id, token = str(uuid4()), secrets.token_urlsafe(32)
         with self.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
+            if existing_user:
+                self._lock_user(db, existing_user)
             # A signed-in anonymous visitor may bind their existing profile to a new account.
-            if existing_user and not db.execute("SELECT 1 FROM accounts WHERE user_id=?", (existing_user,)).fetchone():
+            if existing_user and not db.execute("SELECT 1 FROM accounts WHERE user_id=%s", (existing_user,)).fetchone():
                 user_id = existing_user
             else:
-                db.execute("INSERT INTO users VALUES (?, ?)", (user_id, time.time()))
+                db.execute("INSERT INTO users VALUES (%s, %s)", (user_id, time.time()))
             try:
-                db.execute("INSERT INTO accounts VALUES (?, ?, ?)", (user_id, username, encoded))
-            except sqlite3.IntegrityError:
+                db.execute("INSERT INTO accounts VALUES (%s, %s, %s)", (user_id, username, encoded))
+            except psycopg.errors.UniqueViolation:
                 raise ValueError("account_exists") from None
-            db.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
-            db.execute("INSERT INTO sessions VALUES (?, ?, ?)", (self.hash(token), user_id, time.time() + hours * 3600))
+            db.execute("DELETE FROM sessions WHERE user_id=%s", (user_id,))
+            db.execute("INSERT INTO sessions VALUES (%s, %s, %s)", (self.hash(token), user_id, time.time() + hours * 3600))
         return {"token": token, "user_id": user_id}
 
     def account_login(self, username: str, password: str, hours: int):
         with self.connect() as db:
-            row = db.execute("SELECT user_id, password_hash FROM accounts WHERE username=?", (username,)).fetchone()
+            row = db.execute("SELECT user_id, password_hash FROM accounts WHERE lower(username)=lower(%s)", (username,)).fetchone()
         matches = password_matches(password, row["password_hash"] if row else DUMMY_PASSWORD_HASH)
         if not row or not matches:
             return None
         token = secrets.token_urlsafe(32)
         with self.connect() as db:
-            db.execute("DELETE FROM sessions WHERE expires < ?", (time.time(),))
-            db.execute("INSERT INTO sessions VALUES (?, ?, ?)", (self.hash(token), row["user_id"], time.time() + hours * 3600))
+            db.execute("DELETE FROM sessions WHERE expires < %s", (time.time(),))
+            db.execute("INSERT INTO sessions VALUES (%s, %s, %s)", (self.hash(token), row["user_id"], time.time() + hours * 3600))
         return {"token": token, "user_id": row["user_id"]}
 
     @staticmethod
@@ -97,17 +84,17 @@ class Storage:
 
     def authenticate(self, token: str):
         with self.connect() as db:
-            row = db.execute("SELECT user_id FROM sessions WHERE hash=? AND expires>?", (self.hash(token), time.time())).fetchone()
-        return row[0] if row else None
+            row = db.execute("SELECT user_id FROM sessions WHERE hash=%s AND expires>%s", (self.hash(token), time.time())).fetchone()
+        return row["user_id"] if row else None
 
     def logout(self, token: str):
         with self.connect() as db:
-            db.execute("DELETE FROM sessions WHERE hash=?", (self.hash(token),))
+            db.execute("DELETE FROM sessions WHERE hash=%s", (self.hash(token),))
 
     def profile(self, user_id: str):
         with self.connect() as db:
-            row = db.execute("SELECT * FROM profiles WHERE user_id=?", (user_id,)).fetchone()
-            preference = db.execute("SELECT language FROM preferences WHERE user_id=?", (user_id,)).fetchone()
+            row = db.execute("SELECT * FROM profiles WHERE user_id=%s", (user_id,)).fetchone()
+            preference = db.execute("SELECT language FROM preferences WHERE user_id=%s", (user_id,)).fetchone()
         if not row:
             return None
         payload = json.loads(row["payload"])
@@ -117,90 +104,93 @@ class Storage:
 
     def set_language(self, user_id: str, language: str):
         with self.connect() as db:
-            db.execute("INSERT INTO preferences VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET language=excluded.language", (user_id, language))
+            db.execute("INSERT INTO preferences VALUES (%s,%s) ON CONFLICT(user_id) DO UPDATE SET language=excluded.language", (user_id, language))
         return {"language": language}
 
     def companion(self, user_id: str):
         with self.connect() as db:
-            row = db.execute("SELECT payload FROM companion WHERE user_id=?", (user_id,)).fetchone()
+            row = db.execute("SELECT payload FROM companion WHERE user_id=%s", (user_id,)).fetchone()
         return json.loads(row["payload"]) if row else None
 
     def save_companion(self, user_id: str, payload: dict):
         with self.connect() as db:
-            db.execute("INSERT INTO companion VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload", (user_id, json.dumps(payload)))
+            db.execute("INSERT INTO companion VALUES (%s,%s) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload", (user_id, json.dumps(payload)))
         return payload
 
     def thai_chart(self, user_id: str, fingerprint: str):
         with self.connect() as db:
-            row = db.execute("SELECT payload FROM thai_charts WHERE user_id=? AND fingerprint=?", (user_id, fingerprint)).fetchone()
+            row = db.execute("SELECT payload FROM thai_charts WHERE user_id=%s AND fingerprint=%s", (user_id, fingerprint)).fetchone()
         return json.loads(row["payload"]) if row else None
 
     def save_thai_chart(self, user_id: str, fingerprint: str, payload: dict):
         with self.connect() as db:
-            db.execute("INSERT INTO thai_charts VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET fingerprint=excluded.fingerprint,payload=excluded.payload", (user_id, fingerprint, json.dumps(payload)))
+            db.execute("INSERT INTO thai_charts VALUES (%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET fingerprint=excluded.fingerprint,payload=excluded.payload", (user_id, fingerprint, json.dumps(payload)))
         return payload
 
     def save_profile(self, user_id: str, payload: dict, chart: dict, *, expected_revision="unchecked"):
         with self.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            previous = db.execute("SELECT payload,revision FROM profiles WHERE user_id=?", (user_id,)).fetchone()
+            self._lock_user(db, user_id)
+            previous = db.execute("SELECT payload,revision FROM profiles WHERE user_id=%s", (user_id,)).fetchone()
             if expected_revision != "unchecked" and expected_revision != (previous["revision"] if previous else None):
                 raise ValueError("profile_changed")
             birth_fields = ("birth_date", "birth_time", "timezone", "birthplace", "country_code", "location_id", "latitude", "longitude")
             old_profile = json.loads(previous["payload"]) if previous else {}
             birth_changed = any(old_profile.get(field) != payload.get(field) for field in birth_fields)
             db.execute(
-                """INSERT INTO profiles VALUES (?, 1, ?, ?) ON CONFLICT(user_id)
-                DO UPDATE SET revision=revision+1, payload=excluded.payload, chart=excluded.chart""",
+                """INSERT INTO profiles VALUES (%s, 1, %s, %s) ON CONFLICT(user_id)
+                DO UPDATE SET revision=profiles.revision+1, payload=excluded.payload, chart=excluded.chart""",
                 (user_id, json.dumps(payload), json.dumps(chart)),
             )
             if birth_changed:
-                db.execute("DELETE FROM messages WHERE user_id=?", (user_id,))
+                db.execute("DELETE FROM messages WHERE user_id=%s", (user_id,))
         return self.profile(user_id)
 
     def history(self, user_id: str, limit: int = 60):
         with self.connect() as db:
             rows = db.execute(
-                "SELECT m.id, m.role, m.content, m.provider, m.created, r.evidence FROM messages m LEFT JOIN chat_readings r ON r.message_id=m.id AND r.user_id=m.user_id WHERE m.user_id=? ORDER BY m.seq DESC LIMIT ?", (user_id, limit)
+                "SELECT m.id, m.role, m.content, m.provider, m.created, r.evidence FROM messages m LEFT JOIN chat_readings r ON r.message_id=m.id AND r.user_id=m.user_id WHERE m.user_id=%s ORDER BY m.seq DESC LIMIT %s", (user_id, limit)
             ).fetchall()
         return [{**{key: row[key] for key in ("id", "role", "content", "provider", "created")}, **({"evidence": json.loads(row["evidence"])} if row["evidence"] else {})} for row in reversed(rows)]
 
     def save_pair(self, user_id: str, question: str, answer: str, provider: str, evidence: dict | None = None):
         answer_id = str(uuid4())
         with self.connect() as db:
-            db.executemany(
-                "INSERT INTO messages(id,user_id,role,content,provider,created) VALUES (?,?,?,?,?,?)",
+            self._lock_user(db, user_id)
+            db.cursor().executemany(
+                "INSERT INTO messages(id,user_id,role,content,provider,created) VALUES (%s,%s,%s,%s,%s,%s)",
                 [(str(uuid4()), user_id, "user", question, provider, time.time()), (answer_id, user_id, "assistant", answer, provider, time.time())],
             )
             if evidence is not None:
-                db.execute("INSERT INTO chat_readings VALUES (?,?,?,?,?)", (answer_id, user_id, "User: " + question + "\n\nAssistant: " + answer, json.dumps(evidence), time.time()))
+                db.execute("INSERT INTO chat_readings VALUES (%s,%s,%s,%s,%s)", (answer_id, user_id, "User: " + question + "\n\nAssistant: " + answer, json.dumps(evidence), time.time()))
         return answer_id
 
     def clear_history(self, user_id: str):
         with self.connect() as db:
-            db.execute("DELETE FROM messages WHERE user_id=?", (user_id,))
+            self._lock_user(db, user_id)
+            db.execute("DELETE FROM messages WHERE user_id=%s", (user_id,))
 
     def memories(self, user_id: str):
         with self.connect() as db:
-            rows = db.execute("SELECT id, content, created FROM memories WHERE user_id=? ORDER BY created", (user_id,)).fetchall()
+            rows = db.execute("SELECT id, content, created FROM memories WHERE user_id=%s ORDER BY created", (user_id,)).fetchall()
         return [{**dict(row), "source": "user_confirmed"} for row in rows]
 
     def add_memory(self, user_id: str, content: str):
         memory_id = str(uuid4())
         with self.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            if db.execute("SELECT COUNT(*) FROM memories WHERE user_id=?", (user_id,)).fetchone()[0] >= 20:
+            self._lock_user(db, user_id)
+            count = db.execute("SELECT COUNT(*) AS count FROM memories WHERE user_id=%s", (user_id,)).fetchone()
+            if count["count"] >= 20:
                 raise ValueError("memory_limit")
-            db.execute("INSERT INTO memories VALUES (?,?,?,?)", (memory_id, user_id, content, time.time()))
+            db.execute("INSERT INTO memories VALUES (%s,%s,%s,%s)", (memory_id, user_id, content, time.time()))
         return next(item for item in self.memories(user_id) if item["id"] == memory_id)
 
     def delete_memory(self, user_id: str, memory_id: str):
         with self.connect() as db:
-            return db.execute("DELETE FROM memories WHERE user_id=? AND id=?", (user_id, memory_id)).rowcount > 0
+            return db.execute("DELETE FROM memories WHERE user_id=%s AND id=%s", (user_id, memory_id)).rowcount > 0
 
     def update_memory(self, user_id: str, memory_id: str, content: str):
         with self.connect() as db:
-            if not db.execute("UPDATE memories SET content=? WHERE user_id=? AND id=?", (content, user_id, memory_id)).rowcount:
+            if not db.execute("UPDATE memories SET content=%s WHERE user_id=%s AND id=%s", (content, user_id, memory_id)).rowcount:
                 return None
         return next(item for item in self.memories(user_id) if item["id"] == memory_id)
 
@@ -208,43 +198,48 @@ class Storage:
         # Ported from Roxy's chat-limit.ts; count attempts to also bound failed paid calls.
         now = time.time()
         with self.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            db.execute("DELETE FROM chat_usage WHERE created<?", (now - 86400,))
-            minute, day = db.execute("SELECT COALESCE(SUM(created>=?),0),COUNT(*) FROM chat_usage WHERE user_id=? AND created>=?", (now - 60, user_id, now - 86400)).fetchone()
-            if day >= per_day:
+            self._lock_user(db, user_id)
+            db.execute("DELETE FROM chat_usage WHERE created<%s", (now - 86400,))
+            usage = db.execute("SELECT COUNT(*) FILTER (WHERE created>=%s) AS minute,COUNT(*) AS day "
+                               "FROM chat_usage WHERE user_id=%s AND created>=%s", (now - 60, user_id, now - 86400)).fetchone()
+            if usage["day"] >= per_day:
                 return "chat_daily_limit"
-            if minute >= per_minute:
+            if usage["minute"] >= per_minute:
                 return "chat_minute_limit"
-            db.execute("INSERT INTO chat_usage VALUES (?,?,?)", (str(uuid4()), user_id, now))
+            db.execute("INSERT INTO chat_usage VALUES (%s,%s,%s)", (str(uuid4()), user_id, now))
         return None
 
     def reserve_roxy(self, scopes: list[str], per_minute: int, per_day: int):
         now = time.time()
         scopes = list(set(scopes))
         with self.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            db.execute("DELETE FROM roxy_usage WHERE created<?", (now - 86400,))
+            db.execute("LOCK TABLE roxy_usage IN SHARE ROW EXCLUSIVE MODE")
+            db.execute("DELETE FROM roxy_usage WHERE created<%s", (now - 86400,))
             for scope in scopes:
-                minute, day = db.execute(
-                    "SELECT COALESCE(SUM(created>=?),0),COUNT(*) FROM roxy_usage WHERE scope=? AND created>=?",
-                    (now - 60, scope, now - 86400),
-                ).fetchone()
-                if minute >= per_minute or day >= per_day:
+                usage = db.execute("SELECT COUNT(*) FILTER (WHERE created>=%s) AS minute,COUNT(*) AS day "
+                                   "FROM roxy_usage WHERE scope=%s AND created>=%s", (now - 60, scope, now - 86400)).fetchone()
+                if usage["minute"] >= per_minute or usage["day"] >= per_day:
                     return False
-            db.executemany("INSERT INTO roxy_usage VALUES (?,?)", [(scope, now) for scope in scopes])
+            db.cursor().executemany("INSERT INTO roxy_usage VALUES (%s,%s)", [(scope, now) for scope in scopes])
         return True
 
     def recall_readings(self, user_id: str, signature: str):
         with self.connect() as db:
-            rows = db.execute("SELECT r.message_id AS id,r.content,r.created,v.embedding FROM chat_readings r LEFT JOIN reading_vectors v ON v.message_id=r.message_id AND v.signature=? WHERE r.user_id=? ORDER BY r.created DESC LIMIT 200", (signature, user_id)).fetchall()
+            rows = db.execute("SELECT r.message_id AS id,r.content,r.created,v.embedding FROM chat_readings r LEFT JOIN reading_vectors v ON v.message_id=r.message_id AND v.signature=%s WHERE r.user_id=%s ORDER BY r.created DESC LIMIT 200", (signature, user_id)).fetchall()
         return [dict(row) for row in rows]
 
     def reading(self, user_id: str, message_id: str):
         with self.connect() as db:
-            row = db.execute("SELECT message_id AS id,content,created FROM chat_readings WHERE user_id=? AND message_id=?", (user_id, message_id)).fetchone()
+            row = db.execute("SELECT message_id AS id,content,created FROM chat_readings WHERE user_id=%s AND message_id=%s", (user_id, message_id)).fetchone()
         return dict(row) if row else None
 
     def index_reading(self, user_id: str, message_id: str, signature: str, vector: list):
         # The guarded SELECT prevents a delayed embedding resurrecting deleted history.
         with self.connect() as db:
-            db.execute("INSERT INTO reading_vectors SELECT message_id,?,? FROM chat_readings WHERE message_id=? AND user_id=? ON CONFLICT(message_id) DO UPDATE SET signature=excluded.signature,embedding=excluded.embedding", (signature, json.dumps(vector), message_id, user_id))
+            self._lock_user(db, user_id)
+            db.execute("INSERT INTO reading_vectors SELECT message_id,%s,%s FROM chat_readings WHERE message_id=%s AND user_id=%s ON CONFLICT(message_id) DO UPDATE SET signature=excluded.signature,embedding=excluded.embedding", (signature, json.dumps(vector), message_id, user_id))
+
+    @staticmethod
+    def _lock_user(db, user_id: str):
+        # Serialize changes to the same user's profile, history, and limits.
+        db.execute("SELECT id FROM users WHERE id=%s FOR UPDATE", (user_id,))

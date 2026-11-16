@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
+import '../companion/guardian.dart';
 
 class LuckyNumbersPage extends StatefulWidget {
   const LuckyNumbersPage({super.key});
@@ -67,7 +68,11 @@ class _LuckyNumbersPageState extends State<LuckyNumbersPage>
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
       children: [
-        PageHeading(s.todayLuckyNumber, formats.formatFullDate(_today)),
+        PageHeading(
+          s.todayLuckyNumber,
+          formats.formatFullDate(_today),
+          icon: Icons.auto_awesome_outlined,
+        ),
         FateCard(
           gold: true,
           padding: EdgeInsets.zero,
@@ -88,59 +93,62 @@ class _LuckyNumbersPageState extends State<LuckyNumbersPage>
                     fit: BoxFit.scaleDown,
                     child: SizedBox.square(
                       dimension: 228,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          for (final ring in const [
-                            (228.0, Color(0x45E4BC78)),
-                            (192.0, Color(0x75E4BC78)),
-                          ])
-                            SizedBox.square(
-                              dimension: ring.$1,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: ring.$2),
+                      child: FateEntrance(
+                        key: ValueKey(DateUtils.dateOnly(_today)),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            for (final ring in const [
+                              (228.0, Color(0x45E4BC78)),
+                              (192.0, Color(0x75E4BC78)),
+                            ])
+                              SizedBox.square(
+                                dimension: ring.$1,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: ring.$2),
+                                  ),
                                 ),
                               ),
+                            const Align(
+                              alignment: Alignment(.66, -.60),
+                              child: Icon(Icons.auto_awesome, color: goldColor),
                             ),
-                          const Align(
-                            alignment: Alignment(.66, -.60),
-                            child: Icon(Icons.auto_awesome, color: goldColor),
-                          ),
-                          const Align(
-                            alignment: Alignment(-.68, .48),
-                            child: Icon(
-                              Icons.star_rounded,
-                              size: 16,
-                              color: goldColor,
+                            const Align(
+                              alignment: Alignment(-.68, .48),
+                              child: Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: goldColor,
+                              ),
                             ),
-                          ),
-                          Semantics(
-                            liveRegion: true,
-                            child: SizedBox.square(
-                              dimension: 156,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  formats.formatDecimal(number),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFDFA4),
-                                    fontSize: 126,
-                                    height: 1.12,
-                                    fontWeight: FontWeight.w700,
-                                    shadows: [
-                                      Shadow(
-                                        color: Color(0xA9E8A55E),
-                                        blurRadius: 22,
-                                      ),
-                                    ],
+                            Semantics(
+                              liveRegion: true,
+                              child: SizedBox.square(
+                                dimension: 156,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    formats.formatDecimal(number),
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFDFA4),
+                                      fontSize: 126,
+                                      height: 1.12,
+                                      fontWeight: FontWeight.w700,
+                                      shadows: [
+                                        Shadow(
+                                          color: Color(0xA9E8A55E),
+                                          blurRadius: 22,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -166,6 +174,18 @@ class _LuckyNumbersPageState extends State<LuckyNumbersPage>
               Text(meaning),
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => openGuardian(
+            context,
+            reading: ReadingHandoff(
+              title: s.todayLuckyNumber,
+              text: '${formats.formatFullDate(_today)} · $number\n$meaning',
+            ),
+          ),
+          icon: const Icon(Icons.chat_bubble_outline),
+          label: Text(s.continueReading),
         ),
         const SizedBox(height: 12),
         Text(

@@ -5,7 +5,9 @@ import '../../app/dependencies.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
 import '../purchases/purchase_sheet.dart';
+import '../companion/guardian.dart';
 import 'reports_view_model.dart';
+import 'content_report_sheet.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({this.detail = false, this.example = false, super.key});
@@ -50,8 +52,10 @@ class _ReportsPageState extends State<ReportsPage> {
       ).showSnackBar(SnackBar(content: Text(s.serviceSetup)));
       return;
     }
+    final scope = d.session.scope, result = d.chart.result!;
     final consent = await showDialog<bool>(
       context: context,
+      animationStyle: FateMotion.dialog(context),
       builder: (context) => AlertDialog(
         content: Text(s.aiConsent),
         actions: [
@@ -66,10 +70,11 @@ class _ReportsPageState extends State<ReportsPage> {
         ],
       ),
     );
-    if (consent != true || !mounted) return;
+    if (consent != true || !mounted || d.session.scope != scope) return;
     try {
       await d.session.configuration.consent(noticeVersion);
-      await d.reports.generate(d.chart.result!);
+      if (d.session.scope != scope) return;
+      await d.reports.generate(result);
       if (mounted) context.go('/reports/reading');
     } catch (_) {
       if (mounted) {
@@ -101,7 +106,11 @@ class _ReportsPageState extends State<ReportsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PageHeading(s.reports, s.reportIntro),
+                PageHeading(
+                  s.reports,
+                  s.reportIntro,
+                  icon: Icons.menu_book_outlined,
+                ),
                 FateCard(
                   gold: true,
                   child: Column(
@@ -274,263 +283,311 @@ class _ReportsPageState extends State<ReportsPage> {
             ),
           );
         }
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => context.go('/reports'),
-                        icon: const Icon(Icons.arrow_back, size: 17),
-                        label: Text(s.reports),
-                      ),
-                    ),
-                    if (widget.example)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: FateCard(
-                          child: Text(
-                            '${s.exampleBadge}\n${s.exampleNote}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
+        return FateEntrance(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () => context.go('/reports'),
+                          icon: const Icon(Icons.arrow_back, size: 17),
+                          label: Text(s.reports),
                         ),
                       ),
-                    FateCard(
-                      gold: true,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'FATE · ${s.system}',
-                                  style: const TextStyle(
-                                    color: goldColor,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ),
-                              if (widget.example)
-                                TextButton(
-                                  onPressed: d.reports.saveExample,
-                                  child: Text(
-                                    d.reports.exampleSaved
-                                        ? s.reportSaved
-                                        : s.saveReport,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          Text(
-                            s.reportTitle,
-                            style: const TextStyle(fontSize: 25, height: 1.6),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            s.reportIntro,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 24),
-                          if (report?.developmentPreview == true) ...[
-                            Text(
-                              s.developmentReport,
+                      if (widget.example)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: FateCard(
+                            child: Text(
+                              '${s.exampleBadge}\n${s.exampleNote}',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
-                            const SizedBox(height: 20),
-                          ],
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: goldColor.withValues(alpha: .35),
-                              ),
-                              color: goldColor.withValues(alpha: .07),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                        ),
+                      FateCard(
+                        gold: true,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Text(
-                                  s.summary,
-                                  style: const TextStyle(
-                                    color: goldColor,
-                                    fontSize: 12,
+                                Expanded(
+                                  child: Text(
+                                    'FATE · ${s.system}',
+                                    style: const TextStyle(
+                                      color: goldColor,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  widget.example
-                                      ? s.sampleSummary
-                                      : report!.summary,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    height: 1.85,
+                                if (widget.example)
+                                  TextButton(
+                                    onPressed: d.reports.saveExample,
+                                    child: Text(
+                                      d.reports.exampleSaved
+                                          ? s.reportSaved
+                                          : s.saveReport,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
-                          ),
-                          const Divider(),
-                          Text(
-                            s.traits,
-                            style: const TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w600,
+                            Text(
+                              s.reportTitle,
+                              style: const TextStyle(fontSize: 25, height: 1.6),
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                          if (widget.example) ...[
-                            ReadingParagraph(
-                              s.sampleTrait1Title,
-                              s.sampleTrait1Text,
+                            const SizedBox(height: 10),
+                            Text(
+                              s.reportIntro,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
-                            ReadingParagraph(
-                              s.sampleTrait2Title,
-                              s.sampleTrait2Text,
-                            ),
-                          ] else
-                            for (final section in report!.preview)
-                              ReadingParagraph(
-                                section.title,
-                                section.paragraphs.join('\n\n'),
+                            const SizedBox(height: 24),
+                            if (report?.developmentPreview == true) ...[
+                              Text(
+                                s.developmentReport,
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
-                          const Divider(),
-                          Text(
-                            widget.example ? s.watch : s.fullReading,
-                            style: const TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w600,
+                              const SizedBox(height: 20),
+                            ],
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: goldColor.withValues(alpha: .35),
+                                ),
+                                color: goldColor.withValues(alpha: .07),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    s.summary,
+                                    style: const TextStyle(
+                                      color: goldColor,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    widget.example
+                                        ? s.sampleSummary
+                                        : report!.summary,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      height: 1.85,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                          if (full)
-                            if (widget.example)
-                              _ExampleReading(s: s)
-                            else ...[
-                              if (report!.generating) Text(s.reportPending),
-                              for (final section in report.sections)
+                            if (!widget.example) ...[
+                              const SizedBox(height: 20),
+                              OutlinedButton.icon(
+                                onPressed: () => openGuardian(
+                                  context,
+                                  reading: ReadingHandoff(
+                                    title: s.reportTitle,
+                                    owner: d.session.owner,
+                                    text: [
+                                      report!.summary,
+                                      ...report.preview.expand(
+                                        (section) => section.paragraphs,
+                                      ),
+                                      if (report.full)
+                                        ...report.sections.expand(
+                                          (section) => section.paragraphs,
+                                        ),
+                                    ].join('\n\n'),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.chat_bubble_outline),
+                                label: Text(s.continueReading),
+                              ),
+                            ],
+                            const Divider(),
+                            Text(
+                              s.traits,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            if (widget.example) ...[
+                              ReadingParagraph(
+                                s.sampleTrait1Title,
+                                s.sampleTrait1Text,
+                              ),
+                              ReadingParagraph(
+                                s.sampleTrait2Title,
+                                s.sampleTrait2Text,
+                              ),
+                            ] else
+                              for (final section in report!.preview)
                                 ReadingParagraph(
                                   section.title,
                                   section.paragraphs.join('\n\n'),
                                 ),
-                            ]
-                          else
-                            Stack(
-                              children: [
-                                ExcludeSemantics(
-                                  child: IgnorePointer(
-                                    child: ImageFiltered(
-                                      imageFilter: ImageFilter.blur(
-                                        sigmaX: 6,
-                                        sigmaY: 6,
+                            const Divider(),
+                            Text(
+                              widget.example ? s.watch : s.fullReading,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            if (full)
+                              FateEntrance(
+                                key: const ValueKey('unlocked-reading'),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (widget.example)
+                                      _ExampleReading(s: s)
+                                    else ...[
+                                      if (report!.generating)
+                                        Text(s.reportPending),
+                                      for (final section in report.sections)
+                                        ReadingParagraph(
+                                          section.title,
+                                          section.paragraphs.join('\n\n'),
+                                        ),
+                                    ],
+                                  ],
+                                ),
+                              )
+                            else
+                              Stack(
+                                children: [
+                                  ExcludeSemantics(
+                                    child: IgnorePointer(
+                                      child: ImageFiltered(
+                                        imageFilter: ImageFilter.blur(
+                                          sigmaX: 6,
+                                          sigmaY: 6,
+                                        ),
+                                        child: widget.example
+                                            ? _ExampleReading(s: s)
+                                            : const _LockedLines(),
                                       ),
-                                      child: widget.example
-                                          ? _ExampleReading(s: s)
-                                          : const _LockedLines(),
                                     ),
                                   ),
-                                ),
-                                Positioned(
-                                  top: 45,
-                                  left: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 28,
-                                      horizontal: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: RadialGradient(
-                                        colors: [
-                                          panelColor,
-                                          panelColor.withValues(alpha: .85),
-                                          panelColor.withValues(alpha: 0),
-                                        ],
-                                        radius: 1,
+                                  Positioned(
+                                    top: 45,
+                                    left: 0,
+                                    right: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 28,
+                                        horizontal: 8,
                                       ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(18),
-                                          decoration: BoxDecoration(
-                                            color: panelColor,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: goldColor.withValues(
-                                                alpha: .7,
+                                      decoration: BoxDecoration(
+                                        gradient: RadialGradient(
+                                          colors: [
+                                            panelColor,
+                                            panelColor.withValues(alpha: .85),
+                                            panelColor.withValues(alpha: 0),
+                                          ],
+                                          radius: 1,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(18),
+                                            decoration: BoxDecoration(
+                                              color: panelColor,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: goldColor.withValues(
+                                                  alpha: .7,
+                                                ),
                                               ),
                                             ),
+                                            child: const Icon(
+                                              Icons.lock_outline,
+                                              size: 27,
+                                              color: goldColor,
+                                            ),
                                           ),
-                                          child: const Icon(
-                                            Icons.lock_outline,
-                                            size: 27,
-                                            color: goldColor,
+                                          const SizedBox(height: 18),
+                                          Text(
+                                            s.lockedTitle,
+                                            style: const TextStyle(
+                                              fontSize: 17,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 18),
-                                        Text(
-                                          s.lockedTitle,
-                                          style: const TextStyle(fontSize: 17),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          s.lockedText,
-                                          textAlign: TextAlign.center,
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodySmall,
-                                        ),
-                                        const SizedBox(height: 20),
-                                        OutlinedButton(
-                                          onPressed: unlock,
-                                          child: Text(s.unlock),
-                                        ),
-                                      ],
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            s.lockedText,
+                                            textAlign: TextAlign.center,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodySmall,
+                                          ),
+                                          const SizedBox(height: 20),
+                                          OutlinedButton(
+                                            onPressed: unlock,
+                                            child: Text(s.unlock),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
+                                ],
+                              ),
+                            if (!widget.example)
+                              TextButton.icon(
+                                onPressed: () => showContentReport(
+                                  context,
+                                  kind: 'western_report',
+                                  id: report!.id,
                                 ),
-                              ],
-                            ),
-                          if (d.reports.error != null)
-                            Text(
-                              s.error,
-                              style: const TextStyle(color: Colors.redAccent),
-                            ),
-                        ],
+                                icon: const Icon(Icons.flag_outlined, size: 17),
+                                label: Text(s.contentReport),
+                              ),
+                            if (d.reports.error != null)
+                              Text(
+                                s.error,
+                                style: const TextStyle(color: Colors.redAccent),
+                              ),
+                          ],
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              if (!full)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    decoration: const BoxDecoration(
+                      color: panelColor,
+                      border: Border(top: BorderSide(color: lineColor)),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            if (!full)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  decoration: const BoxDecoration(
-                    color: panelColor,
-                    border: Border(top: BorderSide(color: lineColor)),
-                  ),
-                  child: FilledButton.icon(
-                    key: const ValueKey('unlock-report'),
-                    onPressed: unlock,
-                    icon: const Icon(Icons.lock_outline, size: 18),
-                    label: Text('${s.unlock}  →'),
+                    child: FilledButton.icon(
+                      key: const ValueKey('unlock-report'),
+                      onPressed: unlock,
+                      icon: const Icon(Icons.lock_outline, size: 18),
+                      label: Text('${s.unlock}  →'),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         );
       },
     );
