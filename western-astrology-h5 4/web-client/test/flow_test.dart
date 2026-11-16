@@ -313,7 +313,7 @@ void main() {
   for (final buttonKey in ['jy-unlock-report', 'jy-app-download']) {
     testWidgets(
       buttonKey == 'jy-app-download'
-          ? 'download shows a testing notice without unlocking or leaving the report'
+          ? 'download is temporarily hidden without unlocking or leaving the report'
           : 'unlock generates and retains all unlocked content without a payment',
       (tester) async {
         phone(tester);
@@ -374,39 +374,31 @@ void main() {
           );
         }
         expect(find.textContaining('付费专属分析正文'), findsNothing);
-        for (final key in ['jy-unlock-report', 'jy-app-download']) {
+        for (final key in ['jy-unlock-report']) {
           expect(
             tester.widget<JYButton>(find.byKey(ValueKey(key))).onPressed,
             isNotNull,
           );
         }
-        final button = find.byKey(ValueKey(buttonKey));
-        final repeat = tester.widget<JYButton>(button).onPressed!;
-        await click(tester, button);
+        expect(find.byKey(const ValueKey('jy-app-download')), findsNothing);
         if (buttonKey == 'jy-app-download') {
           expect(
             find.byKey(const ValueKey('app-testing-dialog')),
-            findsOneWidget,
-          );
-          expect(
-            find.text(h5.copy.t('jy', 'checkout.appTestingMessage')),
-            findsOneWidget,
+            findsNothing,
           );
           expect(find.byType(GenerationDialog), findsNothing);
           expect(unlocks, 0);
           expect(posts, isEmpty);
           expect(browser.openedPages, isEmpty);
-          await click(tester, find.byKey(const ValueKey('app-testing-close')));
-          expect(
-            find.byKey(const ValueKey('app-testing-dialog')),
-            findsNothing,
-          );
           expect(find.byType(ReportCheckout), findsOneWidget);
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox.shrink());
           h5.dispose();
           return;
         }
+        final button = find.byKey(ValueKey(buttonKey));
+        final repeat = tester.widget<JYButton>(button).onPressed!;
+        await click(tester, button);
         repeat();
         await tester.pump();
         expect(find.byType(GenerationDialog), findsOneWidget);

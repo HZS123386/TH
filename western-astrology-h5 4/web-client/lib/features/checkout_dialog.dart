@@ -14,6 +14,7 @@ class ReportCheckout extends StatelessWidget {
     required this.onUnlock,
     this.busy = false,
     this.error = '',
+    this.showAppDownload = false,
     super.key,
   });
   final H5Controller h5;
@@ -22,6 +23,8 @@ class ReportCheckout extends StatelessWidget {
   final VoidCallback onBack, onErase, onUnlock;
   final bool busy;
   final String error;
+  // Keep the download flow available for when the APP is ready to be shown again.
+  final bool showAppDownload;
 
   Future<void> _showAppTestingNotice(BuildContext context) {
     final c = h5.copy;
@@ -180,16 +183,18 @@ class ReportCheckout extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 12, color: lavender),
                     ),
-                    const SizedBox(height: 14),
-                    JYButton(
-                      key: const ValueKey('jy-app-download'),
-                      label: c.t('jy', 'checkout.download'),
-                      icon: 'download',
-                      pulse: true,
-                      onPressed: busy
-                          ? null
-                          : () => _showAppTestingNotice(context),
-                    ),
+                    if (showAppDownload) ...[
+                      const SizedBox(height: 14),
+                      JYButton(
+                        key: const ValueKey('jy-app-download'),
+                        label: c.t('jy', 'checkout.download'),
+                        icon: 'download',
+                        pulse: true,
+                        onPressed: busy
+                            ? null
+                            : () => _showAppTestingNotice(context),
+                      ),
+                    ],
                   ],
                 ),
               ),
