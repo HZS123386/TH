@@ -52,10 +52,12 @@ class LifeCardPayments:
         self.order_only = settings.sunlands_order_only
         if settings.sunlands_merchant_notify_uri and not re.fullmatch(r"/[A-Za-z0-9/_-]{1,255}", settings.sunlands_merchant_notify_uri):
             raise RuntimeError("SUNLANDS_MERCHANT_NOTIFY_URI must be the registered API gateway URI")
-        if self.order_only and (settings.app_env != "development" or settings.sunlands_base_url not in {
-            "https://api-prod.sunlands.com", "https://api-test.sunlands.com",
-        }):
-            raise RuntimeError("Sunlands order-only integration requires development mode and a Sunlands gateway")
+        sunlands_gateways = {"https://api-prod.sunlands.com"}
+        if settings.app_env == "development":
+            sunlands_gateways.add("https://api-test.sunlands.com")
+        # Production can use the live gateway, while test payments stay in development.
+        if self.order_only and settings.sunlands_base_url not in sunlands_gateways:
+            raise RuntimeError("Sunlands requires an approved gateway; production requires the live gateway")
         self.merchant = settings.payso_test_merchant_id
         self.api_key = settings.payso_test_api_key
         self.secret_key = settings.payso_test_secret_key

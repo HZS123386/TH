@@ -21,7 +21,7 @@ def release(tmp_path):
         (folder / 'fixture.txt').write_text('source fixture', encoding='utf-8')
     (module.TH / 'package.json').write_text('{}', encoding='utf-8')
     (module.ROOT / 'deploy').mkdir(parents=True)
-    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip'):
+    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain'):
         (module.ROOT / 'deploy' / name).write_text('deployment fixture', encoding='utf-8')
     (module.ROOT / 'site').mkdir()
     (module.ROOT / 'site/index.html').write_text('compiled landing', encoding='utf-8')
@@ -61,6 +61,40 @@ def test_runtime_preserves_roxy_and_secrets_stay_outside_archive(release):
             if member.isfile():
                 body = archive.extractfile(member).read()
                 assert b'test-roxy-secret' not in body and b'test-qwen-secret' not in body
+
+
+def test_runtime_carries_live_payment_and_configured_report_writers(release):
+    with (release.TH / '.env').open('a', encoding='utf-8') as env:
+        env.write('FORTUNE_PROVIDER=openai\nFORTUNE_FALLBACK_PROVIDER=qwen\n'
+                  'OPENAI_API_KEY=test-openai-secret\nOPENAI_BASE_URL=https://example.test/v1\n'
+                  'OPENAI_MODEL=test-writer\nOPENAI_REASONING_EFFORT=low\n'
+                  'WESTERN_REVIEW_ENABLED=true\nWESTERN_REVIEW_PROVIDER=kimi\n'
+                  'KIMI_API_KEY=test-kimi-secret\nKIMI_MODEL=test-review\n'
+                  'SUNLANDS_ORDER_ONLY=true\nSUNLANDS_BASE_URL=https://api-prod.sunlands.com\n'
+                  'SUNLANDS_APP_SECRET=test-payment-secret\nSUNLANDS_PROVINCE_ID=4\n')
+    release.main()
+    latest = release.PRIVATE / 'latest'
+    runtime = (latest / 'runtime.env').read_text()
+    for setting in ('FORTUNE_PROVIDER=openai', 'FORTUNE_FALLBACK_PROVIDER=qwen',
+                    'OPENAI_API_KEY=test-openai-secret', 'OPENAI_REASONING_EFFORT=low',
+                    'WESTERN_REVIEW_ENABLED=true', 'KIMI_API_KEY=test-kimi-secret',
+                    'SUNLANDS_ORDER_ONLY=true', 'SUNLANDS_APP_SECRET=test-payment-secret'):
+        assert setting in runtime
+    with tarfile.open(latest / 'application.tar.gz') as archive:
+        for member in archive.getmembers():
+            if member.isfile():
+                body = archive.extractfile(member).read()
+                assert all(secret not in body for secret in (
+                    b'test-openai-secret', b'test-kimi-secret', b'test-payment-secret'))
+
+
+def test_runtime_rejects_test_payment_gateway_in_production(release):
+    with (release.TH / '.env').open('a', encoding='utf-8') as env:
+        env.write('SUNLANDS_ORDER_ONLY=true\nSUNLANDS_BASE_URL=https://api-test.sunlands.com\n'
+                  'SUNLANDS_APP_SECRET=test-payment-secret\nSUNLANDS_PROVINCE_ID=4\n')
+    with pytest.raises(RuntimeError, match='Production Sunlands'):
+        release.main()
+    assert not (release.PRIVATE / 'latest').exists()
 
 
 def test_unrecognized_existing_output_is_preserved(release):

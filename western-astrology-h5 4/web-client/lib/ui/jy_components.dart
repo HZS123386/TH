@@ -344,15 +344,16 @@ class _JYButtonState extends State<JYButton>
 }
 
 class ThemeBoards extends StatelessWidget {
-  const ThemeBoards({required this.copy, super.key});
+  const ThemeBoards({required this.copy, this.showHeading = true, super.key});
   final Copy copy;
+  final bool showHeading;
   @override
   Widget build(BuildContext context) => Stack(
     clipBehavior: Clip.none,
     children: [
       Container(
-        margin: const EdgeInsets.only(top: 15),
-        padding: const EdgeInsets.fromLTRB(8, 22, 8, 9),
+        margin: EdgeInsets.only(top: showHeading ? 15 : 0),
+        padding: EdgeInsets.fromLTRB(8, showHeading ? 22 : 8, 8, 9),
         decoration: BoxDecoration(
           border: Border.all(color: const Color(0xFFD9B06B)),
           borderRadius: BorderRadius.circular(12),
@@ -370,49 +371,54 @@ class ThemeBoards extends StatelessWidget {
           ],
         ),
       ),
-      Positioned(
-        top: 0,
-        left: 6,
-        right: 6,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFFFE48F)),
-            borderRadius: BorderRadius.circular(14),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFECAA28), Color(0xFFFFDC65), Color(0xFFF3B830)],
+      if (showHeading)
+        Positioned(
+          top: 0,
+          left: 6,
+          right: 6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFFFE48F)),
+              borderRadius: BorderRadius.circular(14),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFECAA28),
+                  Color(0xFFFFDC65),
+                  Color(0xFFF3B830),
+                ],
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const LandingIcon('cloud', size: 21, color: Color(0xFF341D38)),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  copy.t('jy', 'topicLabel'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF341D38),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    height: 1.4,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const LandingIcon('cloud', size: 21, color: Color(0xFF341D38)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    copy.t('jy', 'topicLabel'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF341D38),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Transform.flip(
-                flipX: true,
-                child: const LandingIcon(
-                  'cloud',
-                  size: 21,
-                  color: Color(0xFF341D38),
+                const SizedBox(width: 8),
+                Transform.flip(
+                  flipX: true,
+                  child: const LandingIcon(
+                    'cloud',
+                    size: 21,
+                    color: Color(0xFF341D38),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
     ],
   );
   Widget _board(String key, Rect crop, bool reverse) {
@@ -550,31 +556,33 @@ class ReportBadges extends StatelessWidget {
   final ValueChanged<String>? onTap;
   @override
   Widget build(BuildContext context) {
-    final items = themes ?? (locked
-        ? [
-            ...objects(object(copy.data['jyThemes'])['outlook']),
-            ...objects(object(copy.data['jyThemes'])['highlights']),
-          ]
-        : [
-            for (final key
-                in western
-                    ? ['natal', 'career', 'wealth', 'love', 'risk', 'plan']
-                    : [
-                        'overall',
-                        'natal',
-                        'love',
-                        'career',
-                        'opportunities',
-                        'partnership',
-                      ])
-              {
-                'key': key,
-                copy.language: copy.t(
-                  'jy',
-                  'report.${western ? 'westernSections' : 'sections'}.$key',
-                ),
-              },
-          ]);
+    final items =
+        themes ??
+        (locked
+            ? [
+                ...objects(object(copy.data['jyThemes'])['outlook']),
+                ...objects(object(copy.data['jyThemes'])['highlights']),
+              ]
+            : [
+                for (final key
+                    in western
+                        ? ['natal', 'career', 'wealth', 'love', 'risk', 'plan']
+                        : [
+                            'overall',
+                            'natal',
+                            'love',
+                            'career',
+                            'opportunities',
+                            'partnership',
+                          ])
+                  {
+                    'key': key,
+                    copy.language: copy.t(
+                      'jy',
+                      'report.${western ? 'westernSections' : 'sections'}.$key',
+                    ),
+                  },
+              ]);
     return LayoutBuilder(
       builder: (context, box) {
         if (!locked) {

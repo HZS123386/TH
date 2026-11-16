@@ -146,7 +146,7 @@
     "checkout": {"downloadUnavailable": "Aplikasi masih dalam ujian dan belum boleh dimuat turun. Terima kasih atas minat anda. Nantikan pelancaran rasmi!",
       "eyebrow": "Terokai bacaan peribadi",
       "title": "Buka bacaan anda",
-      "contents": "Kandungan selepas dibuka",
+      "contents": "Buka enam topik secara mendalam",
       "samplePrice": "Harga contoh",
       "pay": "Bayar dan buka",
       "preview": "Selepas pembayaran disahkan, laporan penuh anda akan dibuka.",
@@ -161,11 +161,11 @@
       "about": "Ahli astrologi membantu mentafsir kehidupan, mengenal pasti inti kebimbangan dan memberi panduan ke arah kehidupan yang tenang dan bahagia.",
       "resume": "Ke halaman bayaran",
       "back": "Kembali ke laman utama"
-    },
+    , "details": ["Tempoh penting", "Asas analisis", "Cara menangani"]},
     "report": {
       "title": "Laporan carta kelahiran anda",
       "freeTitle": "Bacaan percuma anda",
-      "freeHint": "Baca ringkasan dan ciri diri yang disimpan, kemudian buka bacaan penuh di bawah.",
+      "freeHint": "Kenali personaliti, persekitaran, satu faktor membantu, satu perhatian dan tema terdekat. Buka tempoh, asas analisis dan tindakan praktikal.",
       "contents": "Kandungan laporan",
       "sections": {
         "overall": "Gambaran kehidupan",
@@ -190,7 +190,7 @@
       },
       "housesUnavailable": "Waktu lahir tepat diperlukan untuk memaparkan rumah tema ini",
       "readingUnavailable": "Tiada bacaan bagi kedudukan yang disahkan untuk tema ini"
-    },
+    , "questions": {"who": "Siapakah saya?", "environment": "Persekitaran apa yang mungkin sesuai?", "influence": "Bagaimanakah ia boleh mempengaruhi saya?", "timing": "Bilakah perlu memberi perhatian?", "identityDetails": "Lihat personaliti, kekuatan dan batasan", "favorable": "Faktor yang membantu", "unfavorable": "Corak yang perlu diperhatikan", "window": "Tempoh pemerhatian", "eventDate": "Tarikh yang dikira", "timeUnknown": "Masa kelahiran tepat diperlukan untuk tempoh peribadi. Tambahkannya dan jana laporan baharu.", "unavailable": "Data masa belum tersedia semasa laporan ini dibuat, jadi trend mengikut masa tidak diandaikan.", "empty": "Tiada titik masa peribadi untuk dipaparkan dalam sampel percuma ini. Ini tidak bermakna kehidupan tidak akan berubah.", "legacy": "Laporan lama ini belum mengandungi bahagian ini. Jana laporan baharu untuk empat soalan.", "timingNote": "Gunakan tempoh ini untuk memerhatikan tema dan merancang perbualan, bukan jaminan peristiwa. Tarikh menggunakan UTC.", "freeResponse": "Satu tip kerjaya percuma", "freePeriod": "Satu tempoh kerjaya untuk diperhatikan"}},
     "chart": {
       "title": "Carta kelahiran anda",
       "exact": "Suriyayatra Thai · Rumah tanda penuh",
@@ -358,10 +358,10 @@
     "previewTitle": "Menjana bacaan percuma",
     "previewFailed": "Bacaan percuma belum lengkap",
     "sections": {
-      "preview_summary": "Ringkasan laporan",
-      "preview_strength": "Ciri dan kekuatan",
-      "preview_decisions": "Keputusan dan pilihan",
-      "preview_relationships": "Berhubung dengan orang lain",
+      "preview_summary": "Siapa saya",
+      "preview_strength": "Persekitaran",
+      "preview_decisions": "Sokongan dan perhatian",
+      "preview_relationships": "Tema terdekat",
       "work": "Perkembangan kerjaya",
       "money": "Kewangan",
       "relationships": "Cinta dan keluarga",

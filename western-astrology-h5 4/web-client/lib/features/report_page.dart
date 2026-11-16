@@ -286,6 +286,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _window(value, c),
         Text(
           text(value['text']),
           style: const TextStyle(fontSize: 14, height: 1.65),
@@ -294,6 +295,157 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       ],
     ),
   );
+
+  Widget _window(Json point, Copy c) {
+    final window = object(point['window']);
+    if (window.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${c.t('jy', 'report.questions.window')} · ${window['start']} – ${window['end']} (${window['timezone']})',
+            style: const TextStyle(color: gold, fontSize: 12, height: 1.6),
+          ),
+          Text(
+            '${c.t('jy', 'report.questions.eventDate')} · ${window['event_date']}',
+            style: const TextStyle(color: lavender, fontSize: 11, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _questionHeading(String key, int number, Copy c) => Padding(
+    padding: EdgeInsets.only(top: number == 1 ? 0 : 26, bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 25,
+          height: 25,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: gold.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '$number',
+            style: const TextStyle(
+              color: gold,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            c.t('jy', 'report.questions.$key'),
+            style: const TextStyle(
+              color: cream,
+              fontSize: 17,
+              height: 1.4,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  List<Widget> _fourQuestions(LifeReport report, Copy c) {
+    final preview = report.preview;
+    Widget answer(String key) => object(preview[key]).isEmpty
+        ? Text(
+            c.t('jy', 'report.questions.legacy'),
+            style: const TextStyle(color: lavender, fontSize: 12, height: 1.7),
+          )
+        : _summary(object(preview[key]), c);
+    final state = text(object(report.json['outlook'])['state']);
+    return [
+      _questionHeading('who', 1, c),
+      _summary(object(preview['summary']), c),
+      ExpansionTile(
+        key: const ValueKey('identity-details'),
+        tilePadding: EdgeInsets.zero,
+        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+        title: Text(
+          c.t('jy', 'report.questions.identityDetails'),
+          style: const TextStyle(color: gold, fontSize: 13),
+        ),
+        children: [
+          for (final trait in objects(preview['traits'])) _point(trait, c),
+        ],
+      ),
+      if (preview['career_answer'] != null)
+        _summary(object(preview['career_answer']), c),
+      _questionHeading('environment', 2, c),
+      answer('environment'),
+      _questionHeading('influence', 3, c),
+      for (final key in ['favorable', 'unfavorable']) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 8),
+          child: Text(
+            c.t('jy', 'report.questions.$key'),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        answer(key),
+      ],
+      if (object(preview['response']).isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
+          child: Text(
+            c.t('jy', 'report.questions.freeResponse'),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        answer('response'),
+      ],
+      _questionHeading('timing', 4, c),
+      if (preview['sample_topic'] == 'career' &&
+          object(preview['recent']).isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            c.t('jy', 'report.questions.freePeriod'),
+            style: const TextStyle(color: gold, fontSize: 13),
+          ),
+        ),
+      if (object(preview['recent']).isNotEmpty)
+        answer('recent')
+      else
+        Text(
+          c.t(
+            'jy',
+            'report.questions.${report.estimated
+                ? 'timeUnknown'
+                : state == 'ready'
+                ? 'empty'
+                : state == 'unavailable'
+                ? 'unavailable'
+                : 'legacy'}',
+          ),
+          style: const TextStyle(color: lavender, fontSize: 12, height: 1.7),
+        ),
+      const SizedBox(height: 12),
+      Text(
+        c.t('jy', 'report.questions.timingNote'),
+        style: const TextStyle(color: lavender, fontSize: 11, height: 1.6),
+      ),
+    ];
+  }
+
   Widget _freePreview(LifeReport report, Copy c) => JYCard(
     key: const ValueKey('free-report-content'),
     padding: const EdgeInsets.all(20),
@@ -319,37 +471,42 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 20),
         ],
-        Text(
-          text(report.input['user_question']).isNotEmpty
-              ? text(report.input['user_question'])
-              : c.t('report', 'takeaway'),
-          style: const TextStyle(
-            color: cream,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _summary(object(report.preview['summary']), c),
-        if (report.preview['career_answer'] != null) ...[
-          const SizedBox(height: 16),
+        if (report.western)
+          ..._fourQuestions(report, c)
+        else ...[
           Text(
-            c.t('report', 'careerQuestionTitle'),
-            style: const TextStyle(color: gold, fontSize: 15),
+            text(report.input['user_question']).isNotEmpty
+                ? text(report.input['user_question'])
+                : c.t('report', 'takeaway'),
+            style: const TextStyle(
+              color: cream,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(height: 8),
-          _summary(object(report.preview['career_answer']), c),
+          const SizedBox(height: 12),
+          _summary(object(report.preview['summary']), c),
+          if (report.preview['career_answer'] != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              c.t('report', 'careerQuestionTitle'),
+              style: const TextStyle(color: gold, fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            _summary(object(report.preview['career_answer']), c),
+          ],
+          const SizedBox(height: 24),
+          Text(
+            c.t('report', 'traits'),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          for (final trait in objects(report.preview['traits']))
+            _point(trait, c),
         ],
-        const SizedBox(height: 24),
-        Text(
-          c.t('report', 'traits'),
-          style: const TextStyle(
-            color: gold,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        for (final trait in objects(report.preview['traits'])) _point(trait, c),
       ],
     ),
   );
@@ -359,6 +516,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _window(point, c),
         if (text(point['title']).isNotEmpty)
           Text(
             text(point['title']),
@@ -469,6 +627,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               for (final phase in objects(r.plan['phases'])) ...[
                 _point(phase, c),
                 for (final action in objects(phase['actions'])) ...[
+                  if (r.western) _window(action, c),
                   if (r.western)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),

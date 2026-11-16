@@ -1,6 +1,7 @@
 """Western astrology domain adapter: Roxy calculates, the report writer interprets."""
 import asyncio
-from datetime import datetime, time
+import hashlib
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from . import thai
@@ -23,7 +24,7 @@ QUESTIONS = {
     "th": ("ใช้จุดแข็งและตัดสินใจอย่างเหมาะกับตัวเอง", "รูปแบบงานและสภาพแวดล้อมแบบไหนเหมาะกับฉัน", "วางแผนรายรับรายจ่ายและทรัพยากรร่วมกันอย่างไร", "บอกความต้องการและจัดการความเห็นต่างอย่างไร", "พฤติกรรมใดควรสังเกตและค่อย ๆ ปรับ"),
 }
 SCOPES = {
-    "natal": "identity, emotional needs, strengths and decisions; no repetition of the free preview",
+    "natal": "identity, emotional needs, strengths, activities that may suit the reader's abilities, and ways to develop strengths and adjust limitations; deepen rather than repeat the free preview",
     "career": "work style, collaboration, suitable working conditions and skill development; no invented job offers or dates",
     "wealth": "earning habits, spending boundaries and resource planning; no investment advice or promised wealth",
     "love": "attraction, emotional needs, communication and relationship boundaries; no assumptions about relationship status or a partner's chart",
@@ -57,6 +58,8 @@ SIGN_LABELS = {
 }
 ASPECTS = {"CONJUNCTION": ("合相", "กุม", "Conjunction", "Trùng tụ"), "OPPOSITION": ("对分相", "เล็ง", "Opposition", "Đối đỉnh"), "TRINE": ("三分相", "ตรีโกณ", "Trine", "Tam hợp"), "SQUARE": ("四分相", "ฉาก", "Square", "Vuông góc"), "SEXTILE": ("六分相", "โยค", "Sextile", "Lục hợp")}
 ASPECT_ANGLES = {"CONJUNCTION": 0, "SEXTILE": 60, "SQUARE": 90, "TRINE": 120, "OPPOSITION": 180}
+FORECAST_VERSION = "roxy-western-transits-1"
+FORECAST_DAYS = 90
 
 # Extend the existing label tables in their established column order.
 LANGUAGE_COLUMNS = {code: index for index, code in enumerate(("zh", "th", "en", "vi", *REGIONAL_LANGUAGES))}
@@ -131,11 +134,80 @@ def validate_natal(operation, value, body):
                     and abs(abs(separation - row["angle"]) - row["orb"]) < 0.02)
 
 
+def validate_forecast(value, body):
+    """Accept dated Western events only inside the provider's resolved window."""
+    validate_json(value)
+    birth = value.get("birthData", {})
+    expected = body["birthData"]
+    if (not isinstance(birth, dict) or birth.get("date") != expected["date"]
+            or birth.get("time") != expected["time"]):
+        raise RoxyError("roxy_invalid_response")
+    instant = datetime.fromisoformat(expected["date"] + "T" + expected["time"]).replace(tzinfo=ZoneInfo(expected["timezone"]))
+    offset = instant.utcoffset().total_seconds() / 3600
+    if birth.get("timezone") not in (expected["timezone"], offset):
+        raise RoxyError("roxy_invalid_response")
+    start, end = date.fromisoformat(value["startDate"]), date.fromisoformat(value["endDate"])
+    if (start.isoformat() != body["startDate"] or not start <= end <= date.fromisoformat(body["endDate"])
+            or (end - start).days > FORECAST_DAYS):
+        raise RoxyError("roxy_invalid_response")
+    events = value.get("events")
+    if (not isinstance(events, list) or len(events) > 1000 or type(value.get("count")) is not int
+            or value["count"] != len(events)):
+        raise RoxyError("roxy_invalid_response")
+    for event in events:
+        if not isinstance(event, dict):
+            raise RoxyError("roxy_invalid_response")
+        day = date.fromisoformat(event["date"])
+        at = datetime.fromisoformat(event["datetime"].replace("Z", "+00:00"))
+        if (not start <= day <= end or at.utcoffset() != timedelta(0) or at.date() != day
+                or event.get("domain") != "western" or event.get("type") not in ("transit-aspect", "retrograde-station")
+                or event.get("body") not in PLANETS or not finite_number(event.get("significance"))
+                or not 0 <= event["significance"] <= 100 or not isinstance(event.get("description"), str)
+                or len(event["description"]) > 4096):
+            raise RoxyError("roxy_invalid_response")
+        if event["type"] == "transit-aspect" and (
+                event.get("target") not in PLANETS or not isinstance(event.get("aspect"), str)
+                or len(event["aspect"]) > 64
+                or not finite_number(event.get("orb")) or not 0 <= event["orb"] <= 180):
+            raise RoxyError("roxy_invalid_response")
+        if event["type"] == "retrograde-station" and event.get("station") not in ("retrograde", "direct"):
+            raise RoxyError("roxy_invalid_response")
+
+
+def validate_astrology(operation, value, body):
+    if operation == "transits":
+        validate_forecast(value, body)
+    else:
+        validate_natal(operation, value, body)
+
+
 class RoxyAstrology(RoxyClient):
     domain = "astrology"
 
     def __init__(self, settings, store):
-        super().__init__(settings, store, paths={"natal": "/astrology/natal-chart"}, validator=validate_natal)
+        super().__init__(settings, store, paths={"natal": "/astrology/natal-chart", "transits": "/forecast/transits"},
+                         validator=validate_astrology)
+
+    async def forecast(self, profile, owner, network):
+        start = datetime.now(timezone.utc).date()
+        window = {"version": FORECAST_VERSION, "start": start.isoformat(),
+                  "end": (start + timedelta(days=FORECAST_DAYS - 1)).isoformat(), "timezone": "UTC"}
+        if not profile.birth_time:
+            return {**window, "state": "time_unknown", "events": []}
+        body = {"birthData": {"date": profile.birth_date.isoformat(), "time": profile.birth_time + ":00",
+                              "timezone": profile.timezone},
+                "startDate": window["start"], "endDate": window["end"], "minSignificance": 0}
+        try:
+            response = await self.request("transits", body, "en", owner, network)
+        except RoxyError:
+            return {**window, "state": "unavailable", "events": []}
+        raw = response["data"]
+        # An exact transit marks a point within this seven-day observation window,
+        # not a prediction that its effect lasts for all seven days.
+        return {**window, "end": raw["endDate"], "state": "ready",
+                "events": sorted((row for row in raw["events"] if row["type"] == "transit-aspect"
+                                  and row["orb"] <= 6 and row["aspect"].upper() in ASPECTS),
+                                 key=lambda row: (-row["significance"], row["datetime"], row["body"], row["target"]))}
 
     async def resolve_place(self, profile):
         if profile.latitude is not None:
@@ -242,15 +314,46 @@ class RoxyAstrology(RoxyClient):
                       (fact["aspect"] in ("SQUARE", "OPPOSITION") if topic == "risk" else
                        bool({fact["planet1"], fact["planet2"]} & set(TOPIC_PLANETS[topic])))]
         selected.extend(aspect_ids[:5])
+        forecast = chart.get("forecast", {})
+        timing_ids = []
+        if known and forecast.get("state") == "ready":
+            start, end = date.fromisoformat(forecast["start"]), date.fromisoformat(forecast["end"])
+            candidates = [event for event in forecast["events"] if point_id(event["target"]) in TOPIC_PLANETS[topic]]
+            if topic == "overview":
+                candidates.sort(key=lambda event: (event["date"], -event["significance"]))
+            weeks = set()
+            for event in candidates:
+                day = date.fromisoformat(event["date"])
+                first = start + timedelta(days=((day - start).days // 7) * 7)
+                if first in weeks:
+                    continue
+                weeks.add(first)
+                aspect = event["aspect"].upper()
+                identifier = "T_" + hashlib.sha256(
+                    f"{event['datetime']}|{event['body']}|{event['target']}|{aspect}".encode()).hexdigest()[:12]
+                facts[identifier] = {"type": "transit", "provider": "roxy", "start": first.isoformat(),
+                    "end": min(first + timedelta(days=6), end).isoformat(), "timezone": "UTC",
+                    "event_date": event["date"], "datetime": event["datetime"],
+                    "planet": point_id(event["body"]), "target": point_id(event["target"]),
+                    "aspect": aspect, "orb": event["orb"],
+                    "title": f"{event['date']} · {PLANETS[event['body']][column]} · {PLANETS[event['target']][column]}",
+                    "detail": f"{ASPECTS[aspect][column]} · {event['orb']:.2f}° · UTC",
+                    "interpretation": event["description"]}
+                timing_ids.append(identifier)
+                if len(timing_ids) == (1 if topic == "overview" else 2):
+                    break
+            selected.extend(timing_ids)
         # Keep the writer's context small and domain-specific, while retaining actual supporting positions.
         facts = {key: fact for key, fact in facts.items() if key in selected or fact["type"] == "planet"}
         return {"format": VERSION, "domain": "astrology", "stage": "chapter", "reading": reading, "language": language,
                 "method": {"name": "Western tropical astrology", "provider": "RoxyAPI", "api_version": "v2", "house_system": "placidus", "node_type": "true"},
                 "evidence": facts, "topic_evidence": selected,
                 "citation_rules": {"topic_ids": selected,
+                    "timing_ids": timing_ids,
                     "supporting_natal_ids": [key for key, fact in facts.items() if fact["type"] == "planet"],
                     "trait_ids": {key: ["P_" + item for item in values] for key, values in TRAIT_PLANETS.items()}},
                 "birth_time_basis": {"mode": "exact" if known else "estimated", "assumed_local_time": None if known else "12:00",
                                      "excluded": [] if known else ["ascendant", "midheaven", "houses", "moon", "aspects", "timing_predictions"]},
                 "scope": SCOPES.get(reading, "personality, decision style and relationship needs"),
+                "forecast": {key: forecast[key] for key in ("state", "start", "end", "timezone") if key in forecast},
                 "translation_fields": {}, "fixed_translations": {}}

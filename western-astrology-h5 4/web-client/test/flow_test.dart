@@ -57,6 +57,120 @@ Future<void> click(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  for (final language in ['zh', 'th', 'en']) {
+    testWidgets(
+      'four-question preview keeps six themes and verified-payment entry in $language',
+      (tester) async {
+        phone(tester);
+        final browser = TestBrowser();
+        final data = fixture();
+        final input = object(data['input']);
+        data['format'] = 'western-compact';
+        data['input'] = {
+          ...input,
+          'profile': {...object(input['profile']), 'language': language},
+        };
+        data['catalog'] = [
+          for (final item in objects(data['catalog']).take(5).indexed)
+            {...item.$2, 'key': westernKeys[item.$1]},
+        ];
+        data['progress'] = {'completed': 0, 'total': 6};
+        data['price'] = {
+          'amount': 3000,
+          'currency': 'THB',
+          'display': '฿30',
+          'mode': 'sunlands_order_only',
+        };
+        data['outlook'] = {
+          'state': 'ready',
+          'start': '2026-11-16',
+          'end': '2027-02-13',
+          'timezone': 'UTC',
+        };
+        final summary = object(object(data['preview'])['summary']);
+        data['preview'] = {
+          ...object(data['preview']),
+          'environment': {...summary, 'text': 'Synthetic environment answer'},
+          'favorable': {...summary, 'text': 'Synthetic helpful factor'},
+          'unfavorable': {...summary, 'text': 'Synthetic manageable pressure'},
+          'response': {...summary, 'text': 'One free career response'},
+          'sample_topic': 'career',
+          'recent': {
+            ...summary,
+            'text': 'Synthetic near-term theme',
+            'window': {
+              'start': '2026-11-23',
+              'end': '2026-11-29',
+              'event_date': '2026-11-24',
+              'timezone': 'UTC',
+            },
+          },
+        };
+        data['chapters'] = fixture(full: true)['chapters'];
+        data['plan'] = fixture(full: true)['plan'];
+        final calls = <String>[];
+        final h5 = H5Controller(
+          translations(),
+          ReportRepository(
+            browser,
+            client: MockClient((request) async {
+              calls.add('${request.method} ${request.url.path}');
+              if (request.url.path.endsWith('/payment')) {
+                return http.Response('', 204);
+              }
+              return response(data);
+            }),
+          ),
+          browser,
+          language: language,
+        );
+        await tester.pumpWidget(
+          H5App(
+            controller: h5,
+            initialLocation:
+                '/report.html?id=${data['id']}&lang=$language&checkout=1',
+          ),
+        );
+        await tester.pumpAndSettle();
+        for (final key in ['who', 'environment', 'influence', 'timing']) {
+          expect(
+            find.text(h5.copy.t('jy', 'report.questions.$key')),
+            findsOneWidget,
+          );
+        }
+        expect(find.byType(ThemeBoards), findsOneWidget);
+        expect(find.text('Synthetic environment answer'), findsOneWidget);
+        expect(find.text('One free career response'), findsOneWidget);
+        expect(
+          find.text(h5.copy.t('jy', 'report.questions.freePeriod')),
+          findsOneWidget,
+        );
+        expect(find.text(h5.copy.t('jy', 'checkout.pay')), findsOneWidget);
+        expect(find.textContaining('2026-11-23 – 2026-11-29'), findsOneWidget);
+        expect(find.textContaining('付费专属分析正文'), findsNothing);
+        await click(tester, find.byKey(const ValueKey('jy-payment-preview')));
+        expect(find.byKey(const ValueKey('order-mobile')), findsOneWidget);
+        expect(
+          calls.where(
+            (call) =>
+                call.startsWith('POST ') &&
+                (call.endsWith('/unlock') || call.endsWith('/payment')),
+          ),
+          isEmpty,
+        );
+        expect(find.byType(GenerationDialog), findsNothing);
+        await click(
+          tester,
+          find.text(h5.copy.t('checkout', 'cancelOrderEntry')),
+        );
+        expect(find.byType(ReportCheckout), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        h5.dispose();
+      },
+    );
+  }
+
   for (final full in [false, true]) {
     testWidgets(
       '${full ? 'full' : 'free'} report back button restores editable birth details and question on home',

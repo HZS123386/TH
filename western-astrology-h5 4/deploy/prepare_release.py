@@ -23,7 +23,7 @@ def copy_tree(source: Path, target: Path):
 def prepare(release: Path, version: str):
     context = release / 'context'
     context.mkdir(parents=True)
-    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip'):
+    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain'):
         shutil.copy2(ROOT / 'deploy' / name, context / name)
     copy_tree(TH / 'backend', context / 'TH' / 'backend')
     copy_tree(TH / 'scripts', context / 'TH' / 'scripts')
@@ -57,6 +57,25 @@ def prepare(release: Path, version: str):
         'THAI_LANDING_DIR': '/app/western-astrology-h5 4/site',
         'FATE_SUPPORT_EMAIL': env.get('FATE_SUPPORT_EMAIL', ''),
     }
+    # Carry the configured writers and live checkout separately from the application archive.
+    optional = [
+        'FORTUNE_FALLBACK_PROVIDER', 'WESTERN_REPORT_PROVIDER', 'WESTERN_REPORT_MODEL',
+        'WESTERN_REVIEW_ENABLED', 'WESTERN_REVIEW_PROVIDER', 'WESTERN_REVIEW_MODEL',
+        'WESTERN_REVIEW_FALLBACK_PROVIDER', 'WESTERN_REVIEW_FALLBACK_MODEL',
+        'SUNLANDS_ORDER_ONLY', 'SUNLANDS_BASE_URL', 'SUNLANDS_APP_KEY', 'SUNLANDS_APP_SECRET',
+        'SUNLANDS_CHANNEL_CODE', 'SUNLANDS_ITEM_NO', 'SUNLANDS_PRODUCT_NO', 'SUNLANDS_ITEM_TITLE',
+        'SUNLANDS_PROVINCE_ID', 'SUNLANDS_MERCHANT_NOTIFY_URI',
+    ]
+    for provider in ('OPENAI', 'QWEN', 'KIMI', 'DEEPSEEK'):
+        optional.extend(f'{provider}_{suffix}' for suffix in (
+            'API_KEY', 'BASE_URL', 'MODEL', 'PROXY_URL', 'REASONING_EFFORT'))
+    config.update({key: env[key] for key in optional if env.get(key)})
+    if config.get('SUNLANDS_ORDER_ONLY', '').lower() == 'true':
+        if (config.get('SUNLANDS_BASE_URL', 'https://api-prod.sunlands.com') != 'https://api-prod.sunlands.com'
+                or not all(config.get(key) for key in ('SUNLANDS_APP_SECRET', 'SUNLANDS_PROVINCE_ID'))):
+            raise RuntimeError('Production Sunlands requires the live gateway and complete credentials')
+    if any('\n' in value or '\r' in value for value in config.values()):
+        raise RuntimeError('Runtime settings must use single-line values')
     if config['ROXY_ENABLED'].lower() == 'true':
         if not env.get('ROXY_API_KEY'):
             raise RuntimeError('Roxy is enabled but its server-side key is missing')

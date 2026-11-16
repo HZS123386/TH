@@ -1,7 +1,7 @@
 """Contract and report-flow checks using a real Roxy response for a synthetic birth."""
 import asyncio
 from copy import deepcopy
-from datetime import datetime
+from datetime import date, datetime, timedelta
 import json
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -37,6 +37,21 @@ def unlock_after_simulated_payment(client, path):
     assert client.post(path + "/unlock", headers=HEADERS).status_code == 200
 
 
+def forecast_fixture(body):
+    start = date.fromisoformat(body["startDate"])
+    birth = dict(body["birthData"])
+    instant = datetime.fromisoformat(birth["date"] + "T" + birth["time"]).replace(tzinfo=ZoneInfo(birth["timezone"]))
+    birth["timezone"] = instant.utcoffset().total_seconds() / 3600
+    events = []
+    for index, target in enumerate(("Sun", "Mercury", "Venus", "Mars")):
+        day = (start + timedelta(days=7 + index * 14)).isoformat()
+        events.append({"date": day, "datetime": day + "T12:00:00Z", "domain": "western", "type": "transit-aspect",
+                       "body": "Jupiter" if index % 2 == 0 else "Saturn", "target": target,
+                       "aspect": "TRINE" if index % 2 == 0 else "SQUARE", "orb": .1,
+                       "description": "A calculated transit for a synthetic test subject.", "significance": 90 - index})
+    return {"birthData": birth, "startDate": body["startDate"], "endDate": body["endDate"], "count": len(events), "events": events}
+
+
 def draft(bundle):
     base = {"language": bundle["language"], "reading": bundle["reading"]}
     if bundle["stage"] == "plan":
@@ -48,19 +63,26 @@ def draft(bundle):
         first = (bundle["citation_rules"]["trait_ids"][topic] if topic else bundle["topic_evidence"])[0]
         second = next(key for key in bundle["citation_rules"]["supporting_natal_ids"] if key != first)
         return [first, second]
-    summary = {"text": DETAIL, "evidence_ids": ids()}
+    timing = bundle["citation_rules"].get("timing_ids", [])
+    summary = {"text": DETAIL, "evidence_ids": [timing[0], ids()[1]] if timing and bundle["stage"] == "chapter" else ids()}
     if bundle["stage"] == "preview":
-        return {**base, "summary": summary, "traits": [{"key": key, "title": title,
+        result = {**base, "summary": summary, "traits": [{"key": key, "title": title,
                 "text": TEXT + "例如面对临时安排，可以先问清楚目标和完成标准，决定从一个可检查的小范围开始。这样既能保留自己的判断，也给双方留下沟通和调整的余地。",
                 "evidence_ids": ids(key)} for key, title in zip(("strength", "decisions", "relationships"), ("发挥长处", "判断选择", "表达需要"))]}
-    def point(title):
+        if bundle.get("preview_layout") == "four-questions":
+            result.update(environment=deepcopy(summary), favorable=deepcopy(summary), unfavorable=deepcopy(summary),
+                          response={"text": DETAIL, "evidence_ids": [bundle["citation_rules"].get("sample_ids", bundle["topic_evidence"])[0], ids()[1]]},
+                          recent={"text": DETAIL, "evidence_ids": [timing[0], ids()[1]]} if timing else None)
+        return result
+    def point(title, timing_index=None):
         topic = {"natal": "本命", "career": "工作", "wealth": "财务", "love": "相处", "risk": "提醒"}[bundle["reading"]]
-        return {"title": topic + title, "text": topic + title + TEXT, "evidence_ids": ids()}
+        citations = [timing[min(timing_index, len(timing) - 1)], ids()[1]] if timing and timing_index is not None else ids()
+        return {"title": topic + title, "text": topic + title + TEXT, "evidence_ids": citations}
     return {**base, "summary": summary,
             "insights": [{**point("主动确认"), "example": DETAIL, "response": DETAIL}],
             "watchpoints": [{**point("留出余地"), "signals": [DETAIL], "response": DETAIL, "example": DETAIL}],
-            "actions": [{**point(title), "steps": [DETAIL, "完成后对照原先约定，记录还需要调整的地方。"],
-                         "example": DETAIL, "pitfall": DETAIL, "check": DETAIL} for title in ("核对条件", "检视反馈")]}
+            "actions": [{**point(title, index), "steps": [DETAIL, "完成后对照原先约定，记录还需要调整的地方。"],
+                         "example": DETAIL, "pitfall": DETAIL, "check": DETAIL} for index, title in enumerate(("核对条件", "检视反馈"))]}
 
 
 @pytest.fixture
@@ -69,6 +91,8 @@ def transport(monkeypatch):
     mode = {"status": 200}
     real_client = httpx.AsyncClient
     def handle(request):
+        if request.url.path == "/api/v2/forecast/transits":
+            return httpx.Response(mode["status"], json=forecast_fixture(json.loads(request.content)))
         assert request.url.path == "/api/v2/astrology/natal-chart"
         assert request.headers["X-API-Key"] == "roxy-server-test-key"
         assert request.url.params["lang"] in ("zh-Hans", "en")
@@ -96,6 +120,8 @@ def openai_transport(monkeypatch):
     real_client = httpx.AsyncClient
 
     def handle(request):
+        if request.url.path == "/api/v2/forecast/transits":
+            return httpx.Response(200, json=forecast_fixture(json.loads(request.content)))
         if request.url.path == "/api/v2/astrology/natal-chart":
             assert request.headers["X-API-Key"] == "roxy-server-test-key"
             body = json.loads(request.content)
@@ -174,7 +200,7 @@ def test_openai_stream_writes_free_preview_and_all_six_roxy_topics_with_usage(tm
         assert [bundle["stage"] for bundle in calls].count("chapter") == 5
         assert calls[-1]["stage"] == "plan"
         assert mode["proxies"].count(config.providers["openai"].proxy_url) == 7
-        assert mode["proxies"].count(None) == 1  # Roxy keeps its independent request configuration.
+        assert mode["proxies"].count(None) == 2  # Natal and transit calls keep their independent configuration.
         assert "synthetic-openai-key" not in repr(config.providers["openai"])
         assert "synthetic-password" not in repr(config.providers["openai"])
         with client.app.state.store.connect() as db:
@@ -343,6 +369,9 @@ def test_landing_languages_generate_and_restore_complete_western_reports(tmp_pat
         story = draft(bundle)
         if "summary" in story:
             story["summary"]["text"] = detail
+        for key in ("environment", "favorable", "unfavorable", "recent", "response"):
+            if story.get(key):
+                story[key]["text"] = detail
         rows = story.get("traits", []) + story.get("insights", []) + story.get("watchpoints", []) + story.get("actions", []) + story.get("phases", [])
         topic = {
             "en": {"natal": "Personal", "career": "Work", "wealth": "Money", "love": "Relationships", "risk": "Pressures"},

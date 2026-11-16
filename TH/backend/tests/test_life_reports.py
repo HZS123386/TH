@@ -191,15 +191,48 @@ def test_simulated_checkout_requires_the_owned_order_before_unlock(client, monke
 
 
 def sunlands_order_only(app, monkeypatch, handler):
-    payments = app.state.life_reports.card_payments
-    settings = Settings(sunlands_order_only=True, sunlands_app_secret="integration-test-secret",
+    from backend.app.life_card_payments import LifeCardPayments
+
+    settings = Settings(app_env="production", sunlands_order_only=True, sunlands_app_secret="integration-test-secret",
                         sunlands_province_id="4")
-    monkeypatch.setattr(payments, "settings", settings)
-    monkeypatch.setattr(payments, "order_only", True)
+    payments = LifeCardPayments(app.state.life_reports.store, settings)
+    monkeypatch.setattr(app.state.life_reports, "card_payments", payments)
     original_client = httpx.AsyncClient
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: original_client(
         **kwargs, transport=httpx.MockTransport(handler)))
     return payments
+
+
+@pytest.mark.parametrize("environment,gateway,allowed", [
+    ("production", "https://api-prod.sunlands.com", True),
+    ("production", "https://api-test.sunlands.com", False),
+    ("development", "https://api-prod.sunlands.com", True),
+    ("development", "https://api-test.sunlands.com", True),
+    ("production", "http://api-prod.sunlands.com", False),
+    ("development", "https://payments.example.test", False),
+])
+def test_sunlands_gateway_is_bound_to_environment(client, environment, gateway, allowed):
+    from backend.app.life_card_payments import LifeCardPayments
+
+    _, app, _, _ = client
+    settings = Settings(app_env=environment, sunlands_order_only=True, sunlands_base_url=gateway)
+    if allowed:
+        payments = LifeCardPayments(app.state.life_reports.store, settings)
+        assert payments.order_only and not payments.enabled
+    else:
+        with pytest.raises(RuntimeError, match="approved gateway"):
+            LifeCardPayments(app.state.life_reports.store, settings)
+
+
+def test_production_sunlands_does_not_enable_payso_demo(client):
+    from backend.app.life_card_payments import LifeCardPayments
+
+    _, app, _, _ = client
+    settings = Settings(app_env="production", sunlands_order_only=True,
+                        payso_test_merchant_id="12345678", payso_test_api_key="test-key",
+                        payso_test_secret_key="test-secret")
+    with pytest.raises(RuntimeError, match="Payso Demo requires development mode"):
+        LifeCardPayments(app.state.life_reports.store, settings)
 
 
 @pytest.fixture

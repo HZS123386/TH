@@ -20,7 +20,7 @@ from .report_languages import REGIONAL_LANGUAGES, LANGUAGE_NAMES
 VERSION = "life-report-2"
 logger = logging.getLogger(__name__)
 _fallback_admitted = ContextVar("life_fallback_admitted", default=False)
-WESTERN_WRITING_VERSION = "western-conversational-1"
+WESTERN_WRITING_VERSION = "western-four-questions-3"
 CHAPTERS = ("work", "money", "love", "family", "annual")
 FORTUNE_CATALOG = json.loads((Path(__file__).resolve().parents[1] / "content" / "fortune-topics.json").read_text(encoding="utf-8"))
 FORTUNE_VERSION = FORTUNE_CATALOG["version"]
@@ -325,6 +325,11 @@ class Preview(BaseModel):
     reading: Literal["life-preview"]
     summary: ReadingSummary
     traits: list[Trait] = Field(min_length=3, max_length=3)
+    environment: ReadingSummary | None = None
+    favorable: ReadingSummary | None = None
+    unfavorable: ReadingSummary | None = None
+    recent: ReadingSummary | None = None
+    response: ReadingSummary | None = None
 
 
 class Chapter(BaseModel):
@@ -466,6 +471,16 @@ def validate_life_story(raw, bundle):
                         else [(f"{kind}[{index}]", row) for kind in ("insights", "watchpoints", "actions")
                               for index, row in enumerate(getattr(story, kind))])
         named_rows = [("summary", story.summary), *named_points]
+        if isinstance(story, Preview):
+            for key in ("environment", "favorable", "unfavorable", "recent", "response"):
+                point = getattr(story, key)
+                if point is not None:
+                    named_rows.append((key, point))
+            if bundle.get("preview_layout") == "four-questions":
+                if any(getattr(story, key) is None for key in ("environment", "favorable", "unfavorable", "response")):
+                    content_errors.append("four-question preview requires environment, favorable, unfavorable and one response")
+                if bool(story.recent) != bool(bundle["citation_rules"].get("timing_ids")):
+                    content_errors.append("recent must cite a calculated timing ID when available, otherwise it must be null")
         rows = [row for _, row in named_rows]
         compact = bundle.get("format") == WESTERN_VERSION
         if isinstance(story, Chapter) and story.language == "zh" and not compact:
@@ -507,11 +522,26 @@ def validate_life_story(raw, bundle):
             types = {bundle["evidence"][key]["type"] for key in ids}
             allowed_topic = (bundle["citation_rules"]["trait_ids"][row.key]
                              if compact and isinstance(row, Trait) else bundle["topic_evidence"])
+            if compact and path == "response":
+                allowed_topic = bundle["citation_rules"].get("sample_ids", bundle["topic_evidence"])
+                if any(bundle["evidence"][key]["type"] == "transit" for key in ids):
+                    citation_errors.append("response: the free career tip must use natal evidence; the single period belongs in recent")
+            if compact and path == "response" and bundle["citation_rules"].get("sample_ids"):
+                allowed_topic = bundle["citation_rules"]["sample_ids"]
             if not set(ids) & set(allowed_topic):
                 citation_errors.append(f"{path}.evidence_ids={ids}: missing topic evidence; choose from {bundle['topic_evidence']}")
             if compact:
                 if not set(ids) & set(bundle["citation_rules"]["supporting_natal_ids"]):
                     citation_errors.append(f"{path}.evidence_ids={ids}: cite an actual supporting planet from this request")
+                if ((path == "recent" or isinstance(story, Chapter) and path == "summary")
+                        and bundle["citation_rules"].get("timing_ids")
+                        and not set(ids) & set(bundle["citation_rules"]["timing_ids"])):
+                    citation_errors.append(f"{path}: cite one calculated timing ID and one supporting natal ID")
+                if isinstance(story, Chapter) and path.startswith("actions[") and bundle["citation_rules"].get("timing_ids"):
+                    timing_ids = bundle["citation_rules"]["timing_ids"]
+                    index = int(path.split("[")[1].split("]")[0])
+                    if timing_ids[min(index, len(timing_ids) - 1)] not in ids:
+                        citation_errors.append(f"{path}: cite its corresponding calculated timing ID and a supporting natal ID")
             elif story.reading == "annual":
                 if "month" not in types or len(types) != 2:
                     citation_errors.append(f"{path}.evidence_ids={ids}: monthly and natal evidence required")
@@ -548,7 +578,7 @@ def validate_life_story(raw, bundle):
     return story.model_dump()
 
 
-def preview_writing_progress(raw, language):
+def preview_writing_progress(raw, language, *, four_questions=False):
     """Use received characters within the preview's four bounded content fields."""
     keys = ("preview_summary", "preview_strength", "preview_decisions", "preview_relationships")
     empty = dict.fromkeys(keys, 0)
@@ -579,6 +609,14 @@ def preview_writing_progress(raw, language):
             done = finished[index] if isinstance(finished, list) and index < len(finished) else None
             if isinstance(item, dict):
                 empty[key] = text_progress(item.get("text"), done.get("text") if isinstance(done, dict) else None, trait_limit)
+    if four_questions:
+        def answer(key):
+            value, done = partial.get(key), closed.get(key)
+            return text_progress(value.get("text"), done.get("text") if isinstance(done, dict) else None,
+                                 100 if language == "zh" else 300) if isinstance(value, dict) else 0
+        empty = {keys[0]: int(sum(empty.values()) / 4), keys[1]: answer("environment"),
+                 keys[2]: (answer("favorable") + answer("unfavorable") + answer("response")) // 3,
+                 keys[3]: 99 if "recent" in closed and closed["recent"] is None else answer("recent")}
     # Completed strings stay below 100 until the whole preview is validated and saved.
     return empty
 
@@ -700,6 +738,9 @@ class LifeWriter(BaziReports):
         # Generate the provider contract from the same models used to validate and store the report.
         schema = story_schema(bundle).model_json_schema()
         schema["properties"].pop("translations")
+        if bundle["stage"] == "preview" and bundle.get("preview_layout") != "four-questions":
+            for key in ("environment", "favorable", "unfavorable", "recent", "response"):
+                schema["properties"].pop(key)
         schema["required"] = list(schema["properties"])
         for field in ("language", "reading"):
             schema["properties"][field]["const"] = bundle[field]
@@ -778,10 +819,28 @@ class LifeWriter(BaziReports):
     def western_prompt(self, bundle):
         stage = bundle["stage"]
         contract = {
-            "preview": "Root keys: language, reading, summary, traits. Exactly three traits in order: strength, decisions, relationships. Each trait: key, title, text, evidence_ids. Chinese traits target 140-155 Han characters each (hard limits 90-180); Thai traits 280-400 characters (hard limits 180-600). Each trait is one flowing paragraph of three or four complete sentences: start with a recognizable personal tendency, bring it to life in a conditional everyday scene, explain its value and gently suggest an adjustment where relevant. strength describes natural motivation and strengths; decisions describes how the reader thinks, chooses or expresses an idea; relationships describes what helps the reader feel comfortable and connected. Give each a distinct focus and sentence rhythm. Summary 60-100 Chinese or 100-180 Thai characters: a personal opening connecting the main theme to the reader's concern, not a list of tasks. Choose one ID from citation_rules.trait_ids[trait.key] and a DIFFERENT supporting_natal_id; summary uses a topic_id plus a different supporting_natal_id.",
+            "preview": "Root keys: language, reading, summary, traits, environment, favorable, unfavorable, recent, response. Exactly three traits in order: strength, decisions, relationships. Each trait: key, title, text, evidence_ids. Chinese traits target 140-155 Han characters each (hard limits 90-180); Thai traits 280-400 characters (hard limits 180-600). Each trait is one flowing paragraph of three or four complete sentences: start with a recognizable personal tendency, bring it to life in a conditional everyday scene, explain its value and gently suggest an adjustment where relevant. strength describes natural motivation and strengths; decisions describes how the reader thinks, chooses or expresses an idea; relationships describes what helps the reader feel comfortable and connected. Give each a distinct focus and sentence rhythm. Summary 60-100 Chinese or 100-180 Thai characters: a personal opening connecting the main theme to the reader's concern, not a list of tasks. Choose one ID from citation_rules.trait_ids[trait.key] and a DIFFERENT supporting_natal_id; summary uses a topic_id plus a different supporting_natal_id.",
             "chapter": "Root keys: language, reading, summary, insights, watchpoints, actions. Exactly ONE insight, ONE watchpoint, TWO actions. Insight fields: title,text,evidence_ids,example,response. Watchpoint fields: title,text,evidence_ids,signals (ONE string),response,example. Action fields: title,text,evidence_ids,steps (TWO strings),example,pitfall,check. Every point text targets 60-85 Chinese Han characters (hard limits 35-100), or 180-260 Thai characters (hard limits 100-320), in two or three connected sentences. Every auxiliary string targets 15-25 Chinese or 60-110 Thai characters, minimum 12 Unicode characters, maximum 45 Han/180 Thai characters. Summary 30-50 Chinese or 60-100 Thai characters. The insight explains a personal pattern and its value; the watchpoint gently develops a distinct situation where that pattern may become uncomfortable; the two actions explain why two different adjustments suit this reader before giving their steps. Auxiliary fields add a fresh scene or a helpful continuation, never paraphrase the same point. Exactly two different existing evidence_ids on EVERY summary/point: one topic_id and one supporting_natal_id. Explain this topic only: " + bundle.get("scope", ""),
             "plan": "Root keys: language, reading, phases. Three phases in order observe,adjust,review. Each has key,title,text,action_ids (TWO IDs). Choose SIX distinct existing source_actions across at least THREE topics. Each text 50-80 Chinese or 120-200 Thai characters. Give a reassuring, personal closing: what to notice about yourself, one gentle shift to try, and how to recognize whether it feels more suitable. Order existing actions without rewriting steps or adding new personality claims, deadlines or predictions. No evidence_ids, summary or chapters.",
         }[stage]
+        if stage == "preview":
+            contract += (
+                " The free report answers FOUR questions. summary and traits explain personality, strengths and a proportionate limitation. "
+                "environment is {text,evidence_ids}: describe conditions and resources suggested by the birth data, never claim to know the reader's actual workplace, income or relationship status. "
+                "favorable and unfavorable are each {text,evidence_ids}: ONE helpful tendency and ONE manageable pressure pattern, each with a brief reason, without a detailed action plan. "
+                "Each of environment/favorable/unfavorable targets 40-65 Chinese or 120-180 non-Chinese characters and cites one topic ID plus a different supporting natal ID. "
+                "recent is {text,evidence_ids} ONLY if citation_rules.timing_ids is nonempty: choose ONE of those IDs plus a supporting natal ID and give ONE near-term theme and conditional trend in 30-50 Chinese or 80-160 other-language characters. "
+                "Otherwise recent MUST be null. Code displays verified dates and missing-data explanations. Do not write a date, month, probability, guaranteed event or extra fields. "
+                "response is {text,evidence_ids}: give exactly ONE short practical career response, 20-35 Chinese or 60-140 other-language characters, citing one citation_rules.sample_ids ID plus one different supporting natal ID. "
+                "This is a small free sample from the career subject: one immediately useful suggestion, not a multi-step plan. recent uses the single supplied CAREER timing ID, so the free advice and period concern the same subject. "
+            )
+        if stage == "chapter" and bundle["citation_rules"].get("timing_ids"):
+            contract += (
+                " summary MUST cite ONE timing ID from citation_rules.timing_ids and ONE different supporting natal ID. Explain the theme of that verified observation window and a suitable response. "
+                "Use the insight to explain helpful environments/resources, the watchpoint for constraints and early signals, and the two actions for responses suited to this topic. "
+                "actions[0] cites the first timing ID; actions[1] cites the second, or repeats the first if only one exists. Pair each with a different supporting natal ID. "
+                "Code displays the verified week and exact event date separately. They are observation periods, not promises of events; keep calendar dates out of prose. "
+            )
         voice = (
             "Narrative voice: address the reader directly as a warm, perceptive astrology reader, using you rather than an impersonal assessment. "
             "Read the actual cited placements and aspects together before choosing the personal pattern; the source interpretation supplies context, not a paragraph to translate mechanically. "
@@ -816,6 +875,8 @@ class LifeWriter(BaziReports):
             "plan": {"phases": [{}, {}, {}]},
         }
         shape = {"language": bundle["language"], "reading": bundle["reading"], **structures[stage]}
+        if stage == "preview":
+            shape.update(environment={}, favorable={}, unfavorable={}, recent={} if bundle["citation_rules"].get("timing_ids") else None, response={})
         if stage != "plan":
             rules = bundle["citation_rules"]
             topic_ids = {"summary": rules["topic_ids"]}
@@ -834,11 +895,11 @@ class LifeWriter(BaziReports):
                      'Keep language and reading at the root, not inside each point.')
         return (
             f"Writing style contract: {WESTERN_WRITING_VERSION}. "
-            "Write a concise personal astrology report grounded ONLY in the supplied RoxyAPI Western tropical natal chart. "
+            "Write a concise personal astrology report grounded ONLY in the supplied RoxyAPI Western tropical natal chart and, when available, validated transit snapshot. "
             "Roxy has already calculated planets, Placidus houses and degree/orb aspects; NEVER calculate, invent or substitute Thai Suriyayatra, whole-sign or Bazi rules. "
             "Use supplied Roxy interpretations as traditional interpretive context, not verified life events or scientific predictions. "
             "When birth time is estimated, Moon, angles, houses, aspects and timing predictions are excluded: never infer them or copy a house interpretation from elsewhere. "
-            "Only a natal chart was requested: do not invent transits, yearly fortunes, lucky dates or a future spouse. "
+            "Interpret timing ONLY when calculated transit IDs are supplied. Otherwise no timing or yearly predictions. Never invent a transit, date, event or future spouse. "
             "Write specific, conditional everyday situations and practical adjustments. Do not assume employment, income, debt, marriage, illness or past events. "
             "Avoid flattery, repeated conclusions, generic opposites, frightening predictions and guaranteed accuracy. No medical diagnosis, investment advice or promised returns. "
             "Calculations and citations are displayed separately: no planet/sign/house/degree names, evidence IDs or provider names in public prose. "

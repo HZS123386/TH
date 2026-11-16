@@ -152,7 +152,20 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ReportBadges(copy: c),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 6,
+                      children: [
+                        for (final detail in c.list('jy', 'checkout.details'))
+                          Text(
+                            detail,
+                            style: const TextStyle(color: gold, fontSize: 12),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ThemeBoards(copy: c, showHeading: false),
                     const SizedBox(height: 16),
                     const Divider(height: 1, color: Color(0x40E4BC78)),
                     const SizedBox(height: 10),
@@ -183,9 +196,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                     const SizedBox(height: 8),
                     JYButton(
                       key: const ValueKey('jy-payment-preview'),
-                      label: widget.report.orderOnly
-                          ? c.t('checkout', 'openCashier')
-                          : c.t('jy', 'checkout.pay'),
+                      label: c.t('jy', 'checkout.pay'),
                       icon: 'lock',
                       onPressed: widget.busy ? null : widget.onPay,
                       dimDisabled: false,

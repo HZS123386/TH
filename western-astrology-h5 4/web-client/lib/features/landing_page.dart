@@ -485,18 +485,6 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       Icons.schedule,
                       _unknown ? null : _timePicker,
                     ),
-                    if (_unknown)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 7),
-                        child: Text(
-                          c.t('jy', 'unknownNote'),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            height: 1.8,
-                            color: lavender,
-                          ),
-                        ),
-                      ),
                     const SizedBox(height: 13),
                     BirthplaceFields(
                       h5: h5,

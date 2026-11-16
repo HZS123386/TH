@@ -174,7 +174,9 @@ def explain(identifier, fact, language):
 def public_point(row, facts, language):
     identifiers = row["evidence_ids"]
     month = next((facts[key] for key in identifiers if facts[key]["type"] == "month"), None)
+    transit = next((facts[key] for key in identifiers if facts[key]["type"] == "transit"), None)
     return {**{key: value for key, value in row.items() if key != "evidence_ids"},
+            **({"window": {key: transit[key] for key in ("start", "end", "event_date", "timezone")}} if transit else {}),
             "period": {"year": month["year"], "month": month["month"]} if month else None,
             "evidence": [explain(key, facts[key], language) for key in identifiers]}
 
@@ -221,7 +223,7 @@ class LifeReports:
         return dict(result)
 
     def update(self, report_id, *, expected_lease=None, **values):
-        allowed = {"preview", "preview_state", "chapters", "plan", "unlocked", "full_state", "lease", "lease_until", "feedback", "generation_progress"}
+        allowed = {"chart", "preview", "preview_state", "chapters", "plan", "unlocked", "full_state", "lease", "lease_until", "feedback", "generation_progress"}
         if not values or not set(values) <= allowed:
             raise ValueError("invalid report update")
         with self.store.connect() as db:
@@ -267,6 +269,8 @@ class LifeReports:
         # New writing settings create a fresh report; saved report IDs retain their original content.
         version = f"{WESTERN_VERSION}:{WESTERN_WRITING_VERSION}" if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
         identity = [version, snapshot]
+        if use_roxy:
+            identity.append(["forecast", datetime.now(timezone.utc).date().isoformat()])
         if not body.career:
             config = self.writer.config
             identity.append([self.writer.provider, config.base_url if config else None, config.model if config else None,
@@ -317,7 +321,9 @@ class LifeReports:
     async def generate_preview(self, row, body, owner, network, lease):
         heartbeat = asyncio.create_task(self.keep_lease(row["id"], lease))
         usage_token = report_usage_context.set((row["id"], "preview"))
-        progress_token = report_progress_context.set(lambda raw: self.record_progress(row["id"], lease, preview_writing_progress(raw, body.profile.language)))
+        four_questions = western(json.loads(row["chart"]))
+        progress_token = report_progress_context.set(lambda raw: self.record_progress(
+            row["id"], lease, preview_writing_progress(raw, body.profile.language, four_questions=four_questions)))
         try:
             await self.write_preview(row, body, owner, network, lease)
         except ReportLeaseLost:
@@ -350,7 +356,24 @@ class LifeReports:
             self.update(row["id"], expected_lease=lease, preview=encoded(preview),
                         preview_state="ready", lease="", lease_until=0)
             return
+        if western(chart) and "forecast" not in chart:
+            chart["forecast"] = await self.adapters["astrology"].forecast(body.profile, owner, network)
+            self.update(row["id"], expected_lease=lease, chart=encoded(chart))
         bundle = self.bundle(body, chart, "overview")
+        if western(chart):
+            sample = self.bundle(body, chart, "career")
+            timing = sample["citation_rules"]["timing_ids"][:1]
+            bundle["evidence"] = {key: fact for key, fact in {**bundle["evidence"], **sample["evidence"]}.items()
+                                  if fact["type"] != "transit" or key in timing}
+            # Share one career response and one of the paid calculation windows.
+            # Keep other career windows out of the free writer's context entirely.
+            bundle["evidence"] = {key: fact for key, fact in bundle["evidence"].items() if fact["type"] != "transit"}
+            bundle["evidence"].update({key: fact for key, fact in sample["evidence"].items() if fact["type"] != "transit" or key in timing})
+            identifiers = list(dict.fromkeys([*bundle["topic_evidence"], *sample["topic_evidence"]]))
+            bundle["topic_evidence"] = [key for key in identifiers if key in bundle["evidence"]]
+            bundle["citation_rules"].update(topic_ids=bundle["topic_evidence"], timing_ids=timing,
+                sample_ids=[key for key in sample["topic_evidence"] if key in bundle["evidence"] and bundle["evidence"][key]["type"] != "transit"])
+            bundle["preview_topic"] = "career"
         if not western(chart):
             topics = ("love", "work", "money") if body.user_question else ("love",)
             for topic in topics:
@@ -361,6 +384,8 @@ class LifeReports:
                                         "summary_house_ids": bundle["topic_evidence"],
                                         "supporting_natal_ids": [key for key, item in bundle["evidence"].items() if item["type"] in ("planet", "ascendant")]}
         bundle.update(stage="preview", reading="life-preview")
+        if western(chart):
+            bundle["preview_layout"] = "four-questions"
         if body.user_question:
             bundle["user_question"] = body.user_question
         elif body.career_question and western(chart):
@@ -369,6 +394,8 @@ class LifeReports:
         values = {"preview_state": result["state"], "lease": "", "lease_until": 0}
         if result.get("story"):
             preview = {"story": result["story"], "evidence": bundle["evidence"]}
+            if bundle.get("preview_topic"):
+                preview["sample_topic"] = bundle["preview_topic"]
             if body.career_question and not western(chart):
                 answer = await self.career_preview(body.career_question, chart, body.profile,
                                                    direct_question=body.career_question.focus is None)
@@ -499,6 +526,15 @@ class LifeReports:
             result["reference_period"] = {"start": career["start"], "end": (date.fromisoformat(career["start"]) + timedelta(days=29)).isoformat()}
         if preview and "career_answer" in preview:
             result["preview"]["career_answer"] = public_point(preview["career_answer"], preview["evidence"], language)
+        if is_western:
+            forecast = chart.get("forecast", {})
+            result["outlook"] = {key: forecast[key] for key in ("state", "start", "end", "timezone") if key in forecast}
+            if preview:
+                for key in ("environment", "favorable", "unfavorable", "recent", "response"):
+                    if preview["story"].get(key):
+                        result["preview"][key] = public_point(preview["story"][key], preview["evidence"], language)
+                if preview.get("sample_topic"):
+                    result["preview"]["sample_topic"] = preview["sample_topic"]
         if row["unlocked"]:
             for index, key in enumerate(chapter_keys):
                 if key not in records:
@@ -642,6 +678,7 @@ class LifeReports:
             # Carry the preview's meaning without leaking its citations into another topic.
             preview_context = {"summary": preview["summary"]["text"],
                                "traits": [{key: item[key] for key in ("key", "title", "text")} for item in preview["traits"]]}
+            preview_context.update({key: preview[key]["text"] for key in ("environment", "favorable", "unfavorable", "recent", "response") if preview.get(key)})
             records = json.loads(row["chapters"])
             chapter_keys = WESTERN_CHAPTERS if western(chart) else FORTUNE_CHAPTERS if body.report_kind == "fortune" else CHAPTERS
             slots = asyncio.Semaphore(self.chapter_concurrency)

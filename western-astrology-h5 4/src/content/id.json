@@ -146,7 +146,7 @@
     "checkout": {"downloadUnavailable": "Aplikasi masih dalam pengujian dan belum dapat diunduh. Terima kasih atas minat Anda. Nantikan peluncuran resminya!",
       "eyebrow": "Jelajahi pembacaan pribadi",
       "title": "Buka pembacaan Anda",
-      "contents": "Isi setelah dibuka",
+      "contents": "Buka enam topik secara mendalam",
       "samplePrice": "Harga contoh",
       "pay": "Bayar dan buka",
       "preview": "Setelah pembayaran dikonfirmasi, laporan lengkap Anda akan terbuka.",
@@ -161,11 +161,11 @@
       "about": "Astrolog membantu menafsirkan kehidupan, mengenali inti kekhawatiran, dan memberikan panduan menuju hidup yang tenang dan bahagia.",
       "resume": "Ke halaman pembayaran",
       "back": "Kembali ke beranda"
-    },
+    , "details": ["Periode penting", "Dasar analisis", "Cara merespons"]},
     "report": {
       "title": "Laporan bagan kelahiran Anda",
       "freeTitle": "Pembacaan gratis Anda",
-      "freeHint": "Baca ringkasan dan sifat diri yang tersimpan, lalu buka pembacaan lengkap di bawah.",
+      "freeHint": "Kenali kepribadian, lingkungan, satu faktor pendukung, satu perhatian dan tema terdekat. Buka periode, dasar analisis dan langkah praktis.",
       "contents": "Isi laporan",
       "sections": {
         "overall": "Gambaran kehidupan",
@@ -190,7 +190,7 @@
       },
       "housesUnavailable": "Waktu lahir tepat diperlukan untuk menampilkan rumah tema ini",
       "readingUnavailable": "Belum ada pembacaan untuk posisi yang dipastikan pada tema ini"
-    },
+    , "questions": {"who": "Siapakah saya?", "environment": "Lingkungan apa yang mungkin sesuai?", "influence": "Bagaimana lingkungan dapat memengaruhi saya?", "timing": "Kapan perlu lebih memperhatikan?", "identityDetails": "Lihat kepribadian, kekuatan dan keterbatasan", "favorable": "Faktor pendukung", "unfavorable": "Pola yang perlu diperhatikan", "window": "Periode pengamatan", "eventDate": "Tanggal hasil perhitungan", "timeUnknown": "Waktu lahir yang tepat diperlukan untuk periode pribadi. Lengkapi lalu buat laporan baru.", "unavailable": "Data waktu belum tersedia saat laporan ini dibuat, sehingga tren berdasarkan waktu tidak disimpulkan.", "empty": "Belum ada penanda waktu pribadi untuk ditampilkan dalam sampel gratis ini. Ini bukan berarti kehidupan tidak akan berubah.", "legacy": "Laporan lama ini belum memuat bagian ini. Buat laporan baru untuk empat pertanyaan.", "timingNote": "Gunakan periode ini untuk mengamati tema dan merencanakan percakapan, bukan jaminan kejadian. Tanggal memakai UTC.", "freeResponse": "Satu saran karier gratis", "freePeriod": "Satu periode karier untuk diperhatikan"}},
     "chart": {
       "title": "Bagan kelahiran Anda",
       "exact": "Suriyayatra Thai · Rumah tanda penuh",
@@ -358,10 +358,10 @@
     "previewTitle": "Membuat pembacaan gratis",
     "previewFailed": "Pembacaan gratis belum lengkap",
     "sections": {
-      "preview_summary": "Ringkasan laporan",
-      "preview_strength": "Sifat dan kekuatan",
-      "preview_decisions": "Keputusan dan pilihan",
-      "preview_relationships": "Berhubungan dengan orang lain",
+      "preview_summary": "Siapa saya",
+      "preview_strength": "Lingkungan",
+      "preview_decisions": "Dukungan dan perhatian",
+      "preview_relationships": "Tema terdekat",
       "work": "Perkembangan karier",
       "money": "Keuangan",
       "relationships": "Cinta dan keluarga",

@@ -12,8 +12,9 @@ export type ReportTopic = Reading | FortuneTopicKey | typeof westernTopicKeys[nu
 export type LifeState = "not_started" | "pending" | "generating" | "ready" | "limited" | "unavailable" | "unconfigured";
 export type Feedback = "close" | "partly" | "different";
 export interface LifeEvidence { id: string; title: string; detail: string }
-export interface LifeSummary { text: string; evidence: LifeEvidence[]; period: { year: number; month: number } | null }
-export interface LifePoint extends ReadingItem { evidence: LifeEvidence[] }
+export interface LifeWindow { start: string; end: string; event_date: string; timezone: string }
+export interface LifeSummary { text: string; evidence: LifeEvidence[]; period: { year: number; month: number } | null; window?: LifeWindow }
+export interface LifePoint extends ReadingItem { evidence: LifeEvidence[]; window?: LifeWindow }
 export interface LifeChapter {
   key: ReportTopic;
   title: string;
@@ -29,6 +30,7 @@ export interface LifeReport {
   title: string;
   input: LifeInput;
   reference_period?: { start: string; end: string };
+  outlook?: { state?: "ready" | "time_unknown" | "unavailable"; start?: string; end?: string; timezone?: string };
   created_at: string;
   location: Partial<Place> & { nameEnglish: string; timeZone: string };
   method: { name: string; house_system: string; version: string };
@@ -42,7 +44,8 @@ export interface LifeReport {
   generation_progress?: { percent: number; sections: { key: "relationships" | "plan" | ReportTopic; percent: number }[] };
   preview_generation_progress?: { percent: number; sections: { key: "preview_summary" | "preview_strength" | "preview_decisions" | "preview_relationships"; percent: number }[] };
   catalog: { key: ReportTopic; title: string; questions: string[]; houses: number[]; ready: boolean }[];
-  preview: { summary: LifeSummary; traits: (LifePoint & { key: "strength" | "decisions" | "relationships" })[]; career_answer?: LifeSummary } | null;
+  preview: { summary: LifeSummary; traits: (LifePoint & { key: "strength" | "decisions" | "relationships" })[]; career_answer?: LifeSummary;
+    environment?: LifeSummary; favorable?: LifeSummary; unfavorable?: LifeSummary; recent?: LifeSummary; response?: LifeSummary; sample_topic?: "career" } | null;
   chapters: LifeChapter[];
   plan: { phases: { key: "observe" | "adjust" | "review"; title: string; text: string; actions: (LifePoint & { chapter: ReportTopic; index: number })[] }[] } | null;
 }
@@ -275,8 +278,8 @@ export const initialPreviewProgress: GenerationProgress = { ...initialGeneration
 
 export const generationCopy = {
   ...additionalCopy("generation"),
-  zh: { title: "正在生成完整运程解析", previewTitle: "正在生成你的免费解析", previewFailed: "免费报告暂未生成完成", sections: {preview_summary: "报告摘要", preview_strength: "性格与优势", preview_decisions: "判断与选择", preview_relationships: "相处特点", work: "事业发展", money: "财务方面", relationships: "感情与家庭", annual: "年度运程", overall: "整体运程", pattern: "格局解读", marriage: "婚姻情感", wealth: "财运事业", risk: "风险提醒", romance: "姻缘", plan: "总结建议"}, returnReport: "返回试读报告", preview: "正在计算出生资料，整理报告摘要与个人特点…", full: "正在整理完整主题与行动建议…", reconnecting: "连接暂时中断，正在重新查询生成进度…", waiting: "进度查询暂时受限，稍后自动继续。报告仍在后台生成…", queryError: "暂时无法查询报告进度，已完成的内容已保留，请稍后重试。", ready: "报告已生成，正在打开…", failed: "报告暂未生成完成", cancel: "取消等待", back: "返回填写资料", retry: "重试", missing: "未找到报告，请返回页面重新生成。", busy: "报告服务当前繁忙，请稍后点击继续生成。已完成的内容会保留。", storage: "浏览器暂时无法保存报告的访问凭据，请允许此网站使用存储后重试。" },
-  th: { title: "กำลังจัดทำคำอ่านดวงฉบับเต็ม", previewTitle: "กำลังสร้างคำอ่านเบื้องต้นฟรี", previewFailed: "ยังสร้างคำอ่านฟรีไม่เสร็จ", sections: {preview_summary: "สรุปรายงาน", preview_strength: "นิสัยและจุดแข็ง", preview_decisions: "การตัดสินใจ", preview_relationships: "การอยู่ร่วมกับผู้อื่น", work: "การงานและการเติบโต", money: "การเงิน", relationships: "ความรักและครอบครัว", annual: "ดวงรายปี", overall: "ภาพรวมชีวิต", pattern: "โครงสร้างพื้นดวง", marriage: "ชีวิตคู่และความรัก", wealth: "การเงินและการงาน", risk: "ข้อควรระวัง", romance: "คู่ครองและการพบรัก", plan: "ข้อเสนอแนะโดยรวม"}, returnReport: "กลับไปอ่านคำอ่านเบื้องต้น", preview: "กำลังคำนวณข้อมูลเกิดและเรียบเรียงสรุปกับลักษณะส่วนตัว…", full: "กำลังจัดทำหัวข้อฉบับเต็มและคำแนะนำ…", reconnecting: "การเชื่อมต่อขาดหายชั่วคราว กำลังตรวจความคืบหน้าอีกครั้ง…", waiting: "พักการตรวจความคืบหน้าชั่วคราว แล้วจะตรวจต่ออัตโนมัติ รายงานยังสร้างอยู่เบื้องหลัง…", queryError: "ยังตรวจความคืบหน้าไม่ได้ ส่วนที่เสร็จแล้วถูกบันทึกไว้ โปรดลองอีกครั้งภายหลัง", ready: "สร้างรายงานแล้ว กำลังเปิดอ่าน…", failed: "ยังสร้างรายงานไม่เสร็จ", cancel: "ยกเลิกการรอ", back: "กลับไปกรอกข้อมูลเกิด", retry: "ลองอีกครั้ง", missing: "ไม่พบรายงาน กรุณากลับไปสร้างรายงานอีกครั้ง", busy: "บริการรายงานกำลังมีผู้ใช้งานมาก โปรดกดจัดทำรายงานต่อภายหลัง ส่วนที่เสร็จแล้วถูกบันทึกไว้", storage: "เบราว์เซอร์ยังบันทึกสิทธิ์อ่านรายงานไม่ได้ โปรดอนุญาตให้เว็บไซต์ใช้พื้นที่จัดเก็บแล้วลองอีกครั้ง" },
+  zh: { title: "正在生成完整运程解析", previewTitle: "正在生成你的免费解析", previewFailed: "免费报告暂未生成完成", sections: {preview_summary: "我是谁", preview_strength: "环境倾向", preview_decisions: "利好与提醒", preview_relationships: "近期主题", work: "事业发展", money: "财务方面", relationships: "感情与家庭", annual: "年度运程", overall: "整体运程", pattern: "格局解读", marriage: "婚姻情感", wealth: "财运事业", risk: "风险提醒", romance: "姻缘", plan: "总结建议"}, returnReport: "返回试读报告", preview: "正在计算出生资料，整理报告摘要与个人特点…", full: "正在整理完整主题与行动建议…", reconnecting: "连接暂时中断，正在重新查询生成进度…", waiting: "进度查询暂时受限，稍后自动继续。报告仍在后台生成…", queryError: "暂时无法查询报告进度，已完成的内容已保留，请稍后重试。", ready: "报告已生成，正在打开…", failed: "报告暂未生成完成", cancel: "取消等待", back: "返回填写资料", retry: "重试", missing: "未找到报告，请返回页面重新生成。", busy: "报告服务当前繁忙，请稍后点击继续生成。已完成的内容会保留。", storage: "浏览器暂时无法保存报告的访问凭据，请允许此网站使用存储后重试。" },
+  th: { title: "กำลังจัดทำคำอ่านดวงฉบับเต็ม", previewTitle: "กำลังสร้างคำอ่านเบื้องต้นฟรี", previewFailed: "ยังสร้างคำอ่านฟรีไม่เสร็จ", sections: {preview_summary: "ตัวตนของฉัน", preview_strength: "สภาพแวดล้อม", preview_decisions: "สิ่งเกื้อหนุนและข้อควรใส่ใจ", preview_relationships: "ประเด็นช่วงนี้", work: "การงานและการเติบโต", money: "การเงิน", relationships: "ความรักและครอบครัว", annual: "ดวงรายปี", overall: "ภาพรวมชีวิต", pattern: "โครงสร้างพื้นดวง", marriage: "ชีวิตคู่และความรัก", wealth: "การเงินและการงาน", risk: "ข้อควรระวัง", romance: "คู่ครองและการพบรัก", plan: "ข้อเสนอแนะโดยรวม"}, returnReport: "กลับไปอ่านคำอ่านเบื้องต้น", preview: "กำลังคำนวณข้อมูลเกิดและเรียบเรียงสรุปกับลักษณะส่วนตัว…", full: "กำลังจัดทำหัวข้อฉบับเต็มและคำแนะนำ…", reconnecting: "การเชื่อมต่อขาดหายชั่วคราว กำลังตรวจความคืบหน้าอีกครั้ง…", waiting: "พักการตรวจความคืบหน้าชั่วคราว แล้วจะตรวจต่ออัตโนมัติ รายงานยังสร้างอยู่เบื้องหลัง…", queryError: "ยังตรวจความคืบหน้าไม่ได้ ส่วนที่เสร็จแล้วถูกบันทึกไว้ โปรดลองอีกครั้งภายหลัง", ready: "สร้างรายงานแล้ว กำลังเปิดอ่าน…", failed: "ยังสร้างรายงานไม่เสร็จ", cancel: "ยกเลิกการรอ", back: "กลับไปกรอกข้อมูลเกิด", retry: "ลองอีกครั้ง", missing: "ไม่พบรายงาน กรุณากลับไปสร้างรายงานอีกครั้ง", busy: "บริการรายงานกำลังมีผู้ใช้งานมาก โปรดกดจัดทำรายงานต่อภายหลัง ส่วนที่เสร็จแล้วถูกบันทึกไว้", storage: "เบราว์เซอร์ยังบันทึกสิทธิ์อ่านรายงานไม่ได้ โปรดอนุญาตให้เว็บไซต์ใช้พื้นที่จัดเก็บแล้วลองอีกครั้ง" },
 } as const;
 
 export function reportGenerationProgress(report: LifeReport): GenerationProgress {

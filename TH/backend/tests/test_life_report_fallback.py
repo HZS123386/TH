@@ -16,7 +16,7 @@ from backend.app.life_report_content import LifeWriter
 from backend.app.life_reports import LifeInput
 from backend.app.main import create_app
 from backend.app.storage import Storage
-from backend.tests.test_roxy_astrology import GOLDEN, HEADERS, PROFILE, draft, settings, unlock_after_simulated_payment
+from backend.tests.test_roxy_astrology import GOLDEN, HEADERS, PROFILE, draft, forecast_fixture, settings, unlock_after_simulated_payment
 
 
 def fallback_settings(tmp_path):
@@ -38,6 +38,8 @@ def model_transport(monkeypatch):
     original_client = httpx.AsyncClient
 
     def handle(request):
+        if request.url.path == "/api/v2/forecast/transits":
+            return httpx.Response(200, json=forecast_fixture(json.loads(request.content)))
         if request.url.path == "/api/v2/astrology/natal-chart":
             assert request.headers["X-API-Key"] == "roxy-server-test-key"
             body = json.loads(request.content)

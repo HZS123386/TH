@@ -5,7 +5,7 @@ import { additionalCopy, additionalLocales } from "./locales";
 
 const jyCopy = { ...originalJyCopy, jy: { ...originalJyCopy.jy, ...additionalCopy("jy") } };
 
-export type ReportSectionKey = "basics" | "summary" | "traits" | "work" | "money" | "relationships" | "recent" | "advice" | ReportTopic;
+export type ReportSectionKey = "basics" | "summary" | "traits" | "environment" | "influence" | "work" | "money" | "relationships" | "recent" | "advice" | ReportTopic;
 export interface ReportEntry { point: LifePoint; id?: string }
 export interface ReportGroup { title: string; entries: ReportEntry[] }
 export interface ReportSection {
@@ -78,9 +78,13 @@ export function reportContent(report: LifeReport): ReportSection[] {
     ];
   };
   if (report.format === "western-compact") {
-    const free: ReportSection[] = labels.sections.slice(0, 3).map(([key, title, description]) => ({
-      key: key as ReportSectionKey, title, description, paid: false, ready: key === "basics" || !!report.preview, summaries: [], groups: [],
-    }));
+    const questions = jyCopy.jy[language].report.questions;
+    const free: ReportSection[] = [
+      { key: "basics", title: labels.sections[0][1], description: labels.sections[0][2], paid: false, ready: true, summaries: [], groups: [] },
+      ...([['summary',questions.who],['environment',questions.environment],['influence',questions.influence],['recent',questions.timing]] as const).map(([key,title]) => ({
+        key, title, description: '', paid: false, ready: !!report.preview, summaries: [], groups: [],
+      })),
+    ];
     const names = jyCopy.jy[language].report.westernSections;
     const groupTitles = language === "zh" ? ["主要特点", "提醒与调整"] : language === "th" ? ["ลักษณะสำคัญ", "ข้อควรระวังและแนวทางปรับ"] : copy[language].westernGroups;
     const paid: ReportSection[] = report.catalog.map(topic => ({
