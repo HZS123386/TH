@@ -58,7 +58,7 @@ def client(tmp_path, monkeypatch):
             raise InvalidBaziReport("synthetic unavailable")
         return self.validate(json.dumps(story_for(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
-    settings = Settings(database_path=str(tmp_path / "life.db"), providers={"qwen": ProviderConfig("test-key", "https://model.example/v1", "test")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
+    settings = Settings(database_path=str(tmp_path / "life.db"), app_env="production", providers={"qwen": ProviderConfig("test-key", "https://model.example/v1", "test")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
     app = create_app(settings)
     app.state.life_report_gate = asyncio.Event()
     parts_writer = app.state.life_reports.parts_writer
@@ -155,9 +155,769 @@ def test_fortune_retry_keeps_the_six_successful_topics(client):
     full = http.get(f"/api/life-reports/{report['id']}", headers=HEADERS).json()
     assert full["full_state"] == "ready" and len(full["chapters"]) == 7
     assert all(sum(bundle["reading"] == key for bundle in calls) == count for key, count in done.items())
+def test_simulated_checkout_requires_the_owned_order_before_unlock(client, monkeypatch):
+    http, app, _, _ = client
+    monkeypatch.setattr(app.state.life_reports, "development", True)
+    report = preview(http)
+    assert report["payment_simulation"] is True
+    path = f"/api/life-reports/{report['id']}"
+    assert http.post(f"{path}/unlock", headers=HEADERS).status_code == 402
+    created = http.post(f"{path}/payment", headers=HEADERS)
+    assert created.status_code == 200
+    order = created.json()
+    assert order["amount"] == report["price"]["amount"] == 3000
+    assert report["price"]["display"] == "฿30"
+    assert order["reference"] == "000000000001"
+    assert order["currency"] == "THB"
+    assert http.post(f"{path}/payment", headers=HEADERS).json() == order
+    assert http.post(f"{path}/payment/check", headers=HEADERS).json() == {"paid": False}
+    assert http.post(f"{path}/unlock", headers=HEADERS).status_code == 402
+
+    confirm = f"{path}/payment/simulate"
+    payload = {"reference": order["reference"]}
+    assert http.post(confirm, headers={"X-Report-Key": "z" * 48}, json=payload).status_code == 404
+    assert http.post(confirm, headers=HEADERS, json={"reference": "000000000000"}).status_code == 409
+    with monkeypatch.context() as production:
+        production.setattr(app.state.life_reports, "development", False)
+        assert http.post(confirm, headers=HEADERS, json=payload).status_code == 404
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+    assert http.post(confirm, headers=HEADERS, json=payload).json() == {"paid": True}
+    assert http.post(confirm, headers=HEADERS, json=payload).json() == {"paid": True}
+    assert http.post(f"{path}/payment/check", headers=HEADERS).json() == {"paid": True}
+    finish(http, app)
+    ready = http.get(path, headers=HEADERS).json()
+    assert ready["access"] == "full" and ready["full_state"] == "ready"
+
+
+def sunlands_order_only(app, monkeypatch, handler):
+    payments = app.state.life_reports.card_payments
+    settings = Settings(sunlands_order_only=True, sunlands_app_secret="integration-test-secret",
+                        sunlands_province_id="4")
+    monkeypatch.setattr(payments, "settings", settings)
+    monkeypatch.setattr(payments, "order_only", True)
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: original_client(
+        **kwargs, transport=httpx.MockTransport(handler)))
+    return payments
+
+
+@pytest.fixture
+def sunlands_phone_response():
+    return json.dumps({"flag": "1", "data": {
+        "isSuccess": True, "channelCode": "sunlands_fb_fate", "currency": "THB",
+        "orderNumber": "OFFLINE_PHONE_ORDER_001", "stuId": 12345, "totalAmount": 30.0,
+        "orderStatus": "UNPAID", "paidupAmount": 0.0, "orderType": "OVERSEAS_NORMAL",
+        "payDirectUrl": "http://trade.sunlands.com/trade/web/trade/payDirect.action?orderNumber=OFFLINE_PHONE_ORDER_001&termType=mobile&tradeType=WX_MWEB",
+        "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30.0,
+                          "subSerialNo": "OFFLINE_PHONE_ORDER_001_1"}],
+    }}).encode()
+
+
+def test_sunlands_data_envelope_persists_order_without_pay_number(client, monkeypatch, sunlands_phone_response, record_property):
+    import hashlib
+    from backend.app.life_card_payments import LifeCardPayments
+
+    http, app, _, _ = client
+    expected = json.loads(sunlands_phone_response)["data"]
+    calls = []
+    def upstream(request):
+        assert request.method == "POST" and request.url.path == "/tradeApi/trade/externalCreateOrder"
+        calls.append(request)
+        return httpx.Response(200, content=sunlands_phone_response, headers={"content-type": "application/json"})
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    contact = {"mobile": "13000000000", "nationCode": "86"}
+    assert http.get(path + "/payment", headers=HEADERS).status_code == 204
+    assert not calls and payments.order_for(report["id"]) is None
+    response = http.post(path + "/payment", headers=HEADERS, json=contact)
+    assert response.status_code == 200, response.text
+    order = response.json()
+    assert order["state"] == "CREATED" and order["order_only"] is True
+    assert order["order_number"] == expected["orderNumber"] and order["stu_id"] == str(expected["stuId"])
+    assert order["pay_number"] is None and order["amount"] == 3000 and order["currency"] == "THB"
+    assert "payDirectUrl" not in order
+    assert order["checkout_url"] == expected["payDirectUrl"]
+    restarted = LifeCardPayments(payments.store, payments.settings)
+    monkeypatch.setattr(app.state.life_reports, "card_payments", restarted)
+    assert http.get(path + "/payment", headers=HEADERS).json() == order
+    assert http.get(path + "/payment", headers={"X-Report-Key": "z" * 48}).status_code == 404
+    assert http.post(path + "/payment", headers=HEADERS, json=contact).json() == order
+    assert http.post(path + "/payment", headers={"X-Report-Key": "z" * 48}, json=contact).status_code == 404
+    saved = restarted.order_for(report["id"])
+    receipt = json.loads(saved["sunlands_order"])
+    assert saved["sunlands_order_number"] == expected["orderNumber"] and saved["sunlands_pay_number"] is None
+    assert saved["report_id"] == report["id"] and saved["provider_order"] is None
+    assert receipt["stuId"] == str(expected["stuId"])
+    assert receipt["attempts"][0]["orderNumber"] == expected["orderNumber"]
+    assert receipt["attempts"][0]["stuId"] == str(expected["stuId"])
+    assert receipt["responseSummary"]["flag"] == "1" and receipt["responseSummary"]["isSuccess"] == "True"
+    assert receipt["responseSummary"]["orderStatus"] == "UNPAID"
+    assert receipt["responseHash"] == hashlib.sha256(sunlands_phone_response).hexdigest()
+    assert app.state.life_reports.card_payments.order_for(report["id"])["provider_order"] is None
+    assert http.post(path + "/payment/simulate", headers=HEADERS, json={"reference": order["reference"]}).status_code == 404
+    assert http.post(path + "/unlock", headers=HEADERS).status_code == 402
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+    assert len(calls) == 1 and len(receipt["attempts"]) == 1
+    record_property("offline_evidence", json.dumps({
+        "source": "Response bytes replayed through MockTransport; no external request",
+        "response_sha256": receipt["responseHash"], "local_response": order,
+        "report_id": report["id"], "persisted_order_number": saved["sunlands_order_number"],
+        "persisted_stu_id": receipt["stuId"], "mock_request_count": len(calls),
+        "report_access": "preview", "paid": False,
+    }, ensure_ascii=False))
+
+
+@pytest.mark.parametrize("checkout_url", [
+    "https://untrusted.example/trade/web/trade/payDirect.action?orderNumber=OFFLINE_PHONE_ORDER_001",
+    "https://trade.sunlands.com/trade/web/trade/payDirect.action?orderNumber=ANOTHER_ORDER",
+    "http://trade.sunlands.com/trade/web/trade/payDirect.action?orderNumber=OFFLINE_PHONE_ORDER_001&orderNumber=",
+    "javascript:alert(1)",
+])
+def test_sunlands_existing_order_hides_invalid_cashier_without_creating_again(client, monkeypatch, sunlands_phone_response, checkout_url):
+    http, app, _, _ = client
+    result = json.loads(sunlands_phone_response)
+    result["data"]["payDirectUrl"] = checkout_url
+    calls = []
+    def upstream(request):
+        calls.append(request)
+        return httpx.Response(200, json=result)
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    created = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+    assert created.status_code == 200 and created.json()["checkout_url"] is None
+    receipt = payments.order_for(report["id"])["sunlands_order"]
+    assert http.get(path + "/payment", headers=HEADERS).json() == created.json()
+    assert payments.order_for(report["id"])["sunlands_order"] == receipt
+    assert len(calls) == 1 and http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+
+@pytest.mark.parametrize("outcome", ("gateway_failure", "invalid_data", "business_rejected",
+                                    "wrong_currency", "missing_student", "invalid_pay_number"))
+def test_sunlands_data_envelope_failure_is_saved_without_retry(client, monkeypatch, sunlands_phone_response, outcome):
+    http, app, _, _ = client
+    result = json.loads(sunlands_phone_response)
+    if outcome == "gateway_failure":
+        result["flag"] = "0"
+    elif outcome == "invalid_data":
+        result.update(result["data"])
+        result["data"] = None
+    elif outcome == "business_rejected":
+        result["data"].update(isSuccess=False, errorMsg="declined 13000000000 integration-test-secret")
+    elif outcome == "wrong_currency":
+        result["data"]["currency"] = "USD"
+    elif outcome == "missing_student":
+        result["data"].pop("stuId")
+    else:
+        result["data"]["payNumber"] = "invalid pay number"
+    calls = []
+    def upstream(request):
+        calls.append(request)
+        return httpx.Response(200, json=result)
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    for _ in range(2):
+        response = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+        assert response.status_code == 409
+        assert response.json()["code"] == ("life_order_rejected" if outcome == "business_rejected" else "life_order_needs_review")
+    receipt = json.loads(payments.order_for(report["id"])["sunlands_order"])
+    assert receipt["state"] == ("REJECTED" if outcome == "business_rejected" else "UNKNOWN")
+    assert len(receipt["attempts"]) == 1 and len(calls) == 1
+    if outcome != "invalid_data":
+        assert receipt["orderNumber"] == result["data"]["orderNumber"]
+    assert "13000000000" not in json.dumps(receipt) and "integration-test-secret" not in json.dumps(receipt)
+    assert app.state.life_reports.card_payments.order_for(report["id"])["provider_order"] is None
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+
+def test_sunlands_channel_environment_distinguishes_unset_from_empty(monkeypatch):
+    from backend.app import config
+    monkeypatch.setattr(config, "load_dotenv", lambda: None)
+    monkeypatch.delenv("SUNLANDS_CHANNEL_CODE", raising=False)
+    assert Settings.from_env().sunlands_channel_code is None
+    for value in ("", "offline_test_channel"):
+        monkeypatch.setenv("SUNLANDS_CHANNEL_CODE", value)
+        assert Settings.from_env().sunlands_channel_code == value
+
+
+@pytest.mark.parametrize("channel", (None, "", "offline_test_channel"), ids=("gateway-default", "empty-channel", "configured-channel"))
+def test_sunlands_channel_changes_do_not_change_authentication_or_unlock(client, monkeypatch, record_property, channel):
+    from dataclasses import replace
+    from urllib.parse import parse_qs
+    http, app, _, _ = client
+    calls = []
+    mock_result = {"isSuccess": True, "orderNumber": "OFFLINE_ORDER_001", "payNumber": "OFFLINE_PAY_001",
+                   "stuId": 12345, "totalAmount": 30, "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30}]}
+    def upstream(request):
+        calls.append(request)
+        assert str(request.url) == "https://api-prod.sunlands.com/tradeApi/trade/externalCreateOrder"
+        assert request.headers["proxy-authorization"].startswith('hmac username="sunlands_fb_fate",')
+        assert "x-consumer-username" not in request.headers
+        form = parse_qs(request.content.decode(), keep_blank_values=True)
+        if channel in (None, ""):
+            assert "channelCode" not in form
+        else:
+            assert form["channelCode"] == [channel]
+        assert "stuId" not in form and form["mobile"] == ["13000000000"] and form["nationCode"] == ["86"]
+        assert form["deposit"] == form["depositAmount"] == ["0.00"] and "quicklyPayMethod" not in form
+        return httpx.Response(200, json=mock_result)
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    monkeypatch.setattr(payments, "settings", replace(payments.settings, sunlands_channel_code=channel))
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    result = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+    assert result.status_code == 200 and result.json()["order_number"] == "OFFLINE_ORDER_001"
+    assert http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).json() == result.json()
+    assert len(calls) == 1
+    assert app.state.life_reports.card_payments.order_for(report["id"])["provider_order"] is None
+    assert http.post(path + "/unlock", headers=HEADERS).status_code == 402
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+    assert payments.order_for(report["id"])["provider_order"] is None
+    record_property("offline_evidence", json.dumps({
+        "source": "Scripted success fixture; does not prove any real channel is valid",
+        "channel_configuration": channel,
+        "request": {"url": str(calls[0].url), "form": parse_qs(calls[0].content.decode(), keep_blank_values=True)},
+        "mock_response": mock_result, "local_status": result.status_code, "local_response": result.json(),
+        "mock_request_count": len(calls), "report_access": "preview", "paid": False,
+    }, ensure_ascii=False))
+
+
+@pytest.mark.parametrize("channel", ("bad channel", "bad\nchannel", "a" * 65))
+def test_sunlands_invalid_channel_configuration_never_creates_an_order(client, monkeypatch, channel):
+    from dataclasses import replace
+    http, app, _, _ = client
+    def upstream(request):
+        pytest.fail("Invalid channel configuration must not reach the gateway")
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    monkeypatch.setattr(payments, "settings", replace(payments.settings, sunlands_channel_code=channel))
+    report = preview(http)
+    result = http.post(f"/api/life-reports/{report['id']}/payment", headers=HEADERS,
+                       json={"mobile": "13000000000", "nationCode": "86"})
+    assert result.status_code == 503 and result.json()["code"] == "life_order_configuration_required"
+    assert payments.order_for(report["id"]) is None
+
+
+def test_sunlands_phone_order_contract_without_payment_or_unlock(client, monkeypatch):
+    import base64
+    import hashlib
+    import hmac
+    from urllib.parse import parse_qs
+    from backend.app.life_card_payments import LifeCardPayments
+
+    http, app, _, _ = client
+    calls = []
+    def upstream(request):
+        calls.append(request)
+        assert str(request.url) == "https://api-prod.sunlands.com/tradeApi/trade/externalCreateOrder"
+        form = parse_qs(request.content.decode(), keep_blank_values=True)
+        assert form["orderType"] == ["NORMAL"] and form["termType"] == ["mobile"]
+        assert "channelCode" not in form
+        assert form["itemNo"] == ["193261112000101"]
+        assert form["mobile"] == ["13000000000"] and form["nationCode"] == ["86"]
+        assert form["provinceId"] == ["4"] and "stuId" not in form
+        assert form["totalAmount"] == form["itemPrice"] == ["30.00"]
+        assert form["deposit"] == form["depositAmount"] == ["0.00"]
+        assert "quicklyPayMethod" not in form
+        digest = "SHA-256=" + base64.b64encode(hashlib.sha256(request.content).digest()).decode()
+        assert request.headers["digest"] == digest
+        signature = base64.b64encode(hmac.new(b"integration-test-secret",
+            f'x-date: {request.headers["x-date"]}\ndigest: {digest}'.encode(), hashlib.sha256).digest()).decode()
+        assert request.headers["proxy-authorization"].endswith(f'signature="{signature}"')
+        return httpx.Response(200, json={"isSuccess": True, "orderNumber": "202611120001",
+            "payNumber": "202611120002", "stuId": 12345, "totalAmount": 30,
+            "payDirectUrl": "https://checkout.example.test/never-open",
+            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30, "subSerialNo": "202611120001_1"}]})
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    assert report["price"] == {"amount": 3000, "currency": "THB", "display": "฿30", "mode": "sunlands_order_only"}
+    assert report["payment_simulation"] is False
+    assert http.post(path + "/payment", headers={"X-Report-Key": "z" * 48}).status_code == 404
+    order = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).json()
+    assert order["reference"] == "000000000001" and order["state"] == "CREATED"
+    assert order["order_number"] == "202611120001" and order["order_only"] is True
+    assert "payDirectUrl" not in order and "integration-test-secret" not in json.dumps(order)
+    # Reopening the application must reuse the persisted platform order.
+    restarted = LifeCardPayments(app.state.life_reports.store, payments.settings)
+    monkeypatch.setattr(app.state.life_reports, "card_payments", restarted)
+    assert http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).json() == order
+    assert len(calls) == 1
+    assert http.post(path + "/payment/simulate", headers=HEADERS, json={"reference": order["reference"]}).status_code == 404
+    assert app.state.life_reports.card_payments.order_for(report["id"])["provider_order"] is None
+    assert http.post(path + "/unlock", headers=HEADERS).status_code == 402
+    assert http.delete(path, headers=HEADERS).status_code == 409
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+    saved = restarted.order_for(report["id"])
+    assert saved["provider_order"] is None
+    assert json.loads(saved["sunlands_order"])["subOrderNumbers"] == ["202611120001_1"]
+    assert json.loads(saved["sunlands_order"])["stuId"] == "12345"
+    assert json.loads(saved["sunlands_order"])["responseSummary"]["isSuccess"] == "True"
+    assert saved["sunlands_order_number"] == "202611120001"
+    assert saved["sunlands_pay_number"] == "202611120002"
+    assert "13000000000" not in json.dumps(order)
+    assert "13000000000" not in saved["sunlands_order"]
+    assert json.loads(saved["sunlands_order"])["mobileLast4"] == "0000"
+    other = http.post("/api/life-reports", headers=HEADERS, json={"profile": PROFILE, "year": 2028}).json()
+    async def second_gateway(path, body, content_type):
+        form = parse_qs(body.decode())
+        assert form["mobile"] == ["812345678"] and form["nationCode"] == ["66"]
+        request = httpx.Request("POST", payments.settings.sunlands_base_url + path, content=body)
+        return httpx.Response(200, request=request, json={"isSuccess": False,
+            "errorMsg": "declined 812345678"})
+    monkeypatch.setattr(restarted, "_sunlands_post", second_gateway)
+    rejected = http.post(f"/api/life-reports/{other['id']}/payment", headers=HEADERS,
+                         json={"mobile": "81 234-5678", "nationCode": "+66"})
+    assert rejected.status_code == 409
+    second_saved = restarted.order_for(other["id"])
+    receipt = json.loads(second_saved["sunlands_order"])
+    assert receipt["nationCode"] == "66" and receipt["mobileLast4"] == "5678"
+    assert "812345678" not in second_saved["sunlands_order"]
+    assert receipt["errorMsg"] == "declined [redacted]"
+    assert restarted.order_for(report["id"])["sunlands_order"] == saved["sunlands_order"]
+
+
+@pytest.mark.parametrize("outcome", ("timeout", "rejected", "wrong_amount", "missing_student"))
+def test_sunlands_does_not_repeat_an_uncertain_or_rejected_order(client, monkeypatch, outcome):
+    http, app, _, _ = client
+    calls = []
+    def upstream(request):
+        calls.append(request)
+        if outcome == "timeout":
+            raise httpx.ReadTimeout("synthetic timeout", request=request)
+        return httpx.Response(200, json={"isSuccess": outcome != "rejected", "orderNumber": "202611120001",
+            "payNumber": "202611120002", "stuId": None if outcome == "missing_student" else 12345,
+            "totalAmount": 31 if outcome == "wrong_amount" else 30,
+            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 31 if outcome == "wrong_amount" else 30}]})
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    for _ in range(2):
+        result = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+        assert result.status_code == 409
+        assert result.json()["code"] == ("life_order_rejected" if outcome == "rejected" else "life_order_needs_review")
+    assert len(calls) == 1
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+    state = json.loads(payments.order_for(report["id"])["sunlands_order"])["state"]
+    assert state == ("REJECTED" if outcome == "rejected" else "UNKNOWN")
+    if outcome == "timeout":
+        receipt = json.loads(payments.order_for(report["id"])["sunlands_order"])
+        assert receipt["errorType"] == "ReadTimeout" and receipt["failureStage"] == "transport"
+        assert receipt["attempts"][0]["errorType"] == "ReadTimeout"
+        assert "httpStatus" not in receipt
+    if outcome in ("wrong_amount", "missing_student"):
+        receipt = json.loads(payments.order_for(report["id"])["sunlands_order"])
+        assert receipt["failureStage"] == "validation"
+        assert ("totalAmount" if outcome == "wrong_amount" else "stuId") in receipt["validationErrors"]
+
+
+def test_sunlands_missing_phone_or_province_never_sends_an_order(client, monkeypatch):
+    http, app, _, _ = client
+    def upstream(request):
+        pytest.fail("Incomplete configuration must not reach the gateway")
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    for body in (None, {}, {"mobile": "13000000000"}, {"nationCode": "86"},
+                 {"mobile": "abc123456", "nationCode": "86"},
+                 {"mobile": "13000000000", "nationCode": "000"},
+                 {"mobile": "12345678901234", "nationCode": "86"}):
+        result = http.post(path + "/payment", headers=HEADERS, json=body)
+        assert result.status_code == 422
+        assert result.json()["code"] == "life_order_phone_invalid"
+        assert payments.order_for(report["id"]) is None
+    with monkeypatch.context() as missing:
+        missing.setattr(payments.settings, "sunlands_province_id", "")
+        assert http.post(path + "/payment", headers=HEADERS,
+                         json={"mobile": "13000000000", "nationCode": "86"}).status_code == 503
+        assert payments.order_for(report["id"]) is None
+    assert http.post(path + "/unlock", headers=HEADERS).status_code == 402
+
+
+def test_sunlands_access_denied_allows_manual_retry_without_another_local_order(client, monkeypatch):
+    http, app, _, _ = client
+    calls = []
+    def upstream(request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(403, json={"message": "You cannot consume this service"})
+        return httpx.Response(200, json={"isSuccess": True, "orderNumber": "202611120003",
+            "payNumber": "202611120004", "stuId": 54321, "totalAmount": 30,
+            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30}]})
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    denied = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+    assert denied.status_code == 503 and denied.json()["code"] == "life_order_access_denied"
+    original = payments.order_for(report["id"])
+    assert json.loads(original["sunlands_order"])["httpStatus"] == 403
+    reopened = http.get(path + "/payment", headers=HEADERS)
+    assert reopened.status_code == 503 and reopened.json()["code"] == "life_order_access_denied"
+    assert len(calls) == 1
+    created = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).json()
+    assert created["state"] == "CREATED" and created["reference"] == original["reference"]
+    assert http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).json() == created
+    assert len(calls) == 2
+    assert json.loads(payments.order_for(report["id"])["sunlands_order"])["stuId"] == "54321"
+    receipt = json.loads(payments.order_for(report["id"])["sunlands_order"])
+    assert receipt["attemptCount"] == 2
+    assert [attempt["state"] for attempt in receipt["attempts"]] == ["ACCESS_DENIED", "CREATED"]
+    assert receipt["attempts"][0]["responseSummary"]["message"] == "You cannot consume this service"
+    assert app.state.life_reports.card_payments.order_for(report["id"])["provider_order"] is None
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+
+@pytest.fixture
+def sunlands_settlement(client, monkeypatch, sunlands_phone_response):
+    from dataclasses import replace
+    from urllib.parse import parse_qs
+    from backend.app.life_card_payments import SUNLANDS_CREATE_ORDER, SUNLANDS_QUERY_ORDER
+    http, app, _, _ = client
+    calls = []
+    number = "OFFLINE_PHONE_ORDER_001"
+    row = {"orderSerialNo": number, "stuId": 12345, "channelCode": "sunlands_fb_fate", "currency": "THB",
+           "orderType": "OVERSEAS_NORMAL", "orderStatus": "PAID", "totalAmount": "30.00",
+           "paidAmount": "30.00", "unpaidAmount": "0.00", "paymentDate": "2026-11-13 12:00:00",
+           "orderDetails": [{"subOrderSerialNo": number + "_1", "subOrderStatus": "PAID",
+                             "itemNo": "193261112000101", "totalAmount": "30.00",
+                             "payInfo": {"currency": "THB", "paidAmount": "30.00", "totalAmount": "30.00"}}]}
+    state = {"response": {"retCode": "0", "data": [row]}, "status": 200, "error": None}
+    def upstream(request):
+        calls.append(request.url.path)
+        if request.url.path == SUNLANDS_CREATE_ORDER:
+            assert parse_qs(request.content.decode())["merchantNotifyUrl"] == ["/api/life-reports/payment/sunlands/notify"]
+            return httpx.Response(200, content=sunlands_phone_response)
+        assert request.url.path == SUNLANDS_QUERY_ORDER
+        assert parse_qs(request.content.decode()) == {"orderSerialNos": [json.dumps([number])], "orderContent": ['["PAY","ITEM"]']}
+        assert request.headers["proxy-authorization"].startswith('hmac username="sunlands_fb_fate",')
+        if state["error"] == "timeout":
+            raise httpx.ReadTimeout("offline timeout", request=request)
+        return httpx.Response(state["status"], json=state["response"])
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    monkeypatch.setattr(payments, "settings", replace(payments.settings,
+        sunlands_merchant_notify_uri="/api/life-reports/payment/sunlands/notify"))
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    assert http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).status_code == 200
+    notice = {"callBackType": "pay", "subOrderStatusCode": "PAID", "subOrderNumber": number + "_1",
+              "orderNumber": number, "userId": "12345", "itemNo": "193261112000101", "amount": "30.00",
+              "orderType": "OVERSEAS_NORMAL", "currency": "THB", "eventTime": "2026-11-13 12:00:00"}
+    return http, app, payments, report, path, state, calls, notice
+
+
+def test_sunlands_denial_with_a_platform_number_never_allows_manual_reordering(client, monkeypatch):
+    http, app, _, _ = client
+    calls = []
+    def upstream(request):
+        calls.append(request.url.path)
+        return httpx.Response(403, json={"message": "You cannot consume this service", "orderNumber": "EXISTING_ORDER"})
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}/payment"
+    for _ in range(2):
+        response = http.post(path, headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+        assert response.status_code == 409 and response.json()["code"] == "life_order_needs_review"
+    assert http.get(path, headers=HEADERS).json()["code"] == "life_order_needs_review"
+    assert len(calls) == 1
+    assert payments.order_for(report["id"])["sunlands_order_number"] == "EXISTING_ORDER"
+
+
+def test_sunlands_settlement_checks_pending_then_unlocks_atomically_and_survives_restart(sunlands_settlement):
+    from backend.app.life_card_payments import LifeCardPayments, SUNLANDS_QUERY_ORDER
+    http, app, payments, report, path, state, calls, _ = sunlands_settlement
+    paid_result = deepcopy(state["response"])
+    state["response"]["data"][0].update(orderStatus="UNPAID", paidAmount="0.00", unpaidAmount="30.00")
+    assert http.post(path + "/payment/check", headers={"X-Report-Key": "z" * 48}).status_code == 404
+    assert http.post(path + "/payment/check", headers=HEADERS).json() == {"paid": False}
+    assert http.post(path + "/unlock", headers=HEADERS).status_code == 402
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+    state["response"] = {"flag": "1", "data": paid_result}
+    assert http.post(path + "/payment/check", headers=HEADERS).json() == {"paid": True}
+    saved = payments.order_for(report["id"])
+    receipt = json.loads(saved["sunlands_order"])
+    assert saved["provider_order"] == "https://api-prod.sunlands.com/OFFLINE_PHONE_ORDER_001"
+    assert receipt["paymentStatus"] == "PAID" and receipt["stuId"] == "12345"
+    assert [check["status"] for check in receipt["paymentChecks"]] == ["PENDING", "PAID"]
+    assert len(receipt["attempts"]) == 1
+    assert http.get(path, headers=HEADERS).json()["access"] == "full"
+    app.state.life_reports.card_payments = LifeCardPayments(payments.store, payments.settings)
+    assert http.post(path + "/payment/check", headers=HEADERS).json() == {"paid": True}
+    assert calls.count(SUNLANDS_QUERY_ORDER) == 2
+    finish(http, app)
+    assert http.get(path, headers=HEADERS).json()["full_state"] == "ready"
+
+
+@pytest.mark.parametrize("mismatch", ["order", "student", "channel", "currency", "amount", "item", "suborder", "pay_amount", "nan", "signaling_nan", "provider_conflict"])
+def test_sunlands_settlement_rejects_mismatched_payment(sunlands_settlement, mismatch):
+    http, _, payments, report, path, state, _, _ = sunlands_settlement
+    row = state["response"]["data"][0]
+    line = row["orderDetails"][0]
+    if mismatch == "order": row["orderSerialNo"] = "ANOTHER_ORDER"
+    elif mismatch == "student": row["stuId"] = 54321
+    elif mismatch == "channel": row["channelCode"] = "another_app"
+    elif mismatch == "currency": row["currency"] = "CNY"
+    elif mismatch == "amount": row.update(paidAmount="29.00", unpaidAmount="1.00")
+    elif mismatch == "item": line["itemNo"] = "ANOTHER_ITEM"
+    elif mismatch == "suborder": line["subOrderSerialNo"] = "ANOTHER_SUBORDER"
+    elif mismatch == "pay_amount": line["payInfo"]["paidAmount"] = "1.00"
+    elif mismatch == "nan": row["paidAmount"] = "NaN"
+    elif mismatch == "signaling_nan": row["paidAmount"] = "sNaN"
+    elif mismatch == "provider_conflict":
+        with payments.store.connect() as db:
+            db.execute("UPDATE life_card_payments SET provider_order='OTHER_PROVIDER_ORDER' WHERE report_id=?", (report["id"],))
+    checked = http.post(path + "/payment/check", headers=HEADERS)
+    assert checked.status_code == 409 and checked.json()["code"] == "life_payment_verification_failed"
+    saved = payments.order_for(report["id"])
+    assert saved["provider_order"] == ("OTHER_PROVIDER_ORDER" if mismatch == "provider_conflict" else None)
+    assert json.loads(saved["sunlands_order"])["paymentStatus"] == "CHECK_FAILED"
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+
+@pytest.mark.parametrize("outcome", ["denied", "timeout", "malformed", "business_failure"])
+def test_sunlands_settlement_errors_are_saved_without_claiming_unpaid_or_reordering(sunlands_settlement, outcome):
+    http, _, payments, report, path, state, calls, _ = sunlands_settlement
+    if outcome == "denied": state["status"] = 403
+    elif outcome == "timeout": state["error"] = "timeout"
+    elif outcome == "malformed": state["response"] = ["invalid"]
+    else: state["response"] = {"retCode": "1", "data": []}
+    checked = http.post(path + "/payment/check", headers=HEADERS)
+    assert checked.status_code == 503 and "paid" not in checked.json()
+    if outcome == "denied": assert checked.json()["code"] == "life_payment_check_access_denied"
+    saved = payments.order_for(report["id"])
+    assert saved["provider_order"] is None
+    assert json.loads(saved["sunlands_order"])["paymentStatus"] == "CHECK_FAILED"
+    assert len(calls) == 2 and http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+
+def test_sunlands_callback_cannot_unlock_without_server_confirmation_and_is_idempotent(sunlands_settlement):
+    http, app, payments, report, path, state, calls, notice = sunlands_settlement
+    endpoint = "/api/life-reports/payment/sunlands/notify"
+    assert http.post(endpoint, data={**notice, "amount": "1.00"}).json()["code"] == 0
+    assert http.post(endpoint, data={**notice, "currency": "CNY"}).json()["code"] == 0
+    assert len(calls) == 1
+    paid = deepcopy(state["response"])
+    state["response"]["data"][0].update(orderStatus="UNPAID", paidAmount="0.00", unpaidAmount="30.00")
+    assert http.post(endpoint, data=notice).json()["code"] == 0
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+    state["response"] = paid
+    assert http.post(endpoint, data={**notice, "subOrderNumber": "ANOTHER_SUBORDER"}).json()["code"] == 0
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+    assert http.post(endpoint, data=notice).json() == {"code": 1, "msg": "success"}
+    before = len(calls)
+    assert http.post(endpoint, data=notice).json() == {"code": 1, "msg": "success"}
+    assert len(calls) == before
+    assert len(json.loads(payments.order_for(report["id"])["sunlands_order"])["attempts"]) == 1
+    finish(http, app)
+    assert http.get(path, headers=HEADERS).json()["full_state"] == "ready"
+    assert http.post(endpoint, content="orderNumber=a&orderNumber=b", headers={"Content-Type": "application/x-www-form-urlencoded"}).status_code == 400
+
+
+@pytest.mark.parametrize("outcome", ("structured_error", "html_success", "html_error", "business_error", "channel_error"))
+def test_sunlands_failure_receipts_are_durable_and_redacted(client, monkeypatch, record_property, outcome):
+    http, app, _, _ = client
+    calls = []
+    def upstream(request):
+        calls.append(request)
+        headers = {"x-request-id": "mock-request-id"}
+        if outcome.startswith("html"):
+            return httpx.Response(200 if outcome == "html_success" else 502,
+                                  text="<html>13000000000 integration-test-secret</html>",
+                                  headers={**headers, "content-type": "text/html"})
+        if outcome == "structured_error":
+            return httpx.Response(403, json={"message": {"code": "denied", "mobile": "13000000000"}}, headers=headers)
+        if outcome == "channel_error":
+            return httpx.Response(200, json={"flag": "0", "message": "channelCode不正确: sunlands_fb_fate"}, headers=headers)
+        return httpx.Response(200, json={"isSuccess": False, "errorMsg":
+            "13000000000 integration-test-secret " + request.headers["proxy-authorization"]}, headers=headers)
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    path = f"/api/life-reports/{report['id']}"
+    for _ in range(2):
+        response = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+        assert response.status_code == 409
+    assert len(calls) == 1
+    saved = payments.order_for(report["id"])
+    receipt = json.loads(saved["sunlands_order"])
+    if outcome == "channel_error":
+        from urllib.parse import parse_qs
+        record_property("offline_evidence", json.dumps({
+            "source": "MockTransport replay; no external request",
+            "request": {"url": str(calls[0].url), "form": parse_qs(calls[0].content.decode())},
+            "mock_response": {"flag": "0", "message": "channelCode不正确: sunlands_fb_fate"},
+            "local_response": response.json(), "local_status": response.status_code,
+            "saved_response": receipt["responseSummary"], "mock_request_count": len(calls),
+        }, ensure_ascii=False))
+    assert receipt["state"] == ("REJECTED" if outcome == "business_error" else "UNKNOWN")
+    assert receipt["failureStage"] == {"structured_error": "http", "html_success": "parse",
+                                       "html_error": "http", "business_error": "business", "channel_error": "business"}[outcome]
+    assert receipt["httpStatus"] == {"structured_error": 403, "html_success": 200,
+                                     "html_error": 502, "business_error": 200, "channel_error": 200}[outcome]
+    assert receipt["gatewayRequestId"] == "mock-request-id"
+    assert receipt["requestDate"] == calls[0].headers["x-date"]
+    assert receipt["responseBytes"] > 0 and len(receipt["responseHash"]) == 64 and receipt["elapsedMs"] >= 0
+    assert len(receipt["attempts"]) == 1 and receipt["attempts"][0]["httpStatus"] == receipt["httpStatus"]
+    assert receipt["attempts"][0]["requestSummary"]["mobile"] == "***0000"
+    assert receipt["attempts"][0]["requestSummary"]["totalAmount"] == "30.00"
+    if outcome.startswith("html"):
+        assert receipt["contentType"] == "text/html" and receipt["parseErrorType"] == "JSONDecodeError"
+    if outcome == "structured_error":
+        assert receipt["responseSummary"]["message"] == "<dict>"
+    if outcome == "channel_error":
+        assert receipt["responseSummary"] == {"flag": "0", "message": "channelCode不正确: sunlands_fb_fate"}
+        assert "validationErrors" not in receipt and "stuId" not in receipt
+        assert receipt["endpoint"] == "/tradeApi/trade/externalCreateOrder"
+        assert response.json()["code"] == "life_order_channel_invalid"
+        # Old receipts omitted flag; reopening must still explain the channel failure without another request.
+        from backend.app.life_card_payments import LifeCardPayments
+        legacy = deepcopy(receipt)
+        legacy["responseSummary"].pop("flag")
+        legacy["failureStage"] = "validation"
+        with payments.store.connect() as db:
+            db.execute("UPDATE life_card_payments SET sunlands_order=? WHERE reference=?",
+                       (json.dumps(legacy), saved["reference"]))
+        restarted = LifeCardPayments(payments.store, payments.settings)
+        monkeypatch.setattr(app.state.life_reports, "card_payments", restarted)
+        reopened = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+        assert reopened.status_code == 409 and reopened.json()["code"] == "life_order_channel_invalid"
+        assert len(calls) == 1
+        assert json.loads(restarted.order_for(report["id"])["sunlands_order"]) == legacy
+    assert "13000000000" not in saved["sunlands_order"]
+    assert "integration-test-secret" not in saved["sunlands_order"]
+    assert calls[0].headers["proxy-authorization"] not in saved["sunlands_order"]
+    assert "gatewayRequestId" not in response.text
+    assert saved["provider_order"] is None
+    assert app.state.life_reports.card_payments.order_for(report["id"])["provider_order"] is None
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+
+@pytest.mark.parametrize("duplicate_field", ("orderNumber", "payNumber"))
+def test_sunlands_platform_numbers_cannot_bind_two_reports(client, monkeypatch, duplicate_field):
+    import sqlite3
+    from backend.app.life_card_payments import LifeCardPayments
+
+    http, app, _, _ = client
+    calls = []
+    def upstream(request):
+        calls.append(request)
+        result = {"isSuccess": True, "orderNumber": f"ORDER_{len(calls)}", "payNumber": f"PAY_{len(calls)}",
+                  "stuId": 12345, "totalAmount": 30,
+                  "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30}]}
+        result[duplicate_field] = "SHARED_PLATFORM_NUMBER"
+        return httpx.Response(200, json=result)
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    reports = [preview(http), http.post("/api/life-reports", headers=HEADERS,
+                json={"profile": PROFILE, "year": 2028}).json()]
+    first = http.post(f"/api/life-reports/{reports[0]['id']}/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+    assert first.status_code == 200
+    path = f"/api/life-reports/{reports[1]['id']}"
+    response = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+    assert response.status_code == 409 and response.json()["code"] == "life_order_needs_review"
+    saved = payments.order_for(reports[1]["id"])
+    receipt = json.loads(saved["sunlands_order"])
+    assert receipt["state"] == "UNKNOWN" and receipt["failureStage"] == "association"
+    assert receipt[duplicate_field] == "SHARED_PLATFORM_NUMBER"
+    assert receipt["associationConflict"]["references"] == [first.json()["reference"]]
+    assert receipt["attempts"][0]["failureStage"] == "association"
+    assert saved["sunlands_order_number"] is None and saved["sunlands_pay_number"] is None
+    # The database, not only the API check, rejects a second binding.
+    column = "sunlands_order_number" if duplicate_field == "orderNumber" else "sunlands_pay_number"
+    with payments.store.connect() as db, pytest.raises(sqlite3.IntegrityError):
+        db.execute(f"UPDATE life_card_payments SET sunlands_gateway=?,{column}=? WHERE reference=?",
+                   (payments.settings.sunlands_base_url, "SHARED_PLATFORM_NUMBER", saved["reference"]))
+    restarted = LifeCardPayments(payments.store, payments.settings)
+    monkeypatch.setattr(app.state.life_reports, "card_payments", restarted)
+    assert http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).status_code == 409
+    assert len(calls) == 2 and http.get(path, headers=HEADERS).json()["access"] == "preview"
+    assert restarted.order_for(reports[1]["id"])["sunlands_order"] == saved["sunlands_order"]
+
+
+def test_sunlands_concurrent_responses_reserve_platform_order_once(client, monkeypatch):
+    http, app, _, _ = client
+    ready, release = asyncio.Event(), asyncio.Event()
+    calls = []
+    async def upstream(request):
+        calls.append(request)
+        if len(calls) == 2:
+            ready.set()
+        await release.wait()
+        return httpx.Response(200, json={"isSuccess": True, "orderNumber": "SHARED_ORDER", "payNumber": "SHARED_PAY",
+            "stuId": 12345, "totalAmount": 30, "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30}]})
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    reports = [preview(http), http.post("/api/life-reports", headers=HEADERS,
+                json={"profile": PROFILE, "year": 2028}).json()]
+    async def run():
+        tasks = [asyncio.create_task(payments.create_sunlands(report["id"], "test-network", "13000000000", "86")) for report in reports]
+        await asyncio.wait_for(ready.wait(), timeout=3)
+        release.set()
+        return await asyncio.gather(*tasks, return_exceptions=True)
+    results = http.portal.call(run)
+    assert sum(isinstance(result, dict) for result in results) == 1
+    assert sum(getattr(result, "status_code", None) == 409 for result in results) == 1
+    rows = [payments.order_for(report["id"]) for report in reports]
+    assert sum(row["sunlands_order_number"] == "SHARED_ORDER" for row in rows) == 1
+    assert all(row["provider_order"] is None for row in rows)
+    assert len(calls) == 2
+
+
+def test_sunlands_cancelled_request_is_recorded_without_retry(client, monkeypatch):
+    http, app, _, _ = client
+    entered = asyncio.Event()
+    calls = []
+    async def upstream(request):
+        calls.append(request)
+        entered.set()
+        await asyncio.Future()
+    payments = sunlands_order_only(app, monkeypatch, upstream)
+    report = preview(http)
+    async def run():
+        task = asyncio.create_task(payments.create_sunlands(report["id"], "test-network", "13000000000", "86"))
+        await asyncio.wait_for(entered.wait(), timeout=3)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    http.portal.call(run)
+    receipt = json.loads(payments.order_for(report["id"])["sunlands_order"])
+    assert receipt["state"] == "UNKNOWN" and receipt["errorType"] == "CancelledError"
+    assert receipt["attempts"][0]["errorType"] == "CancelledError"
+    assert http.post(f"/api/life-reports/{report['id']}/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).status_code == 409
+    assert len(calls) == 1
+
+
+def test_sunlands_additive_schema_preserves_legacy_receipts_and_reserves_numbers(tmp_path):
+    from backend.app.life_card_payments import LifeCardPayments
+    from backend.app.storage import Storage
+
+    store = Storage(str(tmp_path / "legacy-payments.db"))
+    gateway = "https://api-prod.sunlands.com"
+    old = {"state": "CREATED", "gateway": gateway, "orderNumber": "LEGACY_ORDER", "payNumber": "LEGACY_PAY", "stuId": "12345"}
+    unknown = {"state": "UNKNOWN", "gateway": gateway, "createdAt": 123, "paymentStatus": "NOT_CHECKED"}
+    with store.connect() as db:
+        db.execute("CREATE TABLE life_reports(id TEXT PRIMARY KEY)")
+        db.execute("CREATE TABLE life_card_payments(reference TEXT PRIMARY KEY,report_id TEXT UNIQUE REFERENCES life_reports(id),"
+                   "network TEXT,merchant TEXT,amount INTEGER,provider_order TEXT,sunlands_order TEXT DEFAULT '{}')")
+        for reference, receipt in (("000000000001", old), ("000000000002", old), ("000000000003", unknown)):
+            db.execute("INSERT INTO life_reports VALUES(?)", (reference,))
+            db.execute("INSERT INTO life_card_payments VALUES(?,?,?,?,?,?,?)",
+                       (reference, reference, "network", "sunlands:sunlands_fb_fate", 3000, None, json.dumps(receipt)))
+    payments = LifeCardPayments(store, Settings())
+    assert json.loads(payments.order_for("000000000001")["sunlands_order"]) == old
+    assert payments.order_for("000000000001")["sunlands_order_number"] == "LEGACY_ORDER"
+    conflict = payments.order_for("000000000002")
+    assert json.loads(conflict["sunlands_order"])["state"] == "UNKNOWN"
+    assert json.loads(conflict["sunlands_order"])["stuId"] == "12345"
+    assert json.loads(conflict["sunlands_order"])["orderNumber"] == "LEGACY_ORDER"
+    assert conflict["sunlands_order_number"] is None
+    assert payments.order_for("000000000003")["sunlands_order"] == json.dumps(unknown)
+    restarted = LifeCardPayments(store, Settings())
+    assert restarted.order_for("000000000002")["sunlands_order"] == conflict["sunlands_order"]
+
+
 @pytest.mark.parametrize("report_kind", ("life", "fortune"))
 def test_payso_demo_only_unlocks_the_order_verified_by_inquiry(client, monkeypatch, report_kind):
     http, app, _, _ = client
+    monkeypatch.setattr(app.state.life_reports, "development", True)
     payments = app.state.life_reports.card_payments
     monkeypatch.setattr(payments, "enabled", True)
     monkeypatch.setattr(payments, "merchant", "12345678")

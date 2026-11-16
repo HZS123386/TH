@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
+
 import '../core/network/api_client.dart';
 import '../core/storage/session_store.dart';
 
@@ -16,9 +18,8 @@ class OrderIntent {
       throw const ApiFailure('invalid_order');
     }
     // StoreKit 2 appAccountToken is a UUID owned and supplied by the backend.
-    if (!RegExp(
-      r'^[a-fA-F0-9]{8}(-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$',
-    ).hasMatch(row['app_account_ref'] as String)) {
+    if (!RegExp(r'^[a-fA-F0-9]{8}(-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$')
+        .hasMatch(row['app_account_ref'] as String)) {
       throw const ApiFailure('invalid_account_reference');
     }
     return OrderIntent(
@@ -154,7 +155,7 @@ class PurchaseRepository extends ChangeNotifier {
     notifyListeners();
     try {
       final started = await _store.buyNonConsumable(
-        purchaseParam: PurchaseParam(
+        purchaseParam: Sk2PurchaseParam(
           productDetails: product!,
           applicationUserName: intent!.accountRef,
         ),

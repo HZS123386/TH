@@ -21,14 +21,17 @@ class AppCapabilities {
     final features = json['app_capabilities'] is Map
         ? json['app_capabilities'] as Map
         : const {};
+    final western = ready('western_astrology');
+    final reports = western && features['western_reports'] == true;
+    final notice = features['ai_notice_version'];
     return AppCapabilities(
-      western: ready('western_astrology'),
-      reports: features['western_reports'] == true,
+      western: western,
+      reports: reports,
       appleLogin: features['apple_login'] == true,
-      applePurchase: features['apple_iap'] == true,
+      applePurchase: reports && features['apple_iap'] == true,
       developmentLogin: json['account_login'] == true,
       guestReading: json['guest_reading'] == true,
-      aiNoticeVersion: features['ai_notice_version'] as String?,
+      aiNoticeVersion: notice is String && notice.isNotEmpty ? notice : null,
     );
   }
 }

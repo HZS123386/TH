@@ -16,7 +16,7 @@ from backend.app.life_report_content import LifeWriter
 from backend.app.life_reports import LifeInput
 from backend.app.main import create_app
 from backend.app.storage import Storage
-from backend.tests.test_roxy_astrology import GOLDEN, HEADERS, PROFILE, draft, settings
+from backend.tests.test_roxy_astrology import GOLDEN, HEADERS, PROFILE, draft, settings, unlock_after_simulated_payment
 
 
 def fallback_settings(tmp_path):
@@ -107,7 +107,7 @@ def test_primary_service_failure_uses_qwen_for_free_and_all_six_roxy_parts(tmp_p
         preview = create_preview(client)
         assert preview["preview_state"] == "ready" and not preview["chapters"]
         path = "/api/life-reports/" + preview["id"]
-        assert client.post(path + "/unlock", headers=HEADERS).status_code == 200
+        unlock_after_simulated_payment(client, path)
 
         async def finish():
             await asyncio.gather(*client.app.state.life_reports.tasks.values())

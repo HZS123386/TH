@@ -1,4 +1,5 @@
 import '../app/languages.dart';
+
 import 'dart:convert';
 
 typedef Json = Map<String, dynamic>;
@@ -52,9 +53,8 @@ class Copy {
     };
     if (report.western) {
       labels['methodValue'] = forLanguage(language).t('jy', 'chart.western');
-      labels['plan'] = forLanguage(
-        language,
-      ).t('jy', 'report.westernSections.plan');
+      labels['plan'] = forLanguage(language)
+          .t('jy', 'report.westernSections.plan');
     }
     final question = object(report.input['career_question']);
     if (question.isNotEmpty) {
@@ -192,6 +192,10 @@ class LifeReport {
   Json get plan => full ? object(json['plan']) : {};
   Json get price => object(json['price']);
   String get priceLabel => text(price['display']);
+  bool get paysoTest => price['mode'] == 'payso_test';
+  bool get orderOnly => price['mode'] == 'sunlands_order_only';
+  bool get canPay =>
+      orderOnly || paysoTest || json['payment_simulation'] == true;
   bool get estimated => object(json['time_accuracy'])['mode'] == 'estimated';
   List<String> get progressKeys => career
       ? ['work']
@@ -222,7 +226,11 @@ class LifeReport {
         !['preview', 'full'].contains(row['access']) ||
         catalog.length != expectedCount ||
         row['chapters'] is! List ||
-        !['direct', 'payso_test'].contains(price['mode']) ||
+        ![
+          'direct',
+          'payso_test',
+          'sunlands_order_only',
+        ].contains(price['mode']) ||
         price['amount'] is! num ||
         price['amount'] < 0 ||
         price['currency'] != 'THB' ||

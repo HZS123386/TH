@@ -11,7 +11,8 @@ export const projectRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url
 export const flutterRoot=path.join(projectRoot,'web-client');
 const cached=path.join(homedir(),'.cache','fate-sdk','flutter','bin','flutter.bat');
 const binary=process.env.FATE_FLUTTER_BIN||(process.platform==='win32'&&existsSync(cached)?cached:'flutter');
-export function flutter(args){return new Promise((resolve,reject)=>{const quote=value=>`'${String(value).replaceAll("'","''")}'`;const command=`& ${quote(binary)} ${args.map(quote).join(' ')}; exit $LASTEXITCODE`;const child=process.platform==='win32'?spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{cwd:flutterRoot,stdio:'inherit',windowsHide:true}):spawn(binary,args,{cwd:flutterRoot,stdio:'inherit'});child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(`Flutter exited with ${code}`)));});}
+// Use the SDK's Dart analyzer so Unicode repository paths keep working.
+export function flutter(args){return new Promise((resolve,reject)=>{const tool=args[0]==='analyze'?path.join(path.dirname(binary),process.platform==='win32'?'dart.bat':'dart'):binary;const quote=value=>`'${String(value).replaceAll("'","''")}'`;const command=`& ${quote(tool)} ${args.map(quote).join(' ')}; exit $LASTEXITCODE`;const child=process.platform==='win32'?spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{cwd:flutterRoot,stdio:'inherit',windowsHide:true}):spawn(tool,args,{cwd:flutterRoot,stdio:'inherit'});child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(`SDK tool exited with ${code}`)));});}
 export const basePath=process.env.FATE_H5_BASE_PATH||'/thai-landing/';
 if(!/^\/(?:[A-Za-z0-9_-]+\/)*$/.test(basePath))throw Error('FATE_H5_BASE_PATH must be an absolute directory path');
 async function moveBuild(source,target){

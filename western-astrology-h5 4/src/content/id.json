@@ -90,7 +90,7 @@
     "privacy": "Kebijakan privasi",
     "support": "Bantuan",
     "supportTitle": "Hubungi bantuan",
-    
+
     "back": "← Kembali ke beranda",
     "geoNames": "Data lokasi dari",
     "progress": "Progres pembuatan",
@@ -143,13 +143,13 @@
       "aspects": "Aspek utama"
     },
     "erase": "Hapus hasil ini",
-    "checkout": {
+    "checkout": {"downloadUnavailable": "Aplikasi masih dalam pengujian dan belum dapat diunduh. Terima kasih atas minat Anda. Nantikan peluncuran resminya!",
       "eyebrow": "Jelajahi pembacaan pribadi",
       "title": "Buka pembacaan Anda",
       "contents": "Isi setelah dibuka",
       "samplePrice": "Harga contoh",
       "pay": "Bayar dan buka",
-      "preview": "Selama pengujian, tombol pembayaran membuka pembacaan lengkap secara gratis. Anda tidak dikenai biaya.",
+      "preview": "Setelah pembayaran dikonfirmasi, laporan lengkap Anda akan terbuka.",
       "download": "Unduh aplikasi",
       "appTestingTitle": "Aplikasi sedang diuji",
       "appTestingMessage": "Aplikasi masih dalam pengujian dan belum dapat diunduh. Terima kasih atas minat Anda. Nantikan peluncuran resminya!",
@@ -198,7 +198,7 @@
       "dateOnly": "Perkiraan waktu lahir: 12:00",
       "wheel": "Bagan kelahiran",
       "noTime": "Anda dapat melanjutkan dengan perkiraan pukul 12:00 setempat. Asenden, rumah, dan pembacaan mungkin kurang tepat.",
-      "selectPlanet": "Pilih planet", 
+      "selectPlanet": "Pilih planet",
       "inSign": " di ",
       "reading": "Baca tafsiran singkat",
       "readingLanguage": "",
@@ -461,7 +461,7 @@
     "done": "Laporan lengkap Anda siap",
     "once": "Tujuh tema sekali buka · Data kelahiran dan tahun ini"
   },
-  "checkout": {
+  "checkout": {"openCashier": "Buka halaman pembayaran", "loadingOrder": "Memuat pesanan tersimpan…", "cashierPreviewHint": "Bayar di halaman resmi, lalu kembali ke sini. Laporan terbuka setelah pembayaran diverifikasi.", "cashierUnavailable": "Tautan pembayaran belum tersedia. Hubungi bantuan dan jangan membuat pesanan ganda.", "nationCode": "Kode negara", "mobile": "Nomor telepon (tanpa kode negara)", "life_order_phone_invalid": "Masukkan nomor telepon dan kode negara yang valid.", "cancelOrderEntry": "Batal dan kembali", "createOrderOnly": "Buat pesanan belum dibayar", "orderOnlyHint": "Masukkan nomor telepon untuk membuat pesanan, lalu bayar di halaman resmi.", "orderCreated": "Pesanan dibuat", "localOrder": "Nomor pesanan lokal", "gatewayOrder": "Nomor pesanan platform", "pendingOrder": "Menunggu pembayaran · Laporan terkunci", "accessDenied": "Akses pesanan belum diaktifkan. Hubungi bantuan sebelum mencoba lagi.", "orderRejected": "Pesanan belum berhasil dibuat. Hubungi bantuan untuk pemeriksaan.", "configurationRequired": "Konfigurasi pembayaran belum lengkap. Coba lagi nanti.", "channelInvalid": "Saluran pesanan perlu diperiksa. Nomor pesanan belum diterima; jangan kirim ulang.", "orderNeedsReview": "Pesanan ini perlu diperiksa. Jangan membuat pesanan lain.", "life_order_needs_review": "Laporan memiliki pesanan nyata yang menunggu pemeriksaan dan belum bisa dihapus.", "demoHint": "Simulasi pembayaran lokal. Tidak ada uang yang ditagih.", "confirming": "Mengonfirmasi pembayaran simulasi…", "success": "Pembayaran berhasil", "demoSuccess": "Simulasi berhasil", "successHint": "Membuka laporan lengkap…", "openReport": "Buka laporan lengkap", "sunlandsWaiting": "Memverifikasi pembayaran. Laporan terbuka setelah konfirmasi…", "checkPayment": "Periksa pembayaran lagi",
     "title": "Konfirmasi pesanan",
     "demo": "Demo pembayaran",
     "order": "ID pesanan demo",

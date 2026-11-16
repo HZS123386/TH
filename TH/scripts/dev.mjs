@@ -1,14 +1,18 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { loadEnvFile } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { python } from './python.mjs';
+// Resolve the existing services from their source directory, even when launched at the repository root.
+process.chdir(fileURLToPath(new URL('../', import.meta.url)));
+if (existsSync('.env')) loadEnvFile('.env');
 if (!existsSync(python)) {
   console.error('请先运行 pnpm setup:api');
   process.exit(1);
 }
 const apiPort = process.env.SABAI_API_PORT || '8000';
-const webPort = process.env.SABAI_WEB_PORT || '5174';
+const webPort = process.env.SABAI_WEB_PORT || process.env.FATE_APP_PORT || '5174';
 const skipBuild = process.argv.includes('--skip-build') ? ['--skip-build'] : [];
 const landingRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../western-astrology-h5 4');
 const upstream = `http://127.0.0.1:${apiPort}`;

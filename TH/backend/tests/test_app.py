@@ -49,10 +49,14 @@ def test_profile_gender_is_saved_with_account(client, gender):
     assert client.put("/api/profile", headers=headers, json={**PROFILE, "gender": "invalid"}).status_code == 422
 
 
-def test_public_module_catalog_marks_future_astrology_as_planned(client):
+def test_public_module_catalog_keeps_unconfigured_astrology_unavailable(client):
     modules = client.get("/api/modules").json()
     assert [module["id"] for module in modules if module["status"] == "ready"] == ["bazi", "thai_astrology"]
-    assert all(module["method"] is None for module in modules if module["status"] == "planned")
+    western = next(module for module in modules if module["id"] == "western_astrology")
+    assert western["status"] == "planned"
+    assert western["method"] == "Western tropical / Placidus / true node"
+    assert all(module["method"] is None for module in modules
+               if module["status"] == "planned" and module["id"] != "western_astrology")
     assert client.get("/api/config").json()["modules"] == modules
 
 
@@ -164,13 +168,19 @@ def test_memory_limits_and_clear_history_keeps_memory(client):
     assert len(client.get("/api/memories", headers=headers).json()) == 20
 
 
-def test_production_rejects_demo_and_old_sessions(tmp_path):
+def test_production_disables_demo_and_chat_but_keeps_private_guest_profiles(tmp_path):
     settings = Settings(database_path=str(tmp_path / "production.db"))
     with TestClient(create_app(settings)) as dev:
         headers = login(dev)
     with TestClient(create_app(Settings(database_path=settings.database_path, app_env="production"))) as prod:
         assert prod.post("/api/auth/demo").status_code == 403
-        assert prod.get("/api/profile", headers=headers).status_code == 403
+        assert prod.get("/api/profile", headers=headers).status_code == 200
+        assert prod.get("/api/profile").status_code == 401
+        assert prod.get("/api/history", headers=headers).status_code == 403
+        guest = prod.post("/api/auth/guest")
+        assert guest.status_code == 201
+        guest_headers = {"Authorization": "Bearer " + guest.json()["token"]}
+        assert prod.get("/api/profile", headers=guest_headers).json() is None
 
 
 def test_body_limit_and_rate_limit(client):

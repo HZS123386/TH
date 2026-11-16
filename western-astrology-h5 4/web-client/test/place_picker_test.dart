@@ -91,7 +91,9 @@ void main() {
                       h5: h5,
                       onSelected: (value) => chosen = value,
                     ),
-                    const SizedBox(height: 100, child: Text('outside')),
+                    const Text('below fields'),
+                    const SizedBox(height: 220),
+                    const Text('outside'),
                   ],
                 ),
               ),
@@ -284,4 +286,53 @@ void main() {
       h5.dispose();
     },
   );
+  testWidgets(
+    'country suggestions open above the field when the keyboard leaves no room below',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+      final browser = TestBrowser();
+      final h5 = H5Controller(
+        translations(),
+        ReportRepository(browser),
+        browser,
+        language: 'zh',
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: h5Theme(),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 246),
+                  BirthplaceFields(h5: h5, onSelected: (_) {}),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      final country = find.byKey(const ValueKey('birth-country'));
+      await tester.tap(
+        find.descendant(of: country, matching: find.byType(IconButton)),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getBottomLeft(find.text('泰国')).dy,
+        lessThan(tester.getTopLeft(country).dy),
+      );
+      await tester.tap(find.text('泰国'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextFormField>(country).controller!.text, '泰国');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
+    },
+  );
+
 }

@@ -25,6 +25,7 @@ describe("complete, distinct landing languages", () => {
       expect(JSON.stringify(copy)).not.toMatch(/[\u3400-\u9fff\u0e00-\u0e7f]/u);
       const report = reportFixture({ ...inputFor(language), report_kind: "fortune" }, true);
       report.format = "western-compact";
+      report.price = { amount: 3000, currency: "THB", display: "฿30", mode: "sunlands_order_only" };
       report.method = { name: "RoxyAPI Western Astrology", house_system: "placidus", version: "v2" };
       report.catalog = westernTopicKeys.map((key, index) => ({ ...report.catalog[index], key, title: copy.jy.report.westernSections[key] }));
       report.chapters = westernTopicKeys.map((key, index) => ({ ...report.chapters[index], key, title: copy.jy.report.westernSections[key] }));

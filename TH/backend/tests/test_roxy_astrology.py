@@ -28,6 +28,15 @@ TEXT = "你做决定时往往先确认自己能够承担什么，再逐步增加
 DETAIL = "先把需要确认的条件写清楚，再与对方核对。"
 
 
+def unlock_after_simulated_payment(client, path):
+    assert client.post(path + "/unlock", headers=HEADERS).status_code == 402
+    order = client.post(path + "/payment", json={}, headers=HEADERS)
+    assert order.status_code == 200, order.text
+    paid = client.post(path + "/payment/simulate", json={"reference": order.json()["reference"]}, headers=HEADERS)
+    assert paid.status_code == 200 and paid.json()["paid"] is True
+    assert client.post(path + "/unlock", headers=HEADERS).status_code == 200
+
+
 def draft(bundle):
     base = {"language": bundle["language"], "reading": bundle["reading"]}
     if bundle["stage"] == "plan":
@@ -150,7 +159,7 @@ def test_openai_stream_writes_free_preview_and_all_six_roxy_topics_with_usage(tm
         assert not preview["chapters"] and preview["plan"] is None
         assert len(calls) == len(calculations) == 1
         path = "/api/life-reports/" + preview["id"]
-        assert client.post(path + "/unlock", headers=HEADERS).status_code == 200
+        unlock_after_simulated_payment(client, path)
 
         async def finish():
             await asyncio.gather(*client.app.state.life_reports.tasks.values())
@@ -274,7 +283,12 @@ def test_report_unlock_contains_all_six_topics_without_recalculating(tmp_path, m
         assert len(calls) == 1 and len(transport[0]) == 1
         path = "/api/life-reports/" + preview["id"]
         assert client.get(path, headers={"X-Report-Key": "another-synthetic-report-contract-owner"}).status_code == 404
-        client.post(path + "/unlock", headers=HEADERS)
+        assert client.post(path + "/unlock", headers=HEADERS).status_code == 402
+        created = client.post(path + "/payment", headers=HEADERS)
+        assert created.status_code == 200, created.text
+        order = created.json()
+        confirmed = client.post(path + "/payment/simulate", headers=HEADERS, json={"reference": order["reference"]})
+        assert confirmed.json() == {"paid": True}
         async def finish():
             await asyncio.gather(*client.app.state.life_reports.tasks.values())
         client.portal.call(finish)
@@ -358,7 +372,7 @@ def test_landing_languages_generate_and_restore_complete_western_reports(tmp_pat
         assert preview["input"]["profile"]["language"] == language
         assert preview["chart"]["planets"][0]["label"] == ({"en": "Sun", "vi": "Mặt Trời", **{code: copy["reading"]["planets"]["sun"] for code, copy in REGIONAL_LANGUAGES.items()}}[language])
         path = "/api/life-reports/" + preview["id"]
-        assert client.post(path + "/unlock", headers=HEADERS).status_code == 200
+        unlock_after_simulated_payment(client, path)
 
         async def finish():
             await asyncio.gather(*client.app.state.life_reports.tasks.values())

@@ -537,18 +537,20 @@ class _Corners extends CustomClipper<Path> {
 class ReportBadges extends StatelessWidget {
   const ReportBadges({
     required this.copy,
+    this.themes,
     this.locked = true,
     this.western = false,
     this.onTap,
     super.key,
   });
   final Copy copy;
+  final List<Json>? themes;
   final bool locked;
   final bool western;
   final ValueChanged<String>? onTap;
   @override
   Widget build(BuildContext context) {
-    final items = locked
+    final items = themes ?? (locked
         ? [
             ...objects(object(copy.data['jyThemes'])['outlook']),
             ...objects(object(copy.data['jyThemes'])['highlights']),
@@ -572,7 +574,7 @@ class ReportBadges extends StatelessWidget {
                   'report.${western ? 'westernSections' : 'sections'}.$key',
                 ),
               },
-          ];
+          ]);
     return LayoutBuilder(
       builder: (context, box) {
         if (!locked) {

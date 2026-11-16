@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../app/controller.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
@@ -31,7 +33,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   CancelToken? _generationRequest;
   final _anchors = <String, GlobalKey>{};
   final _deleteRequest = CancelToken();
-  bool _deleting = false;
+  bool _deleting = false, _paying = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
 
@@ -125,6 +127,29 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       }
     } finally {
       if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  Future<void> _pay() async {
+    final report = _model.report;
+    if (report == null ||
+        !report.canPay ||
+        report.full ||
+        _paying ||
+        _deleting) {
+      return;
+    }
+    setState(() => _paying = true);
+    try {
+      final paid = await showDialog<bool>(
+        context: context,
+        builder: (_) => ReportPaymentDialog(h5: widget.h5, report: report),
+      );
+      if (mounted && paid == true && _model.report?.ready != true) {
+        await _generate(true);
+      }
+    } finally {
+      if (mounted) setState(() => _paying = false);
     }
   }
 
@@ -504,11 +529,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           h5: widget.h5,
           report: r,
           freePreview: _freePreview(r, c),
-          busy: _deleting || _generating,
+          busy: _deleting || _generating || _paying,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
           onBack: _backHome,
           onErase: () => _erase(),
-          onUnlock: () => _generate(true),
+          onPay: r.canPay ? _pay : null,
         );
       }
       if (r.preview.isEmpty) {

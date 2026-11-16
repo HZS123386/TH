@@ -92,6 +92,8 @@ class ProfileRepository {
               ? row['nameThai']
               : locale == 'zh'
               ? row['nameChinese']
+              : locale == 'vi'
+              ? row['nameVietnamese']
               : row['nameEnglish'];
           return {
             ...Map<String, dynamic>.from(row),

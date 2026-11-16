@@ -33,7 +33,7 @@ export interface LifeReport {
   location: Partial<Place> & { nameEnglish: string; timeZone: string };
   method: { name: string; house_system: string; version: string };
   time_accuracy?: { mode: "exact" | "estimated"; assumed_local_time: string | null };
-  price: { amount: number; currency: string; display: string; mode: "direct" | "payso_test" };
+  price: { amount: number; currency: string; display: string; mode: "direct" | "payso_test" | "sunlands_order_only" };
   preview_state: LifeState;
   full_state: LifeState;
   access: "preview" | "full";

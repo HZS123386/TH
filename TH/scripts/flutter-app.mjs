@@ -11,12 +11,16 @@ export const flutterBinary = process.env.FATE_FLUTTER_BIN || (process.platform =
 
 export function runFlutter(args) {
   return new Promise((resolve, reject) => {
+    // Dart's analyzer accepts Unicode project paths without Flutter's LSP framing issue.
+    const binary = args[0] === 'analyze'
+      ? path.join(path.dirname(flutterBinary), process.platform === 'win32' ? 'dart.bat' : 'dart')
+      : flutterBinary;
     // A .bat entry needs a Windows shell; quote each argument independently.
     const quote = (value) => `'${String(value).replaceAll("'", "''")}'`;
-    const command = `& ${quote(flutterBinary)} ${args.map(quote).join(' ')}; exit $LASTEXITCODE`;
+    const command = `& ${quote(binary)} ${args.map(quote).join(' ')}; exit $LASTEXITCODE`;
     const child = process.platform === 'win32'
       ? spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { cwd: appRoot, stdio: 'inherit', windowsHide: true })
-      : spawn(flutterBinary, args, { cwd: appRoot, stdio: 'inherit' });
+      : spawn(binary, args, { cwd: appRoot, stdio: 'inherit' });
     child.on('error', reject);
     child.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`Flutter exited with code ${code}`)));
   });
