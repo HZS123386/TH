@@ -4,11 +4,12 @@ class ChartPlanet {
     this.longitude, {
     this.house,
     this.retrograde = false,
+    this.estimated = false,
   });
   final String key;
   final double longitude;
   final int? house;
-  final bool retrograde;
+  final bool retrograde, estimated;
   static const keys = [
     'sun',
     'moon',
@@ -26,11 +27,19 @@ class ChartPlanet {
 }
 
 class ChartAspect {
-  const ChartAspect(this.from, this.to, this.angle, {this.orb, this.type});
+  const ChartAspect(
+    this.from,
+    this.to,
+    this.angle, {
+    this.orb,
+    this.type,
+    this.estimated = false,
+  });
   final String from, to;
   final double angle;
   final double? orb;
   final String? type;
+  final bool estimated;
 }
 
 class CalculationSnapshot {
@@ -46,9 +55,12 @@ class CalculationSnapshot {
     this.aspects = const [],
     this.missingFields = const [],
     this.example = false,
+    this.estimatedTime = false,
+    this.assumedLocalTime,
   });
   final String id, engineVersion, rulesetVersion;
-  final bool exactTime, example;
+  final bool exactTime, example, estimatedTime;
+  final String? assumedLocalTime;
   final List<ChartPlanet> planets;
   final double? ascendant, midheaven;
   final Map<int, double> houses;
@@ -58,13 +70,23 @@ class CalculationSnapshot {
     if (json['system'] != 'western_natal' ||
         json['result_id'] is! String ||
         !['complete', 'partial'].contains(json['status']) ||
-        !['exact_time', 'date_only'].contains(json['input_precision']) ||
+        ![
+          'exact_time',
+          'date_only',
+          'estimated_time',
+        ].contains(json['input_precision']) ||
         json['engine_version'] is! String ||
         json['ruleset_version'] is! String ||
         json['facts'] is! List) {
       throw const FormatException('invalid_calculation');
     }
     final exact = json['input_precision'] == 'exact_time';
+    final estimated = json['input_precision'] == 'estimated_time';
+    final rules = json['rules'];
+    if (estimated &&
+        (rules is! Map || rules['assumed_local_time'] != '12:00')) {
+      throw const FormatException('invalid_estimated_time');
+    }
     final planets = <ChartPlanet>[], aspects = <ChartAspect>[];
     final houses = <int, double>{}, ids = <String>{};
     double? ascendant, midheaven;
@@ -86,7 +108,11 @@ class CalculationSnapshot {
         throw const FormatException('invalid_fact');
       }
       final value = raw['value'] as Map;
+      if (estimated != (value['estimated'] == true)) {
+        throw const FormatException('invalid_estimate_flag');
+      }
       if (!exact &&
+          !estimated &&
           ([
                 'ascendant',
                 'midheaven',
@@ -111,6 +137,7 @@ class CalculationSnapshot {
               longitude(value['longitude']),
               house: house as int?,
               retrograde: value['retrograde'] == true,
+              estimated: estimated,
             ),
           );
         case 'ascendant':
@@ -154,6 +181,7 @@ class CalculationSnapshot {
                   ? (value['orb'] as num).toDouble()
                   : null,
               type: value['type'] as String?,
+              estimated: estimated,
             ),
           );
         default:
@@ -172,6 +200,8 @@ class CalculationSnapshot {
       engineVersion: json['engine_version'] as String,
       rulesetVersion: json['ruleset_version'] as String,
       exactTime: exact,
+      estimatedTime: estimated,
+      assumedLocalTime: estimated ? '12:00' : null,
       planets: List.unmodifiable(planets),
       ascendant: ascendant,
       midheaven: midheaven,

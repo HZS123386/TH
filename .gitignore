@@ -7,7 +7,7 @@
 **/playwright-report/
 **/tmp/
 **/output/
-**/data/
+/TH/data/
 !TH/src/data/
 /TH/src/data/*
 !/TH/src/data/wanjai-*.json

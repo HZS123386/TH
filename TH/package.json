@@ -19,6 +19,7 @@
     "build:zodiac": "node scripts/build-zodiac.mjs",
     "test": "vitest run",
     "test:api": "node scripts/python.mjs -m pytest backend/tests -q",
+    "test:deployment": "node scripts/python.mjs -m pytest backend/tests/test_prepare_release.py -q",
     "check:api": "node scripts/python.mjs -m ruff check backend",
     "verify:thai": "node scripts/verify-thai.mjs",
     "verify:roxy": "node scripts/python.mjs scripts/verify-roxy.py",

@@ -47,11 +47,12 @@ class _WheelPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final c = Offset(size.width / 2, size.height / 2), r = size.width * .47;
+    const innerRingScale = .49;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = .7
       ..color = goldColor.withValues(alpha: .5);
-    for (final scale in [1.0, .97, .81, .66, .49]) {
+    for (final scale in [1.0, .97, .81, .66, innerRingScale]) {
       canvas.drawCircle(c, r * scale, paint);
     }
     Offset point(double angle, double radius) =>
@@ -87,11 +88,21 @@ class _WheelPainter extends CustomPainter {
     for (final house in result.houses.entries) {
       paint.color = goldColor.withValues(alpha: .38);
       canvas.drawLine(
-        point(house.value, r * .49),
+        point(house.value, r * innerRingScale),
         point(house.value, r * .81),
         paint,
       );
-      text('${house.key}', point(house.value + 3, r * .53), mutedColor, 9);
+      final nextCusp = result.houses[house.key % 12 + 1];
+      if (nextCusp != null) {
+        // Follow the zodiac through 0° to center labels in unequal houses.
+        final middle = house.value + (nextCusp - house.value) % 360 / 2;
+        text(
+          '${house.key}',
+          point(middle, r * (innerRingScale + .66) / 2),
+          mutedColor,
+          9,
+        );
+      }
     }
     for (final angle in [('ASC', result.ascendant), ('MC', result.midheaven)]) {
       if (angle.$2 == null) continue;
@@ -103,6 +114,9 @@ class _WheelPainter extends CustomPainter {
       );
       text(angle.$1, point(angle.$2!, r * .73), goldColor, 9);
     }
+    // Leave a visible gap between aspect chords and the innermost ring.
+    final aspectGap = max(4.0, r * .025);
+    final aspectRadius = r * innerRingScale - aspectGap - paint.strokeWidth;
     for (final aspect in result.aspects) {
       final from = result.planets.where((p) => p.key == aspect.from),
           to = result.planets.where((p) => p.key == aspect.to);
@@ -113,8 +127,8 @@ class _WheelPainter extends CustomPainter {
                   : const Color(0xFF8FAFE3))
               .withValues(alpha: .5);
       canvas.drawLine(
-        point(from.first.longitude, r * .59),
-        point(to.first.longitude, r * .59),
+        point(from.first.longitude, aspectRadius),
+        point(to.first.longitude, aspectRadius),
         paint,
       );
     }
@@ -127,18 +141,18 @@ class _WheelPainter extends CustomPainter {
           active = p.key == selected;
       canvas.drawCircle(
         at,
-        13,
+        10,
         Paint()..color = active ? goldColor : panelColor,
       );
       canvas.drawCircle(
         at,
-        13,
+        10,
         Paint()
           ..style = PaintingStyle.stroke
           ..color = goldColor.withValues(alpha: .65)
           ..strokeWidth = .7,
       );
-      text(p.symbol, at, active ? panelColor : goldColor, 17);
+      text(p.symbol, at, active ? panelColor : goldColor, 13);
     }
     text('✧', c - const Offset(0, 7), goldColor, 28);
     text('FATE', c + const Offset(0, 16), mutedColor, 9);

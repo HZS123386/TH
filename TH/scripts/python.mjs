@@ -1,7 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const python =
-  process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python';
+  path.join(root, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
 if (process.argv[1]?.endsWith('python.mjs')) {
   if (!existsSync(python)) {
     console.error('请先运行 pnpm setup:api');

@@ -2,46 +2,892 @@
   "version": "fortune-reading-1",
   "topics": [
     {
-      "key": "annual", "houses": [1, 2, 7, 10],
+      "key": "annual",
+      "houses": [
+        1,
+        2,
+        7,
+        10
+      ],
       "scope": "The selected calendar year's changing priorities across work, money and relationships, grounded in its calculated monthly states. Cover the beginning, middle and end of the year. Discuss preparation and choices, never guaranteed events or lucky dates.",
-      "zh": {"title": "年度运程", "subtitle": "阶段重点 · 顺势安排", "questions": ["这一年的重点是什么", "不同阶段怎样安排", "哪些事情值得提前准备"], "groups": ["年度节奏与重点", "阶段提醒与安排"]},
-      "th": {"title": "ดวงรายปี", "subtitle": "เรื่องสำคัญ · การเตรียมตัว", "questions": ["เรื่องสำคัญของปี", "การจัดลำดับในแต่ละช่วง", "สิ่งที่ควรเตรียมล่วงหน้า"], "groups": ["จังหวะและเรื่องสำคัญของปี", "ข้อควรใส่ใจและการเตรียมตัว"]}
+      "zh": {
+        "title": "年度运程",
+        "subtitle": "阶段重点 · 顺势安排",
+        "questions": [
+          "这一年的重点是什么",
+          "不同阶段怎样安排",
+          "哪些事情值得提前准备"
+        ],
+        "groups": [
+          "年度节奏与重点",
+          "阶段提醒与安排"
+        ]
+      },
+      "th": {
+        "title": "ดวงรายปี",
+        "subtitle": "เรื่องสำคัญ · การเตรียมตัว",
+        "questions": [
+          "เรื่องสำคัญของปี",
+          "การจัดลำดับในแต่ละช่วง",
+          "สิ่งที่ควรเตรียมล่วงหน้า"
+        ],
+        "groups": [
+          "จังหวะและเรื่องสำคัญของปี",
+          "ข้อควรใส่ใจและการเตรียมตัว"
+        ]
+      },
+      "en": {
+        "title": "Yearly themes",
+        "subtitle": "Priorities and preparation",
+        "questions": [
+          "Main priorities for the year",
+          "Choices across different stages",
+          "What to prepare in advance"
+        ],
+        "groups": [
+          "Yearly themes and priorities",
+          "Cautions and preparation"
+        ]
+      },
+      "vi": {
+        "title": "Chủ đề trong năm",
+        "subtitle": "Ưu tiên và chuẩn bị",
+        "questions": [
+          "Ưu tiên chính của năm",
+          "Sắp xếp từng giai đoạn",
+          "Điều nên chuẩn bị trước"
+        ],
+        "groups": [
+          "Nhịp điệu và ưu tiên trong năm",
+          "Lưu ý và chuẩn bị"
+        ]
+      },
+      "my": {
+        "title": "နှစ်အလိုက် အကြောင်းအရာများ",
+        "subtitle": "နှစ်အလိုက် အကြောင်းအရာများ",
+        "questions": [
+          "နှစ်အလိုက် အကြောင်းအရာများ",
+          "နေ့စဉ်ဘဝ ဥပမာ",
+          "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+        ],
+        "groups": [
+          "နှစ်အလိုက် အကြောင်းအရာများ",
+          "လက်တွေ့အကြံပြုချက်များ"
+        ]
+      },
+      "km": {
+        "title": "ប្រធានបទប្រចាំឆ្នាំ",
+        "subtitle": "ប្រធានបទប្រចាំឆ្នាំ",
+        "questions": [
+          "ប្រធានបទប្រចាំឆ្នាំ",
+          "ឧទាហរណ៍ប្រចាំថ្ងៃ",
+          "របៀបពិនិត្យលទ្ធផល"
+        ],
+        "groups": [
+          "ប្រធានបទប្រចាំឆ្នាំ",
+          "សំណើសម្រាប់អនុវត្ត"
+        ]
+      },
+      "lo": {
+        "title": "ຫົວຂໍ້ປະຈຳປີ",
+        "subtitle": "ຫົວຂໍ້ປະຈຳປີ",
+        "questions": [
+          "ຫົວຂໍ້ປະຈຳປີ",
+          "ຕົວຢ່າງໃນຊີວິດປະຈຳວັນ",
+          "ວິທີທົບທວນຜົນ"
+        ],
+        "groups": [
+          "ຫົວຂໍ້ປະຈຳປີ",
+          "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+        ]
+      },
+      "ms": {
+        "title": "Tema tahunan",
+        "subtitle": "Tema tahunan",
+        "questions": [
+          "Tema tahunan",
+          "Contoh harian",
+          "Cara menilai hasil"
+        ],
+        "groups": [
+          "Tema tahunan",
+          "Cadangan praktikal"
+        ]
+      },
+      "id": {
+        "title": "Tema tahunan",
+        "subtitle": "Tema tahunan",
+        "questions": [
+          "Tema tahunan",
+          "Contoh sehari-hari",
+          "Cara meninjau hasil"
+        ],
+        "groups": [
+          "Tema tahunan",
+          "Saran praktis"
+        ]
+      }
     },
     {
-      "key": "overall", "houses": [1, 4, 9, 10],
+      "key": "overall",
+      "houses": [
+        1,
+        4,
+        9,
+        10
+      ],
       "scope": "How the person's initiative, home needs, learning and career responsibilities interact. Explain how to choose priorities when these needs compete. Develop a paid synthesis beyond the free personality traits; do not repeat the yearly forecast or make lifelong success claims.",
-      "zh": {"title": "整体运程", "subtitle": "人生主线 · 取舍方向", "questions": ["人生中反复关注什么", "不同需要怎样取舍", "眼下怎样确定主次"], "groups": ["整体倾向与人生主线", "取舍与调整方向"]},
-      "th": {"title": "ภาพรวมชีวิต", "subtitle": "แนวโน้ม · การเลือกทาง", "questions": ["สิ่งที่ให้ความสำคัญในชีวิต", "การชั่งน้ำหนักความต้องการ", "การจัดลำดับเรื่องสำคัญ"], "groups": ["แนวโน้มโดยรวมของชีวิต", "การเลือกและปรับแนวทาง"]}
+      "zh": {
+        "title": "整体运程",
+        "subtitle": "人生主线 · 取舍方向",
+        "questions": [
+          "人生中反复关注什么",
+          "不同需要怎样取舍",
+          "眼下怎样确定主次"
+        ],
+        "groups": [
+          "整体倾向与人生主线",
+          "取舍与调整方向"
+        ]
+      },
+      "th": {
+        "title": "ภาพรวมชีวิต",
+        "subtitle": "แนวโน้ม · การเลือกทาง",
+        "questions": [
+          "สิ่งที่ให้ความสำคัญในชีวิต",
+          "การชั่งน้ำหนักความต้องการ",
+          "การจัดลำดับเรื่องสำคัญ"
+        ],
+        "groups": [
+          "แนวโน้มโดยรวมของชีวิต",
+          "การเลือกและปรับแนวทาง"
+        ]
+      },
+      "en": {
+        "title": "Life overview",
+        "subtitle": "Priorities and choices",
+        "questions": [
+          "Recurring personal priorities",
+          "Balancing different needs",
+          "What matters most now"
+        ],
+        "groups": [
+          "Personal themes",
+          "Choices and adjustments"
+        ]
+      },
+      "vi": {
+        "title": "Tổng quan cuộc sống",
+        "subtitle": "Ưu tiên và lựa chọn",
+        "questions": [
+          "Điều bạn thường quan tâm",
+          "Cân bằng các nhu cầu",
+          "Xác định ưu tiên hiện tại"
+        ],
+        "groups": [
+          "Xu hướng và chủ đề cá nhân",
+          "Lựa chọn và điều chỉnh"
+        ]
+      },
+      "my": {
+        "title": "ဘဝခြုံငုံသုံးသပ်ချက်",
+        "subtitle": "ဘဝခြုံငုံသုံးသပ်ချက်",
+        "questions": [
+          "ဘဝခြုံငုံသုံးသပ်ချက်",
+          "နေ့စဉ်ဘဝ ဥပမာ",
+          "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+        ],
+        "groups": [
+          "ဘဝခြုံငုံသုံးသပ်ချက်",
+          "လက်တွေ့အကြံပြုချက်များ"
+        ]
+      },
+      "km": {
+        "title": "ទិដ្ឋភាពទូទៅនៃជីវិត",
+        "subtitle": "ទិដ្ឋភាពទូទៅនៃជីវិត",
+        "questions": [
+          "ទិដ្ឋភាពទូទៅនៃជីវិត",
+          "ឧទាហរណ៍ប្រចាំថ្ងៃ",
+          "របៀបពិនិត្យលទ្ធផល"
+        ],
+        "groups": [
+          "ទិដ្ឋភាពទូទៅនៃជីវិត",
+          "សំណើសម្រាប់អនុវត្ត"
+        ]
+      },
+      "lo": {
+        "title": "ພາບລວມຊີວິດ",
+        "subtitle": "ພາບລວມຊີວິດ",
+        "questions": [
+          "ພາບລວມຊີວິດ",
+          "ຕົວຢ່າງໃນຊີວິດປະຈຳວັນ",
+          "ວິທີທົບທວນຜົນ"
+        ],
+        "groups": [
+          "ພາບລວມຊີວິດ",
+          "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+        ]
+      },
+      "ms": {
+        "title": "Gambaran kehidupan",
+        "subtitle": "Gambaran kehidupan",
+        "questions": [
+          "Gambaran kehidupan",
+          "Contoh harian",
+          "Cara menilai hasil"
+        ],
+        "groups": [
+          "Gambaran kehidupan",
+          "Cadangan praktikal"
+        ]
+      },
+      "id": {
+        "title": "Gambaran kehidupan",
+        "subtitle": "Gambaran kehidupan",
+        "questions": [
+          "Gambaran kehidupan",
+          "Contoh sehari-hari",
+          "Cara meninjau hasil"
+        ],
+        "groups": [
+          "Gambaran kehidupan",
+          "Saran praktis"
+        ]
+      }
     },
     {
-      "key": "pattern", "houses": [1, 5, 9, 10, 11],
+      "key": "pattern",
+      "houses": [
+        1,
+        5,
+        9,
+        10,
+        11
+      ],
       "scope": "The interaction between initiative, interests, learning, professional responsibility and support. Explain which strengths work well together, when opportunities can be developed and where the person may overextend. This is a Thai natal-chart synthesis, not a Bazi pattern classification, destiny ranking or success score.",
-      "zh": {"title": "格局解读", "subtitle": "优势组合 · 发展空间", "questions": ["哪些优势能相互配合", "机会怎样转为实际积累", "发展中容易忽略什么"], "groups": ["优势组合与发展空间", "发挥优势与补足短板"]},
-      "th": {"title": "โครงสร้างพื้นดวง", "subtitle": "จุดแข็ง · โอกาสเติบโต", "questions": ["จุดแข็งที่ช่วยส่งเสริมกัน", "การเปลี่ยนโอกาสเป็นประสบการณ์", "สิ่งที่อาจมองข้ามเมื่อพัฒนา"], "groups": ["จุดแข็งและโอกาสพัฒนา", "การใช้จุดแข็งและปรับจุดอ่อน"]}
+      "zh": {
+        "title": "格局解读",
+        "subtitle": "优势组合 · 发展空间",
+        "questions": [
+          "哪些优势能相互配合",
+          "机会怎样转为实际积累",
+          "发展中容易忽略什么"
+        ],
+        "groups": [
+          "优势组合与发展空间",
+          "发挥优势与补足短板"
+        ]
+      },
+      "th": {
+        "title": "โครงสร้างพื้นดวง",
+        "subtitle": "จุดแข็ง · โอกาสเติบโต",
+        "questions": [
+          "จุดแข็งที่ช่วยส่งเสริมกัน",
+          "การเปลี่ยนโอกาสเป็นประสบการณ์",
+          "สิ่งที่อาจมองข้ามเมื่อพัฒนา"
+        ],
+        "groups": [
+          "จุดแข็งและโอกาสพัฒนา",
+          "การใช้จุดแข็งและปรับจุดอ่อน"
+        ]
+      },
+      "en": {
+        "title": "Personal patterns",
+        "subtitle": "Strengths and development",
+        "questions": [
+          "Strengths that work together",
+          "Turning opportunities into experience",
+          "What may be overlooked"
+        ],
+        "groups": [
+          "Strengths and development",
+          "Using strengths and adjusting"
+        ]
+      },
+      "vi": {
+        "title": "Đặc điểm cá nhân",
+        "subtitle": "Điểm mạnh và phát triển",
+        "questions": [
+          "Điểm mạnh hỗ trợ lẫn nhau",
+          "Biến cơ hội thành kinh nghiệm",
+          "Điều dễ bỏ sót khi phát triển"
+        ],
+        "groups": [
+          "Điểm mạnh và cơ hội phát triển",
+          "Phát huy và điều chỉnh"
+        ]
+      },
+      "my": {
+        "title": "ကိုယ်ပိုင်အမူအကျင့်များ",
+        "subtitle": "ကိုယ်ပိုင်အမူအကျင့်များ",
+        "questions": [
+          "ကိုယ်ပိုင်အမူအကျင့်များ",
+          "နေ့စဉ်ဘဝ ဥပမာ",
+          "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+        ],
+        "groups": [
+          "ကိုယ်ပိုင်အမူအကျင့်များ",
+          "လက်တွေ့အကြံပြုချက်များ"
+        ]
+      },
+      "km": {
+        "title": "លំនាំផ្ទាល់ខ្លួន",
+        "subtitle": "លំនាំផ្ទាល់ខ្លួន",
+        "questions": [
+          "លំនាំផ្ទាល់ខ្លួន",
+          "ឧទាហរណ៍ប្រចាំថ្ងៃ",
+          "របៀបពិនិត្យលទ្ធផល"
+        ],
+        "groups": [
+          "លំនាំផ្ទាល់ខ្លួន",
+          "សំណើសម្រាប់អនុវត្ត"
+        ]
+      },
+      "lo": {
+        "title": "ຮູບແບບສ່ວນຕົວ",
+        "subtitle": "ຮູບແບບສ່ວນຕົວ",
+        "questions": [
+          "ຮູບແບບສ່ວນຕົວ",
+          "ຕົວຢ່າງໃນຊີວິດປະຈຳວັນ",
+          "ວິທີທົບທວນຜົນ"
+        ],
+        "groups": [
+          "ຮູບແບບສ່ວນຕົວ",
+          "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+        ]
+      },
+      "ms": {
+        "title": "Corak diri",
+        "subtitle": "Corak diri",
+        "questions": [
+          "Corak diri",
+          "Contoh harian",
+          "Cara menilai hasil"
+        ],
+        "groups": [
+          "Corak diri",
+          "Cadangan praktikal"
+        ]
+      },
+      "id": {
+        "title": "Pola diri",
+        "subtitle": "Pola diri",
+        "questions": [
+          "Pola diri",
+          "Contoh sehari-hari",
+          "Cara meninjau hasil"
+        ],
+        "groups": [
+          "Pola diri",
+          "Saran praktis"
+        ]
+      }
     },
     {
-      "key": "marriage", "houses": [4, 7, 8],
+      "key": "marriage",
+      "houses": [
+        4,
+        7,
+        8
+      ],
       "scope": "Long-term partnership and marriage: emotional needs, trust, shared responsibilities, boundaries and communication under pressure. Make examples conditional for single and partnered readers. Never assume marital status, predict infidelity or divorce, or infer a second person's chart.",
-      "zh": {"title": "婚姻情感", "subtitle": "长期相处 · 沟通经营", "questions": ["亲密关系中需要什么", "长期相处容易在哪些事上分歧", "信任与共同责任怎样经营"], "groups": ["亲密需求与长期相处", "沟通边界与共同经营"]},
-      "th": {"title": "ชีวิตคู่และความรัก", "subtitle": "ความไว้ใจ · การสื่อสาร", "questions": ["ความต้องการในความสัมพันธ์", "เรื่องที่อาจเห็นต่างเมื่ออยู่ร่วมกัน", "การสร้างความไว้ใจและแบ่งหน้าที่"], "groups": ["ความต้องการและการอยู่ร่วมกัน", "ขอบเขตและการดูแลความสัมพันธ์"]}
+      "zh": {
+        "title": "婚姻情感",
+        "subtitle": "长期相处 · 沟通经营",
+        "questions": [
+          "亲密关系中需要什么",
+          "长期相处容易在哪些事上分歧",
+          "信任与共同责任怎样经营"
+        ],
+        "groups": [
+          "亲密需求与长期相处",
+          "沟通边界与共同经营"
+        ]
+      },
+      "th": {
+        "title": "ชีวิตคู่และความรัก",
+        "subtitle": "ความไว้ใจ · การสื่อสาร",
+        "questions": [
+          "ความต้องการในความสัมพันธ์",
+          "เรื่องที่อาจเห็นต่างเมื่ออยู่ร่วมกัน",
+          "การสร้างความไว้ใจและแบ่งหน้าที่"
+        ],
+        "groups": [
+          "ความต้องการและการอยู่ร่วมกัน",
+          "ขอบเขตและการดูแลความสัมพันธ์"
+        ]
+      },
+      "en": {
+        "title": "Long-term relationships",
+        "subtitle": "Trust and communication",
+        "questions": [
+          "Needs in close relationships",
+          "Common areas of difference",
+          "Trust and shared responsibilities"
+        ],
+        "groups": [
+          "Closeness and long-term needs",
+          "Communication and shared care"
+        ]
+      },
+      "vi": {
+        "title": "Quan hệ lâu dài",
+        "subtitle": "Tin tưởng và giao tiếp",
+        "questions": [
+          "Nhu cầu khi gần gũi",
+          "Điều dễ khác biệt khi gắn bó",
+          "Xây dựng tin tưởng và trách nhiệm chung"
+        ],
+        "groups": [
+          "Nhu cầu và sự gắn bó lâu dài",
+          "Giao tiếp và chăm sóc quan hệ"
+        ]
+      },
+      "my": {
+        "title": "ရေရှည်ဆက်ဆံရေး",
+        "subtitle": "ရေရှည်ဆက်ဆံရေး",
+        "questions": [
+          "ရေရှည်ဆက်ဆံရေး",
+          "နေ့စဉ်ဘဝ ဥပမာ",
+          "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+        ],
+        "groups": [
+          "ရေရှည်ဆက်ဆံရေး",
+          "လက်တွေ့အကြံပြုချက်များ"
+        ]
+      },
+      "km": {
+        "title": "ទំនាក់ទំនងយូរអង្វែង",
+        "subtitle": "ទំនាក់ទំនងយូរអង្វែង",
+        "questions": [
+          "ទំនាក់ទំនងយូរអង្វែង",
+          "ឧទាហរណ៍ប្រចាំថ្ងៃ",
+          "របៀបពិនិត្យលទ្ធផល"
+        ],
+        "groups": [
+          "ទំនាក់ទំនងយូរអង្វែង",
+          "សំណើសម្រាប់អនុវត្ត"
+        ]
+      },
+      "lo": {
+        "title": "ຄວາມສຳພັນໄລຍະຍາວ",
+        "subtitle": "ຄວາມສຳພັນໄລຍະຍາວ",
+        "questions": [
+          "ຄວາມສຳພັນໄລຍະຍາວ",
+          "ຕົວຢ່າງໃນຊີວິດປະຈຳວັນ",
+          "ວິທີທົບທວນຜົນ"
+        ],
+        "groups": [
+          "ຄວາມສຳພັນໄລຍະຍາວ",
+          "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+        ]
+      },
+      "ms": {
+        "title": "Hubungan jangka panjang",
+        "subtitle": "Hubungan jangka panjang",
+        "questions": [
+          "Hubungan jangka panjang",
+          "Contoh harian",
+          "Cara menilai hasil"
+        ],
+        "groups": [
+          "Hubungan jangka panjang",
+          "Cadangan praktikal"
+        ]
+      },
+      "id": {
+        "title": "Hubungan jangka panjang",
+        "subtitle": "Hubungan jangka panjang",
+        "questions": [
+          "Hubungan jangka panjang",
+          "Contoh sehari-hari",
+          "Cara meninjau hasil"
+        ],
+        "groups": [
+          "Hubungan jangka panjang",
+          "Saran praktis"
+        ]
+      }
     },
     {
-      "key": "wealth", "houses": [2, 6, 10, 11],
+      "key": "wealth",
+      "houses": [
+        2,
+        6,
+        10,
+        11
+      ],
       "scope": "The connection between work style, skills, collaboration, income habits and spending choices. Distinguish career development from money management. Discuss practical preparation and agreements without financial product recommendations, invented amounts or promised gains.",
-      "zh": {"title": "财运事业", "subtitle": "收入习惯 · 职业发展", "questions": ["什么工作方式更适合你", "收入与消费习惯如何配合", "合作与发展怎样做准备"], "groups": ["事业方向与收入习惯", "合作准备与财务安排"]},
-      "th": {"title": "การเงินและการงาน", "subtitle": "รายได้ · เส้นทางอาชีพ", "questions": ["รูปแบบงานที่เหมาะกับคุณ", "นิสัยเรื่องรายได้และรายจ่าย", "การเตรียมตัวเพื่อร่วมงานและเติบโต"], "groups": ["แนวทางอาชีพและนิสัยการเงิน", "การร่วมงานและวางแผนการเงิน"]}
+      "zh": {
+        "title": "财运事业",
+        "subtitle": "收入习惯 · 职业发展",
+        "questions": [
+          "什么工作方式更适合你",
+          "收入与消费习惯如何配合",
+          "合作与发展怎样做准备"
+        ],
+        "groups": [
+          "事业方向与收入习惯",
+          "合作准备与财务安排"
+        ]
+      },
+      "th": {
+        "title": "การเงินและการงาน",
+        "subtitle": "รายได้ · เส้นทางอาชีพ",
+        "questions": [
+          "รูปแบบงานที่เหมาะกับคุณ",
+          "นิสัยเรื่องรายได้และรายจ่าย",
+          "การเตรียมตัวเพื่อร่วมงานและเติบโต"
+        ],
+        "groups": [
+          "แนวทางอาชีพและนิสัยการเงิน",
+          "การร่วมงานและวางแผนการเงิน"
+        ]
+      },
+      "en": {
+        "title": "Money and career",
+        "subtitle": "Habits and development",
+        "questions": [
+          "Work styles that suit you",
+          "Income and spending habits",
+          "Preparing for cooperation and growth"
+        ],
+        "groups": [
+          "Career and money habits",
+          "Cooperation and financial planning"
+        ]
+      },
+      "vi": {
+        "title": "Tài chính và sự nghiệp",
+        "subtitle": "Thói quen và phát triển",
+        "questions": [
+          "Cách làm việc phù hợp",
+          "Thói quen thu nhập và chi tiêu",
+          "Chuẩn bị hợp tác và phát triển"
+        ],
+        "groups": [
+          "Sự nghiệp và thói quen tài chính",
+          "Hợp tác và kế hoạch tiền bạc"
+        ]
+      },
+      "my": {
+        "title": "ငွေကြေးနှင့် အလုပ်အကိုင်",
+        "subtitle": "ငွေကြေးနှင့် အလုပ်အကိုင်",
+        "questions": [
+          "ငွေကြေးနှင့် အလုပ်အကိုင်",
+          "နေ့စဉ်ဘဝ ဥပမာ",
+          "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+        ],
+        "groups": [
+          "ငွေကြေးနှင့် အလုပ်အကိုင်",
+          "လက်တွေ့အကြံပြုချက်များ"
+        ]
+      },
+      "km": {
+        "title": "ហិរញ្ញវត្ថុ និងអាជីព",
+        "subtitle": "ហិរញ្ញវត្ថុ និងអាជីព",
+        "questions": [
+          "ហិរញ្ញវត្ថុ និងអាជីព",
+          "ឧទាហរណ៍ប្រចាំថ្ងៃ",
+          "របៀបពិនិត្យលទ្ធផល"
+        ],
+        "groups": [
+          "ហិរញ្ញវត្ថុ និងអាជីព",
+          "សំណើសម្រាប់អនុវត្ត"
+        ]
+      },
+      "lo": {
+        "title": "ການເງິນ ແລະອາຊີບ",
+        "subtitle": "ການເງິນ ແລະອາຊີບ",
+        "questions": [
+          "ການເງິນ ແລະອາຊີບ",
+          "ຕົວຢ່າງໃນຊີວິດປະຈຳວັນ",
+          "ວິທີທົບທວນຜົນ"
+        ],
+        "groups": [
+          "ການເງິນ ແລະອາຊີບ",
+          "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+        ]
+      },
+      "ms": {
+        "title": "Kewangan dan kerjaya",
+        "subtitle": "Kewangan dan kerjaya",
+        "questions": [
+          "Kewangan dan kerjaya",
+          "Contoh harian",
+          "Cara menilai hasil"
+        ],
+        "groups": [
+          "Kewangan dan kerjaya",
+          "Cadangan praktikal"
+        ]
+      },
+      "id": {
+        "title": "Keuangan dan karier",
+        "subtitle": "Keuangan dan karier",
+        "questions": [
+          "Keuangan dan karier",
+          "Contoh sehari-hari",
+          "Cara meninjau hasil"
+        ],
+        "groups": [
+          "Keuangan dan karier",
+          "Saran praktis"
+        ]
+      }
     },
     {
-      "key": "risk", "houses": [6, 8, 12],
+      "key": "risk",
+      "houses": [
+        6,
+        8,
+        12
+      ],
       "scope": "Practical obstacles and avoidable friction: overcommitment, unclear shared obligations, overlooked details and insufficient rest. Give observable conditional warning signs and proportionate responses. A traditional indication is not proof of harm: never predict illness, accidents, death, loss amounts or inevitable misfortune, and never sell remedies.",
-      "zh": {"title": "风险提醒", "subtitle": "易遇阻力 · 提前应对", "questions": ["哪些习惯容易带来阻力", "需要留意哪些实际信号", "怎样提前调整安排"], "groups": ["易遇阻力与可观察信号", "边界安排与应对建议"]},
-      "th": {"title": "ข้อควรระวัง", "subtitle": "อุปสรรค · การรับมือ", "questions": ["นิสัยที่อาจทำให้เรื่องติดขัด", "สัญญาณที่สังเกตได้จริง", "การปรับแผนล่วงหน้า"], "groups": ["อุปสรรคและสัญญาณที่ควรใส่ใจ", "ขอบเขตและแนวทางรับมือ"]}
+      "zh": {
+        "title": "风险提醒",
+        "subtitle": "易遇阻力 · 提前应对",
+        "questions": [
+          "哪些习惯容易带来阻力",
+          "需要留意哪些实际信号",
+          "怎样提前调整安排"
+        ],
+        "groups": [
+          "易遇阻力与可观察信号",
+          "边界安排与应对建议"
+        ]
+      },
+      "th": {
+        "title": "ข้อควรระวัง",
+        "subtitle": "อุปสรรค · การรับมือ",
+        "questions": [
+          "นิสัยที่อาจทำให้เรื่องติดขัด",
+          "สัญญาณที่สังเกตได้จริง",
+          "การปรับแผนล่วงหน้า"
+        ],
+        "groups": [
+          "อุปสรรคและสัญญาณที่ควรใส่ใจ",
+          "ขอบเขตและแนวทางรับมือ"
+        ]
+      },
+      "en": {
+        "title": "Patterns to watch",
+        "subtitle": "Obstacles and practical responses",
+        "questions": [
+          "Habits that may create friction",
+          "Observable signs to notice",
+          "How to adjust arrangements"
+        ],
+        "groups": [
+          "Obstacles and observable signs",
+          "Boundaries and practical responses"
+        ]
+      },
+      "vi": {
+        "title": "Điều cần chú ý",
+        "subtitle": "Trở ngại và cách ứng phó",
+        "questions": [
+          "Thói quen dễ tạo trở ngại",
+          "Dấu hiệu có thể quan sát",
+          "Điều chỉnh kế hoạch trước"
+        ],
+        "groups": [
+          "Trở ngại và dấu hiệu thực tế",
+          "Ranh giới và cách ứng phó"
+        ]
+      },
+      "my": {
+        "title": "သတိပြုသင့်သည့် အမူအကျင့်များ",
+        "subtitle": "သတိပြုသင့်သည့် အမူအကျင့်များ",
+        "questions": [
+          "သတိပြုသင့်သည့် အမူအကျင့်များ",
+          "နေ့စဉ်ဘဝ ဥပမာ",
+          "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+        ],
+        "groups": [
+          "သတိပြုသင့်သည့် အမူအကျင့်များ",
+          "လက်တွေ့အကြံပြုချက်များ"
+        ]
+      },
+      "km": {
+        "title": "លំនាំដែលគួរយកចិត្តទុកដាក់",
+        "subtitle": "លំនាំដែលគួរយកចិត្តទុកដាក់",
+        "questions": [
+          "លំនាំដែលគួរយកចិត្តទុកដាក់",
+          "ឧទាហរណ៍ប្រចាំថ្ងៃ",
+          "របៀបពិនិត្យលទ្ធផល"
+        ],
+        "groups": [
+          "លំនាំដែលគួរយកចិត្តទុកដាក់",
+          "សំណើសម្រាប់អនុវត្ត"
+        ]
+      },
+      "lo": {
+        "title": "ຮູບແບບທີ່ຄວນໃສ່ໃຈ",
+        "subtitle": "ຮູບແບບທີ່ຄວນໃສ່ໃຈ",
+        "questions": [
+          "ຮູບແບບທີ່ຄວນໃສ່ໃຈ",
+          "ຕົວຢ່າງໃນຊີວິດປະຈຳວັນ",
+          "ວິທີທົບທວນຜົນ"
+        ],
+        "groups": [
+          "ຮູບແບບທີ່ຄວນໃສ່ໃຈ",
+          "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+        ]
+      },
+      "ms": {
+        "title": "Corak yang perlu diperhatikan",
+        "subtitle": "Corak yang perlu diperhatikan",
+        "questions": [
+          "Corak yang perlu diperhatikan",
+          "Contoh harian",
+          "Cara menilai hasil"
+        ],
+        "groups": [
+          "Corak yang perlu diperhatikan",
+          "Cadangan praktikal"
+        ]
+      },
+      "id": {
+        "title": "Pola yang perlu diperhatikan",
+        "subtitle": "Pola yang perlu diperhatikan",
+        "questions": [
+          "Pola yang perlu diperhatikan",
+          "Contoh sehari-hari",
+          "Cara meninjau hasil"
+        ],
+        "groups": [
+          "Pola yang perlu diperhatikan",
+          "Saran praktis"
+        ]
+      }
     },
     {
-      "key": "romance", "houses": [1, 5, 7, 11],
+      "key": "romance",
+      "houses": [
+        1,
+        5,
+        7,
+        11
+      ],
       "scope": "Attraction, getting to know a potential partner, preferred ways of connecting, mutual fit, reciprocity and pacing before commitment. Keep this distinct from maintaining an existing marriage. Do not guarantee a soulmate, partner appearance or occupation, meeting date, marriage age or compatibility without another person's data.",
-      "zh": {"title": "姻缘", "subtitle": "吸引偏好 · 缘分相处", "questions": ["你容易被怎样的相处方式吸引", "怎样辨认彼此是否合适", "关系开始时如何把握节奏"], "groups": ["吸引倾向与择偶偏好", "相识节奏与适配观察"]},
-      "th": {"title": "คู่ครองและการพบรัก", "subtitle": "แรงดึงดูด · การเข้ากันได้", "questions": ["รูปแบบการเข้าหาที่ดึงดูดใจ", "วิธีสังเกตว่าเข้ากันได้ไหม", "จังหวะการทำความรู้จักกัน"], "groups": ["แรงดึงดูดและสิ่งที่มองหาในคู่", "การทำความรู้จักและสังเกตความเหมาะสม"]}
+      "zh": {
+        "title": "姻缘",
+        "subtitle": "吸引偏好 · 缘分相处",
+        "questions": [
+          "你容易被怎样的相处方式吸引",
+          "怎样辨认彼此是否合适",
+          "关系开始时如何把握节奏"
+        ],
+        "groups": [
+          "吸引倾向与择偶偏好",
+          "相识节奏与适配观察"
+        ]
+      },
+      "th": {
+        "title": "คู่ครองและการพบรัก",
+        "subtitle": "แรงดึงดูด · การเข้ากันได้",
+        "questions": [
+          "รูปแบบการเข้าหาที่ดึงดูดใจ",
+          "วิธีสังเกตว่าเข้ากันได้ไหม",
+          "จังหวะการทำความรู้จักกัน"
+        ],
+        "groups": [
+          "แรงดึงดูดและสิ่งที่มองหาในคู่",
+          "การทำความรู้จักและสังเกตความเหมาะสม"
+        ]
+      },
+      "en": {
+        "title": "Relationship preferences",
+        "subtitle": "Attraction and connection",
+        "questions": [
+          "Ways of connecting that attract you",
+          "Recognising mutual fit",
+          "Pacing a new connection"
+        ],
+        "groups": [
+          "Attraction and preferences",
+          "Getting acquainted and observing"
+        ]
+      },
+      "vi": {
+        "title": "Xu hướng quan hệ",
+        "subtitle": "Thu hút và gắn kết",
+        "questions": [
+          "Cách kết nối khiến bạn chú ý",
+          "Nhận biết sự phù hợp hai phía",
+          "Nhịp độ khi làm quen"
+        ],
+        "groups": [
+          "Thu hút và mong muốn trong quan hệ",
+          "Làm quen và quan sát"
+        ]
+      },
+      "my": {
+        "title": "ဆက်ဆံရေးဦးစားပေးမှု",
+        "subtitle": "ဆက်ဆံရေးဦးစားပေးမှု",
+        "questions": [
+          "ဆက်ဆံရေးဦးစားပေးမှု",
+          "နေ့စဉ်ဘဝ ဥပမာ",
+          "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+        ],
+        "groups": [
+          "ဆက်ဆံရေးဦးစားပေးမှု",
+          "လက်တွေ့အကြံပြုချက်များ"
+        ]
+      },
+      "km": {
+        "title": "ចំណូលចិត្តក្នុងទំនាក់ទំនង",
+        "subtitle": "ចំណូលចិត្តក្នុងទំនាក់ទំនង",
+        "questions": [
+          "ចំណូលចិត្តក្នុងទំនាក់ទំនង",
+          "ឧទាហរណ៍ប្រចាំថ្ងៃ",
+          "របៀបពិនិត្យលទ្ធផល"
+        ],
+        "groups": [
+          "ចំណូលចិត្តក្នុងទំនាក់ទំនង",
+          "សំណើសម្រាប់អនុវត្ត"
+        ]
+      },
+      "lo": {
+        "title": "ຄວາມມັກໃນຄວາມສຳພັນ",
+        "subtitle": "ຄວາມມັກໃນຄວາມສຳພັນ",
+        "questions": [
+          "ຄວາມມັກໃນຄວາມສຳພັນ",
+          "ຕົວຢ່າງໃນຊີວິດປະຈຳວັນ",
+          "ວິທີທົບທວນຜົນ"
+        ],
+        "groups": [
+          "ຄວາມມັກໃນຄວາມສຳພັນ",
+          "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+        ]
+      },
+      "ms": {
+        "title": "Keutamaan hubungan",
+        "subtitle": "Keutamaan hubungan",
+        "questions": [
+          "Keutamaan hubungan",
+          "Contoh harian",
+          "Cara menilai hasil"
+        ],
+        "groups": [
+          "Keutamaan hubungan",
+          "Cadangan praktikal"
+        ]
+      },
+      "id": {
+        "title": "Preferensi hubungan",
+        "subtitle": "Preferensi hubungan",
+        "questions": [
+          "Preferensi hubungan",
+          "Contoh sehari-hari",
+          "Cara meninjau hasil"
+        ],
+        "groups": [
+          "Preferensi hubungan",
+          "Saran praktis"
+        ]
+      }
     }
   ]
 }

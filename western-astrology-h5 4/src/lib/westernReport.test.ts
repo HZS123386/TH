@@ -27,7 +27,7 @@ describe("Western report sections and exported source", () => {
       expect(sections.map(section => section.title)).toEqual(Object.values(copy.jy[language].report.westernSections));
       const labels = lifeLabels(report), html = reportHtml(report, labels);
       for (const section of sections) expect(html).toContain(`<h2>${section.title}</h2>`);
-      expect(html).toContain("RoxyAPI Western Astrology · Placidus");
+      expect(html).toContain(copy.jy[language].chart.western);
       expect(html).not.toContain("Suriyayatra");
       expect(reportReference(report, labels)).not.toContain(String(report.input.year));
     });

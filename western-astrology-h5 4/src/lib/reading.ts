@@ -1,8 +1,10 @@
 import type { LifeLabels, LifePoint, LifeReport, LifeSummary } from "./lifeReport";
 import { reportContent, reportReference } from "./reportContent";
-import copy from "../content/thai-test.json" with { type: "json" };
+import originalCopy from "../content/thai-test.json" with { type: "json" };
+import { additionalCopy, localeTag, type Language } from "./locales";
 
-export type Language = "zh" | "th";
+export type { Language } from "./locales";
+const copy = { ...originalCopy, ...additionalCopy("reading") };
 export type Reading = keyof typeof copy.zh.readings;
 export const readings: Reading[] = [
   "overview",
@@ -34,11 +36,11 @@ export interface Place {
   longitude: number;
 }
 export function placeName(place: Place, language: Language) {
-  const label = language === "zh" ? place.labelChinese : place.labelThai;
+  const label = language === "zh" ? place.labelChinese : language === "th" ? place.labelThai : undefined;
   if (label) return label;
   const names = ui[language].countryNames;
   const country = names[place.countryCode as keyof typeof names] || place.countryCode;
-  return [country, (language === "zh" ? place.nameChinese : place.nameThai) || place.nameEnglish].filter(Boolean).join("，");
+  return [country, (language === "zh" ? place.nameChinese : language === "th" ? place.nameThai : place.nameEnglish) || place.nameEnglish].filter(Boolean).join(language === "zh" ? "，" : ", ");
 }
 export interface ReadingInput {
   profile: {
@@ -68,6 +70,7 @@ export interface ReadingItem {
   check?: string;
 }
 export const ui = {
+  ...additionalCopy("ui"),
   zh: {
     date: "出生日期",
     ce: "阳历",
@@ -170,7 +173,7 @@ export function periodLabel(
   period: { year: number; month: number },
   language: Language,
 ) {
-  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "th-TH", {
+  return new Intl.DateTimeFormat(localeTag(language), {
     year: "numeric",
     month: "long",
     calendar: "gregory",

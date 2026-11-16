@@ -5,8 +5,60 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
 import '../purchases/purchase_sheet.dart';
 
+const _languages = [
+  ('th', 'ภาษาไทย'),
+  ('en', 'English'),
+  ('zh', '简体中文'),
+  ('vi', 'Tiếng Việt'),
+];
+
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
+
+  Future<void> _chooseLanguage(BuildContext context) async {
+    final session = DependencyScope.of(context).session;
+    final s = AppLocalizations.of(context);
+    final language = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        backgroundColor: panelColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: lineColor),
+        ),
+        title: Text(s.language),
+        contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        children: [
+          for (final row in _languages)
+            ListTile(
+              key: ValueKey('language-option-${row.$1}'),
+              title: Text(row.$2),
+              selected: session.locale.languageCode == row.$1,
+              selectedColor: goldColor,
+              selectedTileColor: goldColor.withValues(alpha: .08),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              trailing: session.locale.languageCode == row.$1
+                  ? const Icon(Icons.check, color: goldColor)
+                  : null,
+              onTap: () => Navigator.pop(dialogContext, row.$1),
+            ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(s.cancel),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (language != null && context.mounted) {
+      await session.changeLocale(language);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = DependencyScope.of(context), s = AppLocalizations.of(context);
@@ -64,13 +116,14 @@ class AccountPage extends StatelessWidget {
                     onTap: () => context.go('/birth'),
                   ),
                   ListTile(
+                    key: const ValueKey('profile-reading-history'),
                     leading: const Icon(
                       Icons.menu_book_outlined,
                       color: goldColor,
                     ),
                     title: Text(s.reports),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.go('/reports'),
+                    onTap: () => context.go('/chart/readings?from=profile'),
                   ),
                   ListTile(
                     leading: const Icon(
@@ -86,33 +139,13 @@ class AccountPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             FateCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(s.language, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(height: 10),
-                  Text(
-                    s.languageHelp,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final row in const [
-                        ('th', 'ภาษาไทย'),
-                        ('en', 'English'),
-                        ('zh', '中文'),
-                        ('vi', 'Tiếng Việt'),
-                      ])
-                        ChoiceChip(
-                          label: Text(row.$2),
-                          selected: d.session.locale.languageCode == row.$1,
-                          onSelected: (_) => d.session.changeLocale(row.$1),
-                        ),
-                    ],
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              child: ListTile(
+                key: const ValueKey('profile-language'),
+                leading: const Icon(Icons.language_outlined, color: goldColor),
+                title: Text(s.language),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _chooseLanguage(context),
               ),
             ),
             const SizedBox(height: 20),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fate_h5/app/localizations.dart';
+import 'package:fate_h5/app/languages.dart';
 import 'package:intl/intl.dart';
 
 void main() {
@@ -16,11 +17,11 @@ void main() {
       '1999-11-23',
     );
   });
-  for (final language in ['zh', 'th']) {
+  for (final language in h5Languages.map((option) => option.$1)) {
     test(
       '$language retains Flutter date, time and component translations',
       () async {
-        final locale = Locale(language);
+        final locale = h5Locale(language);
         final date = DateTime(1999, 11, 23);
         const time = TimeOfDay(hour: 7, minute: 5);
         Map<String, Object> materialValues(MaterialLocalizations value) => {

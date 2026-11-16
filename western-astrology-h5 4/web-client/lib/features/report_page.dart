@@ -34,6 +34,12 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   bool _deleting = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
+
+  void _backHome() {
+    widget.h5.restoreLandingFromReport(_model.report);
+    context.go('/?lang=${widget.h5.language}');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -373,7 +379,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
-                '${c.language == 'zh' ? {'example': '生活中的例子', 'pitfall': '避免这样做', 'check': '怎样检查效果'}[field] : {'example': 'ตัวอย่างในชีวิต', 'pitfall': 'สิ่งที่ควรเลี่ยง', 'check': 'วิธีสังเกตผล'}[field]}\n${point[field]}',
+                '${c.t('jy', 'pointFields.$field')}\n${point[field]}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -485,7 +491,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                     child: Text(c.t('generation', 'retry')),
                   ),
                 TextButton(
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
+                  onPressed: _backHome,
                   child: Text(c.t('jy', 'checkout.back')),
                 ),
               ],
@@ -500,7 +506,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           freePreview: _freePreview(r, c),
           busy: _deleting || _generating,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
-          onBack: () => context.go('/?lang=${widget.h5.language}'),
+          onBack: _backHome,
           onErase: () => _erase(),
           onUnlock: () => _generate(true),
         );
@@ -521,7 +527,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   onPressed: _generating ? null : () => _generate(false),
                 ),
                 TextButton(
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
+                  onPressed: _backHome,
                   child: Text(c.t('jy', 'checkout.back')),
                 ),
               ],
@@ -552,13 +558,15 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           children: [
             Row(
               children: [
-                const FateBrand(),
-                const Spacer(),
                 IconButton(
+                  key: const ValueKey('report-back-home'),
                   tooltip: c.t('jy', 'checkout.back'),
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
+                  onPressed: _backHome,
                   icon: const Icon(Icons.arrow_back, color: gold, size: 19),
                 ),
+                const SizedBox(width: 8),
+                const FateBrand(),
+                const Spacer(),
                 IconButton(
                   tooltip: c.t('report', 'exportPdf'),
                   onPressed: _model.exporting
@@ -630,15 +638,16 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   JYCard(
                     radius: 15,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
+                      horizontal: 12,
                       vertical: 14,
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
                           c.t('jy', 'report.contents'),
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             color: gold,
                             fontWeight: FontWeight.w700,
                           ),
@@ -653,16 +662,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                  _sectionTitle(
-                    r.western ? 'chart' : 'overall',
-                    c.t('jy', 'chart.title'),
-                  ),
-                  if (r.western)
-                    Text(
-                      c.t('jy', 'chart.western'),
-                      style: const TextStyle(color: lavender, fontSize: 12),
+                  if (!r.western)
+                    _sectionTitle(
+                      'overall',
+                      c.t('jy', 'report.sections.overall'),
                     ),
-                  ChartView(report: r, copy: c),
                   for (final key
                       in r.western ? <String>[] : ['annual', 'overall'])
                     for (final item in r.catalog.where(

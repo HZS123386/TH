@@ -22,6 +22,41 @@ class ReportCheckout extends StatelessWidget {
   final VoidCallback onBack, onErase, onUnlock;
   final bool busy;
   final String error;
+
+  Future<void> _showAppTestingNotice(BuildContext context) {
+    final c = h5.copy;
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const ValueKey('app-testing-dialog'),
+        backgroundColor: panel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: line),
+        ),
+        title: Text(
+          c.t('jy', 'checkout.appTestingTitle'),
+          style: const TextStyle(
+            color: cream,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          c.t('jy', 'checkout.appTestingMessage'),
+          style: const TextStyle(color: lavender, fontSize: 14, height: 1.7),
+        ),
+        actions: [
+          FilledButton(
+            key: const ValueKey('app-testing-close'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(c.t('jy', 'checkout.appTestingClose')),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = h5.copy;
@@ -41,7 +76,18 @@ class ReportCheckout extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const FateBrand(compact: true),
+              Row(
+                children: [
+                  IconButton(
+                    key: const ValueKey('report-back-home'),
+                    tooltip: c.t('jy', 'checkout.back'),
+                    onPressed: busy ? null : onBack,
+                    icon: const Icon(Icons.arrow_back, color: gold, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                  const FateBrand(compact: true),
+                ],
+              ),
               const SizedBox(height: 20),
               freePreview,
               const SizedBox(height: 28),
@@ -140,7 +186,9 @@ class ReportCheckout extends StatelessWidget {
                       label: c.t('jy', 'checkout.download'),
                       icon: 'download',
                       pulse: true,
-                      onPressed: busy ? null : onUnlock,
+                      onPressed: busy
+                          ? null
+                          : () => _showAppTestingNotice(context),
                     ),
                   ],
                 ),

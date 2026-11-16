@@ -1,5 +1,6 @@
 """Topic-specific Bazi writing from calculated evidence, with bounded paid calls."""
 import asyncio
+from contextlib import nullcontext
 from contextvars import ContextVar
 from copy import deepcopy
 import hashlib
@@ -8,6 +9,7 @@ import logging
 import re
 import secrets
 import time
+import unicodedata
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -72,6 +74,7 @@ class InvalidBaziReport(Exception):
             "missing_translation": "translations must contain exactly all translation_fields keys; do not include fixed translations.",
             "translation_numbers": "Keep every numeric value from the source field as Arabic digits; do not convert digits into spelled-out numbers.",
         }.get(code, "Return the exact requested JSON structure, topic and language, with valid evidence IDs.")
+        self.retry_after = None
 
 
 class Paragraph(BaseModel):
@@ -95,6 +98,9 @@ def reading_for(body):
 
 
 def language_matches(text, language):
+    script = {"zh": "CJK", "th": "THAI", "my": "MYANMAR", "km": "KHMER", "lo": "LAO"}.get(language, "LATIN")
+    if any(char.isalpha() and not unicodedata.name(char, "").startswith(script) for char in text):
+        return False
     cjk = len(re.findall(r"[\u3400-\u9fff]", text))
     thai = len(re.findall(r"[\u0e00-\u0e7f]", text))
     latin = len(re.findall(r"[a-zA-Z]", text))
@@ -103,11 +109,15 @@ def language_matches(text, language):
         return cjk >= 3 and not thai and not latin
     if language == "th":
         return thai >= 8 and not cjk and not latin
+    if language in ("my", "km", "lo"):
+        return sum(char.isalpha() and unicodedata.name(char, "").startswith(script) for char in text) >= 5
     words = re.findall(r"[^\W\d_]+", text, re.UNICODE)
     accented = sum(bool(re.search(r"[\u1ea0-\u1ef9ăâđêôơưĂÂĐÊÔƠƯàáảãạèéẻẽẹìíỉĩịòóỏõọùúủũụỳýỷỹỵ]", word)) for word in words)
     english = sum(word.lower() in {"the", "and", "your", "you", "is", "are", "with", "should", "this", "that"} for word in words)
     if language == "vi":
         return latin >= 5 and not cjk and not thai and vietnamese and accented / max(len(words), 1) >= 0.25 and not english
+    if language in ("ms", "id"):
+        return latin >= 5 and not vietnamese and english < 2
     return latin >= 5 and not cjk and not thai and not vietnamese
 
 
@@ -222,6 +232,11 @@ class BaziReports:
     max_attempts = 2
     generation_timeout = 95
     max_output_tokens = 6500
+    read_timeout = 25
+    request_slots = None
+    retry_timeouts = False
+    retry_rate_limits = False
+    charge_generation = True
 
     def __init__(self, store, settings, slots):
         self.store, self.settings, self.slots = store, settings, slots
@@ -284,7 +299,7 @@ class BaziReports:
                     return "pending", None, ""
                 if row["retry_after"] > now:
                     return "unavailable", None, ""
-            if charge and not self.admit(db, owner, network, now):
+            if charge and self.charge_generation and not self.admit(db, owner, network, now):
                 return "limited", None, ""
             db.execute("DELETE FROM bazi_reports WHERE cache_key IN (SELECT cache_key FROM bazi_reports WHERE pending_until<? ORDER BY expires DESC LIMIT -1 OFFSET 255)", (now,))
             db.execute("INSERT INTO bazi_reports(cache_key,expires,pending_until,lease) VALUES (?,?,?,?) ON CONFLICT(cache_key) DO UPDATE SET expires=excluded.expires,pending_until=excluded.pending_until,retry_after=0,lease=excluded.lease", (key, now + 86400, now + self.generation_timeout + 15, lease))
@@ -330,23 +345,56 @@ class BaziReports:
         model_input = {key: value for key, value in bundle.items() if key != "fixed_translations"}
         if correction:
             model_input["correction"] = correction
-        payload = {"model": config.model, "messages": [{"role": "system", "content": self.prompt(bundle)}, {"role": "user", "content": json.dumps(model_input, ensure_ascii=False)}],
+        payload = {"model": config.model, "messages": [{"role": "system", "content": self.prompt(bundle)}, {"role": "user", "content": json.dumps(model_input, ensure_ascii=False, separators=(",", ":"))}],
                    "response_format": self.response_format(bundle), "stream": True, "max_tokens": self.max_output_tokens}
         if provider == "qwen":
             payload["enable_thinking"] = False
+        if provider in ("qwen", "kimi", "openai"):
             payload["stream_options"] = {"include_usage": True}
         if provider == "openai":
             payload["max_completion_tokens"] = payload.pop("max_tokens")
+            if config.reasoning_effort:
+                payload["reasoning_effort"] = config.reasoning_effort
         if provider == "kimi" and config.model.startswith("kimi-k3"):
             payload["max_completion_tokens"] = payload.pop("max_tokens")
             payload["reasoning_effort"] = "low"
         usage, request_id, validated = None, None, False
         try:
             finished = False
-            async with httpx.AsyncClient(timeout=httpx.Timeout(25, connect=15), follow_redirects=False) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(25, connect=15, read=self.read_timeout), follow_redirects=False,
+                                         **({"proxy": config.proxy_url} if config.proxy_url else {})) as client:
                 async with client.stream("POST", config.base_url.rstrip("/") + "/chat/completions", headers={"Authorization": f"Bearer {config.key}"}, json=payload) as response:
                     if response.status_code != 200:
-                        raise InvalidBaziReport(f"upstream_status_{response.status_code}")
+                        code = f"upstream_status_{response.status_code}"
+                        if response.status_code == 429:
+                            # Keep only fixed categories; provider error bodies may contain account identifiers.
+                            details = bytearray()
+                            async for chunk in response.aiter_bytes():
+                                if len(details) + len(chunk) > 8192:
+                                    break
+                                details.extend(chunk)
+                            try:
+                                value = json.loads(details)
+                                info = value.get("error") if isinstance(value, dict) else None
+                                kind = info.get("type") if isinstance(info, dict) else None
+                                if isinstance(kind, str):
+                                    code = {"engine_overloaded_error": "model_overloaded",
+                                            "rate_limit_reached_error": "model_rate_limit",
+                                            "exceeded_current_quota_error": "model_quota_exhausted",
+                                            "insufficient_quota": "model_quota_exhausted"}.get(kind, code)
+                                upstream_code = info.get("code") if isinstance(info, dict) else None
+                                if isinstance(upstream_code, str) and upstream_code in ("credit_balance_exhausted", "insufficient_quota"):
+                                    code = "model_quota_exhausted"
+                            except ValueError:
+                                pass
+                        error = InvalidBaziReport(code)
+                        if response.status_code == 429 and code != "model_quota_exhausted":
+                            try:
+                                delay = float(response.headers.get("retry-after", "10"))
+                                error.retry_after = delay if 0 <= delay <= 15 else None
+                            except ValueError:
+                                pass
+                        raise error
                     if "text/event-stream" in response.headers.get("content-type", ""):
                         fragments, size, output_size, observed_size = [], 0, 0, 0
                         async for line in response.aiter_lines():
@@ -365,6 +413,8 @@ class BaziReports:
                             if "error" in packet:
                                 raise InvalidBaziReport("upstream_protocol")
                             for choice in packet.get("choices", []):
+                                if isinstance(choice.get("usage"), dict):
+                                    usage = choice["usage"]
                                 reason = choice.get("finish_reason")
                                 if reason and reason != "stop":
                                     raise InvalidBaziReport("incomplete")
@@ -418,7 +468,10 @@ class BaziReports:
         if len(json.dumps(bundle, ensure_ascii=False).encode()) > 64000:
             return {"state": "unavailable"}
         prompt = self.prompt(bundle)
-        key = hashlib.sha256(json.dumps([self.version, hashlib.sha256(prompt.encode()).hexdigest(), owner, bundle, self.provider, self.config.base_url, self.config.model], sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        identity = [self.version, hashlib.sha256(prompt.encode()).hexdigest(), owner, bundle, self.provider, self.config.base_url, self.config.model]
+        if self.config.reasoning_effort:
+            identity.append(self.config.reasoning_effort)
+        key = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         task = self.inflight.get(key)
         if task is None:
             if len(self.inflight) >= 32:
@@ -444,25 +497,61 @@ class BaziReports:
         if state != "claimed":
             return {"state": state}
         attempts = 1
+        timing = {"queue_seconds": 0.0, "model_seconds": 0.0, "retry_wait_seconds": 0.0}
+        attempt_failures = []
         try:
-            async with asyncio.timeout(self.generation_timeout), self.slots:
+            # Cache hits have returned above; model-work gates must not delay them.
+            async with asyncio.timeout(self.generation_timeout):
                 correction = None
                 for attempts in range(1, self.max_attempts + 1):
                     try:
-                        story = await self.write(bundle, correction=correction) if correction else await self.write(bundle)
+                        queued_at, entered = time.monotonic(), False
+                        try:
+                            async with self.request_slots or nullcontext(), self.slots:
+                                entered = True
+                                timing["queue_seconds"] += time.monotonic() - queued_at
+                                model_started = time.monotonic()
+                                try:
+                                    story = await self.write(bundle, correction=correction) if correction else await self.write(bundle)
+                                finally:
+                                    timing["model_seconds"] += time.monotonic() - model_started
+                        finally:
+                            if not entered:
+                                timing["queue_seconds"] += time.monotonic() - queued_at
                         break
                     except InvalidBaziReport as error:
+                        code = str(error).split(":", 1)[0]
+                        attempt_failures.append(code if re.fullmatch(r"[a-z][a-z_0-9]{0,63}", code) else "validation_failed")
                         # Recoverable diagnostics contain field rules, never rejected prose.
                         logger.info("%s %s validation attempt %s: %s", self.version, bundle["reading"], attempts, ascii(str(error)))
+                        if self.retry_rate_limits and error.retry_after is not None and attempts < self.max_attempts:
+                            # A provider backoff must not hold scarce model-work slots.
+                            wait_started = time.monotonic()
+                            try:
+                                await asyncio.sleep(error.retry_after)
+                            finally:
+                                timing["retry_wait_seconds"] += time.monotonic() - wait_started
+                            continue
                         if error.candidate is None or attempts == self.max_attempts:
                             raise
                         correction = {"draft": error.candidate, "error": str(error), "feedback": error.feedback}
+                    except httpx.TimeoutException:
+                        attempt_failures.append("model_timeout")
+                        if not self.retry_timeouts or attempts == self.max_attempts:
+                            raise
+                        logger.info("%s %s request timed out on attempt %s", self.version, bundle["reading"], attempts)
             self.finish(key, lease, story)
-            return {"state": "ready", "cached": False, "attempts": attempts, "story": story}
+            return {"state": "ready", "cached": False, "attempts": attempts, "story": story,
+                    "attempt_failures": attempt_failures,
+                    "timings": {key: round(value, 3) for key, value in timing.items()}}
         except (InvalidBaziReport, httpx.HTTPError, TimeoutError) as error:
             logger.warning("%s %s writing failed: %s", self.version, bundle["reading"], ascii(str(error)) if isinstance(error, InvalidBaziReport) else type(error).__name__)
             self.finish(key, lease)
-            return {"state": "unavailable", "attempts": attempts}
+            failure = (str(error).split(":", 1)[0] if isinstance(error, InvalidBaziReport)
+                       else "model_timeout" if isinstance(error, (httpx.TimeoutException, TimeoutError)) else "model_connection")
+            return {"state": "unavailable", "attempts": attempts, "failure_code": failure,
+                    "attempt_failures": attempt_failures,
+                    "timings": {key: round(value, 3) for key, value in timing.items()}}
         except asyncio.CancelledError:
             self.finish(key, lease)
             raise

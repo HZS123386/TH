@@ -229,10 +229,102 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get unknownTime =>
-      'ไม่ทราบเวลาเกิด จึงยังไม่แสดงลัคนาและเรือนที่ต้องใช้เวลา';
+      'หากไม่ระบุเวลาเกิด จะแสดงดวงโดยประมาณโดยใช้เวลา 12:00 น. ตามเวลาท้องถิ่นของสถานที่เกิด คุณเพิ่มเวลาเกิดภายหลังได้';
 
   @override
-  String get chartRead => 'อ่านคำอธิบายดวงนี้';
+  String get estimated => 'ประมาณ';
+
+  @override
+  String get estimatedChart => 'ดวงโดยประมาณ · เวลา 12:00 น. ตามเวลาท้องถิ่น';
+
+  @override
+  String get estimatedChartNote =>
+      'ไม่ได้ระบุเวลาเกิดที่แน่นอน จึงใช้เวลา 12:00 น. ตามเวลาท้องถิ่นของสถานที่เกิด ดวงจันทร์ ลัคนา เรือน และมุมสัมพันธ์เป็นค่าประมาณ ซึ่งอาจเปลี่ยนตามเวลาเกิดจริง คุณเพิ่มเวลาเพื่อคำนวณใหม่ได้';
+
+  @override
+  String get chartRead => 'อ่านคำทำนายทั้งหมด';
+
+  @override
+  String get readingChart => 'ดวงกำเนิดที่ใช้ในการอ่านครั้งนี้';
+
+  @override
+  String get readingChartIntro =>
+      'คำอธิบายด้านล่างอ้างอิงจากดวงกำเนิดนี้ แตะดาวเพื่อดูตำแหน่งได้';
+
+  @override
+  String get readingContents => 'หัวข้อคำอธิบาย';
+
+  @override
+  String get readingContentsHint => 'แตะหัวข้อเพื่ออ่านส่วนนั้นได้ทันที';
+
+  @override
+  String get backToChart => 'กลับไปที่ดวงกำเนิด';
+
+  @override
+  String get savedReadings => 'ประวัติคำอ่าน';
+
+  @override
+  String get noSavedReports => 'ยังไม่มีรายงาน';
+
+  @override
+  String get reportRecords => 'รายการรายงาน';
+
+  @override
+  String get reportRecordsIntro =>
+      'เรียงตามเวลาที่สร้าง ค้นหารายงานที่ต้องการด้วยหมายเลขรายงาน';
+
+  @override
+  String get searchReportNumber => 'ค้นหาด้วยหมายเลขรายงาน';
+
+  @override
+  String get clearSearch => 'ล้างการค้นหา';
+
+  @override
+  String get noMatchingReports =>
+      'ไม่พบรายงานที่ตรงกับหมายเลขนี้ กรุณาตรวจสอบแล้วลองอีกครั้ง';
+
+  @override
+  String get reportNumberLabel => 'หมายเลขรายงาน';
+
+  @override
+  String get generatedAt => 'เวลาที่สร้าง';
+
+  @override
+  String get reportReady => 'สร้างแล้ว';
+
+  @override
+  String get reportRunning => 'กำลังสร้าง';
+
+  @override
+  String get reportFailedShort => 'สร้างไม่สำเร็จ';
+
+  @override
+  String get deleteReport => 'ลบรายงาน';
+
+  @override
+  String get deleteReportConfirm =>
+      'ต้องการลบรายการรายงานนี้หรือไม่? เมื่อลบแล้วจะไม่สามารถเปิดจากรายการได้อีก';
+
+  @override
+  String get reportDeleted => 'ลบรายการรายงานแล้ว';
+
+  @override
+  String get deleteReportFailed =>
+      'ลบไม่สำเร็จ รายงานยังอยู่ กรุณาลองอีกครั้งภายหลัง';
+
+  @override
+  String get reportDeleteBusy =>
+      'รายงานยังอยู่ระหว่างการสร้าง กรุณารอให้เสร็จก่อนลบ';
+
+  @override
+  String get loadReportsFailed => 'ยังโหลดรายการรายงานไม่ได้ กรุณาลองอีกครั้ง';
+
+  @override
+  String get refreshRecords => 'โหลดอีกครั้ง';
+
+  @override
+  String get chartReportsLocation =>
+      'คำอ่านดวงกำเนิดแสดงในหน้าแยก เปิดเมนูดวงกำเนิดเพื่ออ่านของคุณ';
 
   @override
   String get house => 'เรือน';
@@ -737,7 +829,76 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get reportFailedText =>
-      'ยังสร้างคำอ่านนี้ไม่สำเร็จ กรุณากลับไปหน้ารายงานแล้วลองใหม่ ระบบจะไม่ใช้คำอ่านตัวอย่างแทนผลของคุณ';
+      'ยังสร้างคำอ่านนี้ไม่สำเร็จ กรุณาแตะปุ่มด้านล่างเพื่อลองอีกครั้ง ดวงกำเนิดของคุณยังอยู่';
+
+  @override
+  String get progressTitle => 'กำลังสร้างคำอ่านของคุณ';
+
+  @override
+  String get progressIntro =>
+      'กำลังเรียบเรียงและตรวจเนื้อหาทั้งหกหัวข้อ เมื่อเสร็จแล้วจะเปิดหน้าคำอ่านให้อัตโนมัติ';
+
+  @override
+  String get progressPreparing => 'กำลังเตรียมข้อมูลดวงของคุณ';
+
+  @override
+  String get progressWriting => 'กำลังเรียบเรียงคำอ่านเฉพาะคุณ';
+
+  @override
+  String get progressChecking => 'กำลังตรวจรายงานทั้งหมด';
+
+  @override
+  String get progressRefining => 'กำลังปรับคำอ่านและคำแนะนำ';
+
+  @override
+  String get progressComplete => 'รายงานพร้อมแล้ว กำลังเปิด';
+
+  @override
+  String get progressFailed => 'คำอ่านยังไม่เสร็จสมบูรณ์';
+
+  @override
+  String progressTopics(Object completed, Object total) {
+    return 'เรียบเรียงแล้ว $completed จาก $total หัวข้อ';
+  }
+
+  @override
+  String get progressReturn => 'กลับไปหน้ารายงาน';
+
+  @override
+  String get progressReconnect => 'เชื่อมต่ออีกครั้ง';
+
+  @override
+  String get progressDisconnected =>
+      'ยังดูความคืบหน้าล่าสุดไม่ได้ชั่วคราว งานเบื้องหลังไม่ได้ถูกยกเลิก คุณสามารถเชื่อมต่ออีกครั้งหรือกลับมาดูภายหลังได้';
+
+  @override
+  String get progressLater => 'กลับมาดูภายหลัง';
+
+  @override
+  String get progressPersonality => 'ตัวตนและจุดแข็ง';
+
+  @override
+  String get progressCareer => 'แนวทางการงาน';
+
+  @override
+  String get progressMoney => 'นิสัยการเงิน';
+
+  @override
+  String get progressRelationships => 'ความรักและครอบครัว';
+
+  @override
+  String get progressWatch => 'เรื่องที่ควรสังเกต';
+
+  @override
+  String get progressActions => 'แนวทางลงมือทำ';
+
+  @override
+  String get reportServiceBusy =>
+      'ขณะนี้บริการตีความมีผู้ใช้งานหนาแน่น รายงานจึงยังไม่เสร็จ เราเก็บดวงกำเนิดของคุณไว้แล้ว กรุณาลองอีกครั้งภายหลัง';
+
+  @override
+  String get reportServiceTimeout =>
+      'คำขอตีความหมดเวลาก่อนรายงานจะเสร็จ เราเก็บดวงกำเนิดของคุณไว้แล้ว กรุณาลองอีกครั้งภายหลัง';
 
   @override
   String get roxyUnavailable => 'บริการคำนวณดวงยังไม่พร้อม กรุณาลองใหม่ภายหลัง';

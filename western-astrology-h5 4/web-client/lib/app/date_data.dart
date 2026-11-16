@@ -31,10 +31,13 @@
 const h5DateSymbols = <String, Map<String, dynamic>>{
   "th": {
     "NAME": "th",
-    "ERAS": ["\u0e01\u0e48\u0e2d\u0e19 \u0e04.\u0e28.", "\u0e04.\u0e28."],
+    "ERAS": [
+      "\u0e01\u0e48\u0e2d\u0e19 \u0e04.\u0e28.",
+      "\u0e04.\u0e28."
+    ],
     "ERANAMES": [
       "\u0e1b\u0e35\u0e01\u0e48\u0e2d\u0e19\u0e04\u0e23\u0e34\u0e2a\u0e15\u0e01\u0e32\u0e25",
-      "\u0e04\u0e23\u0e34\u0e2a\u0e15\u0e4c\u0e28\u0e31\u0e01\u0e23\u0e32\u0e0a",
+      "\u0e04\u0e23\u0e34\u0e2a\u0e15\u0e4c\u0e28\u0e31\u0e01\u0e23\u0e32\u0e0a"
     ],
     "NARROWMONTHS": [
       "\u0e21.\u0e04.",
@@ -48,7 +51,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e01.\u0e22.",
       "\u0e15.\u0e04.",
       "\u0e1e.\u0e22.",
-      "\u0e18.\u0e04.",
+      "\u0e18.\u0e04."
     ],
     "STANDALONENARROWMONTHS": [
       "\u0e21.\u0e04.",
@@ -62,7 +65,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e01.\u0e22.",
       "\u0e15.\u0e04.",
       "\u0e1e.\u0e22.",
-      "\u0e18.\u0e04.",
+      "\u0e18.\u0e04."
     ],
     "MONTHS": [
       "\u0e21\u0e01\u0e23\u0e32\u0e04\u0e21",
@@ -76,7 +79,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e01\u0e31\u0e19\u0e22\u0e32\u0e22\u0e19",
       "\u0e15\u0e38\u0e25\u0e32\u0e04\u0e21",
       "\u0e1e\u0e24\u0e28\u0e08\u0e34\u0e01\u0e32\u0e22\u0e19",
-      "\u0e18\u0e31\u0e19\u0e27\u0e32\u0e04\u0e21",
+      "\u0e18\u0e31\u0e19\u0e27\u0e32\u0e04\u0e21"
     ],
     "STANDALONEMONTHS": [
       "\u0e21\u0e01\u0e23\u0e32\u0e04\u0e21",
@@ -90,7 +93,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e01\u0e31\u0e19\u0e22\u0e32\u0e22\u0e19",
       "\u0e15\u0e38\u0e25\u0e32\u0e04\u0e21",
       "\u0e1e\u0e24\u0e28\u0e08\u0e34\u0e01\u0e32\u0e22\u0e19",
-      "\u0e18\u0e31\u0e19\u0e27\u0e32\u0e04\u0e21",
+      "\u0e18\u0e31\u0e19\u0e27\u0e32\u0e04\u0e21"
     ],
     "SHORTMONTHS": [
       "\u0e21.\u0e04.",
@@ -104,7 +107,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e01.\u0e22.",
       "\u0e15.\u0e04.",
       "\u0e1e.\u0e22.",
-      "\u0e18.\u0e04.",
+      "\u0e18.\u0e04."
     ],
     "STANDALONESHORTMONTHS": [
       "\u0e21.\u0e04.",
@@ -118,7 +121,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e01.\u0e22.",
       "\u0e15.\u0e04.",
       "\u0e1e.\u0e22.",
-      "\u0e18.\u0e04.",
+      "\u0e18.\u0e04."
     ],
     "WEEKDAYS": [
       "\u0e27\u0e31\u0e19\u0e2d\u0e32\u0e17\u0e34\u0e15\u0e22\u0e4c",
@@ -127,7 +130,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e27\u0e31\u0e19\u0e1e\u0e38\u0e18",
       "\u0e27\u0e31\u0e19\u0e1e\u0e24\u0e2b\u0e31\u0e2a\u0e1a\u0e14\u0e35",
       "\u0e27\u0e31\u0e19\u0e28\u0e38\u0e01\u0e23\u0e4c",
-      "\u0e27\u0e31\u0e19\u0e40\u0e2a\u0e32\u0e23\u0e4c",
+      "\u0e27\u0e31\u0e19\u0e40\u0e2a\u0e32\u0e23\u0e4c"
     ],
     "STANDALONEWEEKDAYS": [
       "\u0e27\u0e31\u0e19\u0e2d\u0e32\u0e17\u0e34\u0e15\u0e22\u0e4c",
@@ -136,7 +139,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e27\u0e31\u0e19\u0e1e\u0e38\u0e18",
       "\u0e27\u0e31\u0e19\u0e1e\u0e24\u0e2b\u0e31\u0e2a\u0e1a\u0e14\u0e35",
       "\u0e27\u0e31\u0e19\u0e28\u0e38\u0e01\u0e23\u0e4c",
-      "\u0e27\u0e31\u0e19\u0e40\u0e2a\u0e32\u0e23\u0e4c",
+      "\u0e27\u0e31\u0e19\u0e40\u0e2a\u0e32\u0e23\u0e4c"
     ],
     "SHORTWEEKDAYS": [
       "\u0e2d\u0e32\u0e17\u0e34\u0e15\u0e22\u0e4c",
@@ -145,7 +148,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e1e\u0e38\u0e18",
       "\u0e1e\u0e24\u0e2b\u0e31\u0e2a",
       "\u0e28\u0e38\u0e01\u0e23\u0e4c",
-      "\u0e40\u0e2a\u0e32\u0e23\u0e4c",
+      "\u0e40\u0e2a\u0e32\u0e23\u0e4c"
     ],
     "STANDALONESHORTWEEKDAYS": [
       "\u0e2d\u0e32\u0e17\u0e34\u0e15\u0e22\u0e4c",
@@ -154,7 +157,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e1e\u0e38\u0e18",
       "\u0e1e\u0e24\u0e2b\u0e31\u0e2a",
       "\u0e28\u0e38\u0e01\u0e23\u0e4c",
-      "\u0e40\u0e2a\u0e32\u0e23\u0e4c",
+      "\u0e40\u0e2a\u0e32\u0e23\u0e4c"
     ],
     "NARROWWEEKDAYS": [
       "\u0e2d\u0e32",
@@ -163,7 +166,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e1e",
       "\u0e1e\u0e24",
       "\u0e28",
-      "\u0e2a",
+      "\u0e2a"
     ],
     "STANDALONENARROWWEEKDAYS": [
       "\u0e2d\u0e32",
@@ -172,43 +175,60 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u0e1e",
       "\u0e1e\u0e24",
       "\u0e28",
-      "\u0e2a",
+      "\u0e2a"
     ],
     "SHORTQUARTERS": [
       "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 1",
       "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 2",
       "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 3",
-      "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 4",
+      "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 4"
     ],
     "QUARTERS": [
       "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 1",
       "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 2",
       "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 3",
-      "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 4",
+      "\u0e44\u0e15\u0e23\u0e21\u0e32\u0e2a 4"
     ],
-    "AMPMS": ["a", "p"],
+    "AMPMS": [
+      "a",
+      "p"
+    ],
     "DATEFORMATS": [
       "EEEE\u0e17\u0e35\u0e48 d MMMM G y",
       "d MMMM G y",
       "d MMM y",
-      "d/M/yy",
+      "d/M/yy"
     ],
     "TIMEFORMATS": [
       "H \u0e19\u0e32\u0e2c\u0e34\u0e01\u0e32 mm \u0e19\u0e32\u0e17\u0e35 ss \u0e27\u0e34\u0e19\u0e32\u0e17\u0e35 zzzz",
       "H \u0e19\u0e32\u0e2c\u0e34\u0e01\u0e32 mm \u0e19\u0e32\u0e17\u0e35 ss \u0e27\u0e34\u0e19\u0e32\u0e17\u0e35 z",
       "HH:mm:ss",
-      "HH:mm",
+      "HH:mm"
     ],
     "AVAILABLEFORMATS": null,
     "FIRSTDAYOFWEEK": 6,
-    "WEEKENDRANGE": [5, 6],
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
     "FIRSTWEEKCUTOFFDAY": 5,
-    "DATETIMEFORMATS": ["{1} {0}", "{1} {0}", "{1} {0}", "{1} {0}"],
+    "DATETIMEFORMATS": [
+      "{1} {0}",
+      "{1} {0}",
+      "{1} {0}",
+      "{1} {0}"
+    ]
   },
   "zh": {
     "NAME": "zh",
-    "ERAS": ["\u516c\u5143\u524d", "\u516c\u5143"],
-    "ERANAMES": ["\u516c\u5143\u524d", "\u516c\u5143"],
+    "ERAS": [
+      "\u516c\u5143\u524d",
+      "\u516c\u5143"
+    ],
+    "ERANAMES": [
+      "\u516c\u5143\u524d",
+      "\u516c\u5143"
+    ],
     "NARROWMONTHS": [
       "1",
       "2",
@@ -221,7 +241,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "9",
       "10",
       "11",
-      "12",
+      "12"
     ],
     "STANDALONENARROWMONTHS": [
       "1",
@@ -235,7 +255,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "9",
       "10",
       "11",
-      "12",
+      "12"
     ],
     "MONTHS": [
       "\u4e00\u6708",
@@ -249,7 +269,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u4e5d\u6708",
       "\u5341\u6708",
       "\u5341\u4e00\u6708",
-      "\u5341\u4e8c\u6708",
+      "\u5341\u4e8c\u6708"
     ],
     "STANDALONEMONTHS": [
       "\u4e00\u6708",
@@ -263,7 +283,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u4e5d\u6708",
       "\u5341\u6708",
       "\u5341\u4e00\u6708",
-      "\u5341\u4e8c\u6708",
+      "\u5341\u4e8c\u6708"
     ],
     "SHORTMONTHS": [
       "1\u6708",
@@ -277,7 +297,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "9\u6708",
       "10\u6708",
       "11\u6708",
-      "12\u6708",
+      "12\u6708"
     ],
     "STANDALONESHORTMONTHS": [
       "1\u6708",
@@ -291,7 +311,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "9\u6708",
       "10\u6708",
       "11\u6708",
-      "12\u6708",
+      "12\u6708"
     ],
     "WEEKDAYS": [
       "\u661f\u671f\u65e5",
@@ -300,7 +320,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u661f\u671f\u4e09",
       "\u661f\u671f\u56db",
       "\u661f\u671f\u4e94",
-      "\u661f\u671f\u516d",
+      "\u661f\u671f\u516d"
     ],
     "STANDALONEWEEKDAYS": [
       "\u661f\u671f\u65e5",
@@ -309,7 +329,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u661f\u671f\u4e09",
       "\u661f\u671f\u56db",
       "\u661f\u671f\u4e94",
-      "\u661f\u671f\u516d",
+      "\u661f\u671f\u516d"
     ],
     "SHORTWEEKDAYS": [
       "\u5468\u65e5",
@@ -318,7 +338,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u5468\u4e09",
       "\u5468\u56db",
       "\u5468\u4e94",
-      "\u5468\u516d",
+      "\u5468\u516d"
     ],
     "STANDALONESHORTWEEKDAYS": [
       "\u5468\u65e5",
@@ -327,7 +347,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u5468\u4e09",
       "\u5468\u56db",
       "\u5468\u4e94",
-      "\u5468\u516d",
+      "\u5468\u516d"
     ],
     "NARROWWEEKDAYS": [
       "\u65e5",
@@ -336,7 +356,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u4e09",
       "\u56db",
       "\u4e94",
-      "\u516d",
+      "\u516d"
     ],
     "STANDALONENARROWWEEKDAYS": [
       "\u65e5",
@@ -345,38 +365,60 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "\u4e09",
       "\u56db",
       "\u4e94",
-      "\u516d",
+      "\u516d"
     ],
     "SHORTQUARTERS": [
       "1\u5b63\u5ea6",
       "2\u5b63\u5ea6",
       "3\u5b63\u5ea6",
-      "4\u5b63\u5ea6",
+      "4\u5b63\u5ea6"
     ],
     "QUARTERS": [
       "\u7b2c\u4e00\u5b63\u5ea6",
       "\u7b2c\u4e8c\u5b63\u5ea6",
       "\u7b2c\u4e09\u5b63\u5ea6",
-      "\u7b2c\u56db\u5b63\u5ea6",
+      "\u7b2c\u56db\u5b63\u5ea6"
     ],
-    "AMPMS": ["\u4e0a\u5348", "\u4e0b\u5348"],
+    "AMPMS": [
+      "\u4e0a\u5348",
+      "\u4e0b\u5348"
+    ],
     "DATEFORMATS": [
       "y\u5e74M\u6708d\u65e5EEEE",
       "y\u5e74M\u6708d\u65e5",
       "y\u5e74M\u6708d\u65e5",
-      "y/M/d",
+      "y/M/d"
     ],
-    "TIMEFORMATS": ["zzzz HH:mm:ss", "z HH:mm:ss", "HH:mm:ss", "HH:mm"],
+    "TIMEFORMATS": [
+      "zzzz HH:mm:ss",
+      "z HH:mm:ss",
+      "HH:mm:ss",
+      "HH:mm"
+    ],
     "AVAILABLEFORMATS": null,
     "FIRSTDAYOFWEEK": 0,
-    "WEEKENDRANGE": [5, 6],
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
     "FIRSTWEEKCUTOFFDAY": 6,
-    "DATETIMEFORMATS": ["{1} {0}", "{1} {0}", "{1} {0}", "{1} {0}"],
+    "DATETIMEFORMATS": [
+      "{1} {0}",
+      "{1} {0}",
+      "{1} {0}",
+      "{1} {0}"
+    ]
   },
   "en_US": {
     "NAME": "en_US",
-    "ERAS": ["BC", "AD"],
-    "ERANAMES": ["Before Christ", "Anno Domini"],
+    "ERAS": [
+      "BC",
+      "AD"
+    ],
+    "ERANAMES": [
+      "Before Christ",
+      "Anno Domini"
+    ],
     "NARROWMONTHS": [
       "J",
       "F",
@@ -389,7 +431,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "S",
       "O",
       "N",
-      "D",
+      "D"
     ],
     "STANDALONENARROWMONTHS": [
       "J",
@@ -403,7 +445,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "S",
       "O",
       "N",
-      "D",
+      "D"
     ],
     "MONTHS": [
       "January",
@@ -417,7 +459,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "September",
       "October",
       "November",
-      "December",
+      "December"
     ],
     "STANDALONEMONTHS": [
       "January",
@@ -431,7 +473,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "September",
       "October",
       "November",
-      "December",
+      "December"
     ],
     "SHORTMONTHS": [
       "Jan",
@@ -445,7 +487,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "Sep",
       "Oct",
       "Nov",
-      "Dec",
+      "Dec"
     ],
     "STANDALONESHORTMONTHS": [
       "Jan",
@@ -459,7 +501,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "Sep",
       "Oct",
       "Nov",
-      "Dec",
+      "Dec"
     ],
     "WEEKDAYS": [
       "Sunday",
@@ -468,7 +510,7 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "Wednesday",
       "Thursday",
       "Friday",
-      "Saturday",
+      "Saturday"
     ],
     "STANDALONEWEEKDAYS": [
       "Sunday",
@@ -477,9 +519,17 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "Wednesday",
       "Thursday",
       "Friday",
-      "Saturday",
+      "Saturday"
     ],
-    "SHORTWEEKDAYS": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "SHORTWEEKDAYS": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
     "STANDALONESHORTWEEKDAYS": [
       "Sun",
       "Mon",
@@ -487,26 +537,1589 @@ const h5DateSymbols = <String, Map<String, dynamic>>{
       "Wed",
       "Thu",
       "Fri",
-      "Sat",
+      "Sat"
     ],
-    "NARROWWEEKDAYS": ["S", "M", "T", "W", "T", "F", "S"],
-    "STANDALONENARROWWEEKDAYS": ["S", "M", "T", "W", "T", "F", "S"],
-    "SHORTQUARTERS": ["Q1", "Q2", "Q3", "Q4"],
-    "QUARTERS": ["1st quarter", "2nd quarter", "3rd quarter", "4th quarter"],
-    "AMPMS": ["AM", "PM"],
-    "DATEFORMATS": ["EEEE, MMMM d, y", "MMMM d, y", "MMM d, y", "M/d/yy"],
+    "NARROWWEEKDAYS": [
+      "S",
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "S",
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S"
+    ],
+    "SHORTQUARTERS": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "QUARTERS": [
+      "1st quarter",
+      "2nd quarter",
+      "3rd quarter",
+      "4th quarter"
+    ],
+    "AMPMS": [
+      "AM",
+      "PM"
+    ],
+    "DATEFORMATS": [
+      "EEEE, MMMM d, y",
+      "MMMM d, y",
+      "MMM d, y",
+      "M/d/yy"
+    ],
     "TIMEFORMATS": [
       "h:mm:ss\u202fa zzzz",
       "h:mm:ss\u202fa z",
       "h:mm:ss\u202fa",
-      "h:mm\u202fa",
+      "h:mm\u202fa"
     ],
     "AVAILABLEFORMATS": null,
     "FIRSTDAYOFWEEK": 6,
-    "WEEKENDRANGE": [5, 6],
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
     "FIRSTWEEKCUTOFFDAY": 5,
-    "DATETIMEFORMATS": ["{1}, {0}", "{1}, {0}", "{1}, {0}", "{1}, {0}"],
+    "DATETIMEFORMATS": [
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}"
+    ]
   },
+  "en": {
+    "NAME": "en",
+    "ERAS": [
+      "BC",
+      "AD"
+    ],
+    "ERANAMES": [
+      "Before Christ",
+      "Anno Domini"
+    ],
+    "NARROWMONTHS": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "A",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
+    "STANDALONENARROWMONTHS": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "A",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
+    "MONTHS": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "STANDALONEMONTHS": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "SHORTMONTHS": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ],
+    "STANDALONESHORTMONTHS": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ],
+    "WEEKDAYS": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "STANDALONEWEEKDAYS": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "SHORTWEEKDAYS": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "STANDALONESHORTWEEKDAYS": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "NARROWWEEKDAYS": [
+      "S",
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "S",
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S"
+    ],
+    "SHORTQUARTERS": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "QUARTERS": [
+      "1st quarter",
+      "2nd quarter",
+      "3rd quarter",
+      "4th quarter"
+    ],
+    "AMPMS": [
+      "AM",
+      "PM"
+    ],
+    "DATEFORMATS": [
+      "EEEE, MMMM d, y",
+      "MMMM d, y",
+      "MMM d, y",
+      "M/d/yy"
+    ],
+    "TIMEFORMATS": [
+      "h:mm:ss\u202fa zzzz",
+      "h:mm:ss\u202fa z",
+      "h:mm:ss\u202fa",
+      "h:mm\u202fa"
+    ],
+    "AVAILABLEFORMATS": null,
+    "FIRSTDAYOFWEEK": 6,
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
+    "FIRSTWEEKCUTOFFDAY": 5,
+    "DATETIMEFORMATS": [
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}"
+    ]
+  },
+  "en_SG": {
+    "NAME": "en_SG",
+    "ERAS": [
+      "BC",
+      "AD"
+    ],
+    "ERANAMES": [
+      "Before Christ",
+      "Anno Domini"
+    ],
+    "NARROWMONTHS": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "A",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
+    "STANDALONENARROWMONTHS": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "A",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
+    "MONTHS": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "STANDALONEMONTHS": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "SHORTMONTHS": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sept",
+      "Oct",
+      "Nov",
+      "Dec"
+    ],
+    "STANDALONESHORTMONTHS": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sept",
+      "Oct",
+      "Nov",
+      "Dec"
+    ],
+    "WEEKDAYS": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "STANDALONEWEEKDAYS": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "SHORTWEEKDAYS": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "STANDALONESHORTWEEKDAYS": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "NARROWWEEKDAYS": [
+      "S",
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "S",
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S"
+    ],
+    "SHORTQUARTERS": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "QUARTERS": [
+      "1st quarter",
+      "2nd quarter",
+      "3rd quarter",
+      "4th quarter"
+    ],
+    "AMPMS": [
+      "am",
+      "pm"
+    ],
+    "DATEFORMATS": [
+      "EEEE, d MMMM y",
+      "d MMMM y",
+      "d MMM y",
+      "d/M/yy"
+    ],
+    "TIMEFORMATS": [
+      "h:mm:ss\u202fa zzzz",
+      "h:mm:ss\u202fa z",
+      "h:mm:ss\u202fa",
+      "h:mm\u202fa"
+    ],
+    "AVAILABLEFORMATS": null,
+    "FIRSTDAYOFWEEK": 6,
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
+    "FIRSTWEEKCUTOFFDAY": 5,
+    "DATETIMEFORMATS": [
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}"
+    ]
+  },
+  "vi": {
+    "NAME": "vi",
+    "ERAS": [
+      "TCN",
+      "SCN"
+    ],
+    "ERANAMES": [
+      "Tr\u01b0\u1edbc Ch\u00faa Gi\u00e1ng Sinh",
+      "Sau C\u00f4ng Nguy\u00ean"
+    ],
+    "NARROWMONTHS": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12"
+    ],
+    "STANDALONENARROWMONTHS": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12"
+    ],
+    "MONTHS": [
+      "th\u00e1ng 1",
+      "th\u00e1ng 2",
+      "th\u00e1ng 3",
+      "th\u00e1ng 4",
+      "th\u00e1ng 5",
+      "th\u00e1ng 6",
+      "th\u00e1ng 7",
+      "th\u00e1ng 8",
+      "th\u00e1ng 9",
+      "th\u00e1ng 10",
+      "th\u00e1ng 11",
+      "th\u00e1ng 12"
+    ],
+    "STANDALONEMONTHS": [
+      "Th\u00e1ng 1",
+      "Th\u00e1ng 2",
+      "Th\u00e1ng 3",
+      "Th\u00e1ng 4",
+      "Th\u00e1ng 5",
+      "Th\u00e1ng 6",
+      "Th\u00e1ng 7",
+      "Th\u00e1ng 8",
+      "Th\u00e1ng 9",
+      "Th\u00e1ng 10",
+      "Th\u00e1ng 11",
+      "Th\u00e1ng 12"
+    ],
+    "SHORTMONTHS": [
+      "thg 1",
+      "thg 2",
+      "thg 3",
+      "thg 4",
+      "thg 5",
+      "thg 6",
+      "thg 7",
+      "thg 8",
+      "thg 9",
+      "thg 10",
+      "thg 11",
+      "thg 12"
+    ],
+    "STANDALONESHORTMONTHS": [
+      "Th\u00e1ng 1",
+      "Th\u00e1ng 2",
+      "Th\u00e1ng 3",
+      "Th\u00e1ng 4",
+      "Th\u00e1ng 5",
+      "Th\u00e1ng 6",
+      "Th\u00e1ng 7",
+      "Th\u00e1ng 8",
+      "Th\u00e1ng 9",
+      "Th\u00e1ng 10",
+      "Th\u00e1ng 11",
+      "Th\u00e1ng 12"
+    ],
+    "WEEKDAYS": [
+      "Ch\u1ee7 Nh\u1eadt",
+      "Th\u1ee9 Hai",
+      "Th\u1ee9 Ba",
+      "Th\u1ee9 T\u01b0",
+      "Th\u1ee9 N\u0103m",
+      "Th\u1ee9 S\u00e1u",
+      "Th\u1ee9 B\u1ea3y"
+    ],
+    "STANDALONEWEEKDAYS": [
+      "Ch\u1ee7 Nh\u1eadt",
+      "Th\u1ee9 Hai",
+      "Th\u1ee9 Ba",
+      "Th\u1ee9 T\u01b0",
+      "Th\u1ee9 N\u0103m",
+      "Th\u1ee9 S\u00e1u",
+      "Th\u1ee9 B\u1ea3y"
+    ],
+    "SHORTWEEKDAYS": [
+      "CN",
+      "Th\u1ee9 2",
+      "Th\u1ee9 3",
+      "Th\u1ee9 4",
+      "Th\u1ee9 5",
+      "Th\u1ee9 6",
+      "Th\u1ee9 7"
+    ],
+    "STANDALONESHORTWEEKDAYS": [
+      "CN",
+      "Th\u1ee9 2",
+      "Th\u1ee9 3",
+      "Th\u1ee9 4",
+      "Th\u1ee9 5",
+      "Th\u1ee9 6",
+      "Th\u1ee9 7"
+    ],
+    "NARROWWEEKDAYS": [
+      "CN",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "T7"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "CN",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "T7"
+    ],
+    "SHORTQUARTERS": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "QUARTERS": [
+      "Qu\u00fd 1",
+      "Qu\u00fd 2",
+      "Qu\u00fd 3",
+      "Qu\u00fd 4"
+    ],
+    "AMPMS": [
+      "SA",
+      "CH"
+    ],
+    "DATEFORMATS": [
+      "EEEE, d MMMM, y",
+      "d MMMM, y",
+      "d MMM, y",
+      "d/M/yy"
+    ],
+    "TIMEFORMATS": [
+      "HH:mm:ss zzzz",
+      "HH:mm:ss z",
+      "HH:mm:ss",
+      "HH:mm"
+    ],
+    "AVAILABLEFORMATS": null,
+    "FIRSTDAYOFWEEK": 0,
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
+    "FIRSTWEEKCUTOFFDAY": 6,
+    "DATETIMEFORMATS": [
+      "{0} {1}",
+      "{0} {1}",
+      "{0} {1}",
+      "{0} {1}"
+    ]
+  },
+  "my": {
+    "NAME": "my",
+    "ERAS": [
+      "\u1018\u102e\u1005\u102e",
+      "\u1021\u1012\u1031\u102e"
+    ],
+    "ERANAMES": [
+      "\u1001\u101b\u1005\u103a\u1010\u1031\u102c\u103a \u1019\u1015\u1031\u102b\u103a\u1019\u102e\u1014\u103e\u1005\u103a",
+      "\u1001\u101b\u1005\u103a\u1014\u103e\u1005\u103a"
+    ],
+    "NARROWMONTHS": [
+      "\u1007",
+      "\u1016",
+      "\u1019",
+      "\u1027",
+      "\u1019",
+      "\u1007",
+      "\u1007",
+      "\u1029",
+      "\u1005",
+      "\u1021",
+      "\u1014",
+      "\u1012"
+    ],
+    "STANDALONENARROWMONTHS": [
+      "\u1007",
+      "\u1016",
+      "\u1019",
+      "\u1027",
+      "\u1019",
+      "\u1007",
+      "\u1007",
+      "\u1029",
+      "\u1005",
+      "\u1021",
+      "\u1014",
+      "\u1012"
+    ],
+    "MONTHS": [
+      "\u1007\u1014\u103a\u1014\u101d\u102b\u101b\u102e",
+      "\u1016\u1031\u1016\u1031\u102c\u103a\u101d\u102b\u101b\u102e",
+      "\u1019\u1010\u103a",
+      "\u1027\u1015\u103c\u102e",
+      "\u1019\u1031",
+      "\u1007\u103d\u1014\u103a",
+      "\u1007\u1030\u101c\u102d\u102f\u1004\u103a",
+      "\u1029\u1002\u102f\u1010\u103a",
+      "\u1005\u1000\u103a\u1010\u1004\u103a\u1018\u102c",
+      "\u1021\u1031\u102c\u1000\u103a\u1010\u102d\u102f\u1018\u102c",
+      "\u1014\u102d\u102f\u101d\u1004\u103a\u1018\u102c",
+      "\u1012\u102e\u1007\u1004\u103a\u1018\u102c"
+    ],
+    "STANDALONEMONTHS": [
+      "\u1007\u1014\u103a\u1014\u101d\u102b\u101b\u102e",
+      "\u1016\u1031\u1016\u1031\u102c\u103a\u101d\u102b\u101b\u102e",
+      "\u1019\u1010\u103a",
+      "\u1027\u1015\u103c\u102e",
+      "\u1019\u1031",
+      "\u1007\u103d\u1014\u103a",
+      "\u1007\u1030\u101c\u102d\u102f\u1004\u103a",
+      "\u1029\u1002\u102f\u1010\u103a",
+      "\u1005\u1000\u103a\u1010\u1004\u103a\u1018\u102c",
+      "\u1021\u1031\u102c\u1000\u103a\u1010\u102d\u102f\u1018\u102c",
+      "\u1014\u102d\u102f\u101d\u1004\u103a\u1018\u102c",
+      "\u1012\u102e\u1007\u1004\u103a\u1018\u102c"
+    ],
+    "SHORTMONTHS": [
+      "\u1007\u1014\u103a",
+      "\u1016\u1031",
+      "\u1019\u1010\u103a",
+      "\u1027",
+      "\u1019\u1031",
+      "\u1007\u103d\u1014\u103a",
+      "\u1007\u1030",
+      "\u1029",
+      "\u1005\u1000\u103a",
+      "\u1021\u1031\u102c\u1000\u103a",
+      "\u1014\u102d\u102f",
+      "\u1012\u102e"
+    ],
+    "STANDALONESHORTMONTHS": [
+      "\u1007\u1014\u103a",
+      "\u1016\u1031",
+      "\u1019\u1010\u103a",
+      "\u1027",
+      "\u1019\u1031",
+      "\u1007\u103d\u1014\u103a",
+      "\u1007\u1030",
+      "\u1029",
+      "\u1005\u1000\u103a",
+      "\u1021\u1031\u102c\u1000\u103a",
+      "\u1014\u102d\u102f",
+      "\u1012\u102e"
+    ],
+    "WEEKDAYS": [
+      "\u1010\u1014\u1004\u103a\u1039\u1002\u1014\u103d\u1031",
+      "\u1010\u1014\u1004\u103a\u1039\u101c\u102c",
+      "\u1021\u1004\u103a\u1039\u1002\u102b",
+      "\u1017\u102f\u1012\u1039\u1013\u101f\u1030\u1038",
+      "\u1000\u103c\u102c\u101e\u1015\u1010\u1031\u1038",
+      "\u101e\u1031\u102c\u1000\u103c\u102c",
+      "\u1005\u1014\u1031"
+    ],
+    "STANDALONEWEEKDAYS": [
+      "\u1010\u1014\u1004\u103a\u1039\u1002\u1014\u103d\u1031",
+      "\u1010\u1014\u1004\u103a\u1039\u101c\u102c",
+      "\u1021\u1004\u103a\u1039\u1002\u102b",
+      "\u1017\u102f\u1012\u1039\u1013\u101f\u1030\u1038",
+      "\u1000\u103c\u102c\u101e\u1015\u1010\u1031\u1038",
+      "\u101e\u1031\u102c\u1000\u103c\u102c",
+      "\u1005\u1014\u1031"
+    ],
+    "SHORTWEEKDAYS": [
+      "\u1010\u1014\u1004\u103a\u1039\u1002\u1014\u103d\u1031",
+      "\u1010\u1014\u1004\u103a\u1039\u101c\u102c",
+      "\u1021\u1004\u103a\u1039\u1002\u102b",
+      "\u1017\u102f\u1012\u1039\u1013\u101f\u1030\u1038",
+      "\u1000\u103c\u102c\u101e\u1015\u1010\u1031\u1038",
+      "\u101e\u1031\u102c\u1000\u103c\u102c",
+      "\u1005\u1014\u1031"
+    ],
+    "STANDALONESHORTWEEKDAYS": [
+      "\u1010\u1014\u1004\u103a\u1039\u1002\u1014\u103d\u1031",
+      "\u1010\u1014\u1004\u103a\u1039\u101c\u102c",
+      "\u1021\u1004\u103a\u1039\u1002\u102b",
+      "\u1017\u102f\u1012\u1039\u1013\u101f\u1030\u1038",
+      "\u1000\u103c\u102c\u101e\u1015\u1010\u1031\u1038",
+      "\u101e\u1031\u102c\u1000\u103c\u102c",
+      "\u1005\u1014\u1031"
+    ],
+    "NARROWWEEKDAYS": [
+      "\u1010",
+      "\u1010",
+      "\u1021",
+      "\u1017",
+      "\u1000",
+      "\u101e",
+      "\u1005"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "\u1010",
+      "\u1010",
+      "\u1021",
+      "\u1017",
+      "\u1000",
+      "\u101e",
+      "\u1005"
+    ],
+    "SHORTQUARTERS": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "QUARTERS": [
+      "\u1015\u1011\u1019 \u101e\u102f\u1036\u1038\u101c\u1015\u1010\u103a",
+      "\u1012\u102f\u1010\u102d\u101a \u101e\u102f\u1036\u1038\u101c\u1015\u1010\u103a",
+      "\u1010\u1010\u102d\u101a \u101e\u102f\u1036\u1038\u101c\u1015\u1010\u103a",
+      "\u1005\u1010\u102f\u1010\u1039\u1011 \u101e\u102f\u1036\u1038\u101c\u1015\u1010\u103a"
+    ],
+    "AMPMS": [
+      "\u1014\u1036\u1014\u1000\u103a",
+      "\u100a\u1014\u1031"
+    ],
+    "DATEFORMATS": [
+      "y MMMM d EEEE",
+      "y MMMM d",
+      "y MMM d",
+      "d/M/yy"
+    ],
+    "TIMEFORMATS": [
+      "zzzz HH:mm:ss",
+      "z HH:mm:ss",
+      "H:mm:ss",
+      "H:mm"
+    ],
+    "AVAILABLEFORMATS": null,
+    "FIRSTDAYOFWEEK": 6,
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
+    "FIRSTWEEKCUTOFFDAY": 5,
+    "DATETIMEFORMATS": [
+      "{1} {0}",
+      "{1} {0}",
+      "{1} {0}",
+      "{1} {0}"
+    ],
+    "ZERODIGIT": "\u1040"
+  },
+  "km": {
+    "NAME": "km",
+    "ERAS": [
+      "\u1798\u17bb\u1793 \u1782.\u179f.",
+      "\u1782.\u179f."
+    ],
+    "ERANAMES": [
+      "\u1798\u17bb\u1793\u200b\u1782\u17d2\u179a\u17b7\u179f\u17d2\u178f\u179f\u1780\u179a\u17b6\u1787",
+      "\u1782\u17d2\u179a\u17b7\u179f\u17d2\u178f\u179f\u1780\u179a\u17b6\u1787"
+    ],
+    "NARROWMONTHS": [
+      "\u1798",
+      "\u1780",
+      "\u1798",
+      "\u1798",
+      "\u17a7",
+      "\u1798",
+      "\u1780",
+      "\u179f",
+      "\u1780",
+      "\u178f",
+      "\u179c",
+      "\u1792"
+    ],
+    "STANDALONENARROWMONTHS": [
+      "\u1798",
+      "\u1780",
+      "\u1798",
+      "\u1798",
+      "\u17a7",
+      "\u1798",
+      "\u1780",
+      "\u179f",
+      "\u1780",
+      "\u178f",
+      "\u179c",
+      "\u1792"
+    ],
+    "MONTHS": [
+      "\u1798\u1780\u179a\u17b6",
+      "\u1780\u17bb\u1798\u17d2\u1797\u17c8",
+      "\u1798\u17b8\u1793\u17b6",
+      "\u1798\u17c1\u179f\u17b6",
+      "\u17a7\u179f\u1797\u17b6",
+      "\u1798\u17b7\u1790\u17bb\u1793\u17b6",
+      "\u1780\u1780\u17d2\u1780\u178a\u17b6",
+      "\u179f\u17b8\u17a0\u17b6",
+      "\u1780\u1789\u17d2\u1789\u17b6",
+      "\u178f\u17bb\u179b\u17b6",
+      "\u179c\u17b7\u1785\u17d2\u1786\u17b7\u1780\u17b6",
+      "\u1792\u17d2\u1793\u17bc"
+    ],
+    "STANDALONEMONTHS": [
+      "\u1798\u1780\u179a\u17b6",
+      "\u1780\u17bb\u1798\u17d2\u1797\u17c8",
+      "\u1798\u17b8\u1793\u17b6",
+      "\u1798\u17c1\u179f\u17b6",
+      "\u17a7\u179f\u1797\u17b6",
+      "\u1798\u17b7\u1790\u17bb\u1793\u17b6",
+      "\u1780\u1780\u17d2\u1780\u178a\u17b6",
+      "\u179f\u17b8\u17a0\u17b6",
+      "\u1780\u1789\u17d2\u1789\u17b6",
+      "\u178f\u17bb\u179b\u17b6",
+      "\u179c\u17b7\u1785\u17d2\u1786\u17b7\u1780\u17b6",
+      "\u1792\u17d2\u1793\u17bc"
+    ],
+    "SHORTMONTHS": [
+      "\u1798\u1780\u179a\u17b6",
+      "\u1780\u17bb\u1798\u17d2\u1797\u17c8",
+      "\u1798\u17b8\u1793\u17b6",
+      "\u1798\u17c1\u179f\u17b6",
+      "\u17a7\u179f\u1797\u17b6",
+      "\u1798\u17b7\u1790\u17bb\u1793\u17b6",
+      "\u1780\u1780\u17d2\u1780\u178a\u17b6",
+      "\u179f\u17b8\u17a0\u17b6",
+      "\u1780\u1789\u17d2\u1789\u17b6",
+      "\u178f\u17bb\u179b\u17b6",
+      "\u179c\u17b7\u1785\u17d2\u1786\u17b7\u1780\u17b6",
+      "\u1792\u17d2\u1793\u17bc"
+    ],
+    "STANDALONESHORTMONTHS": [
+      "\u1798\u1780\u179a\u17b6",
+      "\u1780\u17bb\u1798\u17d2\u1797\u17c8",
+      "\u1798\u17b8\u1793\u17b6",
+      "\u1798\u17c1\u179f\u17b6",
+      "\u17a7\u179f\u1797\u17b6",
+      "\u1798\u17b7\u1790\u17bb\u1793\u17b6",
+      "\u1780\u1780\u17d2\u1780\u178a\u17b6",
+      "\u179f\u17b8\u17a0\u17b6",
+      "\u1780\u1789\u17d2\u1789\u17b6",
+      "\u178f\u17bb\u179b\u17b6",
+      "\u179c\u17b7\u1785\u17d2\u1786\u17b7\u1780\u17b6",
+      "\u1792\u17d2\u1793\u17bc"
+    ],
+    "WEEKDAYS": [
+      "\u17a2\u17b6\u1791\u17b7\u178f\u17d2\u1799",
+      "\u1785\u17d0\u1793\u17d2\u1791",
+      "\u17a2\u1784\u17d2\u1782\u17b6\u179a",
+      "\u1796\u17bb\u1792",
+      "\u1796\u17d2\u179a\u17a0\u179f\u17d2\u1794\u178f\u17b7\u17cd",
+      "\u179f\u17bb\u1780\u17d2\u179a",
+      "\u179f\u17c5\u179a\u17cd"
+    ],
+    "STANDALONEWEEKDAYS": [
+      "\u17a2\u17b6\u1791\u17b7\u178f\u17d2\u1799",
+      "\u1785\u1793\u17d2\u1791",
+      "\u17a2\u1784\u17d2\u1782\u17b6\u179a",
+      "\u1796\u17bb\u1792",
+      "\u1796\u17d2\u179a\u17a0\u179f\u17d2\u1794\u178f\u17b7\u17cd",
+      "\u179f\u17bb\u1780\u17d2\u179a",
+      "\u179f\u17c5\u179a\u17cd"
+    ],
+    "SHORTWEEKDAYS": [
+      "\u17a2\u17b6\u1791\u17b7\u178f\u17d2\u1799",
+      "\u1785\u1793\u17d2\u1791",
+      "\u17a2\u1784\u17d2\u1782\u17b6\u179a",
+      "\u1796\u17bb\u1792",
+      "\u1796\u17d2\u179a\u17a0",
+      "\u179f\u17bb\u1780\u17d2\u179a",
+      "\u179f\u17c5\u179a\u17cd"
+    ],
+    "STANDALONESHORTWEEKDAYS": [
+      "\u17a2\u17b6\u1791\u17b7\u178f\u17d2\u1799",
+      "\u1785\u1793\u17d2\u1791",
+      "\u17a2\u1784\u17d2\u1782\u17b6\u179a",
+      "\u1796\u17bb\u1792",
+      "\u1796\u17d2\u179a\u17a0",
+      "\u179f\u17bb\u1780\u17d2\u179a",
+      "\u179f\u17c5\u179a\u17cd"
+    ],
+    "NARROWWEEKDAYS": [
+      "\u17a2",
+      "\u1785",
+      "\u17a2",
+      "\u1796",
+      "\u1796",
+      "\u179f",
+      "\u179f"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "\u17a2",
+      "\u1785",
+      "\u17a2",
+      "\u1796",
+      "\u1796",
+      "\u179f",
+      "\u179f"
+    ],
+    "SHORTQUARTERS": [
+      "\u178f\u17d2\u179a\u17b8\u1798\u17b6\u179f\u1791\u17b8 1",
+      "\u178f\u17d2\u179a\u17b8\u1798\u17b6\u179f\u1791\u17b8 2",
+      "\u178f\u17d2\u179a\u17b8\u1798\u17b6\u179f\u1791\u17b8 3",
+      "\u178f\u17d2\u179a\u17b8\u1798\u17b6\u179f\u1791\u17b8 4"
+    ],
+    "QUARTERS": [
+      "\u178f\u17d2\u179a\u17b8\u1798\u17b6\u179f\u1791\u17b8 1",
+      "\u178f\u17d2\u179a\u17b8\u1798\u17b6\u179f\u1791\u17b8 2",
+      "\u178f\u17d2\u179a\u17b8\u1798\u17b6\u179f\u1791\u17b8 3",
+      "\u178f\u17d2\u179a\u17b8\u1798\u17b6\u179f\u1791\u17b8 4"
+    ],
+    "AMPMS": [
+      "a",
+      "p"
+    ],
+    "DATEFORMATS": [
+      "EEEE d MMMM y",
+      "d MMMM y",
+      "d MMM y",
+      "d/M/yy"
+    ],
+    "TIMEFORMATS": [
+      "h:mm:ss a zzzz",
+      "h:mm:ss a z",
+      "h:mm:ss a",
+      "h:mm a"
+    ],
+    "AVAILABLEFORMATS": null,
+    "FIRSTDAYOFWEEK": 6,
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
+    "FIRSTWEEKCUTOFFDAY": 5,
+    "DATETIMEFORMATS": [
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}"
+    ]
+  },
+  "lo": {
+    "NAME": "lo",
+    "ERAS": [
+      "\u0e81\u0ec8\u0ead\u0e99 \u0e84.\u0eaa.",
+      "\u0e84.\u0eaa."
+    ],
+    "ERANAMES": [
+      "\u0e81\u0ec8\u0ead\u0e99\u0e84\u0ea3\u0eb4\u0e94\u0eaa\u0eb1\u0e81\u0e81\u0eb0\u0ea5\u0eb2\u0e94",
+      "\u0e84\u0ea3\u0eb4\u0e94\u0eaa\u0eb1\u0e81\u0e81\u0eb0\u0ea5\u0eb2\u0e94"
+    ],
+    "NARROWMONTHS": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12"
+    ],
+    "STANDALONENARROWMONTHS": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12"
+    ],
+    "MONTHS": [
+      "\u0ea1\u0eb1\u0e87\u0e81\u0ead\u0e99",
+      "\u0e81\u0eb8\u0ea1\u0e9e\u0eb2",
+      "\u0ea1\u0eb5\u0e99\u0eb2",
+      "\u0ec0\u0ea1\u0eaa\u0eb2",
+      "\u0e9e\u0eb6\u0e94\u0eaa\u0eb0\u0e9e\u0eb2",
+      "\u0ea1\u0eb4\u0e96\u0eb8\u0e99\u0eb2",
+      "\u0e81\u0ecd\u0ea5\u0eb0\u0e81\u0ebb\u0e94",
+      "\u0eaa\u0eb4\u0e87\u0eab\u0eb2",
+      "\u0e81\u0eb1\u0e99\u0e8d\u0eb2",
+      "\u0e95\u0eb8\u0ea5\u0eb2",
+      "\u0e9e\u0eb0\u0e88\u0eb4\u0e81",
+      "\u0e97\u0eb1\u0e99\u0ea7\u0eb2"
+    ],
+    "STANDALONEMONTHS": [
+      "\u0ea1\u0eb1\u0e87\u0e81\u0ead\u0e99",
+      "\u0e81\u0eb8\u0ea1\u0e9e\u0eb2",
+      "\u0ea1\u0eb5\u0e99\u0eb2",
+      "\u0ec0\u0ea1\u0eaa\u0eb2",
+      "\u0e9e\u0eb6\u0e94\u0eaa\u0eb0\u0e9e\u0eb2",
+      "\u0ea1\u0eb4\u0e96\u0eb8\u0e99\u0eb2",
+      "\u0e81\u0ecd\u0ea5\u0eb0\u0e81\u0ebb\u0e94",
+      "\u0eaa\u0eb4\u0e87\u0eab\u0eb2",
+      "\u0e81\u0eb1\u0e99\u0e8d\u0eb2",
+      "\u0e95\u0eb8\u0ea5\u0eb2",
+      "\u0e9e\u0eb0\u0e88\u0eb4\u0e81",
+      "\u0e97\u0eb1\u0e99\u0ea7\u0eb2"
+    ],
+    "SHORTMONTHS": [
+      "\u0ea1.\u0e81.",
+      "\u0e81.\u0e9e.",
+      "\u0ea1.\u0e99.",
+      "\u0ea1.\u0eaa.",
+      "\u0e9e.\u0e9e.",
+      "\u0ea1\u0eb4.\u0e96.",
+      "\u0e81.\u0ea5.",
+      "\u0eaa.\u0eab.",
+      "\u0e81.\u0e8d.",
+      "\u0e95.\u0ea5.",
+      "\u0e9e.\u0e88.",
+      "\u0e97.\u0ea7."
+    ],
+    "STANDALONESHORTMONTHS": [
+      "\u0ea1.\u0e81.",
+      "\u0e81.\u0e9e.",
+      "\u0ea1.\u0e99.",
+      "\u0ea1.\u0eaa.",
+      "\u0e9e.\u0e9e.",
+      "\u0ea1\u0eb4.\u0e96.",
+      "\u0e81.\u0ea5.",
+      "\u0eaa.\u0eab.",
+      "\u0e81.\u0e8d.",
+      "\u0e95.\u0ea5.",
+      "\u0e9e.\u0e88.",
+      "\u0e97.\u0ea7."
+    ],
+    "WEEKDAYS": [
+      "\u0ea7\u0eb1\u0e99\u0ead\u0eb2\u0e97\u0eb4\u0e94",
+      "\u0ea7\u0eb1\u0e99\u0e88\u0eb1\u0e99",
+      "\u0ea7\u0eb1\u0e99\u0ead\u0eb1\u0e87\u0e84\u0eb2\u0e99",
+      "\u0ea7\u0eb1\u0e99\u0e9e\u0eb8\u0e94",
+      "\u0ea7\u0eb1\u0e99\u0e9e\u0eb0\u0eab\u0eb1\u0e94",
+      "\u0ea7\u0eb1\u0e99\u0eaa\u0eb8\u0e81",
+      "\u0ea7\u0eb1\u0e99\u0ec0\u0eaa\u0ebb\u0eb2"
+    ],
+    "STANDALONEWEEKDAYS": [
+      "\u0ea7\u0eb1\u0e99\u0ead\u0eb2\u0e97\u0eb4\u0e94",
+      "\u0ea7\u0eb1\u0e99\u0e88\u0eb1\u0e99",
+      "\u0ea7\u0eb1\u0e99\u0ead\u0eb1\u0e87\u0e84\u0eb2\u0e99",
+      "\u0ea7\u0eb1\u0e99\u0e9e\u0eb8\u0e94",
+      "\u0ea7\u0eb1\u0e99\u0e9e\u0eb0\u0eab\u0eb1\u0e94",
+      "\u0ea7\u0eb1\u0e99\u0eaa\u0eb8\u0e81",
+      "\u0ea7\u0eb1\u0e99\u0ec0\u0eaa\u0ebb\u0eb2"
+    ],
+    "SHORTWEEKDAYS": [
+      "\u0ead\u0eb2\u0e97\u0eb4\u0e94",
+      "\u0e88\u0eb1\u0e99",
+      "\u0ead\u0eb1\u0e87\u0e84\u0eb2\u0e99",
+      "\u0e9e\u0eb8\u0e94",
+      "\u0e9e\u0eb0\u0eab\u0eb1\u0e94",
+      "\u0eaa\u0eb8\u0e81",
+      "\u0ec0\u0eaa\u0ebb\u0eb2"
+    ],
+    "STANDALONESHORTWEEKDAYS": [
+      "\u0ead\u0eb2\u0e97\u0eb4\u0e94",
+      "\u0e88\u0eb1\u0e99",
+      "\u0ead\u0eb1\u0e87\u0e84\u0eb2\u0e99",
+      "\u0e9e\u0eb8\u0e94",
+      "\u0e9e\u0eb0\u0eab\u0eb1\u0e94",
+      "\u0eaa\u0eb8\u0e81",
+      "\u0ec0\u0eaa\u0ebb\u0eb2"
+    ],
+    "NARROWWEEKDAYS": [
+      "\u0ead\u0eb2",
+      "\u0e88",
+      "\u0ead",
+      "\u0e9e",
+      "\u0e9e\u0eab",
+      "\u0eaa\u0eb8",
+      "\u0eaa"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "\u0ead\u0eb2",
+      "\u0e88",
+      "\u0ead",
+      "\u0e9e",
+      "\u0e9e\u0eab",
+      "\u0eaa\u0eb8",
+      "\u0eaa"
+    ],
+    "SHORTQUARTERS": [
+      "\u0e95\u0ea11",
+      "\u0e95\u0ea12",
+      "\u0e95\u0ea13",
+      "\u0e95\u0ea14"
+    ],
+    "QUARTERS": [
+      "\u0ec4\u0e95\u0ea3\u0ea1\u0eb2\u0e94 1",
+      "\u0ec4\u0e95\u0ea3\u0ea1\u0eb2\u0e94 2",
+      "\u0ec4\u0e95\u0ea3\u0ea1\u0eb2\u0e94 3",
+      "\u0ec4\u0e95\u0ea3\u0ea1\u0eb2\u0e94 4"
+    ],
+    "AMPMS": [
+      "\u0e81\u0ec8\u0ead\u0e99\u0e97\u0ec8\u0ebd\u0e87",
+      "\u0eab\u0ebc\u0eb1\u0e87\u0e97\u0ec8\u0ebd\u0e87"
+    ],
+    "DATEFORMATS": [
+      "EEEE, d MMMM y",
+      "d MMMM y",
+      "d MMM y",
+      "d/M/y"
+    ],
+    "TIMEFORMATS": [
+      "H \u0ec2\u0ea1\u0e87 m \u0e99\u0eb2\u0e97\u0eb5 ss \u0ea7\u0eb4\u0e99\u0eb2\u0e97\u0eb5 zzzz",
+      "H \u0ec2\u0ea1\u0e87 m \u0e99\u0eb2\u0e97\u0eb5 ss \u0ea7\u0eb4\u0e99\u0eb2\u0e97\u0eb5 z",
+      "H:mm:ss",
+      "H:mm"
+    ],
+    "AVAILABLEFORMATS": null,
+    "FIRSTDAYOFWEEK": 6,
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
+    "FIRSTWEEKCUTOFFDAY": 5,
+    "DATETIMEFORMATS": [
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}",
+      "{1}, {0}"
+    ]
+  },
+  "ms": {
+    "NAME": "ms",
+    "ERAS": [
+      "S.M.",
+      "TM"
+    ],
+    "ERANAMES": [
+      "S.M.",
+      "TM"
+    ],
+    "NARROWMONTHS": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "O",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
+    "STANDALONENARROWMONTHS": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "O",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
+    "MONTHS": [
+      "Januari",
+      "Februari",
+      "Mac",
+      "April",
+      "Mei",
+      "Jun",
+      "Julai",
+      "Ogos",
+      "September",
+      "Oktober",
+      "November",
+      "Disember"
+    ],
+    "STANDALONEMONTHS": [
+      "Januari",
+      "Februari",
+      "Mac",
+      "April",
+      "Mei",
+      "Jun",
+      "Julai",
+      "Ogos",
+      "September",
+      "Oktober",
+      "November",
+      "Disember"
+    ],
+    "SHORTMONTHS": [
+      "Jan",
+      "Feb",
+      "Mac",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Ogo",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Dis"
+    ],
+    "STANDALONESHORTMONTHS": [
+      "Jan",
+      "Feb",
+      "Mac",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Ogo",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Dis"
+    ],
+    "WEEKDAYS": [
+      "Ahad",
+      "Isnin",
+      "Selasa",
+      "Rabu",
+      "Khamis",
+      "Jumaat",
+      "Sabtu"
+    ],
+    "STANDALONEWEEKDAYS": [
+      "Ahad",
+      "Isnin",
+      "Selasa",
+      "Rabu",
+      "Khamis",
+      "Jumaat",
+      "Sabtu"
+    ],
+    "SHORTWEEKDAYS": [
+      "Ahd",
+      "Isn",
+      "Sel",
+      "Rab",
+      "Kha",
+      "Jum",
+      "Sab"
+    ],
+    "STANDALONESHORTWEEKDAYS": [
+      "Ahd",
+      "Isn",
+      "Sel",
+      "Rab",
+      "Kha",
+      "Jum",
+      "Sab"
+    ],
+    "NARROWWEEKDAYS": [
+      "A",
+      "I",
+      "S",
+      "R",
+      "K",
+      "J",
+      "S"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "A",
+      "I",
+      "S",
+      "R",
+      "K",
+      "J",
+      "S"
+    ],
+    "SHORTQUARTERS": [
+      "S1",
+      "S2",
+      "S3",
+      "S4"
+    ],
+    "QUARTERS": [
+      "Suku pertama",
+      "Suku Ke-2",
+      "Suku Ke-3",
+      "Suku Ke-4"
+    ],
+    "AMPMS": [
+      "PG",
+      "PTG"
+    ],
+    "DATEFORMATS": [
+      "EEEE, d MMMM y",
+      "d MMMM y",
+      "d MMM y",
+      "d/MM/yy"
+    ],
+    "TIMEFORMATS": [
+      "h:mm:ss\u202fa zzzz",
+      "h:mm:ss\u202fa z",
+      "h:mm:ss\u202fa",
+      "h:mm\u202fa"
+    ],
+    "AVAILABLEFORMATS": null,
+    "FIRSTDAYOFWEEK": 0,
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
+    "FIRSTWEEKCUTOFFDAY": 6,
+    "DATETIMEFORMATS": [
+      "{1} {0}",
+      "{1} {0}",
+      "{1}, {0}",
+      "{1}, {0}"
+    ]
+  },
+  "id": {
+    "NAME": "id",
+    "ERAS": [
+      "SM",
+      "M"
+    ],
+    "ERANAMES": [
+      "Sebelum Masehi",
+      "Masehi"
+    ],
+    "NARROWMONTHS": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "A",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
+    "STANDALONENARROWMONTHS": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "A",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
+    "MONTHS": [
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember"
+    ],
+    "STANDALONEMONTHS": [
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember"
+    ],
+    "SHORTMONTHS": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Agu",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Des"
+    ],
+    "STANDALONESHORTMONTHS": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Agu",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Des"
+    ],
+    "WEEKDAYS": [
+      "Minggu",
+      "Senin",
+      "Selasa",
+      "Rabu",
+      "Kamis",
+      "Jumat",
+      "Sabtu"
+    ],
+    "STANDALONEWEEKDAYS": [
+      "Minggu",
+      "Senin",
+      "Selasa",
+      "Rabu",
+      "Kamis",
+      "Jumat",
+      "Sabtu"
+    ],
+    "SHORTWEEKDAYS": [
+      "Min",
+      "Sen",
+      "Sel",
+      "Rab",
+      "Kam",
+      "Jum",
+      "Sab"
+    ],
+    "STANDALONESHORTWEEKDAYS": [
+      "Min",
+      "Sen",
+      "Sel",
+      "Rab",
+      "Kam",
+      "Jum",
+      "Sab"
+    ],
+    "NARROWWEEKDAYS": [
+      "M",
+      "S",
+      "S",
+      "R",
+      "K",
+      "J",
+      "S"
+    ],
+    "STANDALONENARROWWEEKDAYS": [
+      "M",
+      "S",
+      "S",
+      "R",
+      "K",
+      "J",
+      "S"
+    ],
+    "SHORTQUARTERS": [
+      "K1",
+      "K2",
+      "K3",
+      "K4"
+    ],
+    "QUARTERS": [
+      "Kuartal ke-1",
+      "Kuartal ke-2",
+      "Kuartal ke-3",
+      "Kuartal ke-4"
+    ],
+    "AMPMS": [
+      "AM",
+      "PM"
+    ],
+    "DATEFORMATS": [
+      "EEEE, dd MMMM y",
+      "d MMMM y",
+      "d MMM y",
+      "dd/MM/yy"
+    ],
+    "TIMEFORMATS": [
+      "HH.mm.ss zzzz",
+      "HH.mm.ss z",
+      "HH.mm.ss",
+      "HH.mm"
+    ],
+    "AVAILABLEFORMATS": null,
+    "FIRSTDAYOFWEEK": 6,
+    "WEEKENDRANGE": [
+      5,
+      6
+    ],
+    "FIRSTWEEKCUTOFFDAY": 5,
+    "DATETIMEFORMATS": [
+      "{1} {0}",
+      "{1} {0}",
+      "{1} {0}",
+      "{1} {0}"
+    ]
+  }
 };
 const h5DatePatterns = <String, Map<String, String>>{
   "th": {
@@ -553,7 +2166,7 @@ const h5DatePatterns = <String, Map<String, String>>{
     "v": "v",
     "z": "z",
     "zzzz": "zzzz",
-    "ZZZZ": "ZZZZ",
+    "ZZZZ": "ZZZZ"
   },
   "zh": {
     "d": "d\u65e5",
@@ -599,7 +2212,7 @@ const h5DatePatterns = <String, Map<String, String>>{
     "v": "v",
     "z": "z",
     "zzzz": "zzzz",
-    "ZZZZ": "ZZZZ",
+    "ZZZZ": "ZZZZ"
   },
   "en_US": {
     "d": "d",
@@ -645,6 +2258,374 @@ const h5DatePatterns = <String, Map<String, String>>{
     "v": "v",
     "z": "z",
     "zzzz": "zzzz",
-    "ZZZZ": "ZZZZ",
+    "ZZZZ": "ZZZZ"
   },
+  "en": {
+    "d": "d",
+    "E": "ccc",
+    "EEEE": "cccc",
+    "LLL": "LLL",
+    "LLLL": "LLLL",
+    "M": "L",
+    "Md": "M/d",
+    "MEd": "EEE, M/d",
+    "MMM": "LLL",
+    "MMMd": "MMM d",
+    "MMMEd": "EEE, MMM d",
+    "MMMM": "LLLL",
+    "MMMMd": "MMMM d",
+    "MMMMEEEEd": "EEEE, MMMM d",
+    "QQQ": "QQQ",
+    "QQQQ": "QQQQ",
+    "y": "y",
+    "yM": "M/y",
+    "yMd": "M/d/y",
+    "yMEd": "EEE, M/d/y",
+    "yMMM": "MMM y",
+    "yMMMd": "MMM d, y",
+    "yMMMEd": "EEE, MMM d, y",
+    "yMMMM": "MMMM y",
+    "yMMMMd": "MMMM d, y",
+    "yMMMMEEEEd": "EEEE, MMMM d, y",
+    "yQQQ": "QQQ y",
+    "yQQQQ": "QQQQ y",
+    "H": "HH",
+    "Hm": "HH:mm",
+    "Hms": "HH:mm:ss",
+    "j": "h\u202fa",
+    "jm": "h:mm\u202fa",
+    "jms": "h:mm:ss\u202fa",
+    "jmv": "h:mm\u202fa v",
+    "jmz": "h:mm\u202fa z",
+    "jz": "h\u202fa z",
+    "m": "m",
+    "ms": "mm:ss",
+    "s": "s",
+    "v": "v",
+    "z": "z",
+    "zzzz": "zzzz",
+    "ZZZZ": "ZZZZ"
+  },
+  "en_SG": {
+    "d": "d",
+    "E": "ccc",
+    "EEEE": "cccc",
+    "LLL": "LLL",
+    "LLLL": "LLLL",
+    "M": "L",
+    "Md": "dd/MM",
+    "MEd": "EEE, dd/MM",
+    "MMM": "LLL",
+    "MMMd": "d MMM",
+    "MMMEd": "EEE, d MMM",
+    "MMMM": "LLLL",
+    "MMMMd": "d MMMM",
+    "MMMMEEEEd": "EEEE, d MMMM",
+    "QQQ": "QQQ",
+    "QQQQ": "QQQQ",
+    "y": "y",
+    "yM": "MM/y",
+    "yMd": "dd/MM/y",
+    "yMEd": "EEE, dd/MM/y",
+    "yMMM": "MMM y",
+    "yMMMd": "d MMM y",
+    "yMMMEd": "EEE, d MMM y",
+    "yMMMM": "MMMM y",
+    "yMMMMd": "d MMMM y",
+    "yMMMMEEEEd": "EEEE, d MMMM y",
+    "yQQQ": "QQQ y",
+    "yQQQQ": "QQQQ y",
+    "H": "HH",
+    "Hm": "HH:mm",
+    "Hms": "HH:mm:ss",
+    "j": "h\u202fa",
+    "jm": "h:mm\u202fa",
+    "jms": "h:mm:ss\u202fa",
+    "jmv": "h:mm\u202fa v",
+    "jmz": "h:mm\u202fa z",
+    "jz": "h\u202fa z",
+    "m": "m",
+    "ms": "mm:ss",
+    "s": "s",
+    "v": "v",
+    "z": "z",
+    "zzzz": "zzzz",
+    "ZZZZ": "ZZZZ"
+  },
+  "vi": {
+    "d": "d",
+    "E": "ccc",
+    "EEEE": "cccc",
+    "LLL": "LLL",
+    "LLLL": "LLLL",
+    "M": "L",
+    "Md": "d/M",
+    "MEd": "EEE, d/M",
+    "MMM": "LLL",
+    "MMMd": "d MMM",
+    "MMMEd": "EEE, d MMM",
+    "MMMM": "LLLL",
+    "MMMMd": "d MMMM",
+    "MMMMEEEEd": "EEEE, d MMMM",
+    "QQQ": "QQQ",
+    "QQQQ": "QQQQ",
+    "y": "y",
+    "yM": "M/y",
+    "yMd": "d/M/y",
+    "yMEd": "EEE, d/M/y",
+    "yMMM": "MMM y",
+    "yMMMd": "d MMM, y",
+    "yMMMEd": "EEE, d MMM, y",
+    "yMMMM": "MMMM 'n\u0103m' y",
+    "yMMMMd": "d MMMM, y",
+    "yMMMMEEEEd": "EEEE, d MMMM, y",
+    "yQQQ": "QQQ y",
+    "yQQQQ": "QQQQ 'n\u0103m' y",
+    "H": "HH 'gi\u1edd'",
+    "Hm": "H:mm",
+    "Hms": "HH:mm:ss",
+    "j": "HH 'gi\u1edd'",
+    "jm": "H:mm",
+    "jms": "HH:mm:ss",
+    "jmv": "HH:mm v",
+    "jmz": "HH:mm z",
+    "jz": "HH'h' z",
+    "m": "m",
+    "ms": "mm:ss",
+    "s": "s",
+    "v": "v",
+    "z": "z",
+    "zzzz": "zzzz",
+    "ZZZZ": "ZZZZ"
+  },
+  "my": {
+    "d": "d",
+    "E": "ccc",
+    "EEEE": "cccc",
+    "LLL": "LLL",
+    "LLLL": "LLLL",
+    "M": "L",
+    "Md": "d/M",
+    "MEd": "d/M EEE",
+    "MMM": "LLL",
+    "MMMd": "MMM d",
+    "MMMEd": "MMM d EEE",
+    "MMMM": "LLLL",
+    "MMMMd": "MMMM d",
+    "MMMMEEEEd": "MMMM d EEEE",
+    "QQQ": "QQQ",
+    "QQQQ": "QQQQ",
+    "y": "y",
+    "yM": "y-MM",
+    "yMd": "d/M/y",
+    "yMEd": "d/M/y EEE",
+    "yMMM": "y MMM",
+    "yMMMd": "y MMM d",
+    "yMMMEd": "y MMM d EEE",
+    "yMMMM": "y MMMM",
+    "yMMMMd": "y MMMM d",
+    "yMMMMEEEEd": "y MMMM d EEEE",
+    "yQQQ": "y QQQ",
+    "yQQQQ": "y QQQQ",
+    "H": "HH",
+    "Hm": "HH:mm",
+    "Hms": "HH:mm:ss",
+    "j": "HH",
+    "jm": "HH:mm",
+    "jms": "HH:mm:ss",
+    "jmv": "v HH:mm",
+    "jmz": "z HH:mm",
+    "jz": "z HH",
+    "m": "m",
+    "ms": "mm:ss",
+    "s": "s",
+    "v": "v",
+    "z": "z",
+    "zzzz": "zzzz",
+    "ZZZZ": "ZZZZ"
+  },
+  "km": {
+    "d": "d",
+    "E": "ccc",
+    "EEEE": "cccc",
+    "LLL": "LLL",
+    "LLLL": "LLLL",
+    "M": "L",
+    "Md": "d/M",
+    "MEd": "EEE d/M",
+    "MMM": "LLL",
+    "MMMd": "d MMM",
+    "MMMEd": "EEE d MMM",
+    "MMMM": "LLLL",
+    "MMMMd": "d MMMM",
+    "MMMMEEEEd": "EEEE d MMMM",
+    "QQQ": "QQQ",
+    "QQQQ": "QQQQ",
+    "y": "y",
+    "yM": "M/y",
+    "yMd": "d/M/y",
+    "yMEd": "EEE d/M/y",
+    "yMMM": "MMM y",
+    "yMMMd": "d MMM y",
+    "yMMMEd": "EEE d MMM y",
+    "yMMMM": "MMMM y",
+    "yMMMMd": "d MMMM y",
+    "yMMMMEEEEd": "EEEE d MMMM y",
+    "yQQQ": "QQQ y",
+    "yQQQQ": "QQQQ y",
+    "H": "HH",
+    "Hm": "HH:mm",
+    "Hms": "HH:mm:ss",
+    "j": "h\u202fa",
+    "jm": "h:mm a",
+    "jms": "h:mm:ss a",
+    "jmv": "h:mm a v",
+    "jmz": "h:mm a z",
+    "jz": "h\u202fa z",
+    "m": "m",
+    "ms": "mm:ss",
+    "s": "s",
+    "v": "v",
+    "z": "z",
+    "zzzz": "zzzz",
+    "ZZZZ": "ZZZZ"
+  },
+  "lo": {
+    "d": "d",
+    "E": "ccc",
+    "EEEE": "cccc",
+    "LLL": "LLL",
+    "LLLL": "LLLL",
+    "M": "L",
+    "Md": "d/M",
+    "MEd": "EEE, d/M",
+    "MMM": "LLL",
+    "MMMd": "d MMM",
+    "MMMEd": "EEE d MMM",
+    "MMMM": "LLLL",
+    "MMMMd": "d MMMM",
+    "MMMMEEEEd": "EEEE d MMMM",
+    "QQQ": "QQQ",
+    "QQQQ": "QQQQ",
+    "y": "y",
+    "yM": "M/y",
+    "yMd": "d/M/y",
+    "yMEd": "EEE, d/M/y",
+    "yMMM": "MMM y",
+    "yMMMd": "d MMM y",
+    "yMMMEd": "EEE, d MMM y",
+    "yMMMM": "MMMM y",
+    "yMMMMd": "d MMMM y",
+    "yMMMMEEEEd": "EEEE, d MMMM y",
+    "yQQQ": "QQQ y",
+    "yQQQQ": "QQQQ y",
+    "H": "HH",
+    "Hm": "HH:mm",
+    "Hms": "HH:mm:ss",
+    "j": "HH",
+    "jm": "HH:mm",
+    "jms": "HH:mm:ss",
+    "jmv": "HH:mm v",
+    "jmz": "HH:mm z",
+    "jz": "HH'h' z",
+    "m": "m",
+    "ms": "mm:ss",
+    "s": "s",
+    "v": "v",
+    "z": "z",
+    "zzzz": "zzzz",
+    "ZZZZ": "ZZZZ"
+  },
+  "ms": {
+    "d": "d",
+    "E": "ccc",
+    "EEEE": "cccc",
+    "LLL": "LLL",
+    "LLLL": "LLLL",
+    "M": "L",
+    "Md": "d-M",
+    "MEd": "EEE, d-M",
+    "MMM": "LLL",
+    "MMMd": "d MMM",
+    "MMMEd": "EEE, d MMM",
+    "MMMM": "LLLL",
+    "MMMMd": "d MMMM",
+    "MMMMEEEEd": "EEEE, d MMMM",
+    "QQQ": "QQQ",
+    "QQQQ": "QQQQ",
+    "y": "y",
+    "yM": "M-y",
+    "yMd": "d/M/y",
+    "yMEd": "EEE, d/M/y",
+    "yMMM": "MMM y",
+    "yMMMd": "d MMM y",
+    "yMMMEd": "EEE, d MMM y",
+    "yMMMM": "MMMM y",
+    "yMMMMd": "d MMMM y",
+    "yMMMMEEEEd": "EEEE, d MMMM y",
+    "yQQQ": "QQQ y",
+    "yQQQQ": "QQQQ y",
+    "H": "HH",
+    "Hm": "HH:mm",
+    "Hms": "HH:mm:ss",
+    "j": "h\u202fa",
+    "jm": "h:mm\u202fa",
+    "jms": "h:mm:ss\u202fa",
+    "jmv": "h:mm\u202fa v",
+    "jmz": "h:mm\u202fa z",
+    "jz": "h\u202fa z",
+    "m": "m",
+    "ms": "mm:ss",
+    "s": "s",
+    "v": "v",
+    "z": "z",
+    "zzzz": "zzzz",
+    "ZZZZ": "ZZZZ"
+  },
+  "id": {
+    "d": "d",
+    "E": "ccc",
+    "EEEE": "cccc",
+    "LLL": "LLL",
+    "LLLL": "LLLL",
+    "M": "L",
+    "Md": "d/M",
+    "MEd": "EEE, d/M",
+    "MMM": "LLL",
+    "MMMd": "d MMM",
+    "MMMEd": "EEE, d MMM",
+    "MMMM": "LLLL",
+    "MMMMd": "d MMMM",
+    "MMMMEEEEd": "EEEE, d MMMM",
+    "QQQ": "QQQ",
+    "QQQQ": "QQQQ",
+    "y": "y",
+    "yM": "M/y",
+    "yMd": "d/M/y",
+    "yMEd": "EEE, d/M/y",
+    "yMMM": "MMM y",
+    "yMMMd": "d MMM y",
+    "yMMMEd": "EEE, d MMM y",
+    "yMMMM": "MMMM y",
+    "yMMMMd": "d MMMM y",
+    "yMMMMEEEEd": "EEEE, d MMMM y",
+    "yQQQ": "QQQ y",
+    "yQQQQ": "QQQQ y",
+    "H": "HH",
+    "Hm": "HH.mm",
+    "Hms": "HH.mm.ss",
+    "j": "HH",
+    "jm": "HH.mm",
+    "jms": "HH.mm.ss",
+    "jmv": "HH.mm v",
+    "jmz": "HH.mm z",
+    "jz": "HH'h' z",
+    "m": "m",
+    "ms": "mm.ss",
+    "s": "s",
+    "v": "v",
+    "z": "z",
+    "zzzz": "zzzz",
+    "ZZZZ": "ZZZZ"
+  }
 };

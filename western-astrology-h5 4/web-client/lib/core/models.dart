@@ -1,3 +1,4 @@
+import '../app/languages.dart';
 import 'dart:convert';
 
 typedef Json = Map<String, dynamic>;
@@ -50,9 +51,10 @@ class Copy {
       if (report.career) ...object(object(data['career'])[language]),
     };
     if (report.western) {
-      labels['methodValue'] =
-          '${object(report.json['method'])['name']} · Placidus';
-      labels['plan'] = t('jy', 'report.westernSections.plan');
+      labels['methodValue'] = forLanguage(language).t('jy', 'chart.western');
+      labels['plan'] = forLanguage(
+        language,
+      ).t('jy', 'report.westernSections.plan');
     }
     final question = object(report.input['career_question']);
     if (question.isNotEmpty) {
@@ -85,9 +87,17 @@ class Copy {
   }
 
   String topicTitle(Json topic, int year) => topic['key'] == 'annual'
-      ? language == 'zh'
-            ? '$year年运程'
-            : 'ดวงปี $year'
+      ? {
+          'zh': '$year年运程',
+          'th': 'ดวงปี $year',
+          'en': '$year yearly themes',
+          'vi': 'Chủ đề năm $year',
+          'my': '$year နှစ်အလိုက်အကြောင်းအရာ',
+          'km': 'ប្រធានបទឆ្នាំ $year',
+          'lo': 'ຫົວຂໍ້ປີ $year',
+          'ms': 'Tema tahun $year',
+          'id': 'Tema tahun $year',
+        }[language]!
       : text(object(topic[language])['title']);
 }
 
@@ -99,16 +109,25 @@ class Place {
   String get zone => text(json['timeZone']);
   String get english => text(json['nameEnglish']);
   String get provinceId => text(json['provinceId']);
-  String name(String language) =>
-      text(json[language == 'zh' ? 'nameChinese' : 'nameThai']).isNotEmpty
-      ? text(json[language == 'zh' ? 'nameChinese' : 'nameThai'])
-      : english;
+  String name(String language) {
+    final preferred = language == 'zh'
+        ? 'nameChinese'
+        : language == 'th'
+        ? 'nameThai'
+        : 'nameEnglish';
+    for (final key in [preferred, 'nameEnglish', 'nameChinese', 'nameThai']) {
+      if (text(json[key]).isNotEmpty) return text(json[key]);
+    }
+    return '';
+  }
+
   bool get representative =>
       json['placeType'] == 'province' ||
       json['coordinateKind'] == 'representative' ||
       json['coordinateKind'] == 'administrative-area';
-  String label(String language) =>
-      text(json[language == 'zh' ? 'labelChinese' : 'labelThai']).isNotEmpty
+  String label(String language) => !['zh', 'th'].contains(language)
+      ? name(language)
+      : text(json[language == 'zh' ? 'labelChinese' : 'labelThai']).isNotEmpty
       ? text(json[language == 'zh' ? 'labelChinese' : 'labelThai'])
       : text(json[language == 'zh' ? 'nameChinese' : 'nameThai']).isNotEmpty
       ? text(json[language == 'zh' ? 'nameChinese' : 'nameThai'])
@@ -196,7 +215,7 @@ class LifeReport {
         ? 7
         : 5;
     if (!RegExp(r'^[A-Za-z0-9_-]{8,128}$').hasMatch(text(row['id'])) ||
-        !['zh', 'th'].contains(language) ||
+        !h5Languages.any((option) => option.$1 == language) ||
         (id != null && row['id'] != id) ||
         (expectedInput != null &&
             inputSignature(input) != inputSignature(expectedInput)) ||

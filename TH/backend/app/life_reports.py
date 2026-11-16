@@ -19,8 +19,9 @@ from . import thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
 from .bazi_reports import report_progress_context, report_usage_context
 from .life_card_payments import CARD_AMOUNT, LifeCardPayments
-from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
+from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, WESTERN_WRITING_VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
 from .schemas import Input, ProfileInput, ThaiReadingInput
+from .report_languages import REGIONAL_LANGUAGES
 from .thai_readings import HOUSES, copy_for, grounding
 
 logger = logging.getLogger(__name__)
@@ -42,8 +43,12 @@ class CareerInput(Input):
         return self
 
 
+class LifeProfile(ProfileInput):
+    language: Literal["zh", "th", "en", "vi", "my", "km", "lo", "ms", "id"] = "zh"
+
+
 class LifeInput(Input):
-    profile: ProfileInput
+    profile: LifeProfile
     year: int = Field(ge=1901, le=2100)
     report_kind: Literal["life", "fortune"] = "life"
     career: CareerInput | None = None
@@ -52,7 +57,8 @@ class LifeInput(Input):
 
     @model_validator(mode="after")
     def supported_input(self):
-        if self.profile.language not in ("zh", "th"):
+        # The separate legacy transit-decision flow retains its original languages.
+        if (self.career or self.career_question) and self.profile.language not in ("zh", "th"):
             raise ValueError("language_invalid")
         if sum(value is not None for value in (self.career, self.career_question, self.user_question)) > 1:
             raise ValueError("career_input_conflict")
@@ -77,6 +83,8 @@ def stamp(value):
 
 
 def explain(identifier, fact, language):
+    if fact.get("provider") == "roxy":
+        return {"id": identifier, "title": fact["title"], "detail": fact["detail"]}
     labels = copy_for(language)
     planets = labels["planets"]
     def planet(key):
@@ -84,8 +92,50 @@ def explain(identifier, fact, language):
     def sign(index):
         return labels["signs"][index % 12]
     zh = language == "zh"
-    if fact.get("provider") == "roxy":
-        return {"id": identifier, "title": fact["title"], "detail": fact["detail"]}
+    if language in REGIONAL_LANGUAGES:
+        copy = REGIONAL_LANGUAGES[language]
+        def house(number):
+            return copy["house"].replace("{number}", str(number))
+        if fact["type"] == "house":
+            title = house(fact["number"])
+            detail = " · ".join([sign(fact["sign"]), planet(fact["ruler"]), house(fact["ruler_house"]), *(planet(key) for key in fact["occupants"])])
+        elif fact["type"] == "planet":
+            title, detail = planet(fact["key"]), f"{sign(fact['sign'])} · {house(fact['house'])}"
+        elif fact["type"] == "ascendant":
+            title, detail = planet("ascendant"), sign(fact["sign"])
+        else:
+            key, states = next(iter(fact["states"].items()))
+            title = f"{fact['month']}/{fact['year']} · {planet(key)}"
+            detail = "; ".join(f"{sign(row['sign'])} · {house(row['house'])}" for row in states)
+        if fact.get("time_estimated"):
+            detail += " (" + copy["estimated"] + ")"
+        return {"id": identifier, "title": title, "detail": detail}
+    if language in ("en", "vi"):
+        def house(number):
+            return f"House {number}" if language == "en" else f"Nhà {number}"
+        if fact["type"] == "house":
+            title = house(fact["number"])
+            occupants = ", ".join(planet(key) for key in fact["occupants"])
+            empty = "No recorded occupants" if language == "en" else "Không ghi nhận hành tinh trong nhà"
+            ruler = "Ruler" if language == "en" else "Hành tinh chủ quản"
+            detail = f"{sign(fact['sign'])} · {ruler}: {planet(fact['ruler'])} · {house(fact['ruler_house'])} · {occupants or empty}"
+        elif fact["type"] == "planet":
+            title = planet(fact["key"])
+            detail = f"{sign(fact['sign'])} · {house(fact['house'])}"
+        elif fact["type"] == "ascendant":
+            title = "Ascendant" if language == "en" else "Cung Mọc"
+            detail = sign(fact["sign"])
+        elif fact["type"] == "career_window":
+            period = fact["start"] if fact["start"] == fact["end"] else f"{fact['start']} – {fact['end']}"
+            title = f"{period} · {planet(fact['key'])}"
+            detail = f"{sign(fact['sign'])} · {house(fact['house'])}"
+        else:
+            key, states = next(iter(fact["states"].items()))
+            title = f"{fact['month']}/{fact['year']} · {planet(key)}"
+            detail = "; ".join(f"{sign(row['sign'])} · {house(row['house'])} · {row['samples']} " + ("days" if language == "en" else "ngày") for row in states)
+        if fact.get("time_estimated"):
+            detail += " (estimated local 12:00)" if language == "en" else " (ước tính 12:00 địa phương)"
+        return {"id": identifier, "title": title, "detail": detail}
     if fact["type"] == "house":
         title = f"第{fact['number']}宫" if zh else f"เรือนที่ {fact['number']}"
         occupants = "、".join(planet(key) for key in fact["occupants"]) or ("未记录宫内星体" if zh else "ไม่มีดาวอยู่ในเรือนนี้")
@@ -133,7 +183,7 @@ class LifeReports:
         # Domain adapters own calculations/evidence; report access and generation remain here.
         self.adapters = {"astrology": RoxyAstrology(settings, store)}
         self.writer = LifeWriter(store, settings, model_slots)
-        self.parts_writer = LifeWriter(store, settings, model_slots, charge=False)
+        self.parts_writer = LifeWriter(store, settings, model_slots, charge=False, availability=self.writer.availability)
         self.tasks = {}
         self.preview_tasks = {}
         with store.connect() as db:
@@ -204,8 +254,19 @@ class LifeReports:
         if body.career and body.career.focus is None:
             snapshot["career"].pop("focus")
         use_roxy = self.settings.life_astrology_provider == "roxy" and not body.career
-        version = WESTERN_VERSION if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
-        fingerprint = hashlib.sha256(encoded([version, snapshot]).encode()).hexdigest()
+        # New writing settings create a fresh report; saved report IDs retain their original content.
+        version = f"{WESTERN_VERSION}:{WESTERN_WRITING_VERSION}" if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
+        identity = [version, snapshot]
+        if not body.career:
+            config = self.writer.config
+            identity.append([self.writer.provider, config.base_url if config else None, config.model if config else None,
+                             config.reasoning_effort if config else None])
+            if self.writer.fallback_writer:
+                fallback = self.writer.fallback_writer
+                config = fallback.config
+                identity.append([fallback.provider, config.base_url if config else None, config.model if config else None,
+                                 config.reasoning_effort if config else None])
+        fingerprint = hashlib.sha256(encoded(identity).encode()).hexdigest()
         with self.store.connect() as db:
             existing = db.execute("SELECT id FROM life_reports WHERE owner=? AND fingerprint=?", (owner, fingerprint)).fetchone()
         if existing:
@@ -356,7 +417,8 @@ class LifeReports:
         is_western = western(chart)
         records = json.loads(row["chapters"])
         preview = json.loads(row["preview"]) if row["preview"] else None
-        title = ("运程解析" if language == "zh" else "วิเคราะห์ดวงชะตา") if fortune else ("人生报告" if language == "zh" else "รายงานชีวิต")
+        title = (REGIONAL_LANGUAGES[language]["report_title" if fortune else "life_title"] if language in REGIONAL_LANGUAGES else ({"zh": "运程解析", "th": "วิเคราะห์ดวงชะตา", "en": "Personal reading", "vi": "Luận giải cá nhân"} if fortune else
+                 {"zh": "人生报告", "th": "รายงานชีวิต", "en": "Life report", "vi": "Báo cáo cuộc sống"})[language])
         version = chart["version"] if is_western else FORTUNE_VERSION if fortune else VERSION
         if career:
             title = preview["story"].get("title", labels["title"]) if preview else labels["title"]
@@ -387,7 +449,7 @@ class LifeReports:
             questions = [[question] for question in WESTERN_QUESTIONS[language]]
         elif fortune:
             titles = [FORTUNE_TOPICS[key][language]["title"] for key in chapter_keys]
-            titles[0] = f"{body['year']}年运程" if language == "zh" else f"ดวงปี {body['year']}"
+            titles[0] = (REGIONAL_LANGUAGES[language]["annual_title"].replace("{year}", str(body["year"])) if language in REGIONAL_LANGUAGES else {"zh": f"{body['year']}年运程", "th": f"ดวงปี {body['year']}", "en": f"{body['year']} yearly themes", "vi": f"Chủ đề năm {body['year']}"}[language])
             questions = [FORTUNE_TOPICS[key][language]["questions"] for key in chapter_keys]
         percent = int(sum(section["percent"] for section in sections) / len(sections))
         percent = min(percent, 100 if row["full_state"] == "ready" else 99)

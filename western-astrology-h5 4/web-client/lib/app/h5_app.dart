@@ -8,6 +8,7 @@ import '../features/information_page.dart';
 import '../ui/theme.dart';
 import 'controller.dart';
 import 'localizations.dart';
+import 'languages.dart';
 
 class H5App extends StatefulWidget {
   const H5App({required this.controller, this.initialLocation, super.key});
@@ -112,8 +113,8 @@ class _H5AppState extends State<H5App> {
         title: 'FATE',
         debugShowCheckedModeBanner: false,
         theme: h5Theme(),
-        locale: Locale(widget.controller.language),
-        supportedLocales: const [Locale('th'), Locale('zh')],
+        locale: h5Locale(widget.controller.language),
+        supportedLocales: h5Locales,
         localizationsDelegates: h5Localizations,
         routerConfig: _router,
       ),

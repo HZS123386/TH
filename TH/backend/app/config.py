@@ -7,9 +7,11 @@ from dotenv import load_dotenv
 
 @dataclass
 class ProviderConfig:
-    key: str = ""
+    key: str = field(default="", repr=False)
     base_url: str = ""
     model: str = ""
+    proxy_url: str = field(default="", repr=False)
+    reasoning_effort: str = ""
 
     @property
     def enabled(self) -> bool:
@@ -28,6 +30,7 @@ class Settings:
     chat_per_minute: int = 8
     chat_per_day: int = 200
     fortune_provider: str = "qwen"
+    fortune_fallback_provider: str = ""
     fortune_per_minute: int = 3
     fortune_per_day: int = 12
     fortune_network_per_day: int = 120
@@ -38,6 +41,13 @@ class Settings:
     roxy_per_minute: int = 12
     roxy_per_day: int = 80
     bazi_report_provider: str = "qwen"
+    western_report_provider: str = "qwen"
+    western_report_model: str = ""
+    western_review_enabled: bool = False
+    western_review_provider: str = "kimi"
+    western_review_model: str = ""
+    western_review_fallback_provider: str = ""
+    western_review_fallback_model: str = ""
     bazi_reports_per_minute: int = 6
     bazi_reports_per_day: int = 80
     payso_test_merchant_id: str = ""
@@ -57,7 +67,9 @@ class Settings:
             default_provider=os.getenv("DEFAULT_PROVIDER", "mock"),
             providers={
                 name: ProviderConfig(
-                    os.getenv(f"{name.upper()}_API_KEY", ""), os.getenv(f"{name.upper()}_BASE_URL", default), os.getenv(f"{name.upper()}_MODEL", "")
+                    os.getenv(f"{name.upper()}_API_KEY", ""), os.getenv(f"{name.upper()}_BASE_URL", default), os.getenv(f"{name.upper()}_MODEL", ""),
+                    proxy_url=os.getenv(f"{name.upper()}_PROXY_URL", ""),
+                    reasoning_effort=os.getenv(f"{name.upper()}_REASONING_EFFORT", ""),
                 )
                 for name, default in defaults.items()
             },
@@ -65,6 +77,7 @@ class Settings:
             chat_per_minute=max(0, int(os.getenv("CHAT_TURNS_PER_MINUTE", "8"))),
             chat_per_day=max(0, int(os.getenv("CHAT_TURNS_PER_DAY", "200"))),
             fortune_provider=os.getenv("FORTUNE_PROVIDER", "qwen"),
+            fortune_fallback_provider=os.getenv("FORTUNE_FALLBACK_PROVIDER", "").lower(),
             fortune_per_minute=max(0, int(os.getenv("FORTUNE_REPORTS_PER_MINUTE", "3"))),
             fortune_per_day=max(0, int(os.getenv("FORTUNE_REPORTS_PER_DAY", "12"))),
             fortune_network_per_day=max(0, int(os.getenv("FORTUNE_NETWORK_REPORTS_PER_DAY", "120"))),
@@ -75,6 +88,13 @@ class Settings:
             roxy_per_minute=max(0, int(os.getenv("ROXY_REQUESTS_PER_MINUTE", "12"))),
             roxy_per_day=max(0, int(os.getenv("ROXY_REQUESTS_PER_DAY", "80"))),
             bazi_report_provider=os.getenv("BAZI_REPORT_PROVIDER", "qwen"),
+            western_report_provider=os.getenv("WESTERN_REPORT_PROVIDER", "qwen"),
+            western_report_model=os.getenv("WESTERN_REPORT_MODEL", ""),
+            western_review_enabled=os.getenv("WESTERN_REVIEW_ENABLED", "false").lower() == "true",
+            western_review_provider=os.getenv("WESTERN_REVIEW_PROVIDER", "kimi"),
+            western_review_model=os.getenv("WESTERN_REVIEW_MODEL", ""),
+            western_review_fallback_provider=os.getenv("WESTERN_REVIEW_FALLBACK_PROVIDER", ""),
+            western_review_fallback_model=os.getenv("WESTERN_REVIEW_FALLBACK_MODEL", ""),
             bazi_reports_per_minute=max(0, int(os.getenv("BAZI_REPORTS_PER_MINUTE", "6"))),
             bazi_reports_per_day=max(0, int(os.getenv("BAZI_REPORTS_PER_DAY", "80"))),
             payso_test_merchant_id=os.getenv("PAYSO_TEST_MERCHANT_ID", ""),

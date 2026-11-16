@@ -142,9 +142,12 @@ void main() {
       );
       await d.session.initialize();
       await tester.pumpAndSettle();
-      expect(find.byType(NavigationDestination), findsNWidgets(4));
+      expect(
+        find.byKey(const ValueKey('app-bottom-navigation')),
+        findsOneWidget,
+      );
       expect(find.text('Tarot'), findsNothing);
-      await tester.tap(find.byType(NavigationDestination).at(1));
+      await tester.tap(find.byKey(const ValueKey('app-nav/chart')));
       await tester.pumpAndSettle();
       expect(find.text(AppLocalizationsEn().birthIntro), findsOneWidget);
       expect(find.text(AppLocalizationsEn().birthStorage), findsOneWidget);
@@ -156,10 +159,16 @@ void main() {
         find.textContaining('not calculated from your birth details'),
         findsOneWidget,
       );
-      final read = find.widgetWithText(FilledButton, 'Read this chart');
+      final read = find.widgetWithText(
+        FilledButton,
+        AppLocalizationsEn().chartRead,
+      );
       await tester.ensureVisible(read);
       await tester.tap(read);
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('reading-chart')), findsOneWidget);
+      expect(find.byKey(const ValueKey('reading-back')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app-bottom-navigation')), findsNothing);
       final unlock = find.byKey(const ValueKey('unlock-report'));
       expect(unlock, findsOneWidget);
       await tester.tap(unlock);
@@ -178,6 +187,85 @@ void main() {
       expect(d.reports.report, isNull);
       expect(d.purchaseRepository.intent, isNull);
       expect(requests, equals(['/api/config']));
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('app-bottom-navigation')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('standalone-chart-reading')),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const ValueKey('app-nav/profile')));
+      await tester.pumpAndSettle();
+      final history = find.byKey(const ValueKey('profile-reading-history'));
+      await tester.ensureVisible(history);
+      await tester.tap(history);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('standalone-chart-reading')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('app-bottom-navigation')), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      d.dispose();
+    },
+  );
+  testWidgets(
+    'account language row opens a dialog and saves the selected language',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
+      final preferences = await SharedPreferences.getInstance();
+      final d = AppDependencies(
+        preferences,
+        client: ApiClient(
+          'https://api.example.test',
+          client: MockClient((_) async => http.Response('{"modules":[]}', 200)),
+        ),
+        secureStore: MemorySessionStore(),
+      );
+      await tester.pumpWidget(
+        DependencyScope(
+          dependencies: d,
+          child: FateApp(dependencies: d),
+        ),
+      );
+      await d.session.initialize();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('app-nav/profile')));
+      await tester.pumpAndSettle();
+      final language = find.byKey(const ValueKey('profile-language'));
+      await tester.ensureVisible(language);
+      await tester.tap(language);
+      await tester.pumpAndSettle();
+      expect(find.byType(SimpleDialog), findsOneWidget);
+      for (final code in ['th', 'en', 'zh', 'vi']) {
+        expect(find.byKey(ValueKey('language-option-$code')), findsOneWidget);
+      }
+      await tester.tap(find.byKey(const ValueKey('language-option-zh')));
+      await tester.pumpAndSettle();
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(d.session.locale.languageCode, 'zh');
+      expect(preferences.getString('fate.locale'), 'zh');
+      await tester.tap(language);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('language-option-zh')),
+          matching: find.byIcon(Icons.check),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(TextButton, '取消'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(d.session.locale.languageCode, 'zh');
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       d.dispose();
     },

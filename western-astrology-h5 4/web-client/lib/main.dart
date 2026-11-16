@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'app/controller.dart';
 import 'app/h5_app.dart';
+import 'app/languages.dart';
 import 'core/browser_web.dart';
 import 'core/models.dart';
 import 'core/repository.dart';
@@ -39,7 +40,7 @@ Future<Json> _loadTranslations() async {
 
 Future<void> _startApp(WebBrowserPort browser) async {
   usePathUrlStrategy();
-  final language = Uri.base.queryParameters['lang'] == 'zh' ? 'zh' : 'th';
+  final language = h5Language(Uri.base.queryParameters['lang']);
   final fonts = LanguageFonts();
   // Both are required before runApp, but neither depends on the other's result.
   final (translations, _) = await (
@@ -57,6 +58,11 @@ Future<void> _startApp(WebBrowserPort browser) async {
       'Noto Sans Symbols',
       'Noto Sans Symbols 2',
     ], await rootBundle.loadString('assets/fonts/OFL-Symbols.txt'));
+    for (final script in ['Myanmar', 'Khmer', 'Lao']) {
+      yield LicenseEntryWithLineBreaks([
+        'Noto Sans $script',
+      ], await rootBundle.loadString('assets/fonts/OFL-$script.txt'));
+    }
   });
   final repository = ReportRepository(
     browser,
@@ -70,9 +76,6 @@ Future<void> _startApp(WebBrowserPort browser) async {
     ensureFont: fonts.ensureCommon,
     ensureTextFont: fonts.ensureText,
   );
-  browser.setLanguage(
-    language,
-    language == 'zh' ? '运程解析 · FATE' : 'วิเคราะห์ดวงชะตา · FATE',
-  );
+  browser.setLanguage(language, controller.copy.t('jy', 'title'));
   runApp(H5App(controller: controller));
 }

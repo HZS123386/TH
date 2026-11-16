@@ -20,6 +20,11 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
   List<ReportReference> history = [];
   bool loading = false;
   String? error;
+  bool historyLoading = false;
+  String? historyError;
+  final deleting = <String>{};
+  int _historyGeneration = 0;
+  bool _disposed = false;
   String _scope = '', _requestKey = newRequestKey();
   int _generation = 0, _failures = 0;
   bool _active = false, _foreground = true;
@@ -53,6 +58,10 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
     report = null;
     reference = null;
     history = [];
+    ++_historyGeneration;
+    historyLoading = false;
+    historyError = null;
+    deleting.clear();
     loading = false;
     error = null;
     notifyListeners();
@@ -80,11 +89,18 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> generate(CalculationSnapshot result) async {
-    if (result.example || loading) return;
+    if (result.example ||
+        (loading && (reference == null || reference!.resultId == result.id))) {
+      return;
+    }
     if (!session.capabilities.reports || session.profile?.revision == null) {
       throw const ApiFailure('service_unavailable');
     }
     final generation = ++_generation;
+    _poll?.cancel();
+    reference = null;
+    report = null;
+    _failures = 0;
     loading = true;
     error = null;
     notifyListeners();
@@ -148,26 +164,65 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
             _foreground &&
             _failures < 3 &&
             (report?.generating ?? false)) {
+          // Stay below the shared API limit of 30 requests per minute.
           _poll = Timer(const Duration(seconds: 3), refresh);
         }
       }
     }
   }
 
-  Future<void> loadHistory() async {
+  Future<void> loadHistory({String query = ''}) async {
     if (!session.auth.hasSession || !session.capabilities.reports) return;
-    final generation = _generation;
+    final generation = ++_historyGeneration, scope = session.scope;
+    historyLoading = true;
+    historyError = null;
+    notifyListeners();
     try {
-      final rows = await repository.list();
-      if (generation == _generation) {
+      final rows = await repository.list(
+        query: query,
+        locale: session.locale.languageCode,
+      );
+      if (generation == _historyGeneration && scope == session.scope) {
         history = rows
             .where((r) => r.locale == session.locale.languageCode)
             .toList();
-        notifyListeners();
       }
     } catch (_) {
-      if (generation == _generation) {
-        error = 'report_failed';
+      if (generation == _historyGeneration && scope == session.scope) {
+        historyError = 'report_failed';
+      }
+    } finally {
+      if (generation == _historyGeneration && scope == session.scope) {
+        historyLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<bool> deleteRecord(ReportReference selected) async {
+    if (!deleting.add(selected.id)) return false;
+    final scope = session.scope, owner = session.owner;
+    notifyListeners();
+    try {
+      await repository.delete(selected);
+      await repository.forget(owner, selected.id);
+      if (_disposed || scope != session.scope) return false;
+      ++_historyGeneration;
+      historyLoading = false;
+      history = history.where((item) => item.id != selected.id).toList();
+      if (reference?.id == selected.id) {
+        ++_generation;
+        _poll?.cancel();
+        reference = null;
+        report = null;
+        loading = false;
+        error = null;
+        _requestKey = newRequestKey();
+      }
+      return true;
+    } finally {
+      if (!_disposed && scope == session.scope) {
+        deleting.remove(selected.id);
         notifyListeners();
       }
     }
@@ -175,7 +230,9 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _disposed = true;
     ++_generation;
+    ++_historyGeneration;
     _poll?.cancel();
     session.removeListener(_changed);
     WidgetsBinding.instance.removeObserver(this);

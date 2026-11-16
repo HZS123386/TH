@@ -9,10 +9,12 @@ class BirthplaceFields extends StatefulWidget {
   const BirthplaceFields({
     required this.h5,
     required this.onSelected,
+    this.initialPlace,
     super.key,
   });
   final H5Controller h5;
   final ValueChanged<Place?> onSelected;
+  final Place? initialPlace;
   @override
   State<BirthplaceFields> createState() => _BirthplaceFieldsState();
 }
@@ -32,7 +34,81 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       _open = '',
       _language = '';
   Place? _province, _city;
+  final _initialPlaceRequest = CancelToken();
   Copy get c => widget.h5.copy;
+
+  @override
+  void initState() {
+    super.initState();
+    final place = widget.initialPlace;
+    if (place == null) return;
+    _restorePlace(place);
+    if (place.id.isNotEmpty && _provinceText.text.isEmpty) {
+      unawaited(_resolveInitialPlace(place));
+    }
+  }
+
+  String get _countryName => switch (_country) {
+    'CN' => c.t('jy', 'china'),
+    'TH' => c.t('jy', 'thailand'),
+    _ => _country,
+  };
+
+  void _restorePlace(Place place) {
+    _country = place.country;
+    _city = place;
+    _province =
+        place.json['placeType'] == 'province' ||
+            place.id.isNotEmpty && place.id == place.provinceId
+        ? place
+        : place.provinceId.isEmpty
+        ? null
+        : Place({
+            'id': place.provinceId,
+            'countryCode': place.country,
+            'timeZone': place.zone,
+            'placeType': 'province',
+            'nameEnglish': place.json['provinceNameEnglish'],
+            'nameChinese': place.json['provinceNameChinese'],
+            'nameThai': place.json['provinceNameThai'],
+          });
+    _language = c.language;
+    _countryText.text = _countryName;
+    _provinceText.text = _province?.name(c.language) ?? '';
+    _cityText.text = place.name(c.language);
+  }
+
+  Future<void> _resolveInitialPlace(Place initial) async {
+    try {
+      final query = Uri(
+        queryParameters: {
+          'country': initial.country,
+          'level': 'detail',
+          'query': initial.id,
+        },
+      ).query;
+      final result = object(
+        await widget.h5.repository.request(
+          '/api/thai-locations?$query',
+          _initialPlaceRequest,
+          owned: false,
+        ),
+      );
+      final place = Place(object(result['resolved']));
+      if (!mounted ||
+          _initialPlaceRequest.cancelled ||
+          !identical(_city, initial) ||
+          place.id != initial.id ||
+          place.zone != initial.zone ||
+          initial.country.isNotEmpty && place.country != initial.country) {
+        return;
+      }
+      setState(() => _restorePlace(place));
+      widget.onSelected(place);
+    } catch (_) {
+      // Existing identifiers/coordinates remain usable without extra place metadata.
+    }
+  }
 
   void _setOpen(String id) {
     if (_open == id) return;
@@ -91,6 +167,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
 
   @override
   void dispose() {
+    _initialPlaceRequest.cancel();
     _countryText.dispose();
     _provinceText.dispose();
     _cityText.dispose();
@@ -103,14 +180,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     if (_language != c.language) {
       _language = c.language;
       if (_country.isNotEmpty) {
-        _countryText.text = c.t(
-          'jy',
-          _country == 'global'
-              ? 'globalCities'
-              : _country == 'CN'
-              ? 'china'
-              : 'thailand',
-        );
+        _countryText.text = _countryName;
       }
       if (_province != null) _provinceText.text = _province!.name(c.language);
       if (_city != null) _cityText.text = _city!.name(c.language);
@@ -133,14 +203,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       _provinceText.clear();
       _clearCity();
       _setOpen('');
-      _countryText.text = c.t(
-        'jy',
-        country == 'global'
-            ? 'globalCities'
-            : country == 'CN'
-            ? 'china'
-            : 'thailand',
-      );
+      _countryText.text = c.t('jy', country == 'CN' ? 'china' : 'thailand');
     });
   }
 
@@ -148,7 +211,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
   Widget build(BuildContext context) {
     _language = c.language;
     final hasRegions = _country == 'TH' || _country == 'CN';
-    final canSearchCity = _country == 'global' || _province != null;
+    final canSearchCity = _province != null;
     Widget field(
       String id,
       String label,
@@ -224,7 +287,6 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     final countries = [
       ('CN', c.t('jy', 'china'), 'china 中国 中國 จีน cn'),
       ('TH', c.t('jy', 'thailand'), 'thailand 泰国 泰國 ไทย th'),
-      ('global', c.t('jy', 'globalCities'), 'world global 全球 ทั่วโลก'),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -343,7 +405,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                 PlacePicker(
                   key: ValueKey('city-$_country-${_province?.id}'),
                   h5: widget.h5,
-                  country: _country == 'global' ? '' : _country,
+                  country: _country,
                   province: _province,
                   query: _cityQuery,
                   onSelected: (value) => setState(() {
@@ -358,11 +420,6 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 7),
-        Text(
-          c.t('jy', 'placeHint'),
-          style: const TextStyle(fontSize: 10, height: 1.8, color: lavender),
         ),
       ],
     );

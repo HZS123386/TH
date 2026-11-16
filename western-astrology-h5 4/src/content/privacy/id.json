@@ -1,0 +1,229 @@
+{
+  "version": "1.1",
+  "updated": "2026-11-13",
+  "labels": {
+    "version": "Versi",
+    "updated": "Terakhir direvisi",
+    "effective": "Tanggal berlaku",
+    "pending": "Akan dikonfirmasi sebelum publikasi",
+    "reviewNote": "Draf tinjauan publikasi. Detail operator ditampilkan di bawah ini. Tanggal berlaku serta pengaturan retensi, transfer, dan penanganan hak yang masih tertunda yang dijelaskan dalam kebijakan ini harus dikonfirmasi sebelum publikasi resmi.",
+    "controller": "Operator / pengontrol data",
+    "address": "Alamat kontak",
+    "contact": "Email privasi",
+    "contactHint": "Gunakan email privasi di atas untuk akses, koreksi, penghapusan, penarikan persetujuan, atau keluhan.",
+    "contents": "Daftar Isi",
+    "overview": "Poin-poin kunci untuk dipahami"
+  },
+  "summary": [
+    "Laporan memerlukan tanggal lahir, tempat lahir, dan zona waktu yang sesuai. Waktu lahir yang tidak diketahui diperbolehkan, dengan keterbatasan. Pertanyaan opsional Anda dapat dibiarkan kosong.",
+    "Server kami berada di Hong Kong SAR, Tiongkok. RoxyAPI menghitung bagan dan Alibaba Cloud Qwen menulis interpretasi, yang melibatkan pemrosesan di Jerman dan Tiongkok daratan.",
+    "Kredensial acak di peramban Anda melindungi akses ke laporan Anda. Jaga kerahasiaannya. Menghapus penyimpanan peramban tidak menghapus laporan di server.",
+    "Pembukaan kunci saat ini merupakan uji coba tanpa biaya aktual. Unduhan APP tidak tersedia. Interpretasi otomatis ditujukan untuk hiburan dan eksplorasi diri, bukan untuk keputusan dengan efek hukum atau signifikan serupa."
+  ],
+  "sections": [
+    {
+      "id": "scope",
+      "title": "1. Ruang lingkup dan pengontrol",
+      "paragraphs": [
+        "Kebijakan ini mencakup situs web FATE H5, interpretasi gratis dan lengkap, riwayat laporan, umpan balik, dan ekspor PDF. Operator aktual yang diidentifikasi di atas menentukan tujuan dan sarana pemrosesan ini dan merupakan pengontrol data. FATE adalah nama produk, bukan pengganti identitas hukum operator.",
+        "Kebijakan ini disiapkan untuk layanan saat ini bagi pengguna di Thailand dengan mengacu pada Undang-Undang Perlindungan Data Pribadi (PDPA) Thailand. Hak-hak wajib di bawah hukum lokal lain yang berlaku tetap tidak terpengaruh. Penyediaan dalam suatu bahasa tidak menetapkan kepatuhan terhadap setiap negara yang menggunakannya. Akun APP asli, obrolan, dan situs web pihak ketiga independen memiliki pemberitahuan masing-masing yang berlaku; berbagi sistem server tidak berarti halaman web ini mengumpulkan semua data mereka."
+      ]
+    },
+    {
+      "id": "inputs",
+      "title": "2. Informasi yang Anda berikan dan pilihan Anda",
+      "bullets": [
+        "Tanggal lahir diperlukan untuk menghitung bagan Anda. Tanpanya, laporan yang dipersonalisasi tidak dapat dihasilkan.",
+        "Waktu lahir menentukan faktor-faktor yang sensitif terhadap waktu seperti ascendant dan rumah-rumah astrologi. Anda dapat memilih bahwa waktu tepatnya tidak diketahui. Sistem kemudian menggunakan pukul 12:00 siang sebagai referensi dan mengidentifikasi ketidakpastian; referensi ini bukanlah waktu lahir Anda yang terverifikasi.",
+        "Negara kelahiran, provinsi/negara bagian, kota/distrik, dan pengidentifikasi tempat yang dipilih menentukan koordinat tempat lahir dan zona waktu. Koordinat berasal dari direktori kota yang dipilih, bukan dari GPS atau izin untuk melacak lokasi Anda saat ini. Tempat lahir yang dapat dikenali diperlukan untuk perhitungan yang relevan.",
+        "Topik yang dipilih, konteks karier, dan pertanyaan opsional menentukan fokus interpretasi. Anda dapat membiarkan pertanyaan kosong dan menerima laporan standar. Pengalaman atau informasi apa pun tentang pekerjaan atau hubungan yang Anda ketik akan diproses sebagai bagian dari teks tersebut.",
+        "Alur halaman web standar tidak memerlukan nama asli, dokumen identitas, nomor telepon, atau detail kartu bank Anda. Harap jangan menambahkannya ke pertanyaan Anda."
+      ]
+    },
+    {
+      "id": "generated",
+      "title": "3. Informasi yang dihasilkan dan catatan teknis",
+      "paragraphs": [
+        "Layanan menyimpan pengenal turunan untuk kredensial akses acak Anda, ID laporan, bagan yang dihitung dan bukti, teks gratis dan lengkap, progres generasi dan status percobaan ulang, status pembukaan kunci, stempel waktu, serta umpan balik yang Anda kirimkan. Inferensi dan pengenal yang di-hash mungkin masih merupakan data pribadi; mereka tidak secara otomatis anonim.",
+        "Untuk operasi dan keamanan, permintaan dapat membuat log yang berisi alamat IP, waktu, jalur, kode status dan error, serta pengenal pengguna/jaringan dan jumlah untuk pembatasan laju. Catatan penggunaan model berisi referensi laporan, penyedia, model, ID permintaan, waktu, jumlah token, dan hasil validasi. Umumnya tidak berisi instruksi lengkap atau teks laporan tetapi mungkin tetap dapat ditautkan ke laporan.",
+        "Jika Anda menghubungi operator, alamat balasan, permintaan, dan informasi yang secara wajar diperlukan untuk menyelidikinya akan diproses. Mulailah dengan ID laporan dan deskripsi masalah. Jangan kirim kata sandi, kunci API, kredensial akses peramban, atau salinan dokumen identitas yang tidak perlu."
+      ]
+    },
+    {
+      "id": "purposes",
+      "title": "4. Tujuan dan dasar hukum",
+      "bullets": [
+        "Menghitung, menghasilkan, menyimpan, membuka kembali, mencoba ulang, dan mengekspor laporan yang Anda minta: pemrosesan diperlukan untuk layanan yang diminta atau langkah-langkah pra-kontrak yang relevan, di mana diizinkan oleh hukum yang berlaku.",
+        "Mencegah penyalahgunaan, melindungi akses, menjaga ketersediaan, mendiagnosis kesalahan, dan mengendalikan penggunaan API: kepentingan sah yang diperlukan, hanya jika hal-hal ini tidak dikalahkan oleh hak dan kepentingan Anda. Hak keberatan yang berlaku tetap tersedia.",
+        "Statistik kunjungan-ke-laporan pihak pertama dasar yang dijelaskan dalam bagian 8: kepentingan sah yang proporsional dengan saluran keberatan, atau persetujuan sebelumnya yang valid di mana hukum yang berlaku mengharuskannya.",
+        "Menangani permintaan hak, kewajiban regulasi, dan sengketa: kewajiban hukum yang berlaku atau kepentingan sah sebagaimana mestinya.",
+        "Tujuan baru yang memerlukan persetujuan, termasuk pemrosesan data sensitif atau transfer di mana persetujuan eksplisit dipersyaratkan secara hukum, memerlukan informasi terpisah dan persetujuan yang valid sebelum dimulai. Membaca kebijakan ini, menjelajah, atau menekan tombol Hasilkan bukanlah persetujuan umum untuk setiap tujuan."
+      ]
+    },
+    {
+      "id": "sensitive",
+      "title": "5. Data sensitif dan informasi tentang orang lain",
+      "paragraphs": [
+        "Laporan standar tidak memerlukan agama, opini politik, asal ras atau etnis, kesehatan, perilaku seksual, data biometrik, catatan kriminal, atau informasi khusus lainnya yang dilindungi. Harap abaikan hal tersebut dari pertanyaan dan umpan balik. Jangan mengirimkan informasi kelahiran atau pribadi orang lain tanpa dasar hukum atau otorisasi.",
+        "Teks bebas masuk ke alur kerja pembuatan laporan. Saat ini tidak ada prosedur pengiriman data sensitif khusus dan persetujuan eksplisit, serta identifikasi atau penghapusan otomatis semua teks sensitif tidak dijamin. Jika informasi tersebut penting untuk sebuah pertanyaan, berhentilah sebelum mengirim dan hubungi email privasi. Data berlebihan harus dibatasi atau dihapus sebagaimana dipersyaratkan secara hukum. Peringatan ini bukan pengganti dasar hukum atau persetujuan yang diperlukan."
+      ]
+    },
+    {
+      "id": "recipients",
+      "title": "6. Penyedia layanan dan apa yang mereka terima",
+      "bullets": [
+        "Infrastruktur Tencent Cloud di Hong Kong menghosting situs web, API, basis data, dan log operasional untuk hosting, keamanan, dan pengoperasian layanan. Akses operasional harus dibatasi hanya untuk personel yang memerlukannya.",
+        "RoxyAPI, yang dioperasikan oleh Roxy Labs, menerima tanggal lahir, waktu aktual atau referensi, koordinat tempat lahir, zona waktu, dan pengaturan bagan untuk menghitung posisi dan rumah astrologi Barat. Permintaan perhitungan saat ini tidak secara sengaja menyertakan nama, email, pertanyaan teks bebas, atau IP peramban Anda. Penyedia melihat informasi teknis yang terkait dengan permintaan server kami. Materi yang dipublikasikan menjelaskan hosting di Jerman; kebijakan dan ketentuan pemrosesan mereka sendiri ditautkan di bawah ini.",
+        "Alibaba Cloud Model Studio / Qwen menerima faktor bagan yang diperlukan, bukti pendukung, bahasa keluaran, kepastian waktu lahir, pertanyaan opsional Anda, dan ringkasan interpretasi yang ada yang diperlukan untuk kelanjutan. Paket penulisan normal tidak memerlukan bidang langsung untuk nama, tanggal lahir mentah, nama kota, atau koordinat. Pertanyaan, bagan, dan konteks mungkin tetap merupakan data pribadi. Layanan daratan Tiongkok saat ini menggunakan titik akses Beijing; ini tidak menjamin bahwa semua komputasi terjadi hanya di Beijing.",
+        "GeoNames menyediakan direktori tempat yang digunakan sebagai salinan lokal di server kami untuk menyelesaikan kota dan zona waktu yang dipilih. Pencarian ini tidak perlu mengirim detail kelahiran atau pertanyaan Anda ke GeoNames. Mengunjungi situs web eksternal mereka membuat kunjungan tersebut tunduk pada praktik mereka sendiri."
+      ],
+      "paragraphs": [
+        "Operator harus menerapkan ketentuan pemroses yang sesuai, pembatasan akses, dan pemeriksaan pemasok. Kebijakan ini tidak mengizinkan penjualan atau penyewaan data Anda; situs web saat ini tidak memiliki fungsi pertukaran iklan atau penjualan laporan kepada pengiklan. Pengungkapan yang diwajibkan secara hukum, sengketa yang sah, atau suksesi bisnis memerlukan pengungkapan terbatas serta pemberitahuan dan kewajiban penerus yang berlaku."
+      ],
+      "links": [
+        {
+          "label": "Kebijakan Privasi RoxyAPI",
+          "url": "https://roxyapi.com/policy/privacy"
+        },
+        {
+          "label": "Amandemen Pemrosesan Data RoxyAPI",
+          "url": "https://roxyapi.com/policy/dpa"
+        },
+        {
+          "label": "Informasi privasi Alibaba Cloud Model Studio",
+          "url": "https://help.aliyun.com/zh/model-studio/privacy-notice"
+        },
+        {
+          "label": "Informasi privasi Tencent Cloud",
+          "url": "https://www.tencentcloud.com/document/product/301/17345"
+        }
+      ]
+    },
+    {
+      "id": "transfers",
+      "title": "7. Transfer internasional",
+      "paragraphs": [
+        "Jika Anda menggunakan situs ini di Thailand atau tempat lain, data mungkin pertama kali mencapai server Hong Kong kami. Input bagan yang diperlukan kemudian diproses oleh layanan RoxyAPI yang dihosting di Jerman, dan input interpretasi oleh Alibaba Cloud di daratan Tiongkok. Layanan ini tidak sepenuhnya offline atau dibatasi untuk menyimpan semua data di Thailand. Hukum, akses regulasi, dan upaya pemulihan hukum dapat berbeda antar lokasi.",
+        "Transfer harus memenuhi kondisi hukum yang berlaku, seperti standar kecukupan yang berlaku, jaminan yang tepat dengan hak dan upaya pemulihan hukum yang dapat ditegakkan, atau pengecualian statutif yang berlaku secara ketat. HTTPS, pernyataan GDPR penyedia, pengungkapan lokasi, atau mengeklik Jelajahi bagan saya dengan sendirinya tidak memenuhi aturan transfer Thailand. Operator harus menentukan mekanisme aktual untuk setiap penyedia dan tujuan; draf tinjauan ini tidak mensertifikasi penyelesaian. Hubungi email privasi untuk dasar yang berlaku dan informasi jaminan yang tersedia."
+      ]
+    },
+    {
+      "id": "storage",
+      "title": "8. Penyimpanan peramban, cookie, dan statistik kunjungan",
+      "bullets": [
+        "Kredensial laporan: kunci acak astro-life-report-key disimpan di localStorage dan sessionStorage untuk mengenali akses ke laporan Anda. Server terutama menyimpan pengidentifikasi turunan. Pengguna lain dari peramban bersama dapat mengakses laporan selama kredensial masih tersedia.",
+        "Status antarmuka yang diperlukan: penanda fate-welcome-seen dan loading-recovery mendukung antarmuka. Data sesi biasanya berakhir dengan sesi yang relevan; penyimpanan persisten dapat tetap ada hingga Anda menghapus data situs.",
+        "Cookie migrasi singkat: alur migrasi HTTP-ke-HTTPS yang ada dapat menggunakan cookie pihak pertama fate-https-owner yang berisi kredensial acak selama sekitar 60 detik. Ini bukan cookie periklanan.",
+        "Statistik pihak pertama: ID kunjungan sesi, fate-visit, label sumber/kampanye, serta timestamp kunjungan, pengiriman, dan tampilan dapat dikaitkan dengan ID laporan. Endpoint statistik tidak menerima bidang tanggal lahir atau pertanyaan. Catatan ini tidak sepenuhnya anonim. Implementasi saat ini menghentikan acara kunjungan ini ketika peramban menyatakan Do Not Track atau Global Privacy Control; permintaan yang diperlukan, penyimpanan, dan log keamanan tetap berlanjut.",
+        "H5 saat ini tidak mengintegrasikan Google Analytics, Meta Pixel, atau SDK periklanan lintas situs. Memblokir penyimpanan atau membersihkannya dapat mencegah pemulihan laporan. Kredensial yang tersisa dalam sesi terbuka dapat memulihkan penyimpanan persisten; untuk menghapus kredensial peramban sepenuhnya, hapus semua penyimpanan situs dan tutup tab yang relevan."
+      ]
+    },
+    {
+      "id": "retention",
+      "title": "9. Aturan retensi dan pembersihan",
+      "paragraphs": [
+        "Retensi bergantung pada penyediaan layanan berkelanjutan yang diminta, penyelesaian masalah, dan kewajiban hukum. Jika periode tetap tidak dapat ditentukan, kriteria dan perilaku pembersihan saat ini di bawah ini berlaku. Validitas penyimpanan sementara bukanlah janji bahwa setiap salinan dihapus secara fisik pada saat yang tepat tersebut."
+      ],
+      "bullets": [
+        "Input, bagan, teks laporan, dan umpan balik laporan: disimpan untuk pembukaan kembali dan percobaan ulang hingga Anda menghapus laporan, tujuan layanan berakhir, atau penghapusan diwajibkan secara hukum. Laporan saat ini tidak memiliki kedaluwarsa otomatis berbasis usia. Ini tidak mengizinkan retensi tak terbatas atas semua informasi.",
+        "Kunjungan pihak pertama dan asosiasi laporan: jendela bergulir 30 hari, dengan catatan yang kedaluwarsa dihapus ketika kunjungan berikutnya memicu pembersihan daripada pada waktu terjadwal yang tepat.",
+        "Penyimpanan sementara perhitungan dan generasi lokal: hasil umumnya memiliki validitas sekitar 24 jam dan dihapus oleh operasi penyimpanan sementara berikutnya, eviksi kapasitas, atau restart proses. Penghitung penggunaan pengguna/jaringan harian juga membuang catatan yang lebih tua dari 24 jam pada operasi berikutnya yang relevan.",
+        "Catatan penggunaan model, error, dan keamanan: disimpan sebagaimana diperlukan untuk rekonsiliasi penggunaan, pemecahan masalah, investigasi penyalahgunaan, sengketa, atau kewajiban hukum. Tabel penggunaan saat ini tidak memiliki kedaluwarsa otomatis seragam dan log akses berotasi berdasarkan ukuran. Batas maksimum tetap dan prosedur pembersihan yang bertanggung jawab harus dikonfirmasi oleh operator sebelum publikasi akhir; draf ini tidak menjanjikan jumlah hari yang belum dikonfigurasi.",
+        "Cadangan: menghapus catatan langsung tidak segera menulis ulang cadangan historis. Operator harus mengonfirmasi periode rotasi dan penimpaan final. Akses dan penggunaan cadangan harus dibatasi, dan pemulihan tidak boleh membalikkan permintaan penghapusan yang berlaku.",
+        "Penyedia menerapkan ketentuan layanan dan kewajiban retensi hukum mereka. Retensi nol-data untuk endpoint daratan Tiongkok saat ini belum diverifikasi. Kami tidak dapat menjanjikan retensi nol pihak ketiga; permintaan penghapusan atau pembatasan lebih lanjut yang berlaku dapat dilakukan melalui operator."
+      ]
+    },
+    {
+      "id": "deletion",
+      "title": "10. Menghapus laporan dan menghentikan penantian",
+      "paragraphs": [
+        "Gunakan kontrol penghapusan pada laporan Anda atau di Laporan Saya untuk laporan yang dapat diakses dengan kredensial Anda. Ini menghapus catatan laporan utama dan catatan pembayaran uji yang terkait. Penghapusan mungkin ditolak sementara saat pekerjaan generasi aktif; coba lagi setelah selesai atau hubungi operator. Laporan yang dihapus umumnya tidak dapat dipulihkan; menghasilkan lagi adalah pemrosesan baru.",
+        "Berhenti menunggu terutama menghentikan penantian atau polling halaman, bukan berarti selalu menghentikan kalkulasi yang sudah dikirim ke server. Ini tidak secara otomatis menghapus data yang disimpan. Membersihkan penyimpanan peramban tidak mengirimkan permintaan penghapusan server dan dapat menghilangkan kemampuan Anda untuk menunjukkan akses laporan. Hapus laporan terlebih dahulu jika itu adalah niat Anda.",
+        "Kontrol halaman tidak secara otomatis menghapus setiap penyimpanan sementara, catatan kunjungan, catatan penggunaan model, catatan yang dipegang penyedia, atau cadangan historis; lihat bagian 9 dan hubungi email privasi untuk permintaan lebih lanjut. PDF atau teks yang Anda unduh, salin, atau bagikan tetap berada di bawah kendali Anda atau penerima dan tidak dapat dihapus jarak jauh oleh penghapusan server."
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "11. Interpretasi otomatis dan pelatihan model",
+      "paragraphs": [
+        "Laporan menggabungkan faktor yang dihitung dan bahasa yang dihasilkan AI untuk menyimpulkan kepribadian, pilihan, atau tema hubungan. Analisis personalisasi otomatis ini mungkin tidak akurat, tidak lengkap, atau tidak sesuai. Waktu lahir yang tidak diketahui menambah ketidakpastian. Ini bukan bukti bahwa prediksi akan terjadi dan tidak digunakan untuk keputusan medis, kredit, ketenagakerjaan, asuransi, yudisial, atau lainnya yang signifikan secara hukum atau serupa tentang Anda.",
+        "Layanan kami saat ini tidak memiliki alur kerja untuk melatih model tujuan umum kami sendiri menggunakan laporan Anda. Pelatihan dan retensi penyedia adalah isu yang berbeda: Alibaba Cloud menyatakan bahwa mereka tidak melatih model pada data pelanggan tetapi dapat menyimpan data terkait pemanggilan sebagaimana diwajibkan oleh hukum. Tidak ada pelatihan tidak berarti tidak ada retensi. Pelatihan yang tidak terkait, profil periklanan, atau tujuan baru lainnya memerlukan dasar hukum mereka sendiri dan persetujuan apa pun yang diperlukan."
+      ]
+    },
+    {
+      "id": "rights",
+      "title": "12. Hak dan permintaan Anda",
+      "paragraphs": [
+        "Tunduk pada ketentuan yang berlaku, Anda dapat meminta akses dan salinan, koreksi, penghapusan atau anonimisasi, pembatasan, keberatan atas pemrosesan seperti pemrosesan berdasarkan kepentingan sah, serta portabilitas data jika tersedia. Pemrosesan berbasis izin memungkinkan penarikan kembali tanpa memengaruhi keabsahan pemrosesan sebelumnya. Catatan layanan yang diperlukan atau diwajibkan oleh hukum tidak serta merta terhapus seluruhnya akibat penarikan kembali izin.",
+        "Gunakan kontrol penghapusan laporan untuk operasi tersebut; kirimkan permintaan lain ke email privasi di atas dengan menyertakan ID laporan dan hak yang ingin Anda gunakan. Verifikasi harus proporsional terhadap identitas atau kontrol atas laporan dan mencegah pengungkapan kepada pihak yang tidak berwenang. Jangan mengirimkan kunci API, kredensial peramban, atau dokumen identitas lengkap yang tidak relevan.",
+        "Berdasarkan PDPA Thailand, permintaan akses/salinan yang berlaku harus ditangani tanpa penundaan yang tidak wajar dan umumnya dalam waktu 30 hari sejak penerimaan. Hak lainnya mengikuti batas waktu statuternya masing-masing. Penolakan yang sah harus menjelaskan alasan dan opsi pengaduan. Anda tidak boleh menghadapi diskriminasi yang tidak wajar karena menggunakan hak-hak Anda. Anda dapat mengajukan keluhan kepada Kantor Komite Perlindungan Data Pribadi Thailand atau otoritas kompeten lainnya tanpa memerlukan izin terlebih dahulu dari kami."
+      ],
+      "links": [
+        {
+          "label": "Situs web resmi PDPC Thailand",
+          "url": "https://www.pdpc.or.th/"
+        }
+      ]
+    },
+    {
+      "id": "children",
+      "title": "13. Anak di bawah umur dan wali",
+      "paragraphs": [
+        "Layanan ini ditujukan bagi pengguna yang memiliki kapasitas hukum yang relevan untuk memintanya dan mengizinkan pemrosesan. Di Thailand, seseorang di bawah usia 20 tahun yang belum memperoleh kapasitas hukum penuh dapat dianggap sebagai anak di bawah umur; persyaratan persetujuan wali bergantung pada usia, kapasitas, dan jenis pemrosesan tertentu. Klik tombol saja belum tentu merupakan persetujuan yang sah.",
+        "Halaman saat ini tidak memiliki prosedur verifikasi dan persetujuan wali khusus. Jika Anda tidak dapat secara sah mengirimkan detail ini secara mandiri, jangan buat laporan sebelum adanya pengaturan yang valid. Wali dapat menghubungi email privasi mengenai pengiriman yang tidak tepat. Operator harus memverifikasi dan membatasi atau menghapus data sesuai kebutuhan. Pernyataan usia tertulis tidak menggantikan langkah-langkah perlindungan anak yang sebenarnya."
+      ]
+    },
+    {
+      "id": "security",
+      "title": "14. Keamanan dan pelanggaran data",
+      "paragraphs": [
+        "Langkah-langkah mencakup transportasi HTTPS, kunci API pemasok di sisi server, kredensial laporan acak, pemeriksaan akses, validasi input, dan batas laju. Akses operasional harus dibatasi berdasarkan kebutuhan. Lindungi kredensial pada perangkat bersama; URL laporan biasa tidak boleh diperlakukan sebagai kredensial akses.",
+        "Implementasi yang terverifikasi tidak membenarkan klaim bahwa semua catatan basis data yang disimpan dienkripsi saat diam, bahwa layanan memegang sertifikasi keamanan tertentu, atau bahwa risikonya nol. Setelah terjadinya pelanggaran, operator harus menilai dan menahan insiden tersebut. Berdasarkan PDPA Thailand, kecuali jika kecil kemungkinannya mengakibatkan risiko terhadap hak dan kebebasan, otoritas kompeten harus diberitahu tanpa penundaan yang tidak wajar dan bila memungkinkan dalam waktu 72 jam setelah kesadaran. Pelanggaran berisiko tinggi juga memerlukan pemberitahuan kepada individu yang terdampak tanpa penundaan yang tidak wajar serta informasi tentang remediasi. Aturan lokal yang lebih ketat tetap berlaku."
+      ]
+    },
+    {
+      "id": "payment",
+      "title": "15. Pembukaan kunci uji coba, unduhan APP, dan fitur masa depan",
+      "paragraphs": [
+        "Harga dan kontrol pembukaan kunci yang ditampilkan saat ini berfungsi untuk pengujian tanpa pengumpulan pembayaran nyata. Alur laporan tidak mengumpulkan detail kartu, kata sandi pembayaran, atau otorisasi dompet digital. Tombol unduhan APP saat ini menampilkan notice pengujian; tombol tersebut tidak mengunduh atau menginstal aplikasi.",
+        "Sebelum mengaktifkan pembayaran nyata, distribusi APP, login, tarot, numerologi, atau fungsi baru lainnya, operator harus menilai ulang data, penerima, dan dasar hukum, memperbarui kebijakan ini, serta memberikan pemberitahuan atau meminta persetujuan jika diperlukan. Kebijakan ini bukan merupakan otorisasi awal untuk semua pemrosesan di masa depan."
+      ]
+    },
+    {
+      "id": "changes",
+      "title": "16. Pembaruan, kontak, dan bahasa",
+      "paragraphs": [
+        "Versi dan tanggal revisi di atas mengidentifikasi kebijakan ini. Perubahan material pada tujuan, kategori data, penerima, transfer, atau hak harus diberitahukan secara jelas sebelum implementasi, dengan persetujuan baru jika diperlukan. Kelanjutan penjelajahan saja bukanlah persetujuan untuk setiap tujuan baru.",
+        "Hubungi operator dan email privasi yang disebutkan di atas mengenai hak privasi atau keluhan. Jika perwakilan lokal atau petugas perlindungan data diwajibkan oleh hukum, operator juga harus menyediakan detail kontak tersebut; draf ini tidak mengklaim penunjukan atau pembebasan otomatis. Terjemahan bertujuan untuk menyampaikan fakta yang sama. Tanyakan kepada operator mengenai ketidaksesuaian; tidak ada versi bahasa yang membatasi hak hukum wajib."
+      ]
+    },
+    {
+      "id": "regional-law",
+      "title": "17. Hukum yang berlaku untuk lokasi operator",
+      "paragraphs": [
+        "Operator saat ini berbasis di Beijing, Tiongkok daratan. Pemrosesan di Tiongkok daratan juga harus mematuhi hukum Tiongkok yang berlaku, termasuk PIPL. Melayani Thailand tidak secara otomatis mengecualikan kewajiban ini. Dasar kepentingan sah hukum Thailand dalam kebijakan ini dengan sendirinya tidak menetapkan dasar hukum Tiongkok.",
+        "Kewajiban hukum Tiongkok untuk transfer, pemberitahuan, persetujuan terpisah jika diperlukan, dan penilaian dampak harus diperiksa terhadap aliran data aktual. Setiap penilaian, kontrak, sertifikasi, atau pengecualian harus memenuhi kondisi saat ini. Draf ini tidak menyatakan penyelesaian atau mengubah lokasi server di Hong Kong.",
+        "Di mana Ordonansi Data Pribadi (Privasi) Hong Kong, Cap. 486 berlaku, Anda dapat meminta akses, salinan, dan koreksi. Permintaan yang berlaku umumnya mengikuti periode 40 hari, tunduk pada prosedur dan pengecualian statuter; ini tidak memperpanjang batas waktu akses PDPA Thailand sebesar 30 hari menjadi 40. Biaya penyalinan/akses yang sah harus dijelaskan sebelumnya dan dibatasi pada apa yang diizinkan secara wajar oleh hukum.",
+        "Gunakan email privasi di atas atau ajukan keluhan kepada otoritas kompeten, termasuk PCPD Hong Kong jika hukumnya berlaku. Outsourcing atau pemrosesan luar negeri dengan sendirinya tidak menghilangkan tanggung jawab operator yang berlaku. Pasar lain harus menerima pemberitahuan dan jaminan yang sesuai sebelum ekspansi aktif."
+      ],
+      "links": [
+        {
+          "label": "Undang-Undang Perlindungan Informasi Pribadi Tiongkok",
+          "url": "https://www.cac.gov.cn/2021-08/20/c_1631050028355286.htm"
+        },
+        {
+          "label": "CAC: panduan kebijakan data lintas batas",
+          "url": "https://www.cac.gov.cn/2026-07/24/c_1786638883119336.htm"
+        },
+        {
+          "label": "PCPD: Ordonansi dan prinsip perlindungan data",
+          "url": "https://www.pcpd.org.hk/english/data_privacy_law/ordinance_at_a_Glance/ordinance.html"
+        },
+        {
+          "label": "PCPD Hong Kong",
+          "url": "https://www.pcpd.org.hk/"
+        }
+      ]
+    }
+  ]
+}

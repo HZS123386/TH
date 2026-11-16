@@ -1,6 +1,9 @@
 import type { LifeLabels, LifePoint, LifeReport, LifeSummary, ReportTopic } from "./lifeReport";
 import { fortuneTopics, fortuneTopicTitle, type FortuneTopicKey } from "./fortuneTopics";
-import jyCopy from "../content/jy.json";
+import originalJyCopy from "../content/jy.json";
+import { additionalCopy, additionalLocales } from "./locales";
+
+const jyCopy = { ...originalJyCopy, jy: { ...originalJyCopy.jy, ...additionalCopy("jy") } };
 
 export type ReportSectionKey = "basics" | "summary" | "traits" | "work" | "money" | "relationships" | "recent" | "advice" | ReportTopic;
 export interface ReportEntry { point: LifePoint; id?: string }
@@ -16,6 +19,7 @@ export interface ReportSection {
 }
 
 const copy = {
+  ...additionalCopy("reportContent"),
   zh: {
     sections: [
       ["basics", "基础信息", "称呼、解读方式与参考时间范围"],
@@ -48,16 +52,17 @@ const copy = {
 export function reportContent(report: LifeReport): ReportSection[] {
   const language = report.input.profile.language;
   const labels = copy[language];
+  const extra = language !== "zh" && language !== "th" ? additionalLocales[language].reportContent : undefined;
   const chapters = new Map((report.access === "full" ? report.chapters : []).map(chapter => [chapter.key, chapter]));
   if (report.input.career) {
     const work = chapters.get("work");
     const title = report.catalog[0].title;
     const sections: ReportSection[] = [
       { key: "basics", title: labels.sections[0][1], description: labels.sections[0][2], ready: true, paid: false, summaries: [], groups: [] },
-      { key: "summary", title: language === "zh" ? "眼下先怎么做" : "ตอนนี้ควรทำอะไรก่อน", description: language === "zh" ? "近期行运的简要回答" : "คำอ่านดาวจรช่วงนี้", ready: !!report.preview, paid: false, summaries: [], groups: [] },
-      { key: "traits", title: language === "zh" ? "留下、换走与眼下的第一步" : "อยู่ต่อ เปลี่ยนงาน และสิ่งที่เริ่มทำได้ตอนนี้", description: language === "zh" ? "两条路各值得留意什么" : "สิ่งที่ควรใส่ใจในแต่ละทาง", ready: !!report.preview, paid: false, summaries: [], groups: [] },
+      { key: "summary", title: extra?.careerSummary ?? (language === "zh" ? "眼下先怎么做" : "ตอนนี้ควรทำอะไรก่อน"), description: extra?.careerDescription ?? (language === "zh" ? "近期行运的简要回答" : "คำอ่านดาวจรช่วงนี้"), ready: !!report.preview, paid: false, summaries: [], groups: [] },
+      { key: "traits", title: extra?.careerTraits ?? (language === "zh" ? "留下、换走与眼下的第一步" : "อยู่ต่อ เปลี่ยนงาน และสิ่งที่เริ่มทำได้ตอนนี้"), description: extra?.careerTraitsDescription ?? (language === "zh" ? "两条路各值得留意什么" : "สิ่งที่ควรใส่ใจในแต่ละทาง"), ready: !!report.preview, paid: false, summaries: [], groups: [] },
       { key: "work", title, description: report.catalog[0].questions.join(" · "), ready: !!work, paid: true,
-        summaries: [], groups: work ? [{ title: language === "zh" ? "日期与具体行动" : "ช่วงเวลาและสิ่งที่ทำได้", entries: work.insights.map(point => ({ point })) }] : [] },
+        summaries: [], groups: work ? [{ title: extra?.careerDates ?? (language === "zh" ? "日期与具体行动" : "ช่วงเวลาและสิ่งที่ทำได้"), entries: work.insights.map(point => ({ point })) }] : [] },
     ];
     return sections;
   }
@@ -74,10 +79,10 @@ export function reportContent(report: LifeReport): ReportSection[] {
   };
   if (report.format === "western-compact") {
     const free: ReportSection[] = labels.sections.slice(0, 3).map(([key, title, description]) => ({
-      key, title, description, paid: false, ready: key === "basics" || !!report.preview, summaries: [], groups: [],
+      key: key as ReportSectionKey, title, description, paid: false, ready: key === "basics" || !!report.preview, summaries: [], groups: [],
     }));
     const names = jyCopy.jy[language].report.westernSections;
-    const groupTitles = language === "zh" ? ["主要特点", "提醒与调整"] : ["ลักษณะสำคัญ", "ข้อควรระวังและแนวทางปรับ"];
+    const groupTitles = language === "zh" ? ["主要特点", "提醒与调整"] : language === "th" ? ["ลักษณะสำคัญ", "ข้อควรระวังและแนวทางปรับ"] : copy[language].westernGroups;
     const paid: ReportSection[] = report.catalog.map(topic => ({
       key: topic.key, title: topic.title, description: topic.questions.join(" · "), paid: true,
       ready: chapters.has(topic.key), summaries: chapters.has(topic.key) ? [chapters.get(topic.key)!.summary] : [],
@@ -88,7 +93,7 @@ export function reportContent(report: LifeReport): ReportSection[] {
   }
   if (report.input.report_kind === "fortune") {
     const free: ReportSection[] = labels.sections.slice(0, 3).map(([key, title, description]) => ({
-      key, title: key === "summary" ? language === "zh" ? "运程摘要" : "สรุปแนวโน้มชีวิต" : title,
+      key: key as ReportSectionKey, title: key === "summary" ? extra?.fortuneSummary ?? (language === "zh" ? "运程摘要" : "สรุปแนวโน้มชีวิต") : title,
       description, paid: false, ready: key === "basics" || !!report.preview, summaries: [], groups: [],
     }));
     const paid: ReportSection[] = fortuneTopics.map(topic => {
@@ -101,7 +106,7 @@ export function reportContent(report: LifeReport): ReportSection[] {
       paid: true, ready: report.access === "full" && !!report.plan, summaries: [], groups: [] }];
   }
   return labels.sections.map(([key, title, description], index) => {
-    const section: ReportSection = { key, title, description, paid: index >= 3, ready: false, summaries: [], groups: [] };
+    const section: ReportSection = { key: key as ReportSectionKey, title, description, paid: index >= 3, ready: false, summaries: [], groups: [] };
     if (key === "basics") section.ready = true;
     if (key === "summary" || key === "traits") section.ready = !!report.preview;
     if (key === "work" || key === "money") {
@@ -125,7 +130,10 @@ export function reportContent(report: LifeReport): ReportSection[] {
 }
 
 export function reportReference(report: LifeReport, labels: LifeLabels): string {
-  if (report.format === "western-compact") return report.input.profile.language === "zh" ? "本命特征与行动参考" : "พื้นดวงและแนวทางลงมือทำ";
+  if (report.format === "western-compact") {
+    const language = report.input.profile.language;
+    return language === "zh" ? "本命特征与行动参考" : language === "th" ? "พื้นดวงและแนวทางลงมือทำ" : additionalLocales[language].reportContent.natalReference;
+  }
   const period = report.reference_period;
   return period ? `${period.start} – ${period.end}` : `${report.input.year} · ${labels.yearReference}`;
 }

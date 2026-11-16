@@ -83,9 +83,17 @@ class _FateImageState extends State<FateImage> {
                   child: CircularProgressIndicator(strokeWidth: 1.5),
                 )
               : IconButton(
-                  tooltip: Localizations.localeOf(context).languageCode == 'zh'
-                      ? '点击重试'
-                      : 'ลองโหลดภาพใหม่',
+                  tooltip: const {
+                    'zh': '点击重试',
+                    'th': 'ลองโหลดภาพใหม่',
+                    'en': 'Reload image',
+                    'vi': 'Tải lại ảnh',
+                    'my': 'ပုံ ပြန်တင်မယ်',
+                    'km': 'ផ្ទុករូបភាពម្ដងទៀត',
+                    'lo': 'ໂຫຼດຮູບໃໝ່',
+                    'ms': 'Muat semula imej',
+                    'id': 'Muat ulang gambar',
+                  }[Localizations.localeOf(context).languageCode],
                   icon: const Icon(Icons.refresh_rounded, color: gold),
                   onPressed: () => unawaited(_reload(manual: true)),
                 ),
@@ -558,26 +566,47 @@ class ReportBadges extends StatelessWidget {
                         'partnership',
                       ])
               {
-                'id': key,
+                'key': key,
                 copy.language: copy.t(
                   'jy',
                   'report.${western ? 'westernSections' : 'sections'}.$key',
                 ),
-                'icon': {
-                  'overall': '✦',
-                  'natal': '☉',
-                  'love': '♡',
-                  'career': '◇',
-                  'opportunities': '✧',
-                  'partnership': '☽',
-                  'wealth': '◇',
-                  'risk': '✧',
-                  'plan': '✦',
-                }[key],
               },
           ];
     return LayoutBuilder(
       builder: (context, box) {
+        if (!locked) {
+          final columns = box.maxWidth < 250 ? 1 : 2;
+          return Column(
+            children: [
+              for (
+                var row = 0;
+                row < (items.length / columns).ceil();
+                row++
+              ) ...[
+                if (row > 0) const SizedBox(height: 10),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var column = 0; column < columns; column++) ...[
+                        if (column > 0) const SizedBox(width: 10),
+                        Expanded(
+                          child: row * columns + column < items.length
+                              ? _sectionLink(
+                                  items[row * columns + column],
+                                  row * columns + column + 1,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          );
+        }
         final width = (box.maxWidth - 20) / 3;
         return Wrap(
           spacing: 10,
@@ -594,16 +623,112 @@ class ReportBadges extends StatelessWidget {
     );
   }
 
+  List<Color> _colors(String id) => switch (id) {
+    'natal' => const [Color(0xFF368693), Color(0xFF12313F)],
+    'love' => const [Color(0xFFAA526B), Color(0xFF3C1631)],
+    'career' => const [Color(0xFF3B8464), Color(0xFF102E2C)],
+    'warning' ||
+    'risk' ||
+    'opportunities' => const [Color(0xFFA15A45), Color(0xFF421F27)],
+    'advice' || 'plan' => const [Color(0xFF526FBD), Color(0xFF1B244E)],
+    'partnership' => const [Color(0xFF9075B8), Color(0xFF30203F)],
+    _ => const [Color(0xFFA97631), Color(0xFF3B230E)],
+  };
+
+  String _art(String id) => switch (id) {
+    'wealth' => 'finance',
+    'warning' || 'risk' => 'opportunities',
+    'plan' => 'advice',
+    _ => id,
+  };
+
+  Widget _sectionLink(Json item, int number) {
+    final id = text(item['key']), label = text(item[copy.language]);
+    final colors = _colors(id);
+    final action = onTap == null ? null : () => onTap!(id);
+    return Semantics(
+      button: action != null,
+      label: label,
+      child: Material(
+        key: ValueKey('report-section-$id'),
+        color: const Color(0xFF291D3A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: colors.first.withValues(alpha: .45)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: action,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 72),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: colors),
+                      border: Border.all(
+                        color: colors.first.withValues(alpha: .6),
+                      ),
+                    ),
+                    child: ClipOval(
+                      child: SvgPicture.asset(
+                        'assets/images/badges/${_art(id)}.svg',
+                        width: 30,
+                        height: 30,
+                        excludeFromSemantics: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          number.toString().padLeft(2, '0'),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            height: 1.1,
+                            color: lavender,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.4,
+                            color: cream,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 14,
+                    color: gold,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _badge(Json item, double size) {
-    final id = text(item['id']);
-    final colors = switch (id) {
-      'natal' => const [Color(0xFF368693), Color(0xFF12313F)],
-      'love' => const [Color(0xFFAA526B), Color(0xFF3C1631)],
-      'career' => const [Color(0xFF3B8464), Color(0xFF102E2C)],
-      'warning' => const [Color(0xFFA15A45), Color(0xFF421F27)],
-      'advice' => const [Color(0xFF526FBD), Color(0xFF1B244E)],
-      _ => const [Color(0xFFA97631), Color(0xFF3B230E)],
-    };
+    final id = text(item['key']);
+    final colors = _colors(id);
     return Semantics(
       button: onTap != null,
       label: text(item[copy.language]),
@@ -620,9 +745,7 @@ class ReportBadges extends StatelessWidget {
             gradient: RadialGradient(
               center: const Alignment(0, -.65),
               radius: .85,
-              colors: locked
-                  ? colors
-                  : const [Color(0xFF573B64), Color(0xFF271934)],
+              colors: colors,
             ),
           ),
           child: Container(
@@ -633,61 +756,64 @@ class ReportBadges extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                if (locked)
-                  ClipOval(
-                    child: SvgPicture.asset(
-                      'assets/images/badges/${id == 'warning' ? 'opportunities' : id}.svg',
-                      width: size,
-                      height: size,
-                    ),
+                ClipOval(
+                  child: SvgPicture.asset(
+                    'assets/images/badges/${_art(id)}.svg',
+                    width: size,
+                    height: size,
                   ),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        text(item['icon']),
-                        style: const TextStyle(
-                          color: Color(0xFFF6D096),
-                          fontSize: 18,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        text(item[copy.language]),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          height: 1.25,
-                          color: Color(0xFFFFF0D2),
-                          fontWeight: FontWeight.w700,
-                          shadows: [
-                            Shadow(
-                              color: Color(0xFF160C1E),
-                              blurRadius: 3,
-                              offset: Offset(0, 1),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: size - 20,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            text(item['icon']),
+                            style: const TextStyle(
+                              color: Color(0xFFF6D096),
+                              fontSize: 18,
+                              height: 1,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            text(item[copy.language]),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              height: 1.25,
+                              color: Color(0xFFFFF0D2),
+                              fontWeight: FontWeight.w700,
+                              shadows: [
+                                Shadow(
+                                  color: Color(0xFF160C1E),
+                                  blurRadius: 3,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Container(
+                            padding: const EdgeInsets.all(1),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFF593B73),
+                            ),
+                            child: const LandingIcon(
+                              'lock',
+                              size: 16,
+                              color: Color(0xFFFFE5A3),
+                            ),
+                          ),
+                        ],
                       ),
-                      if (locked) ...[
-                        const SizedBox(height: 5),
-                        Container(
-                          padding: const EdgeInsets.all(1),
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFF593B73),
-                          ),
-                          child: const LandingIcon(
-                            'lock',
-                            size: 16,
-                            color: Color(0xFFFFE5A3),
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ],

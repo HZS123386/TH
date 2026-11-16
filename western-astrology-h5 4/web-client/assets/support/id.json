@@ -1,0 +1,78 @@
+{
+  "intro": "Untuk masalah dalam membuat, melihat, atau mengelola pembacaan, hubungi kami melalui email di bawah ini atau periksa pertanyaan umum berikut terlebih dahulu.",
+  "labels": {
+    "contactTitle": "Hubungi dukungan FATE",
+    "emailAction": "Buat email",
+    "emailSubject": "Permintaan dukungan situs web FATE",
+    "operator": "Operator",
+    "address": "Alamat kontak",
+    "noContact": "Detail kontak sementara tidak tersedia. Silakan coba lagi nanti.",
+    "requestTitle": "Apa yang perlu disertakan dalam email Anda",
+    "faqTitle": "Pertanyaan umum",
+    "privacyLink": "Baca Kebijakan Privasi",
+    "privacyHint": "Gunakan email yang sama untuk akses, koreksi, penghapusan, penarikan persetujuan, atau keluhan privasi. Lihat Kebijakan Privasi untuk hak-hak dan periode respons yang berlaku."
+  },
+  "requestDetails": [
+    "Jelaskan masalahnya dan kira-kira kapan hal itu terjadi. Sertakan ID laporan jika tersedia.",
+    "Beritahu kami perangkat dan peramban Anda serta pesan kesalahan yang ditampilkan. Anda dapat menyertakan tangkapan layar dengan detail pribadi yang disembunyikan.",
+    "Jangan kirimkan detail kelahiran lengkap, dokumen identitas, detail kartu, kata sandi pembayaran, kunci API, atau kredensial akses laporan yang disimpan di peramban Anda."
+  ],
+  "sections": [
+    {
+      "id": "generation",
+      "title": "Bagaimana jika laporan terus memuat atau pembuatan gagal?",
+      "paragraphs": [
+        "Periksa koneksi Anda, lalu gunakan Coba Lagi atau Lanjutkan Pembuatan di halaman tersebut. Bagian yang tersimpan tetap tersedia, sehingga mencoba ulang biasanya tidak memerlukan pemasukan semua detail lagi. Batal Menunggu terutama menghentikan penantian halaman, bukan berarti selalu menghentikan pekerjaan latar belakang, dan tidak menghapus data. Jika masih gagal, kirimkan email berisi kesalahan, waktu, dan ID laporan daripada mengirimkannya berulang kali."
+      ]
+    },
+    {
+      "id": "history",
+      "title": "Di mana saya dapat menemukan laporan yang sudah ada?",
+      "paragraphs": [
+        "Kembali ke beranda dan buka Laporan Saya, atau buka kembali halaman laporan asli. Gunakan perangkat, peramban, dan alamat situs yang sama jika memungkinkan. Akses bergantung pada kredensial acak yang disimpan oleh peramban; menghapus data situs, mengganti peramban, atau menggunakan mode pribadi dapat mencegah pengenalan. Tautan laporan saja bukanlah otorisasi akses."
+      ]
+    },
+    {
+      "id": "birth-time",
+      "title": "Dapatkah saya melanjutkan tanpa waktu kelahiran yang tepat?",
+      "paragraphs": [
+        "Ya. Pilih bahwa waktu tepatnya tidak diketahui. Sistem menggunakan pukul 12:00 siang waktu setempat sebagai referensi perhitungan dan membatasi atau menandai kesimpulan yang sensitif terhadap waktu. Ascendant, rumah, dan detail terkait mungkin tidak tersedia atau tidak pasti. Pukul 12:00 siang bukanlah waktu kelahiran Anda yang terverifikasi."
+      ]
+    },
+    {
+      "id": "change-details",
+      "title": "Bagaimana jika saya memasukkan detail kelahiran yang salah?",
+      "paragraphs": [
+        "Periksa formulir di beranda dan buat laporan baru dengan informasi yang diperbaiki. Laporan yang ada mencerminkan input aslinya dan tidak berubah secara otomatis ketika Anda mengedit formulir nanti. Pilih negara, provinsi/negara bagian, dan kota yang sesuai; gunakan tempat lahir Anda, bukan tempat tinggal Anda saat ini."
+      ]
+    },
+    {
+      "id": "unlock",
+      "title": "Apakah membuka kunci akan mengenakan biaya kepada saya?",
+      "paragraphs": [
+        "Versi saat ini adalah uji coba. Jumlah yang ditampilkan adalah contoh, dan menekan kontrol pembayaran/buka kunci tidak melakukan penagihan nyata; itu menghasilkan dan membuka pembacaan lengkap. Saat ini tidak ada pengumpulan nyata atau alur pengembalian dana online. Setiap proses checkout langsung di masa depan harus menjelaskan harga aktual, penyedia pembayaran, dan syarat sebelum konfirmasi."
+      ]
+    },
+    {
+      "id": "app",
+      "title": "Mengapa tombol APP tidak memulai unduhan?",
+      "paragraphs": [
+        "APP masih dalam tahap pengujian dan unduhan belum dibuka. Tombol tersebut hanya menampilkan pemberitahuan pengujian. Itu tidak mengunduh, menginstal, atau secara otomatis membuka kunci laporan. Tautan dan informasi terkait akan diperbarui ketika distribusi dibuka."
+      ]
+    },
+    {
+      "id": "delete",
+      "title": "Bagaimana cara menghapus laporan atau membuat permintaan privasi?",
+      "paragraphs": [
+        "Gunakan Hapus pada laporan atau di Laporan Saya. Pekerjaan pembuatan yang aktif mungkin perlu diselesaikan terlebih dahulu. Menghapus penyimpanan peramban tidak menghapus data server. Kirimkan email ke kontak di halaman ini untuk akses lebih lanjut, koreksi, penghapusan, atau keluhan, dimulai dengan ID laporan dan jenis permintaan. Kebijakan Privasi menjelaskan cakupan dan batasan penyimpanan sementara/cadangan."
+      ]
+    },
+    {
+      "id": "meaning",
+      "title": "Dapatkah saya mengandalkan laporan untuk keputusan besar?",
+      "paragraphs": [
+        "Laporan ini menggabungkan perhitungan astrologi Barat dan bahasa AI untuk hiburan dan eksplorasi diri. Laporan ini mungkin tidak akurat atau tidak cocok dan tidak menjamin peristiwa masa depan. Ini tidak menggantikan saran medis, hukum, atau keuangan dan tidak boleh menjadi satu-satunya dasar untuk keputusan besar mengenai pekerjaan, pinjaman, atau hubungan."
+      ]
+    }
+  ]
+}

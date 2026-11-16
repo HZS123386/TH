@@ -1,0 +1,27 @@
+{
+  "my": {
+    "detail": "တစ်ဦးချင်းစီအတွက် အရေးကြီးသည့်အရာကို မေးပြီး အဆင်ပြေသော ပြောင်းလဲမှုငယ်တစ်ခုကို စမ်းကြည့်ပါ။",
+    "paragraph": "မတူညီသော မျှော်လင့်ချက်များ ရှိလာလျှင် ရှင်းလင်းစွာ ဆွေးနွေးပြီးမှ ဆုံးဖြတ်ရတာ သင့်အတွက် ပိုအဆင်ပြေနိုင်သည်။ ကိုယ်တန်ဖိုးထားသည့်အရာကို ပြောပြခြင်းဖြင့် ရွေးချယ်ရတာ လွယ်ကူလာပြီး အချက်အလက်အသစ် ရသည့်အခါ ပြန်ညှိရန် နေရာလည်း ကျန်စေသည်။",
+    "titles": ["သင့်တော်သည့်စည်းချက်", "ပြင်ဆင်ရန်နေရာ", "လိုအပ်ချက်မျှဝေမှု", "ပြောင်းလဲမှုငယ်စမ်းခြင်း"]
+  },
+  "km": {
+    "detail": "សួរអ្វីដែលសំខាន់សម្រាប់មនុស្សម្នាក់ៗ រួចជ្រើសការផ្លាស់ប្ដូរតូចមួយដែលអាចសាកល្បងបាន។",
+    "paragraph": "ពេលការរំពឹងខុសគ្នាចូលមកជាមួយគ្នា អ្នកអាចមានអារម្មណ៍ស្រួលជាងមុនក្រោយការពិភាក្សាច្បាស់លាស់។ ការចែករំលែកអ្វីដែលអ្នកឱ្យតម្លៃជួយឱ្យជម្រើសងាយស្រួល ហើយទុកឱកាសកែសម្រួលពេលទទួលព័ត៌មានថ្មី។",
+    "titles": ["ចង្វាក់សមស្រប", "ឱកាសកែសម្រួល", "ចែករំលែកតម្រូវការ", "សាកល្បងការកែតូច"]
+  },
+  "lo": {
+    "detail": "ຖາມສິ່ງທີ່ສຳຄັນກັບແຕ່ລະຄົນ ແລ້ວເລືອກການປ່ຽນແປງນ້ອຍໆທີ່ລອງໄດ້.",
+    "paragraph": "ເມື່ອມີຄວາມຄາດຫວັງຕ່າງກັນ ທ່ານອາດສະບາຍໃຈຂຶ້ນຫຼັງຈາກລົມກັນໃຫ້ຊັດເຈນ. ການບອກສິ່ງທີ່ຕົນໃຫ້ຄຸນຄ່າຊ່ວຍໃຫ້ເລືອກງ່າຍຂຶ້ນ ແລະຍັງເຫຼືອພື້ນທີ່ໃຫ້ປັບເມື່ອມີຂໍ້ມູນໃໝ່.",
+    "titles": ["ຈັງຫວະທີ່ເໝາະ", "ພື້ນທີ່ສຳລັບປັບ", "ແບ່ງປັນຄວາມຕ້ອງການ", "ລອງປ່ຽນນ້ອຍໆ"]
+  },
+  "ms": {
+    "detail": "Tanya perkara penting bagi setiap orang, kemudian pilih satu perubahan kecil yang selesa untuk dicuba.",
+    "paragraph": "Apabila jangkaan berbeza menuntut perhatian, anda mungkin lebih selesa selepas berbincang dengan jelas. Berkongsi perkara yang penting boleh memudahkan pilihan, sambil memberi ruang untuk menyesuaikan diri apabila maklumat baharu muncul.",
+    "titles": ["Rentak yang sesuai", "Ruang menyesuaikan diri", "Berkongsi keperluan", "Mencuba perubahan kecil"]
+  },
+  "id": {
+    "detail": "Tanyakan hal penting bagi setiap orang, lalu pilih satu perubahan kecil yang nyaman untuk dicoba.",
+    "paragraph": "Saat harapan berbeda menuntut perhatian, Anda mungkin lebih nyaman setelah berbicara dengan jelas. Berbagi hal yang penting dapat memudahkan pilihan, sambil memberi ruang untuk menyesuaikan diri ketika informasi baru muncul.",
+    "titles": ["Ritme yang sesuai", "Ruang menyesuaikan diri", "Berbagi kebutuhan", "Mencoba perubahan kecil"]
+  }
+}

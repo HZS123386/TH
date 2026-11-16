@@ -6,14 +6,19 @@ from zoneinfo import ZoneInfo
 from . import thai
 from .bazi import localize
 from .roxy import RoxyClient, RoxyError, finite_number, validate_json
+from .report_languages import REGIONAL_LANGUAGES
 
 VERSION = "roxy-western-compact-1"
 CHAPTERS = ("natal", "career", "wealth", "love", "risk")
 TITLES = {
+    "en": ("Personal patterns", "Career", "Money", "Love and partnership", "Patterns to watch", "Practical suggestions"),
+    "vi": ("Đặc điểm cá nhân", "Sự nghiệp", "Tài chính", "Tình yêu và gắn bó", "Điều cần chú ý", "Gợi ý hành động"),
     "zh": ("本命解读", "事业解读", "财运解读", "感情姻缘", "风险预警", "行动建议"),
     "th": ("พื้นดวง", "การงาน", "การเงิน", "ความรักและคู่ครอง", "เรื่องที่ควรระวัง", "คำแนะนำลงมือทำ"),
 }
 QUESTIONS = {
+    "en": ("How can I use my strengths and make suitable choices?", "Which work styles and collaborative environments suit me?", "How do I approach income, spending and shared resources?", "How can I express needs and handle differences?", "Which personal patterns might benefit from adjustment?"),
+    "vi": ("Phát huy điểm mạnh và lựa chọn phù hợp thế nào?", "Cách làm việc và môi trường hợp tác nào phù hợp?", "Quản lý thu nhập, chi tiêu và nguồn lực chung ra sao?", "Bày tỏ nhu cầu và xử lý khác biệt thế nào?", "Những thói quen nào cần được điều chỉnh?"),
     "zh": ("怎样发挥长处，做出适合自己的选择", "什么工作方式与协作环境更适合我", "怎样管理收入、支出与共同资源", "如何表达需要、处理关系中的分歧", "哪些行为模式需要提前调整"),
     "th": ("ใช้จุดแข็งและตัดสินใจอย่างเหมาะกับตัวเอง", "รูปแบบงานและสภาพแวดล้อมแบบไหนเหมาะกับฉัน", "วางแผนรายรับรายจ่ายและทรัพยากรร่วมกันอย่างไร", "บอกความต้องการและจัดการความเห็นต่างอย่างไร", "พฤติกรรมใดควรสังเกตและค่อย ๆ ปรับ"),
 }
@@ -35,25 +40,46 @@ TOPIC_PLANETS = {
 TOPIC_HOUSES = {"overview": (1, 5, 7, 10), "natal": (1, 5), "career": (6, 10), "wealth": (2, 8, 11), "love": (5, 7), "risk": (6, 12)}
 TRAIT_PLANETS = {"strength": ("sun", "jupiter"), "decisions": ("mercury", "saturn"), "relationships": ("venus", "mars")}
 PLANETS = {
-    "Sun": ("太阳", "อาทิตย์"), "Moon": ("月亮", "จันทร์"),
-    "Mercury": ("水星", "พุธ"), "Venus": ("金星", "ศุกร์"),
-    "Mars": ("火星", "อังคาร"), "Jupiter": ("木星", "พฤหัสบดี"),
-    "Saturn": ("土星", "เสาร์"), "Uranus": ("天王星", "ยูเรนัส"),
-    "Neptune": ("海王星", "เนปจูน"), "Pluto": ("冥王星", "พลูโต"),
-    "North Node": ("北交点", "โหนดเหนือ"), "South Node": ("南交点", "โหนดใต้"),
-    "Chiron": ("凯龙星", "ไครอน"), "Black Moon Lilith": ("莉莉丝", "ลิลิธ"),
+    "Sun": ("太阳", "อาทิตย์", "Sun", "Mặt Trời"), "Moon": ("月亮", "จันทร์", "Moon", "Mặt Trăng"),
+    "Mercury": ("水星", "พุธ", "Mercury", "Sao Thủy"), "Venus": ("金星", "ศุกร์", "Venus", "Sao Kim"),
+    "Mars": ("火星", "อังคาร", "Mars", "Sao Hỏa"), "Jupiter": ("木星", "พฤหัสบดี", "Jupiter", "Sao Mộc"),
+    "Saturn": ("土星", "เสาร์", "Saturn", "Sao Thổ"), "Uranus": ("天王星", "ยูเรนัส", "Uranus", "Sao Thiên Vương"),
+    "Neptune": ("海王星", "เนปจูน", "Neptune", "Sao Hải Vương"), "Pluto": ("冥王星", "พลูโต", "Pluto", "Sao Diêm Vương"),
+    "North Node": ("北交点", "โหนดเหนือ", "North Node", "Nút Bắc"), "South Node": ("南交点", "โหนดใต้", "South Node", "Nút Nam"),
+    "Chiron": ("凯龙星", "ไครอน", "Chiron", "Chiron"), "Black Moon Lilith": ("莉莉丝", "ลิลิธ", "Black Moon Lilith", "Lilith"),
 }
 SIGNS = ("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces")
 SIGN_LABELS = {
+    "en": SIGNS,
+    "vi": ("Bạch Dương", "Kim Ngưu", "Song Tử", "Cự Giải", "Sư Tử", "Xử Nữ", "Thiên Bình", "Bọ Cạp", "Nhân Mã", "Ma Kết", "Bảo Bình", "Song Ngư"),
     "zh": ("白羊座", "金牛座", "双子座", "巨蟹座", "狮子座", "处女座", "天秤座", "天蝎座", "射手座", "摩羯座", "水瓶座", "双鱼座"),
     "th": ("เมษ", "พฤษภ", "เมถุน", "กรกฎ", "สิงห์", "กันย์", "ตุล", "พิจิก", "ธนู", "มกร", "กุมภ์", "มีน"),
 }
-ASPECTS = {"CONJUNCTION": ("合相", "กุม"), "OPPOSITION": ("对分相", "เล็ง"), "TRINE": ("三分相", "ตรีโกณ"), "SQUARE": ("四分相", "ฉาก"), "SEXTILE": ("六分相", "โยค")}
+ASPECTS = {"CONJUNCTION": ("合相", "กุม", "Conjunction", "Trùng tụ"), "OPPOSITION": ("对分相", "เล็ง", "Opposition", "Đối đỉnh"), "TRINE": ("三分相", "ตรีโกณ", "Trine", "Tam hợp"), "SQUARE": ("四分相", "ฉาก", "Square", "Vuông góc"), "SEXTILE": ("六分相", "โยค", "Sextile", "Lục hợp")}
 ASPECT_ANGLES = {"CONJUNCTION": 0, "SEXTILE": 60, "SQUARE": 90, "TRINE": 120, "OPPOSITION": 180}
+
+# Extend the existing label tables in their established column order.
+LANGUAGE_COLUMNS = {code: index for index, code in enumerate(("zh", "th", "en", "vi", *REGIONAL_LANGUAGES))}
+for code, copy in REGIONAL_LANGUAGES.items():
+    TITLES[code] = tuple(copy["western_titles"])
+    QUESTIONS[code] = tuple(copy["western_questions"])
+    SIGN_LABELS[code] = tuple(copy["reading"]["signs"])
+    for name in PLANETS:
+        key = name.lower().replace(" ", "_")
+        label = copy["reading"]["planets"][key] if key in copy["reading"]["planets"] else copy["extra_planets"][name]
+        PLANETS[name] += (label,)
+    for name in ASPECTS:
+        ASPECTS[name] += (copy["aspects"][name],)
 
 
 def point_id(name):
     return name.lower().replace(" ", "_")
+
+
+def house_label(number, language):
+    if language in REGIONAL_LANGUAGES:
+        return REGIONAL_LANGUAGES[language]["house"].replace("{number}", str(number))
+    return {"zh": f"第{number}宫", "th": f"เรือนที่ {number}", "en": f"House {number}", "vi": f"Nhà {number}"}[language]
 
 
 def western(chart):
@@ -148,12 +174,13 @@ class RoxyAstrology(RoxyClient):
     @staticmethod
     def chart_view(chart, language):
         known, raw = chart["time_known"], chart["raw"]
-        column = 0 if language == "zh" else 1
+        column = LANGUAGE_COLUMNS[language]
         def point(row, name=None):
             name = name or row["name"]
             label = (PLANETS[name][column] if name in PLANETS else
-                     ("本命上升" if language == "zh" else "ลัคนา") if name == "Ascendant" else
-                     ("天顶" if language == "zh" else "จุดยอดฟ้า"))
+                     REGIONAL_LANGUAGES[language]["reading"]["planets"][point_id(name)] if language in REGIONAL_LANGUAGES else
+                     {"zh": "本命上升", "th": "ลัคนา", "en": "Ascendant", "vi": "Cung Mọc"}[language] if name == "Ascendant" else
+                     {"zh": "天顶", "th": "จุดยอดฟ้า", "en": "Midheaven", "vi": "Thiên Đỉnh"}[language])
             return {"id": point_id(name), "label": label, "sign_index": SIGNS.index(row["sign"]),
                     "sign_name": SIGN_LABELS[language][SIGNS.index(row["sign"])], "longitude": row["longitude"],
                     "degree": row["degree"], "house": row.get("house") if known else None}
@@ -170,7 +197,7 @@ class RoxyAstrology(RoxyClient):
     @classmethod
     def bundle(cls, body, chart, reading):
         language, known = body.profile.language, chart["time_known"]
-        zh, column = language == "zh", 0 if language == "zh" else 1
+        column = LANGUAGE_COLUMNS[language]
         view = cls.chart_view(chart, language)
         facts = {}
         raw_planets = {point_id(row["name"]): row for row in chart["raw"]["planets"]}
@@ -180,16 +207,18 @@ class RoxyAstrology(RoxyClient):
                 continue
             detail = f"{row['sign_name']} {row['degree']:.2f}°"
             if known and row["house"]:
-                detail += f" · 第{row['house']}宫" if zh else f" · เรือนที่ {row['house']}"
+                detail += " · " + house_label(row['house'], language)
             if not known:
-                detail += "（当地12:00估算）" if zh else " (ประมาณเวลา 12:00 ท้องถิ่น)"
+                detail += (" (" + REGIONAL_LANGUAGES[language]["estimated"] + ")" if language in REGIONAL_LANGUAGES else
+                           {"zh": "（当地12:00估算）", "th": " (ประมาณเวลา 12:00 ท้องถิ่น)", "en": " (estimated at local 12:00)", "vi": " (ước tính 12:00 địa phương)"}[language])
             fact = {"type": "planet", "key": row["id"], "sign": row["sign_index"], "longitude": row["longitude"],
                     "house": row["house"], "title": row["label"], "detail": detail, "provider": "roxy"}
             source = raw_planets.get(row["id"], {})
             if source:
                 fact["retrograde"] = source["isRetrograde"]
                 if source["isRetrograde"]:
-                    fact["detail"] += " · 逆行" if zh else " · ถอยหลัง"
+                    fact["detail"] += (" · " + REGIONAL_LANGUAGES[language]["retrograde"] if language in REGIONAL_LANGUAGES else
+                                       {"zh": " · 逆行", "th": " · ถอยหลัง", "en": " · Retrograde", "vi": " · Nghịch hành"}[language])
                 if source.get("dignity") in ("domicile", "exaltation", "detriment", "fall", "peregrine"):
                     fact["dignity"] = source["dignity"]
             interpretation = source.get("interpretation", {})
@@ -198,7 +227,7 @@ class RoxyAstrology(RoxyClient):
             facts["P_" + row["id"]] = fact
         for row in chart["raw"]["houses"] if known else []:
             facts[f"H{row['number']}"] = {"type": "house", "number": row["number"], "longitude": row["longitude"],
-                "title": f"第{row['number']}宫" if zh else f"เรือนที่ {row['number']}",
+                "title": house_label(row['number'], language),
                 "detail": f"{SIGN_LABELS[language][SIGNS.index(row['sign'])]} {row['degree']:.2f}° · Placidus", "provider": "roxy"}
         for index, row in enumerate(sorted(chart["raw"]["aspects"], key=lambda row: row["orb"]) if known else []):
             if row["type"] not in ASPECTS or row["orb"] > 6 or "Node" in row["planet1"] or "Node" in row["planet2"]:

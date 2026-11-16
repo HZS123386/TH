@@ -1,0 +1,53 @@
+{
+  "controller_name": "北京尚德机构科技有限公司",
+  "controller_address": "北京市朝阳区来广营镇朝来科技园",
+  "contact_email": "m15227933636@163.com",
+  "effective_date": "",
+  "localizations": {
+    "zh": {
+      "controller_name": "北京尚德机构科技有限公司",
+      "controller_address": "北京市朝阳区来广营镇朝来科技园",
+      "translation_notice": ""
+    },
+    "en": {
+      "controller_name": "Beijing Shangde Jigou Technology Co., Ltd.",
+      "controller_address": "Chaolai Science and Technology Park, Laiguangying Town, Chaoyang District, Beijing, China",
+      "translation_notice": "The company name and address are translations. Refer to the Chinese version for the legal details."
+    },
+    "th": {
+      "controller_name": "บริษัท ปักกิ่ง ซ่างเต๋อ จีโก่ว เทคโนโลยี จำกัด",
+      "controller_address": "สวนวิทยาศาสตร์และเทคโนโลยีเฉาไหล ตำบลไหลกวงหยิง เขตเฉาหยาง กรุงปักกิ่ง สาธารณรัฐประชาชนจีน",
+      "translation_notice": "ชื่อบริษัทและที่อยู่เป็นคำแปล โปรดอ้างอิงเวอร์ชันภาษาจีนสำหรับรายละเอียดทางกฎหมาย"
+    },
+    "vi": {
+      "controller_name": "Công ty TNHH Công nghệ Shangde Jigou Bắc Kinh",
+      "controller_address": "Công viên Khoa học và Công nghệ Chaolai, Thị trấn Laiguangying, Quận Triều Dương, Bắc Kinh, Trung Quốc",
+      "translation_notice": "Tên công ty và địa chỉ là bản dịch. Vui lòng tham khảo phiên bản tiếng Trung để biết chi tiết pháp lý."
+    },
+    "my": {
+      "controller_name": "ပေကျင်း ရှန်းတယ် ဂျီကိုး နည်းပညာ ကုမ္ပဏီ လီမိတက်",
+      "controller_address": "တရုတ်နိုင်ငံ၊ ပေကျင်းမြို့၊ Chaoyang ခရိုင်၊ Laiguangying မြို့နယ်၊ Chaolai သိပ္ပံနှင့် နည်းပညာ ဥယျာဉ်",
+      "translation_notice": "ကုမ္ပဏီအမည်နှင့် လိပ်စာများသည် ဘာသာပြန်ဆိုချက်များဖြစ်သည်။ တရားဝင် အသေးစိတ်အချက်အလက်များအတွက် တရုတ်ဘာသာဖြင့် ရေးသားထားသော မူရင်းကို ကိုးကားပါ။"
+    },
+    "km": {
+      "controller_name": "ក្រុមហ៊ុនបច្ចេកវិទ្យា សាំងដឺ ជីគូ (ប៉េកាំង) ឯ.ក",
+      "controller_address": "សួនវិទ្យាសាស្ត្រ និងបច្ចេកវិទ្យា Chaolai, ទីក្រុង Laiguangying, ស្រុក Chaoyang, ទីក្រុងប៉េកាំង, ប្រទេសចិន",
+      "translation_notice": "ឈ្មោះក្រុមហ៊ុន និងអាសយដ្ឋានគឺជាការបកប្រែ។ សូមយោងតាមកំណែភាសាចិនសម្រាប់ព័ត៌មានផ្លូវការ។"
+    },
+    "lo": {
+      "controller_name": "ບໍລິສັດ ເຕັກໂນໂລຊີ ຊາງເດ້ ຈີໂກວ ຈຳກັດ (ປັກກິ່ງ)",
+      "controller_address": "ສວນວິທະຍາສາດ ແລະ ເຕັກໂນໂລຊີ ຊາວໄລ, ເມືອງ ໄລກວາງອິງ, ເຂດ ຊາວຢາງ, ນະຄອນຫຼວງ ປັກກິ່ງ, ສາທາລະນະລັດ ປະຊາຊົນ ຈີນ",
+      "translation_notice": "ຊື່ບໍລິສັດ ແລະ ທີ່ຢູ່ແມ່ນການແປ. ກະລຸນາອ້າງອີງໃສ່ສະບັບພາສາຈີນສຳລັບລາຍລະອຽດທາງກົດໝາຍ."
+    },
+    "ms": {
+      "controller_name": "Syarikat Teknologi Beijing Shangde Jigou (Liabiliti Terhad)",
+      "controller_address": "Taman Sains dan Teknologi Chaolai, Bandar Laiguangying, Daerah Chaoyang, Beijing, China",
+      "translation_notice": "Nama syarikat dan alamat adalah terjemahan. Sila rujuk versi Bahasa Cina untuk butiran undang-undang."
+    },
+    "id": {
+      "controller_name": "Perusahaan Teknologi Beijing Shangde Jigou (Tanggung Jawab Terbatas)",
+      "controller_address": "Taman Sains dan Teknologi Chaolai, Kota Laiguangying, Distrik Chaoyang, Beijing, Tiongkok",
+      "translation_notice": "Nama perusahaan dan alamat adalah terjemahan. Silakan merujuk pada versi bahasa Tionghoa untuk detail hukumnya."
+    }
+  }
+}

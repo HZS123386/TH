@@ -7,6 +7,15 @@ It contains no user data. GB2312 characters and all fixed UI copy are also inclu
 when generating the additional font. Remaining characters load from the original
 full font on demand.
 
+Regional script fonts come from the Noto project. Myanmar and Lao use
+`notofonts/noto-fonts` (`hinted/ttf/NotoSansMyanmar` and `NotoSansLao`). Khmer uses
+the current [official static build](https://notofonts.github.io/khmer/fonts/NotoSansKhmer/unhinted/ttf/NotoSansKhmer-Regular.ttf);
+the older archived hinted build triggers a null-anchor error in PDF shaping.
+Each original
+font has its matching `OFL-Myanmar.txt`, `OFL-Khmer.txt` or `OFL-Lao.txt` license
+in `web-client/assets/fonts`. Tiny `Fate*Label.ttf` subsets cover only the native
+menu names; `LanguageFonts` loads the complete selected script on demand.
+
 Install the build tool from `scripts/font-requirements.txt`, then run
 `python scripts/prepare-fonts.py` after preparing translations. The generated OTF,
 TTF and Dart coverage files are committed, so normal builds do not need Python or

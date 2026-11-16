@@ -231,10 +231,103 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get unknownTime =>
-      'Chưa biết giờ sinh nên không hiển thị cung Mọc và những nhà phụ thuộc vào giờ.';
+      'Nếu chưa có giờ sinh, bản đồ sao ước tính sẽ dùng 12:00 giờ địa phương tại nơi sinh. Bạn có thể bổ sung giờ sinh sau.';
 
   @override
-  String get chartRead => 'Đọc bản đồ sao này';
+  String get estimated => 'Ước tính';
+
+  @override
+  String get estimatedChart => 'Bản đồ sao ước tính · 12:00 giờ địa phương';
+
+  @override
+  String get estimatedChartNote =>
+      'Chưa có giờ sinh chính xác nên bản đồ sao dùng 12:00 giờ địa phương tại nơi sinh. Mặt Trăng, cung Mọc, các nhà và góc chiếu là giá trị ước tính, có thể thay đổi theo giờ sinh thực tế. Bạn có thể bổ sung giờ để tính lại.';
+
+  @override
+  String get chartRead => 'Xem toàn bộ luận giải';
+
+  @override
+  String get readingChart => 'Bản đồ sao của bài luận giải này';
+
+  @override
+  String get readingChartIntro =>
+      'Nội dung dưới đây dựa trên bản đồ sao này. Chạm vào hành tinh để xem vị trí.';
+
+  @override
+  String get readingContents => 'Mục lục luận giải';
+
+  @override
+  String get readingContentsHint => 'Chọn chủ đề để đến phần tương ứng.';
+
+  @override
+  String get backToChart => 'Quay lại bản đồ sao';
+
+  @override
+  String get savedReadings => 'Lịch sử luận giải';
+
+  @override
+  String get noSavedReports => 'Chưa có báo cáo';
+
+  @override
+  String get reportRecords => 'Danh sách báo cáo';
+
+  @override
+  String get reportRecordsIntro =>
+      'Báo cáo được sắp theo thời gian tạo. Nhập mã để tìm báo cáo tương ứng.';
+
+  @override
+  String get searchReportNumber => 'Tìm theo mã báo cáo';
+
+  @override
+  String get clearSearch => 'Xóa tìm kiếm';
+
+  @override
+  String get noMatchingReports =>
+      'Không tìm thấy báo cáo có mã này. Hãy kiểm tra mã và thử lại.';
+
+  @override
+  String get reportNumberLabel => 'Mã báo cáo';
+
+  @override
+  String get generatedAt => 'Thời gian tạo';
+
+  @override
+  String get reportReady => 'Đã tạo';
+
+  @override
+  String get reportRunning => 'Đang tạo';
+
+  @override
+  String get reportFailedShort => 'Chưa hoàn tất';
+
+  @override
+  String get deleteReport => 'Xóa báo cáo';
+
+  @override
+  String get deleteReportConfirm =>
+      'Xóa bản ghi báo cáo này? Sau khi xóa, bạn sẽ không thể mở lại từ danh sách.';
+
+  @override
+  String get reportDeleted => 'Đã xóa bản ghi báo cáo';
+
+  @override
+  String get deleteReportFailed =>
+      'Xóa không thành công, báo cáo vẫn được giữ lại. Vui lòng thử lại sau.';
+
+  @override
+  String get reportDeleteBusy =>
+      'Báo cáo vẫn đang được tạo. Hãy chờ hoàn tất rồi xóa.';
+
+  @override
+  String get loadReportsFailed =>
+      'Chưa thể tải danh sách báo cáo. Vui lòng thử lại.';
+
+  @override
+  String get refreshRecords => 'Tải lại';
+
+  @override
+  String get chartReportsLocation =>
+      'Luận giải bản đồ sao có trang riêng. Mở mục Bản đồ sao để xem của bạn.';
 
   @override
   String get house => 'Nhà';
@@ -745,7 +838,76 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get reportFailedText =>
-      'Chưa thể hoàn tất luận giải. Hãy trở về trang Báo cáo và tạo lại. Nội dung mẫu sẽ không thay thế kết quả của bạn.';
+      'Luận giải chưa hoàn tất. Nhấn nút bên dưới để thử lại. Bản đồ sao của bạn vẫn được giữ lại.';
+
+  @override
+  String get progressTitle => 'Đang tạo luận giải của bạn';
+
+  @override
+  String get progressIntro =>
+      'Đang soạn và kiểm tra sáu chủ đề. Trang luận giải sẽ tự mở khi báo cáo hoàn tất.';
+
+  @override
+  String get progressPreparing => 'Đang chuẩn bị thông tin bản đồ sao';
+
+  @override
+  String get progressWriting => 'Đang soạn luận giải dành cho bạn';
+
+  @override
+  String get progressChecking => 'Đang kiểm tra toàn bộ báo cáo';
+
+  @override
+  String get progressRefining => 'Đang hoàn thiện luận giải và lời khuyên';
+
+  @override
+  String get progressComplete => 'Báo cáo đã sẵn sàng. Đang mở';
+
+  @override
+  String get progressFailed => 'Luận giải chưa hoàn tất';
+
+  @override
+  String progressTopics(Object completed, Object total) {
+    return 'Đã soạn $completed/$total chủ đề';
+  }
+
+  @override
+  String get progressReturn => 'Trở về báo cáo';
+
+  @override
+  String get progressReconnect => 'Kết nối lại';
+
+  @override
+  String get progressDisconnected =>
+      'Tạm thời không thể cập nhật tiến độ. Tác vụ chạy nền chưa bị hủy. Bạn có thể kết nối lại hoặc quay lại sau.';
+
+  @override
+  String get progressLater => 'Quay lại sau';
+
+  @override
+  String get progressPersonality => 'Tính cách và thế mạnh';
+
+  @override
+  String get progressCareer => 'Phát triển sự nghiệp';
+
+  @override
+  String get progressMoney => 'Thói quen tài chính';
+
+  @override
+  String get progressRelationships => 'Tình cảm và gia đình';
+
+  @override
+  String get progressWatch => 'Điều cần lưu ý';
+
+  @override
+  String get progressActions => 'Hành động thiết thực';
+
+  @override
+  String get reportServiceBusy =>
+      'Dịch vụ luận giải đang tạm thời quá tải nên báo cáo chưa hoàn tất. Bản đồ sao của bạn đã được lưu. Vui lòng thử lại sau.';
+
+  @override
+  String get reportServiceTimeout =>
+      'Yêu cầu luận giải đã hết thời gian chờ trước khi báo cáo hoàn tất. Bản đồ sao của bạn đã được lưu. Vui lòng thử lại sau.';
 
   @override
   String get roxyUnavailable =>

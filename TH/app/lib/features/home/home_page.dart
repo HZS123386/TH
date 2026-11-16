@@ -165,10 +165,10 @@ class HomePage extends StatelessWidget {
                 for (final card in [
                   (s.chart, s.chartNote, Icons.explore_outlined, '/chart'),
                   (
-                    s.reports,
+                    s.chartRead,
                     s.reportNote,
                     Icons.menu_book_outlined,
-                    '/reports',
+                    '/chart/reading',
                   ),
                   (
                     s.fullReport,
@@ -263,7 +263,7 @@ class HomePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: () => context.go('/reports'),
+                    onPressed: () => context.go('/chart/reading'),
                     child: Text('${s.viewReport}  →'),
                   ),
                 ],

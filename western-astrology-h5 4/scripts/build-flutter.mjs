@@ -55,7 +55,7 @@ export async function buildLanding({release=false}={}){
   for (const page of ['report.html','privacy.html','support.html']) {
     await cp(path.join(generated,'index.html'),path.join(generated,page));
   }
-  for(const file of ['main.dart.wasm','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
+  for(const file of ['main.dart.wasm','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','fonts/pdf/NotoSansMyanmar-Regular.ttf','fonts/pdf/NotoSansKhmer-Regular.ttf','fonts/pdf/NotoSansLao-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
   const compressible=new Set(['.html','.js','.mjs','.css','.json','.svg','.wasm','.ttf','.otf']);
   for(const relative of await readdir(generated,{recursive:true})){
     if(!compressible.has(path.extname(relative)))continue;

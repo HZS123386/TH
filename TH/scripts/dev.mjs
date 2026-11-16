@@ -1,12 +1,17 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { python } from './python.mjs';
 if (!existsSync(python)) {
   console.error('请先运行 pnpm setup:api');
   process.exit(1);
 }
 const apiPort = process.env.SABAI_API_PORT || '8000';
-const webPort = process.env.SABAI_WEB_PORT || '5173';
+const webPort = process.env.SABAI_WEB_PORT || '5174';
+const skipBuild = process.argv.includes('--skip-build') ? ['--skip-build'] : [];
+const landingRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../western-astrology-h5 4');
+const upstream = `http://127.0.0.1:${apiPort}`;
 const children = [
   spawn(
     python,
@@ -23,9 +28,14 @@ const children = [
     ],
     { stdio: 'inherit' },
   ),
-  spawn(process.execPath, ['scripts/serve-app.mjs'], {
+  spawn(process.execPath, ['scripts/serve-app.mjs', ...skipBuild], {
     stdio: 'inherit',
-    env: { ...process.env, FATE_APP_PORT: webPort },
+    env: { ...process.env, FATE_APP_PORT: webPort, FATE_API_UPSTREAM: upstream },
+  }),
+  spawn(process.execPath, ['scripts/serve-flutter.mjs', ...skipBuild], {
+    cwd: landingRoot,
+    stdio: 'inherit',
+    env: { ...process.env, FATE_API_UPSTREAM: upstream },
   }),
 ];
 let closing = false;

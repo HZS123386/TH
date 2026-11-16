@@ -501,14 +501,182 @@ abstract class AppLocalizations {
   /// No description provided for @unknownTime.
   ///
   /// In en, this message translates to:
-  /// **'Birth time is unknown. The ascendant and time-dependent houses are not displayed.'**
+  /// **'Without a birth time, an estimated chart uses 12:00 local time at your birthplace. You can add your time later.'**
   String get unknownTime;
+
+  /// No description provided for @estimated.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated'**
+  String get estimated;
+
+  /// No description provided for @estimatedChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated chart · 12:00 local time'**
+  String get estimatedChart;
+
+  /// No description provided for @estimatedChartNote.
+  ///
+  /// In en, this message translates to:
+  /// **'No exact birth time was provided. This chart uses 12:00 local time at your birthplace. The Moon, ascendant, houses and aspects are estimates and may change with your actual birth time. Add your time to recalculate.'**
+  String get estimatedChartNote;
 
   /// No description provided for @chartRead.
   ///
   /// In en, this message translates to:
-  /// **'Read this chart'**
+  /// **'Full reading'**
   String get chartRead;
+
+  /// No description provided for @readingChart.
+  ///
+  /// In en, this message translates to:
+  /// **'The chart behind this reading'**
+  String get readingChart;
+
+  /// No description provided for @readingChartIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The reading below is based on this natal chart. Tap a planet to see its position.'**
+  String get readingChartIntro;
+
+  /// No description provided for @readingContents.
+  ///
+  /// In en, this message translates to:
+  /// **'In this reading'**
+  String get readingContents;
+
+  /// No description provided for @readingContentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a topic to jump to that section.'**
+  String get readingContentsHint;
+
+  /// No description provided for @backToChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to my chart'**
+  String get backToChart;
+
+  /// No description provided for @savedReadings.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading history'**
+  String get savedReadings;
+
+  /// No description provided for @noSavedReports.
+  ///
+  /// In en, this message translates to:
+  /// **'No reports yet'**
+  String get noSavedReports;
+
+  /// No description provided for @reportRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Report records'**
+  String get reportRecords;
+
+  /// No description provided for @reportRecordsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports are sorted by generation time. Search by report number to find a record.'**
+  String get reportRecordsIntro;
+
+  /// No description provided for @searchReportNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by report number'**
+  String get searchReportNumber;
+
+  /// No description provided for @clearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get clearSearch;
+
+  /// No description provided for @noMatchingReports.
+  ///
+  /// In en, this message translates to:
+  /// **'No report matches this number. Check the number and try again.'**
+  String get noMatchingReports;
+
+  /// No description provided for @reportNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Report number'**
+  String get reportNumberLabel;
+
+  /// No description provided for @generatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated on'**
+  String get generatedAt;
+
+  /// No description provided for @reportReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get reportReady;
+
+  /// No description provided for @reportRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating'**
+  String get reportRunning;
+
+  /// No description provided for @reportFailedShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Not completed'**
+  String get reportFailedShort;
+
+  /// No description provided for @deleteReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete report'**
+  String get deleteReport;
+
+  /// No description provided for @deleteReportConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this report record? You will no longer be able to open it from your records.'**
+  String get deleteReportConfirm;
+
+  /// No description provided for @reportDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Report record deleted'**
+  String get reportDeleted;
+
+  /// No description provided for @deleteReportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The report was kept because deletion failed. Please try again later.'**
+  String get deleteReportFailed;
+
+  /// No description provided for @reportDeleteBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'This report is still generating. Wait until it finishes before deleting it.'**
+  String get reportDeleteBusy;
+
+  /// No description provided for @loadReportsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Report records could not be loaded. Please try again.'**
+  String get loadReportsFailed;
+
+  /// No description provided for @refreshRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload records'**
+  String get refreshRecords;
+
+  /// No description provided for @chartReportsLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart readings have their own page. Open Chart to read yours.'**
+  String get chartReportsLocation;
 
   /// No description provided for @house.
   ///
@@ -1461,8 +1629,134 @@ abstract class AppLocalizations {
   /// No description provided for @reportFailedText.
   ///
   /// In en, this message translates to:
-  /// **'This reading could not be completed. Return to Reports and generate it again. Sample content will never replace your result.'**
+  /// **'This reading could not be completed yet. Use the button below to try again. Your chart has been kept.'**
   String get reportFailedText;
+
+  /// No description provided for @progressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating your reading'**
+  String get progressTitle;
+
+  /// No description provided for @progressIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Six topics are being prepared and checked. Your reading will open automatically when it is ready.'**
+  String get progressIntro;
+
+  /// No description provided for @progressPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your chart details'**
+  String get progressPreparing;
+
+  /// No description provided for @progressWriting.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing your personal reading'**
+  String get progressWriting;
+
+  /// No description provided for @progressChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the complete report'**
+  String get progressChecking;
+
+  /// No description provided for @progressRefining.
+  ///
+  /// In en, this message translates to:
+  /// **'Refining your reading and advice'**
+  String get progressRefining;
+
+  /// No description provided for @progressComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Your report is ready. Opening it now'**
+  String get progressComplete;
+
+  /// No description provided for @progressFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your reading is not complete yet'**
+  String get progressFailed;
+
+  /// No description provided for @progressTopics.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} of {total} topics prepared'**
+  String progressTopics(Object completed, Object total);
+
+  /// No description provided for @progressReturn.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to report'**
+  String get progressReturn;
+
+  /// No description provided for @progressReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get progressReconnect;
+
+  /// No description provided for @progressDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'The latest progress is temporarily unavailable. Your background task has not been cancelled. Reconnect or come back later.'**
+  String get progressDisconnected;
+
+  /// No description provided for @progressLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Come back later'**
+  String get progressLater;
+
+  /// No description provided for @progressPersonality.
+  ///
+  /// In en, this message translates to:
+  /// **'Personality and strengths'**
+  String get progressPersonality;
+
+  /// No description provided for @progressCareer.
+  ///
+  /// In en, this message translates to:
+  /// **'Career development'**
+  String get progressCareer;
+
+  /// No description provided for @progressMoney.
+  ///
+  /// In en, this message translates to:
+  /// **'Money habits'**
+  String get progressMoney;
+
+  /// No description provided for @progressRelationships.
+  ///
+  /// In en, this message translates to:
+  /// **'Relationships and family'**
+  String get progressRelationships;
+
+  /// No description provided for @progressWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Patterns to watch'**
+  String get progressWatch;
+
+  /// No description provided for @progressActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Practical next steps'**
+  String get progressActions;
+
+  /// No description provided for @reportServiceBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The reading service is temporarily busy, so your report is not ready yet. Your chart has been saved. Please try again later.'**
+  String get reportServiceBusy;
+
+  /// No description provided for @reportServiceTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The reading request timed out before your report was ready. Your chart has been saved. Please try again later.'**
+  String get reportServiceTimeout;
 
   /// No description provided for @roxyUnavailable.
   ///
