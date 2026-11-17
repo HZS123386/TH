@@ -12,42 +12,6 @@ import '../chart/chart_wheel.dart';
 import '../purchases/purchase_sheet.dart';
 import 'reports_view_model.dart';
 
-class ReportsTabPage extends StatelessWidget {
-  const ReportsTabPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppLocalizations.of(context);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PageHeading(s.reports, s.chartReportsLocation),
-          FateCard(
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.menu_book_outlined,
-                  size: 40,
-                  color: goldColor,
-                ),
-                const SizedBox(height: 18),
-                Text(s.noSavedReports, style: const TextStyle(fontSize: 18)),
-                const SizedBox(height: 20),
-                OutlinedButton(
-                  onPressed: () => context.go('/chart'),
-                  child: Text(s.continueChart),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class ReportsPage extends StatefulWidget {
   const ReportsPage({this.example = false, this.fromChart = false, super.key});
   final bool example, fromChart;

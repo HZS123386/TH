@@ -17,6 +17,13 @@ import '../ui/theme.dart';
 import 'app_opening.dart';
 import 'dependencies.dart';
 
+String _reportRecordsLocation(Map<String, String> parameters) =>
+    switch (parameters['origin']) {
+      'reports' => '/reports',
+      'profile' => '/chart/readings?from=profile',
+      _ => '/chart/readings',
+    };
+
 class FateApp extends StatefulWidget {
   const FateApp({
     required this.dependencies,
@@ -124,9 +131,7 @@ class _FateAppState extends State<FateApp> {
                 builder: (_, state) => _AppShell(
                   path: state.uri.path,
                   backLocation: state.uri.queryParameters['from'] == 'history'
-                      ? state.uri.queryParameters['origin'] == 'profile'
-                            ? '/chart/readings?from=profile'
-                            : '/chart/readings'
+                      ? _reportRecordsLocation(state.uri.queryParameters)
                       : state.uri.queryParameters['example'] == '1'
                       ? '/chart?example=1'
                       : '/chart',
@@ -148,9 +153,7 @@ class _FateAppState extends State<FateApp> {
                   )..remove('report');
                   final history = parameters['from'] == 'history';
                   final back = history
-                      ? parameters['origin'] == 'profile'
-                            ? '/chart/readings?from=profile'
-                            : '/chart/readings'
+                      ? _reportRecordsLocation(parameters)
                       : '/chart';
                   if (!history) parameters['from'] = 'generation';
                   final destination = Uri(
@@ -177,13 +180,19 @@ class _FateAppState extends State<FateApp> {
                       ? '/profile'
                       : '/chart',
                   child: ReportRecordsPage(
-                    fromProfile: state.uri.queryParameters['from'] == 'profile',
+                    origin: state.uri.queryParameters['from'] == 'profile'
+                        ? ReportRecordsOrigin.profile
+                        : ReportRecordsOrigin.chart,
                   ),
                 ),
               ),
             ],
           ),
-          GoRoute(path: '/reports', builder: (_, _) => const ReportsTabPage()),
+          GoRoute(
+            path: '/reports',
+            builder: (_, _) =>
+                const ReportRecordsPage(origin: ReportRecordsOrigin.reports),
+          ),
           GoRoute(path: '/profile', builder: (_, _) => const AccountPage()),
           GoRoute(path: '/birth', builder: (_, _) => const BirthPage()),
           GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
@@ -257,7 +266,9 @@ class _AppShell extends StatelessWidget {
                         : null)
                   : IconButton(
                       key: const ValueKey('reading-back'),
-                      tooltip: backLocation!.startsWith('/chart/readings')
+                      tooltip:
+                          backLocation == '/reports' ||
+                              backLocation!.startsWith('/chart/readings')
                           ? s.savedReadings
                           : backLocation == '/profile'
                           ? s.mine
@@ -299,7 +310,12 @@ class _AppShell extends StatelessWidget {
                   IconButton(
                     key: const ValueKey('chart-reading-history'),
                     tooltip: s.savedReadings,
-                    onPressed: () => context.go('/chart/readings'),
+                    onPressed: () => context.go(
+                      backLocation == '/reports' ||
+                              backLocation!.startsWith('/chart/readings')
+                          ? backLocation!
+                          : '/chart/readings',
+                    ),
                     icon: const Icon(Icons.history, size: 21),
                   ),
                 PopupMenuButton<String>(

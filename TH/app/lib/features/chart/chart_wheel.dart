@@ -3,6 +3,16 @@ import 'package:flutter/material.dart';
 import '../../core/models/calculation.dart';
 import '../../ui/theme.dart';
 
+Offset _planetCenter(Size size, CalculationSnapshot result, int index) {
+  final angle =
+      (180 + (result.ascendant ?? 0) - result.planets[index].longitude) *
+      pi /
+      180;
+  return Offset(size.width / 2, size.height / 2) +
+      Offset(cos(angle), sin(angle)) *
+          (size.width * (.32 + (index % 2) * .035));
+}
+
 class ChartWheel extends StatelessWidget {
   const ChartWheel({
     required this.result,
@@ -18,21 +28,23 @@ class ChartWheel extends StatelessWidget {
     aspectRatio: 1,
     child: LayoutBuilder(
       builder: (context, box) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // The wheel needs the real tap position, not a single semantic button's center.
+        excludeFromSemantics: true,
         onTapUp: (event) {
-          final center = Offset(box.maxWidth / 2, box.maxWidth / 2),
-              radius = box.maxWidth * .32;
+          final size = Size.square(box.maxWidth);
+          String? nearest;
+          var nearestDistance = 22.0;
           for (var i = 0; i < result.planets.length; i++) {
-            final p = result.planets[i],
-                a = (180 + (result.ascendant ?? 0) - p.longitude) * pi / 180;
-            final point =
-                center +
-                Offset(cos(a), sin(a)) *
-                    (radius + (i % 2) * box.maxWidth * .035);
-            if ((point - event.localPosition).distance < 22) {
-              onSelected(p.key);
-              return;
+            final distance =
+                (_planetCenter(size, result, i) - event.localPosition).distance;
+            // Nearby hit areas can overlap; ties follow the painter's stacking order.
+            if (distance <= nearestDistance) {
+              nearestDistance = distance;
+              nearest = result.planets[i].key;
             }
           }
+          if (nearest != null) onSelected(nearest);
         },
         child: CustomPaint(painter: _WheelPainter(result, selected)),
       ),
@@ -134,10 +146,7 @@ class _WheelPainter extends CustomPainter {
     }
     for (var i = 0; i < result.planets.length; i++) {
       final p = result.planets[i],
-          at = point(
-            p.longitude,
-            size.width * .32 + (i % 2) * size.width * .035,
-          ),
+          at = _planetCenter(size, result, i),
           active = p.key == selected;
       canvas.drawCircle(
         at,

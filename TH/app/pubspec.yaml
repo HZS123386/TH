@@ -27,6 +27,7 @@ flutter:
   generate: true
   assets:
     - assets/images/
+    - assets/images/zodiac/
     - assets/images/tarot/
     - assets/tarot/
     - assets/opening/

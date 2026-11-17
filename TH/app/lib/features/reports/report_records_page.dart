@@ -7,9 +7,11 @@ import '../../data/reports_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
 
+enum ReportRecordsOrigin { chart, profile, reports }
+
 class ReportRecordsPage extends StatefulWidget {
-  const ReportRecordsPage({this.fromProfile = false, super.key});
-  final bool fromProfile;
+  const ReportRecordsPage({this.origin = ReportRecordsOrigin.chart, super.key});
+  final ReportRecordsOrigin origin;
 
   @override
   State<ReportRecordsPage> createState() => _ReportRecordsPageState();
@@ -20,6 +22,12 @@ class _ReportRecordsPageState extends State<ReportRecordsPage> {
   Timer? debounce;
   String? loadedScope;
   bool searchPending = false;
+
+  Map<String, String> get readingParameters => {
+    'from': 'history',
+    if (widget.origin != ReportRecordsOrigin.chart)
+      'origin': widget.origin.name,
+  };
 
   void load() {
     if (!mounted) return;
@@ -36,7 +44,10 @@ class _ReportRecordsPageState extends State<ReportRecordsPage> {
   void openRecord(ReportReference reference) {
     DependencyScope.of(context).reports.resume(reference);
     context.go(
-      '/chart/reading?from=history${widget.fromProfile ? '&origin=profile' : ''}',
+      Uri(
+        path: '/chart/reading',
+        queryParameters: readingParameters,
+      ).toString(),
     );
   }
 
@@ -313,8 +324,15 @@ class _ReportRecordsPageState extends State<ReportRecordsPage> {
                                     onPressed: d.reports.removeExample,
                                     icon: const Icon(Icons.delete_outline),
                                   ),
-                                  onTap: () =>
-                                      context.go('/chart/reading?example=1'),
+                                  onTap: () => context.go(
+                                    Uri(
+                                      path: '/chart/reading',
+                                      queryParameters: {
+                                        ...readingParameters,
+                                        'example': '1',
+                                      },
+                                    ).toString(),
+                                  ),
                                 ),
                               ],
                             ),

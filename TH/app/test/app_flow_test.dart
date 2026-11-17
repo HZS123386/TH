@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -115,7 +116,7 @@ void main() {
     }
   });
   testWidgets(
-    'home opens the horoscope, tarot, daily number, and chart example',
+    'home hides upcoming tools while horoscope, saved tool routes, and chart work',
     (tester) async {
       tester.view.physicalSize = const Size(430, 932);
       tester.view.devicePixelRatio = 1;
@@ -204,6 +205,9 @@ void main() {
         findsOneWidget,
       );
       final s = AppLocalizationsEn();
+      final router = GoRouter.of(tester.element(find.byType(HomePage)));
+      expect(find.text(s.tarot), findsNothing);
+      expect(find.text(s.luckyNumbers), findsNothing);
       expect(find.text(s.thaiCalendarWaning(14)), findsOneWidget);
       expect(find.text(s.thaiCalendarMixed), findsOneWidget);
       expect(find.textContaining('08:24–10:48'), findsOneWidget);
@@ -261,9 +265,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(s.dailyHoroscopeToday(s.zTaurus)), findsOneWidget);
 
-      final tarot = find.text(s.tarot);
-      await tester.ensureVisible(tarot);
-      await tester.tap(tarot);
+      router.go('/fortune/tarot');
       await tester.pumpAndSettle();
       expect(find.text(s.tarotDrawHint), findsOneWidget);
       final tarotLabels = {for (var i = 1; i <= 30; i++) s.tarotChooseCard(i)};
@@ -289,9 +291,9 @@ void main() {
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
 
-      final luckyNumbers = find.text(s.luckyNumbers);
-      await tester.ensureVisible(luckyNumbers);
-      await tester.tap(luckyNumbers);
+      expect(find.text(s.tarot), findsNothing);
+      expect(find.text(s.luckyNumbers), findsNothing);
+      router.go('/fortune/lucky-numbers');
       await tester.pumpAndSettle();
       expect(find.text(s.todayLuckyNumber), findsOneWidget);
       final today = DateTime.now();

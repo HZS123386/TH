@@ -133,7 +133,11 @@ void main() {
                             'profile_revision': 1,
                             'report_number': number,
                             'created_at': 1794481200,
-                            'state': 'ready',
+                            'state': failed
+                                ? 'failed'
+                                : ready
+                                ? 'ready'
+                                : 'running',
                           },
                         ],
                 };
@@ -318,8 +322,11 @@ void main() {
             find.byKey(const ValueKey('app-bottom-navigation')),
             findsOneWidget,
           );
-          await tester.ensureVisible(read);
-          await tester.tap(read);
+          await tester.tap(find.byKey(const ValueKey('app-nav/reports')));
+          await tester.pumpAndSettle();
+          expect(find.text(s.reportRecords), findsOneWidget);
+          expect(find.text(number), findsOneWidget);
+          await tester.tap(find.byKey(const ValueKey('open-report-r1')));
           await tester.pumpAndSettle();
           expect(
             find.byKey(const ValueKey('reading-progress')),
@@ -327,6 +334,16 @@ void main() {
           );
           expect(find.text(s.progressTopics(1, 6)), findsOneWidget);
           expect(creates, 1);
+          await tester.ensureVisible(later);
+          await tester.tap(later);
+          await tester.pumpAndSettle();
+          expect(find.text(s.reportRecords), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('app-bottom-navigation')),
+            findsOneWidget,
+          );
+          await tester.tap(find.byKey(const ValueKey('open-report-r1')));
+          await tester.pumpAndSettle();
           transientPollFailure = true;
           await tester.pump(const Duration(seconds: 3));
           await tester.pumpAndSettle();
@@ -379,6 +396,11 @@ void main() {
           find.byKey(const ValueKey('app-bottom-navigation')),
           findsOneWidget,
         );
+        if (full && !estimated) {
+          expect(find.text(s.reportRecords), findsOneWidget);
+          await tester.tap(find.byKey(const ValueKey('app-nav/chart')));
+          await tester.pumpAndSettle();
+        }
         await tester.ensureVisible(read);
         await tester.tap(read);
         await tester.pumpAndSettle();
@@ -409,10 +431,48 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('app-nav/reports')));
         await tester.pumpAndSettle();
-        expect(find.text(s.noSavedReports), findsOneWidget);
+        expect(find.text(s.reportRecords), findsOneWidget);
+        expect(find.text(number), findsOneWidget);
         expect(find.text('Your personal chart summary'), findsNothing);
-        expect(find.widgetWithText(ListTile, s.reportTitle), findsNothing);
+        expect(find.widgetWithText(ListTile, s.reportTitle), findsOneWidget);
         expect(find.widgetWithText(FilledButton, s.generate), findsNothing);
+        expect(
+          find.byKey(const ValueKey('app-bottom-navigation')),
+          findsOneWidget,
+        );
+        final search = find.byKey(const ValueKey('report-number-search'));
+        await tester.enterText(search, 'missing');
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pumpAndSettle();
+        expect(find.text(s.noMatchingReports), findsOneWidget);
+        await tester.enterText(search, 'a1b2');
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pumpAndSettle();
+        expect(find.text(number), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('open-report-r1')));
+        await tester.pumpAndSettle();
+        expect(find.text('Your personal chart summary'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('app-bottom-navigation')),
+          findsNothing,
+        );
+        await tester.tap(back);
+        await tester.pumpAndSettle();
+        expect(find.text(s.reportRecords), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('app-bottom-navigation')),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const ValueKey('open-report-r1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('chart-reading-history')));
+        await tester.pumpAndSettle();
+        expect(find.text(s.reportRecords), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('app-bottom-navigation')),
+          findsOneWidget,
+        );
+        expect(creates, 1);
         await tester.tap(find.byKey(const ValueKey('app-nav/profile')));
         await tester.pumpAndSettle();
         final profileReports = find.byKey(
@@ -421,7 +481,6 @@ void main() {
         await tester.ensureVisible(profileReports);
         await tester.tap(profileReports);
         await tester.pumpAndSettle();
-        final search = find.byKey(const ValueKey('report-number-search'));
         await tester.enterText(search, 'missing');
         await tester.pump(const Duration(milliseconds: 350));
         await tester.pumpAndSettle();

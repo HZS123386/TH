@@ -8,6 +8,7 @@ import 'daily_horoscope.dart';
 import 'thai_calendar_card.dart';
 
 const homeHeroImage = AssetImage('assets/images/astrologer.webp');
+const _showUpcomingTools = false;
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -139,20 +140,22 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                   ),
-                _IllustratedFeatureCard(
-                  width: cardWidth,
-                  image: 'assets/images/theme-tarot.jpg',
-                  title: s.tarot,
-                  subtitle: s.tarotDraw,
-                  onTap: () => context.go('/fortune/tarot'),
-                ),
-                _IllustratedFeatureCard(
-                  width: cardWidth,
-                  image: 'assets/images/theme-lucky-numbers.jpg',
-                  title: s.luckyNumbers,
-                  subtitle: s.todayLuckyNumber,
-                  onTap: () => context.go('/fortune/lucky-numbers'),
-                ),
+                if (_showUpcomingTools) ...[
+                  _IllustratedFeatureCard(
+                    width: cardWidth,
+                    image: 'assets/images/theme-tarot.jpg',
+                    title: s.tarot,
+                    subtitle: s.tarotDraw,
+                    onTap: () => context.go('/fortune/tarot'),
+                  ),
+                  _IllustratedFeatureCard(
+                    width: cardWidth,
+                    image: 'assets/images/theme-lucky-numbers.jpg',
+                    title: s.luckyNumbers,
+                    subtitle: s.todayLuckyNumber,
+                    onTap: () => context.go('/fortune/lucky-numbers'),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 20),
