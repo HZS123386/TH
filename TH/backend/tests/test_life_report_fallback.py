@@ -19,6 +19,12 @@ from backend.app.storage import Storage
 from backend.tests.test_roxy_astrology import GOLDEN, HEADERS, PROFILE, draft, forecast_fixture, settings, unlock_after_simulated_payment
 
 
+@pytest.fixture(autouse=True)
+def legacy_fallback_contract(monkeypatch):
+    # Keep exercising retries and permissions for the retained saved-report contract.
+    monkeypatch.setattr("backend.app.life_reports.personal_chart", lambda chart: False)
+
+
 def fallback_settings(tmp_path):
     config = settings(tmp_path)
     config.fortune_provider = "openai"

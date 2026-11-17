@@ -1,6 +1,8 @@
 """Western astrology domain adapter: Roxy calculates, the report writer interprets."""
 import asyncio
 import hashlib
+import json
+import logging
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -58,8 +60,11 @@ SIGN_LABELS = {
 }
 ASPECTS = {"CONJUNCTION": ("合相", "กุม", "Conjunction", "Trùng tụ"), "OPPOSITION": ("对分相", "เล็ง", "Opposition", "Đối đỉnh"), "TRINE": ("三分相", "ตรีโกณ", "Trine", "Tam hợp"), "SQUARE": ("四分相", "ฉาก", "Square", "Vuông góc"), "SEXTILE": ("六分相", "โยค", "Sextile", "Lục hợp")}
 ASPECT_ANGLES = {"CONJUNCTION": 0, "SEXTILE": 60, "SQUARE": 90, "TRINE": 120, "OPPOSITION": 180}
-FORECAST_VERSION = "roxy-western-transits-1"
+FORECAST_VERSION = "roxy-western-transits-2"
 FORECAST_DAYS = 90
+FORECAST_EVENT_TYPES = {"transit-aspect", "sign-ingress", "retrograde-station", "eclipse", "lunar-phase"}
+FORECAST_REPORT_PLANETS = set(list(PLANETS)[:10])
+logger = logging.getLogger(__name__)
 
 # Extend the existing label tables in their established column order.
 LANGUAGE_COLUMNS = {code: index for index, code in enumerate(("zh", "th", "en", "vi", *REGIONAL_LANGUAGES))}
@@ -137,6 +142,8 @@ def validate_natal(operation, value, body):
 def validate_forecast(value, body):
     """Accept dated Western events only inside the provider's resolved window."""
     validate_json(value)
+    if not isinstance(value, dict):
+        raise RoxyError("roxy_invalid_response")
     birth = value.get("birthData", {})
     expected = body["birthData"]
     if (not isinstance(birth, dict) or birth.get("date") != expected["date"]
@@ -144,7 +151,8 @@ def validate_forecast(value, body):
         raise RoxyError("roxy_invalid_response")
     instant = datetime.fromisoformat(expected["date"] + "T" + expected["time"]).replace(tzinfo=ZoneInfo(expected["timezone"]))
     offset = instant.utcoffset().total_seconds() / 3600
-    if birth.get("timezone") not in (expected["timezone"], offset):
+    if birth.get("timezone") != expected["timezone"] and (
+            not finite_number(birth.get("timezone")) or birth["timezone"] != offset):
         raise RoxyError("roxy_invalid_response")
     start, end = date.fromisoformat(value["startDate"]), date.fromisoformat(value["endDate"])
     if (start.isoformat() != body["startDate"] or not start <= end <= date.fromisoformat(body["endDate"])
@@ -160,18 +168,28 @@ def validate_forecast(value, body):
         day = date.fromisoformat(event["date"])
         at = datetime.fromisoformat(event["datetime"].replace("Z", "+00:00"))
         if (not start <= day <= end or at.utcoffset() != timedelta(0) or at.date() != day
-                or event.get("domain") != "western" or event.get("type") not in ("transit-aspect", "retrograde-station")
+                or event.get("domain") != "western" or event.get("type") not in FORECAST_EVENT_TYPES
                 or event.get("body") not in PLANETS or not finite_number(event.get("significance"))
                 or not 0 <= event["significance"] <= 100 or not isinstance(event.get("description"), str)
                 or len(event["description"]) > 4096):
             raise RoxyError("roxy_invalid_response")
         if event["type"] == "transit-aspect" and (
                 event.get("target") not in PLANETS or not isinstance(event.get("aspect"), str)
-                or len(event["aspect"]) > 64
+                or event["aspect"].upper() not in ASPECTS
                 or not finite_number(event.get("orb")) or not 0 <= event["orb"] <= 180):
+            raise RoxyError("roxy_invalid_response")
+        if event["type"] in ("sign-ingress", "lunar-phase") and event.get("target") not in SIGNS:
             raise RoxyError("roxy_invalid_response")
         if event["type"] == "retrograde-station" and event.get("station") not in ("retrograde", "direct"):
             raise RoxyError("roxy_invalid_response")
+        if event["type"] == "lunar-phase" and (event["body"] != "Moon" or event.get("phase") not in ("new-moon", "full-moon")):
+            raise RoxyError("roxy_invalid_response")
+        if event["type"] == "eclipse":
+            kinds = {"Sun": {"partial", "annular", "total"}, "Moon": {"penumbral", "partial", "total"}}
+            if event.get("kind") not in kinds.get(event["body"], set()):
+                raise RoxyError("roxy_invalid_response")
+            if "obscuration" in event and (not finite_number(event["obscuration"]) or not 0 <= event["obscuration"] <= 1):
+                raise RoxyError("roxy_invalid_response")
 
 
 def validate_astrology(operation, value, body):
@@ -188,7 +206,7 @@ class RoxyAstrology(RoxyClient):
         super().__init__(settings, store, paths={"natal": "/astrology/natal-chart", "transits": "/forecast/transits"},
                          validator=validate_astrology)
 
-    async def forecast(self, profile, owner, network):
+    async def forecast(self, profile, owner, network, *, refresh=False):
         start = datetime.now(timezone.utc).date()
         window = {"version": FORECAST_VERSION, "start": start.isoformat(),
                   "end": (start + timedelta(days=FORECAST_DAYS - 1)).isoformat(), "timezone": "UTC"}
@@ -197,15 +215,23 @@ class RoxyAstrology(RoxyClient):
         body = {"birthData": {"date": profile.birth_date.isoformat(), "time": profile.birth_time + ":00",
                               "timezone": profile.timezone},
                 "startDate": window["start"], "endDate": window["end"], "minSignificance": 0}
+        if refresh:
+            # Retry only this subject's failed/empty forecast, retaining all other request caches and quotas.
+            key = hashlib.sha256(json.dumps(["transits", body, "en", owner], sort_keys=True).encode()).hexdigest()
+            self.cache.pop(key, None)
+            self.failures.pop(key, None)
         try:
             response = await self.request("transits", body, "en", owner, network)
-        except RoxyError:
-            return {**window, "state": "unavailable", "events": []}
+        except RoxyError as error:
+            logger.warning("Western forecast unavailable (%s)", error.code)
+            return {**window, "state": "unavailable", "failure_code": error.code, "events": []}
         raw = response["data"]
         # An exact transit marks a point within this seven-day observation window,
         # not a prediction that its effect lasts for all seven days.
         return {**window, "end": raw["endDate"], "state": "ready",
+                # Other valid event types remain outside the supported report-evidence model.
                 "events": sorted((row for row in raw["events"] if row["type"] == "transit-aspect"
+                                  and row["body"] in FORECAST_REPORT_PLANETS and row["target"] in FORECAST_REPORT_PLANETS
                                   and row["orb"] <= 6 and row["aspect"].upper() in ASPECTS),
                                  key=lambda row: (-row["significance"], row["datetime"], row["body"], row["target"]))}
 
@@ -226,7 +252,7 @@ class RoxyAstrology(RoxyClient):
             raise RoxyError("roxy_input_rejected")
         return place
 
-    async def calculate(self, profile, owner, network):
+    async def calculate(self, profile, owner, network, *, include_forecast=False):
         place = await self.resolve_place(profile)
         zone = profile.timezone
         clock = profile.birth_time or "12:00"
@@ -238,10 +264,23 @@ class RoxyAstrology(RoxyClient):
                 "longitude": place["longitude"], "timezone": zone, "houseSystem": "placidus", "nodeType": "true"}
         # Western Chinese coverage can fall back to English; Thai/Vietnamese are
         # unsupported upstream. Keep one canonical source language for the writer.
-        result = await self.request("natal", body, "en", owner, network)
+        if include_forecast:
+            # The two validated calculations are independent; keep their existing cache and quota checks.
+            tasks = [asyncio.create_task(self.request("natal", body, "en", owner, network)),
+                     asyncio.create_task(self.forecast(profile, owner, network))]
+            try:
+                result, forecast = await asyncio.gather(*tasks)
+            finally:
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+        else:
+            result = await self.request("natal", body, "en", owner, network)
         return {"provider": "roxy", "domain": self.domain, "version": VERSION, "status": "ready",
                 "location": place, "time_known": bool(profile.birth_time), "calculation_input": body,
-                "source": "https://roxyapi.com/docs/guides/astrology", "raw": result["data"]}
+                "source": "https://roxyapi.com/docs/guides/astrology", "raw": result["data"],
+                **({"forecast": forecast} if include_forecast else {})}
 
     @staticmethod
     def chart_view(chart, language):
@@ -357,3 +396,45 @@ class RoxyAstrology(RoxyClient):
                 "scope": SCOPES.get(reading, "personality, decision style and relationship needs"),
                 "forecast": {key: forecast[key] for key in ("state", "start", "end", "timezone") if key in forecast},
                 "translation_fields": {}, "fixed_translations": {}}
+
+    @staticmethod
+    def personal_events(chart):
+        if not chart.get("time_known") or chart.get("forecast", {}).get("state") != "ready":
+            return []
+        candidates = [event for event in chart["forecast"]["events"]
+                      if event.get("type") == "transit-aspect" and event.get("aspect", "").upper() in ("TRINE", "SEXTILE")
+                      and finite_number(event.get("orb")) and 0 <= event["orb"] <= 6
+                      and event.get("body") in FORECAST_REPORT_PLANETS and event.get("target") in FORECAST_REPORT_PLANETS
+                      and ({event["body"], event["target"]} & {"Sun", "Mercury", "Venus", "Jupiter"})]
+        chosen = {}
+        for event in sorted(candidates, key=lambda item: (item["date"], -item["significance"], item["datetime"], item["body"], item["target"])):
+            chosen.setdefault(event["date"][:7], event)
+        return [chosen[month] for month in sorted(chosen)[:3]]
+
+    @classmethod
+    def personal_bundle(cls, body, chart, *, full=False):
+        bundle = cls.bundle(body, chart, "natal")
+        language, known = body.profile.language, chart["time_known"]
+        facts = {key: value for key, value in bundle["evidence"].items() if value["type"] != "transit"}
+        signs = {}
+        for name, identifier, point in (("sun", "P_sun", next(row for row in chart["raw"]["planets"] if row["name"] == "Sun")),
+                                        ("ascendant", "P_ascendant", chart["raw"]["ascendant"] if known else None)):
+            signs[name] = ({"evidence_id": identifier, "sign": point["sign"],
+                            "label": SIGN_LABELS[language][SIGNS.index(point["sign"])]} if point else None)
+        months = []
+        if full:
+            for event in cls.personal_events(chart):
+                aspect = event["aspect"].upper()
+                identifier = "T_" + hashlib.sha256(f"{event['datetime']}|{event['body']}|{event['target']}|{aspect}".encode()).hexdigest()[:12]
+                facts[identifier] = {"type": "transit", "provider": "roxy", "start": event["date"], "end": event["date"],
+                    "event_date": event["date"], "datetime": event["datetime"], "timezone": "UTC",
+                    "planet": point_id(event["body"]), "target": point_id(event["target"]), "aspect": aspect, "orb": event["orb"],
+                    "title": f"{event['date']} · {PLANETS[event['body']][LANGUAGE_COLUMNS[language]]} · {PLANETS[event['target']][LANGUAGE_COLUMNS[language]]}",
+                    "detail": f"{ASPECTS[aspect][LANGUAGE_COLUMNS[language]]} · {event['orb']:.2f}° · UTC", "interpretation": event["description"]}
+                months.append({"month": event["date"][:7], "transit_id": identifier,
+                               "supporting_natal_ids": ["P_" + point_id(event["target"])]})
+        bundle.update(stage="personal_full" if full else "personal_preview", reading="personal-full" if full else "personal-preview",
+                      evidence=facts, personal_signs=signs, forecast={"state": chart.get("forecast", {}).get("state", "unavailable")})
+        bundle["topic_evidence"] = [key for key in bundle["topic_evidence"] if key in facts]
+        bundle["citation_rules"].update(topic_ids=bundle["topic_evidence"], timing_ids=[item["transit_id"] for item in months], months=months)
+        return bundle

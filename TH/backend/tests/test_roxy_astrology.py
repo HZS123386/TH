@@ -28,6 +28,12 @@ TEXT = "你做决定时往往先确认自己能够承担什么，再逐步增加
 DETAIL = "先把需要确认的条件写清楚，再与对方核对。"
 
 
+@pytest.fixture(autouse=True)
+def legacy_report_contract(monkeypatch):
+    # This module preserves the existing six-topic contract; personal flows have their own tests.
+    monkeypatch.setattr("backend.app.life_reports.personal_chart", lambda chart: False)
+
+
 def unlock_after_simulated_payment(client, path):
     assert client.post(path + "/unlock", headers=HEADERS).status_code == 402
     order = client.post(path + "/payment", json={}, headers=HEADERS)
@@ -66,23 +72,38 @@ def draft(bundle):
     timing = bundle["citation_rules"].get("timing_ids", [])
     summary = {"text": DETAIL, "evidence_ids": [timing[0], ids()[1]] if timing and bundle["stage"] == "chapter" else ids()}
     if bundle["stage"] == "preview":
+        summary["text"] = "你重视清楚踏实的选择，也愿意通过交流了解自己。"
+        identity = (
+            "你习惯先说清自己的想法，再认真理解不同意见。目标明确时，你更容易稳定投入，也能让合作顺畅。",
+            "面对不同选择，你愿意先看清方向再行动。条件变化时，可以先试一个小范围，再按反馈调整。",
+            "在亲近关系里，你重视坦诚，也愿意回应对方。当想法不同时，说清在意之处会比急着求同更舒服。",
+        )
         result = {**base, "summary": summary, "traits": [{"key": key, "title": title,
-                "text": TEXT + "例如面对临时安排，可以先问清楚目标和完成标准，决定从一个可检查的小范围开始。这样既能保留自己的判断，也给双方留下沟通和调整的余地。",
-                "evidence_ids": ids(key)} for key, title in zip(("strength", "decisions", "relationships"), ("发挥长处", "判断选择", "表达需要"))]}
+                "text": text, "evidence_ids": ids(key)}
+                for key, title, text in zip(("strength", "decisions", "relationships"), ("发挥长处", "判断选择", "表达需要"), identity)]}
         if bundle.get("preview_layout") == "four-questions":
-            result.update(environment=deepcopy(summary), favorable=deepcopy(summary), unfavorable=deepcopy(summary),
-                          response={"text": DETAIL, "evidence_ids": [bundle["citation_rules"].get("sample_ids", bundle["topic_evidence"])[0], ids()[1]]},
-                          recent={"text": DETAIL, "evidence_ids": [timing[0], ids()[1]]} if timing else None)
+            sample = [bundle["citation_rules"].get("sample_ids", bundle["topic_evidence"])[0], ids()[1]]
+            result.update(
+                environment={"text": "你更适合目标清楚、能够交流想法的环境。有人愿意听完你的意见，再一起确定分工时，你的投入往往更稳定，也更容易看见自己的长处。", "evidence_ids": ids()},
+                favorable={"text": "在工作协作中，先理解目标再表达想法，让你更容易发挥长处。遇到意见不同的情境，可以把在意的标准讲清楚，再听对方怎样安排，让讨论有一个共同的起点。", "evidence_ids": sample},
+                unfavorable={"text": "当每个人对结果的期待不同时，你可能会花时间反复确认。若等到所有疑问都有答案，事情容易迟迟无法开始。先约定能试做的小范围，再按实际反馈调整。", "evidence_ids": sample},
+                response={"text": "先选一个正在考虑的工作问题，把最在意的条件说清楚。", "evidence_ids": sample},
+                recent={"text": "接下来可以留意工作沟通中的节奏与边界。有人提出新安排时，先听清双方最看重的结果，再选一个能核对的小步骤。", "evidence_ids": [timing[0], ids()[1]]} if timing else None)
         return result
     def point(title, timing_index=None):
         topic = {"natal": "本命", "career": "工作", "wealth": "财务", "love": "相处", "risk": "提醒"}[bundle["reading"]]
         citations = [timing[min(timing_index, len(timing) - 1)], ids()[1]] if timing and timing_index is not None else ids()
         return {"title": topic + title, "text": topic + title + TEXT, "evidence_ids": citations}
-    return {**base, "summary": summary,
+    result = {**base, "summary": summary,
             "insights": [{**point("主动确认"), "example": DETAIL, "response": DETAIL}],
             "watchpoints": [{**point("留出余地"), "signals": [DETAIL], "response": DETAIL, "example": DETAIL}],
             "actions": [{**point(title, index), "steps": [DETAIL, "完成后对照原先约定，记录还需要调整的地方。"],
                          "example": DETAIL, "pitfall": DETAIL, "check": DETAIL} for index, title in enumerate(("核对条件", "检视反馈"))]}
+    if bundle["reading"] == "career":
+        for key, target in (("favorable", result["insights"][0]), ("unfavorable", result["watchpoints"][0]), ("recent", result["summary"])):
+            if source := bundle.get("free_excerpt", {}).get(key):
+                target.update(deepcopy(source))
+    return result
 
 
 @pytest.fixture
@@ -367,11 +388,17 @@ def test_landing_languages_generate_and_restore_complete_western_reports(tmp_pat
         seen.append(bundle)
         assert "vi=natural Vietnamese" in self.prompt(bundle)
         story = draft(bundle)
+        def sample_text(low, high, *, alternate=False):
+            value = detail + " " + paragraph if alternate else paragraph
+            while len(value) < low:
+                value += " " + detail
+            return value[:high].rstrip()
         if "summary" in story:
-            story["summary"]["text"] = detail
+            story["summary"]["text"] = sample_text(60, 85) if bundle["stage"] == "preview" else detail
         for key in ("environment", "favorable", "unfavorable", "recent", "response"):
             if story.get(key):
-                story[key]["text"] = detail
+                bounds = {"environment": (140, 170), "favorable": (180, 195), "unfavorable": (180, 195), "recent": (110, 140), "response": (60, 85)}[key]
+                story[key]["text"] = sample_text(*bounds, alternate=key == "unfavorable")
         rows = story.get("traits", []) + story.get("insights", []) + story.get("watchpoints", []) + story.get("actions", []) + story.get("phases", [])
         topic = {
             "en": {"natal": "Personal", "career": "Work", "wealth": "Money", "love": "Relationships", "risk": "Pressures"},
@@ -382,13 +409,17 @@ def test_landing_languages_generate_and_restore_complete_western_reports(tmp_pat
             topic = REGIONAL_LANGUAGES[language]["report_title"]
         for index, point in enumerate(rows):
             point["title"] = topic + ": " + titles[index]
-            point["text"] = point["title"] + ". " + (paragraph if bundle["stage"] != "plan" else detail)
+            point["text"] = sample_text(110, 135) if bundle["stage"] == "preview" else point["title"] + ". " + (paragraph if bundle["stage"] != "plan" else detail)
             for field in ("example", "response", "pitfall", "check"):
                 if field in point:
                     point[field] = detail
             for field in ("signals", "steps"):
                 if field in point:
                     point[field] = [detail] * len(point[field])
+        if bundle["reading"] == "career":
+            for key, target in (("favorable", story["insights"][0]), ("unfavorable", story["watchpoints"][0]), ("recent", story["summary"])):
+                if source := bundle.get("free_excerpt", {}).get(key):
+                    target.update(deepcopy(source))
         return self.validate(json.dumps(story, ensure_ascii=False), bundle)
 
     monkeypatch.setattr(LifeWriter, "write", write)
@@ -423,7 +454,7 @@ def test_writing_revision_creates_fresh_content_and_preserves_saved_reports(tmp_
         writes.append(bundle["stage"])
         story = draft(bundle)
         if len(writes) > 1:
-            story["summary"]["text"] = "你愿意认真理解眼前的感受，也可以给自己留下选择的余地。"
+            story["summary"]["text"] = "你也愿意理解自己的感受，给重要选择留些调整余地。"
         return self.validate(json.dumps(story, ensure_ascii=False), bundle)
 
     monkeypatch.setattr(LifeWriter, "write", write)
@@ -434,7 +465,7 @@ def test_writing_revision_creates_fresh_content_and_preserves_saved_reports(tmp_
         assert client.post("/api/life-reports", json=body, headers=HEADERS).json()["id"] == original["id"]
         assert writes == ["preview"]
 
-        monkeypatch.setattr("backend.app.life_reports.WESTERN_WRITING_VERSION", "test-next-writing-version")
+        monkeypatch.setattr("backend.app.life_reports.PERSONAL_WRITING_VERSION", "test-next-writing-version")
         monkeypatch.setattr("backend.app.life_report_content.WESTERN_WRITING_VERSION", "test-next-writing-version")
         revised = client.post("/api/life-reports", json=body, headers=HEADERS).json()
         assert revised["id"] != original["id"] and revised["preview_state"] == "ready"
@@ -460,7 +491,7 @@ def test_changing_writer_creates_new_report_without_rewriting_saved_preview(tmp_
         calls.append((self.provider, self.config.base_url, self.config.model, self.config.reasoning_effort))
         story = draft(bundle)
         if len(calls) > 1:
-            story["summary"]["text"] = "你可以先理解眼前的感受，再为接下来的选择留下调整的余地。"
+            story["summary"]["text"] = "你也愿意理解自己的感受，给重要选择留些调整余地。"
         return self.validate(json.dumps(story, ensure_ascii=False), bundle)
 
     monkeypatch.setattr(LifeWriter, "write", write)
@@ -510,6 +541,139 @@ def test_compact_provider_bounds_paragraphs_separately_from_summary(tmp_path, la
         assert text["minLength"] >= (35 if language == "zh" else 100)
         assert text["minLength"] < text["maxLength"] <= (100 if language == "zh" else 320)
     assert definitions["ReadingSummary"]["properties"]["text"]["maxLength"] == 240
+
+
+@pytest.mark.parametrize("provider", ["qwen", "openai"])
+@pytest.mark.parametrize("reading", ["love", "risk"])
+def test_actions_follow_their_assigned_timing_evidence_in_schema_prompt_and_correction(tmp_path, provider, reading):
+    config = settings(tmp_path)
+    config.fortune_provider = provider
+    config.providers.setdefault("openai", ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt"))
+    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    body = LifeInput.model_validate({"profile": PROFILE, "year": 2026})
+    forecast = forecast_fixture({"birthData": {"date": PROFILE["birth_date"], "time": PROFILE["birth_time"] + ":00", "timezone": PROFILE["timezone"]},
+                                 "startDate": "2026-11-16", "endDate": "2027-02-13"})
+    forecast["events"].append({**forecast["events"][0], "target": "Saturn"})
+    chart = {"provider": "roxy", "domain": "astrology", "time_known": True, "raw": GOLDEN,
+             "forecast": {"state": "ready", "start": "2026-11-16", "end": "2027-02-13", "events": forecast["events"]}}
+    bundle = RoxyAstrology.bundle(body, chart, reading)
+    identifiers = bundle["citation_rules"]["timing_ids"]
+    assert len(identifiers) == 2
+    story = draft(bundle)
+    original = deepcopy(story)
+    assert writer.validate(json.dumps(story, ensure_ascii=False), bundle)["actions"] == original["actions"]
+    properties = writer.response_format(bundle)["json_schema"]["schema"]["$defs"]["CompactAdvice"]["properties"]
+    assert set(properties["evidence_ids"]["items"]["enum"]) == set(identifiers + bundle["citation_rules"]["supporting_natal_ids"])
+    prompt = writer.prompt(bundle)
+    assert "EVERY insight, watchpoint and action" not in prompt
+    for index, identifier in enumerate(identifiers):
+        assert f'"actions[{index}]": ["{identifier}"]' in prompt
+        assert f"actions[{index}] requires {identifier}" in properties["evidence_ids"]["description"]
+        invalid = deepcopy(story)
+        invalid["actions"][index]["evidence_ids"][0] = identifiers[1 - index]
+        with pytest.raises(InvalidBaziReport, match=f"MUST cite {identifier}") as failure:
+            writer.validate(json.dumps(invalid, ensure_ascii=False), bundle)
+        assert bundle["evidence"][identifier]["start"] in str(failure.value)
+        assert '"required_timing_id": "' + identifier + '"' in failure.value.feedback
+        assert "without rewriting unsupported prose" in failure.value.feedback
+        assert story == original  # Citation errors never patch or relabel existing prose.
+
+
+@pytest.mark.parametrize("provider", ["qwen", "openai"])
+def test_career_excerpt_schema_and_validation_preserve_exact_free_content(tmp_path, provider):
+    config = settings(tmp_path)
+    config.fortune_provider = provider
+    config.providers.setdefault("openai", ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt"))
+    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    body = LifeInput.model_validate({"profile": PROFILE, "year": 2026})
+    forecast = forecast_fixture({"birthData": {"date": PROFILE["birth_date"], "time": PROFILE["birth_time"] + ":00", "timezone": PROFILE["timezone"]},
+                                 "startDate": "2026-11-16", "endDate": "2027-02-13"})
+    chart = {"provider": "roxy", "domain": "astrology", "time_known": True, "raw": GOLDEN,
+             "forecast": {"state": "ready", "start": "2026-11-16", "end": "2027-02-13", "events": forecast["events"]}}
+    bundle = RoxyAstrology.bundle(body, chart, "career")
+    free_bundle = {**bundle, "stage": "preview", "reading": "life-preview", "preview_layout": "four-questions"}
+    preview = writer.validate(json.dumps(draft(free_bundle), ensure_ascii=False), free_bundle)
+    bundle["free_excerpt"] = {key: deepcopy(preview[key]) for key in ("favorable", "unfavorable", "recent")}
+    story = draft(bundle)
+    writer.validate(json.dumps(story, ensure_ascii=False), bundle)
+    definitions = writer.response_format(bundle)["json_schema"]["schema"]["$defs"]
+    for source, definition, target in (("favorable", "Insight", story["insights"][0]),
+                                       ("unfavorable", "CompactWatch", story["watchpoints"][0]),
+                                       ("recent", "ReadingSummary", story["summary"])):
+        properties = definitions[definition]["properties"]
+        assert properties["text"]["const"] == preview[source]["text"]
+        assert properties["evidence_ids"]["items"]["enum"] == preview[source]["evidence_ids"]
+        assert "const" not in properties["evidence_ids"]
+        original = target["text"]
+        target["text"] = "你" + original[1:]
+        with pytest.raises(InvalidBaziReport, match="frozen free_excerpt"):
+            writer.validate(json.dumps(story, ensure_ascii=False), bundle)
+        target["text"] = original
+
+
+@pytest.mark.parametrize("provider", ["qwen", "openai"])
+@pytest.mark.parametrize("language", ["zh", "th"])
+@pytest.mark.parametrize("timed", [True, False])
+def test_western_preview_has_three_complete_bounded_paragraphs(tmp_path, provider, language, timed):
+    config = settings(tmp_path)
+    config.fortune_provider = provider
+    config.providers.setdefault("openai", ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt"))
+    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    body = LifeInput.model_validate({"profile": {**PROFILE, "language": language}, "year": 2026})
+    chart = {"provider": "roxy", "domain": "astrology", "time_known": True, "raw": GOLDEN}
+    if timed:
+        data = forecast_fixture({"birthData": {"date": PROFILE["birth_date"], "time": PROFILE["birth_time"] + ":00", "timezone": PROFILE["timezone"]},
+                                 "startDate": "2026-11-16", "endDate": "2027-02-13"})
+        chart["forecast"] = {"state": "ready", "start": "2026-11-16", "end": "2027-02-13", "events": data["events"]}
+    bundle = RoxyAstrology.bundle(body, chart, "overview")
+    bundle.update(stage="preview", reading="life-preview", preview_layout="four-questions")
+    story = draft(bundle)
+    char = "稳" if language == "zh" else "ก"
+    bounds = ({"summary": (20, 25), "traits": (35, 45), "environment": (50, 60), "favorable": (60, 65), "unfavorable": (60, 65), "recent": (40, 55), "response": (20, 25)} if language == "zh" else
+              {"summary": (60, 90), "traits": (110, 140), "environment": (140, 180), "favorable": (180, 200), "unfavorable": (180, 200), "recent": (110, 150), "response": (60, 90)})
+    total_bounds = ((355, 430) if timed else (315, 375)) if language == "zh" else ((1060, 1330) if timed else (950, 1180))
+    if language == "th":
+        for point, title in zip(story["traits"], ("จุดแข็งของคุณ", "แนวทางการเลือก", "การอยู่ร่วมกัน")):
+            point["title"] = title
+    for index in (0, 1):
+        for key, limits in bounds.items():
+            if key != "traits" and story.get(key) is not None:
+                story[key]["text"] = char * limits[index]
+        for trait in story["traits"]:
+            trait["text"] = char * bounds["traits"][index]
+        valid = writer.validate(json.dumps(story, ensure_ascii=False), bundle)
+        points = [valid["summary"], *valid["traits"], *(valid[key] for key in ("environment", "favorable", "unfavorable", "recent", "response") if valid[key] is not None)]
+        total = sum(len(point["text"]) for point in points)
+        assert total == total_bounds[index]
+        assert bool(valid["recent"]) is timed
+    for key, limits in bounds.items():
+        if key == "recent" and not timed:
+            continue
+        for outside in (limits[0] - 1, limits[1] + 1):
+            invalid = deepcopy(story)
+            point = invalid["traits"][0] if key == "traits" else invalid[key]
+            point["text"] = char * outside
+            with pytest.raises(InvalidBaziReport, match="preview|schema"):
+                writer.validate(json.dumps(invalid, ensure_ascii=False), bundle)
+    schema = writer.response_format(bundle)["json_schema"]["schema"]
+    for key, limits in bounds.items():
+        if key == "traits":
+            text = schema["$defs"]["Trait"]["properties"]["text"]
+            punctuation = 12 if language == "zh" else 0
+        else:
+            point = schema["properties"][key]
+            point = point["anyOf"][0] if "anyOf" in point else point
+            text = point["properties"]["text"]
+            punctuation = 20 if language == "zh" else 0
+        assert (text["minLength"], text["maxLength"]) == (limits[0], limits[1] + punctuation)
+    # Non-preview/legacy summaries keep their existing model contract.
+    assert schema["$defs"]["ReadingSummary"]["properties"]["text"]["maxLength"] == 240
+    for language in ("zh", "th", "en", "vi", "my", "km", "lo", "ms", "id"):
+        prompt = writer.prompt({**bundle, "language": language})
+        assert "about 400 Chinese Han characters" in prompt
+        assert "THREE natural paragraphs" in prompt and "1060-1330" in prompt
+        assert "about 100 Chinese" not in prompt and "only the short identity" not in prompt
+        assert "preview traits 180-600" not in prompt and "đặc điểm 180-600" not in prompt
 
 
 def test_compact_writer_rejects_foreign_evidence_and_excessive_text():
