@@ -3,6 +3,47 @@ import 'package:fate_h5/core/models.dart';
 import 'support.dart';
 
 void main() {
+  test(
+    'personal reports use four paid blocks and scrub injected private content from free exports',
+    () {
+      final data = personalFixture(full: true);
+      final full = LifeReport.parse(data);
+      expect(full.personalReport, isTrue);
+      expect(full.ready, isTrue);
+      expect(full.percent(false), 100);
+      expect(full.progressKeys, personalKeys);
+      data['access'] = 'preview';
+      final preview = LifeReport.parse(data);
+      expect(preview.hasPreview, isTrue);
+      expect(preview.talent, isEmpty);
+      expect(preview.nodes, isEmpty);
+      final personal = object(preview.exportPayload()['personal']);
+      expect(personal['talent'], isNull);
+      expect(personal['nodes'], isEmpty);
+      expect(personal['free_lines'], hasLength(3));
+    },
+  );
+  test(
+    'personal unavailable periods cannot create payment and unknown ascendant stays absent',
+    () {
+      final data = personalFixture();
+      final p = object(data['personal']);
+      p['availability'] = {
+        'full_report': false,
+        'reason': 'insufficient_periods',
+      };
+      data['personal'] = p;
+      expect(LifeReport.parse(data).canPay, isFalse);
+      final input = object(data['input']);
+      input['profile'] = {...object(input['profile']), 'birth_time': null};
+      data['input'] = input;
+      data['chart'] = null;
+      expect(() => LifeReport.parse(data), throwsFormatException);
+      p['ascendant_sign'] = null;
+      data['personal'] = p;
+      expect(LifeReport.parse(data).hasPreview, isTrue);
+    },
+  );
   for (final language in ['zh', 'th']) {
     test(
       '$language accepts six Western sections and keeps preview access gated',

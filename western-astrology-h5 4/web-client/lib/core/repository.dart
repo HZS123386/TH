@@ -268,6 +268,7 @@ class ReportRepository {
     String? id,
   }) async {
     var failures = 0;
+    var fastPollsRemaining = 8;
     while (true) {
       token.check();
       final report = LifeReport.parse(value, id: id, expectedInput: input);
@@ -283,6 +284,11 @@ class ReportRepository {
         throw ApiFailure('${full ? 'states' : 'previewStates'}.$state');
       }
       var delay = const Duration(seconds: 3);
+      // Keep a short final burst within the server's 30 requests/minute budget.
+      if (!full && percent >= 75 && fastPollsRemaining > 0) {
+        fastPollsRemaining--;
+        delay = const Duration(seconds: 1);
+      }
       while (true) {
         await token.pause(delay);
         try {

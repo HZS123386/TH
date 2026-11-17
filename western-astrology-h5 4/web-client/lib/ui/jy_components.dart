@@ -344,9 +344,15 @@ class _JYButtonState extends State<JYButton>
 }
 
 class ThemeBoards extends StatelessWidget {
-  const ThemeBoards({required this.copy, this.showHeading = true, super.key});
+  const ThemeBoards({
+    required this.copy,
+    this.showHeading = true,
+    this.personal = false,
+    super.key,
+  });
   final Copy copy;
   final bool showHeading;
+  final bool personal;
   @override
   Widget build(BuildContext context) => Stack(
     clipBehavior: Clip.none,
@@ -422,7 +428,15 @@ class ThemeBoards extends StatelessWidget {
     ],
   );
   Widget _board(String key, Rect crop, bool reverse) {
-    final themes = objects(object(copy.data['jyThemes'])[key]);
+    final themes = personal
+        ? [
+            for (final id
+                in key == 'outlook'
+                    ? personalKeys.take(2)
+                    : personalKeys.skip(2))
+              {'key': id, copy.language: copy.t('jy', 'personal.$id')},
+          ]
+        : objects(object(copy.data['jyThemes'])[key]);
     final art = Expanded(
       child: ClipPath(
         clipper: _Corners(),

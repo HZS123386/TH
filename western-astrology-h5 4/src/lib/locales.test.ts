@@ -37,6 +37,7 @@ describe("complete, distinct landing languages", () => {
       expect(lifeLabels(report).methodValue).toBe(copy.jy.chart.western);
       expect(reportContent(report).filter(section => section.paid)).toHaveLength(6);
       const html = reportHtml(report, lifeLabels(report));
+      expect(html).not.toContain(copy.jy.chart.western);
       expect(html).toContain(copy.jy.report.westernSections.plan);
       expect(html).toContain(secret);
       expect(html).not.toContain("Suriyayatra");

@@ -225,6 +225,86 @@ void main() {
       expect(request.headers.containsKey('X-Report-Key'), isFalse);
     },
   );
+  test(
+    'free preview polls sooner near completion and still waits for saved content',
+    () async {
+      final ready = fixture();
+      Json generating(int percent) => {
+        ...ready,
+        'preview': null,
+        'preview_state': 'generating',
+        'preview_generation_progress': {
+          'percent': percent,
+          'sections': [
+            for (final key in previewKeys) {'key': key, 'percent': percent},
+          ],
+        },
+      };
+      var reads = 0;
+      final token = ImmediateToken();
+      final percentages = <double>[];
+      final repo = ReportRepository(
+        TestBrowser(),
+        baseUrl: 'https://example.test',
+        client: MockClient(
+          (request) async => jsonResponse(
+            request.method == 'POST'
+                ? generating(20)
+                : reads++ == 0
+                ? generating(99)
+                : ready,
+          ),
+        ),
+      );
+      await repo.generate(
+        object(ready['input']),
+        token,
+        (_, percent, _) => percentages.add(percent),
+      );
+      expect(token.delays, [
+        const Duration(seconds: 3),
+        const Duration(seconds: 1),
+      ]);
+      expect(percentages, [20, 99, 100]);
+    },
+  );
+
+  test('a slow final preview stays below the server polling limit', () async {
+    final ready = fixture();
+    final generating = {
+      ...ready,
+      'preview': null,
+      'preview_state': 'generating',
+      'preview_generation_progress': {
+        'percent': 99,
+        'sections': [for (final key in previewKeys) {'key': key, 'percent': 99}],
+      },
+    };
+    final token = ImmediateToken();
+    final accepted = <int>[];
+    var reads = 0, rejected = 0;
+    final repo = ReportRepository(
+      TestBrowser(), baseUrl: 'https://example.test',
+      client: MockClient((request) async {
+        if (request.method == 'POST') return jsonResponse(generating);
+        final elapsed = token.delays.fold<int>(0, (sum, delay) => sum + delay.inSeconds);
+        accepted.removeWhere((time) => time <= elapsed - 60);
+        if (accepted.length >= 30) {
+          rejected++;
+          return http.Response('{"detail":"limited"}', 429, headers: {'retry-after': '30'});
+        }
+        accepted.add(elapsed);
+        return jsonResponse(reads++ < 40 ? generating : ready);
+      }),
+    );
+    final result = await repo.generate(object(ready['input']), token, (_, _, _) {});
+    expect(result.preview, isNotEmpty);
+    expect(rejected, 0);
+    expect(token.delays.fold<int>(0, (sum, delay) => sum + delay.inSeconds), greaterThan(60));
+    expect(token.delays, contains(const Duration(seconds: 1)));
+    expect(token.delays.last, const Duration(seconds: 3));
+  });
+
   test('cancel interrupts a long polling delay immediately', () async {
     final token = CancelToken();
     final wait = token.pause(const Duration(seconds: 60));

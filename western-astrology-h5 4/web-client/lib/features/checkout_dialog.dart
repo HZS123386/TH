@@ -165,7 +165,10 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    ThemeBoards(copy: c, showHeading: false),
+                    ReportBadges(
+                      key: const ValueKey('checkout-theme-badges'),
+                      copy: c,
+                    ),
                     const SizedBox(height: 16),
                     const Divider(height: 1, color: Color(0x40E4BC78)),
                     const SizedBox(height: 10),

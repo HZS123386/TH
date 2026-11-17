@@ -1,6 +1,6 @@
 import informationCopy from "../content/jy.json";
 import type { LifeLabels, LifePoint, LifeReport, LifeSummary } from "./lifeReport";
-import { reportContent, reportReference } from "./reportContent";
+import { previewParagraphs, reportContent, reportReference } from "./reportContent";
 import originalCopy from "../content/thai-test.json" with { type: "json" };
 import { additionalCopy, additionalLocales, localeTag, type Language } from "./locales";
 
@@ -219,12 +219,15 @@ export async function api<T>(
     throw new Error(ui[language].network);
   }
   const data = await response.json().catch(() => null);
-  if (!response.ok)
+  if (!response.ok) {
+    const detail = typeof data?.detail === "string" ? data.detail : ui[language].network;
+    const personal = language === "zh" || language === "th" ? informationCopy.jy[language].personal : additionalLocales[language].jy.personal;
     throw new ApiError(
-      typeof data?.detail === "string" ? data.detail : ui[language].network,
+      detail === "life_personal_time_required" ? personal.timeUnknown : detail === "life_personal_periods_unavailable" ? personal.unavailable : detail,
       response.status,
       retryAfterDelay(response.headers.get("Retry-After")),
     );
+  }
   if (!data) throw new Error(ui[language].badResult);
   return data as T;
 }
@@ -232,6 +235,7 @@ export async function api<T>(
 // Export only the server-returned preview until the complete version is ready.
 export function reportHtml(result: LifeReport, c: LifeLabels): string {
   const language = result.input.profile.language;
+  const personalCopy = result.format === "western-personal" ? (language === "zh" || language === "th" ? informationCopy.jy[language].personal : additionalLocales[language].jy.personal) : undefined;
   const sections = reportContent(result);
   const advice = sections.find(section => section.key === "advice");
   const full = result.access === "full" && result.full_state === "ready";
@@ -247,18 +251,36 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
   const typedQuestion = result.input.user_question ? '<h3>' + escape(result.input.user_question) + '</h3>' : '';
   let preview = result.preview ? '<section><p class="label">' + escape(c.preview) + '</p>' + careerAnswer + '<h2>' + escape(sections[1].title) + '</h2>' + typedQuestion + '<p class="takeaway">' + escape(result.preview.summary.text) + '</p>' + evidence(result.preview.summary) + '</section><section><h2>' + escape(sections[2].title) + '</h2>' + result.preview.traits.map(point).join('') + '</section>' : '';
   if (result.preview && reportCopy) {
-    const p = result.preview;
-    const answer = (value?: LifeSummary) => value ? window(value) + '<p class="takeaway">' + escape(value.text) + '</p>' + evidence(value) : '<p>' + escape(reportCopy.legacy) + '</p>';
-    const section = (title: string, content: string) => '<section><h2>' + escape(title) + '</h2>' + content + '</section>';
-    const timingNote = result.time_accuracy?.mode === 'estimated' ? reportCopy.timeUnknown : result.outlook?.state === 'ready' ? reportCopy.empty : result.outlook?.state === 'unavailable' ? reportCopy.unavailable : reportCopy.legacy;
-    preview = section(reportCopy.who, typedQuestion + answer(p.summary) + p.traits.map(point).join('') + careerAnswer)
-      + section(reportCopy.environment, answer(p.environment))
-      + section(reportCopy.influence, '<h3>' + escape(reportCopy.favorable) + '</h3>' + answer(p.favorable) + '<h3>' + escape(reportCopy.unfavorable) + '</h3>' + answer(p.unfavorable)
-        + (p.response ? '<h3>' + escape(reportCopy.freeResponse) + '</h3>' + answer(p.response) : ''))
-      + section(reportCopy.timing, (p.recent ? (p.sample_topic === 'career' ? '<h3>' + escape(reportCopy.freePeriod) + '</h3>' : '') + answer(p.recent) : '<p>' + escape(timingNote) + '</p>') + '<p>' + escape(reportCopy.timingNote) + '</p>');
+    preview = previewParagraphs(result).map(paragraph => paragraph.key === 'recent' && !paragraph.window
+      ? '<section class="reading-status"><p>' + escape(paragraph.text) + '</p></section>'
+      : '<section><h2>' + escape(paragraph.title) + '</h2>' + window(paragraph)
+        + '<p class="takeaway">' + escape(paragraph.text) + '</p>' + (paragraph.evidence.length ? evidence(paragraph) : '') + '</section>').join('');
   }
-  const catalog = '<section><h2>' + escape(c.catalog) + '</h2>' + sections.filter(section => full || !section.paid).map(section => '<h3>' + escape(section.title) + '</h3><p>' + escape(section.description) + '</p>').join('') + '</section>';
+  if (personalCopy) {
+    const personal = result.personal;
+    const structured = personal?.traits?.length === 3;
+    const planets = readingCopy(language).planets;
+    const separator = language === 'zh' ? '' : ' ';
+    const signs = [personal?.sun_sign ? planets.sun + separator + personal.sun_sign : '', personal?.ascendant_sign ? planets.ascendant + separator + personal.ascendant_sign : ''].filter(Boolean);
+    preview = '<section><h2>' + escape(personalCopy.freeTitle) + '</h2>' + (result.personal?.free_lines || []).map((line, index) => {
+      const key = (['keywords', 'traits', 'opportunity'] as const)[index];
+      const content = structured && index === 0
+        ? '<p class="personal-signs">' + signs.map((sign, index) => '<span>' + (index ? '+ ' : '') + escape(sign) + '</span>').join(' ') + '</p><p class="personal-keywords">' + personal!.traits!.slice(0, 2).map(trait => '<span>' + escape(trait.title) + '</span>').join(' ') + '</p><p class="personal-free-line">' + escape(personal!.free_lines[1]) + '</p>'
+        : structured && index === 1
+        ? personal!.traits!.map(trait => '<div class="personal-trait"><h4>' + escape(trait.title) + '</h4><p>' + escape(trait.text) + '</p></div>').join('')
+        : '<p class="personal-free-line">' + escape(line) + '</p>';
+      const action = index === 2 && personal?.opportunity_action ? '<p class="personal-opportunity-action">' + escape(personal.opportunity_action) + '</p>' : '';
+      return '<article class="personal-free-zone personal-free-' + key + '"><h3>' + escape(personalCopy[key]) + '</h3>' + content + action + '</article>';
+    }).join('') + '</section>';
+  }
+  const personalBody = full && personalCopy && result.personal?.talent ? '<section><h2>' + escape(personalCopy.talent) + '</h2><p>' + escape(result.personal.talent.text) + '</p>'
+    + result.personal.talent.directions.map(direction => '<article><h4>' + escape(direction.title) + '</h4><p>' + escape(direction.text) + '</p></article>').join('') + '</section>'
+    + result.personal.nodes.map(node => '<section class="personal-node"><h2>' + escape(node.month + ' · ' + node.theme) + '</h2>'
+      + (['benefit', 'caution', 'action'] as const).map(key => '<h4>' + escape(personalCopy[key]) + '</h4><p>' + escape(node[key]) + '</p>').join('')
+      + (node.evidence.length ? evidence({ text: '', evidence: node.evidence, period: null }) : '') + '</section>').join('') : '';
+  const catalog = personalCopy ? '' : '<section><h2>' + escape(c.catalog) + '</h2>' + sections.filter(section => full || !section.paid).map(section => '<h3>' + escape(section.title) + '</h3><p>' + escape(section.description) + '</p>').join('') + '</section>';
   const chapters = full ? sections.filter(section => section.paid && section.groups.length).map(section => '<section><h2>' + escape(section.title) + '</h2>' + section.summaries.map(summary => window(summary) + '<p class="takeaway">' + escape(summary.text) + '</p>' + evidence(summary)).join('') + section.groups.map(group => '<h3>' + escape(group.title) + '</h3>' + group.entries.map(entry => point(entry.point)).join('')).join('') + '</section>').join('') : '';
   const plan = full && result.plan && advice ? '<section><h2>' + escape(advice.title) + '</h2><p>' + escape(advice.description) + '</p>' + result.plan.phases.map((phase,index) => '<h3>' + escape(c.priority) + ' ' + (index + 1) + '</h3><h4>' + escape(phase.title) + '</h4><p>' + escape(phase.text) + '</p>' + phase.actions.map(action => '<h4>' + escape(action.title) + '</h4>' + window(action) + list(action.steps || [],true)).join('')).join('') + '</section>' : '';
-  return '<!doctype html><html lang="' + language + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(c.title) + '</title><style>html{background:#130c24;color-scheme:dark}*{box-sizing:border-box}body{max-width:820px;margin:0 auto;padding:40px 28px;background:radial-gradient(ellipse at 0 0,#352044,transparent 55%),#130c24;color:#fff5df;font:15px/1.95 "Noto Sans SC","Noto Sans Thai",system-ui,sans-serif}h1,h2,h3,h4,h5{break-after:avoid}h1{font-size:36px;font-weight:500}h2{font-size:25px;color:#e4bc78}h3{font-size:19px;color:#e4bc78}h4{font-size:17px;margin:0 0 12px}h5{font-size:14px;color:#e4bc78;margin-bottom:6px}p,li{overflow-wrap:anywhere;color:#d5c8e3}p{margin:12px 0}.label{font-size:12px;color:#e4bc78}.takeaway{font-size:20px;color:#fff5df}section{border-top:1px solid #e4bc7850;margin-top:34px;padding-top:18px}article{margin:26px 0;padding:18px;background:#21162f;border:1px solid #e4bc7830;border-radius:12px;break-inside:avoid}details{font-size:12px;background:#160f24;border:1px solid #e4bc7830;border-radius:8px;padding:12px;margin-top:16px;color:#b4a8c6}summary{color:#e4bc78;cursor:pointer}li{padding-left:4px;margin:10px 0}header{border:1px solid #e4bc7860;border-radius:16px;padding:24px;background:#241535}footer{margin-top:36px;font-size:11px;color:#b4a8c6}@page{size:A4;margin:16mm}@media print{html,body{background:#130c24!important;color:#fff5df;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:0;max-width:none;font-size:11pt}details{display:block}details>*{display:block}article{break-inside:auto}section{break-before:auto}}</style></head><body><header><p class="label">FATE</p><h1>' + escape(c.title) + '</h1><p>' + escape(c.subtitle) + '</p><h2>' + escape(sections[0].title) + '</h2><p>' + escape(c.name) + ': ' + escape(result.input.profile.display_name || c.defaultName) + '</p><p>' + escape(result.input.profile.birth_date) + ' · ' + escape(result.input.profile.birth_time || c.timeUnknown) + '<br>' + escape(result.input.profile.birthplace) + ' · ' + escape(result.input.profile.timezone) + '</p>' + (!result.input.profile.birth_time ? '<p>' + escape(ui[language].timeNote) + '</p>' : '') + '<p class="label">' + escape(c.methodValue) + '<br>' + escape(c.timeRange) + ': ' + escape(reportReference(result, c)) + '<br>' + escape(result.id.toUpperCase()) + '</p></header>' + preview + catalog + chapters + plan + '<footer>' + escape(c.sourceVersion) + ' · ' + escape(result.method.version) + ' / ' + escape(result.version) + '</footer></body></html>';
+  const header = personalCopy ? '<header><p class="label">FATE</p><h1>' + escape(personalCopy.title) + '</h1></header>' : '<header><p class="label">FATE</p><h1>' + escape(c.title) + '</h1><p>' + escape(c.subtitle) + '</p><h2>' + escape(sections[0].title) + '</h2><p>' + escape(c.name) + ': ' + escape(result.input.profile.display_name || c.defaultName) + '</p><p>' + escape(result.input.profile.birth_date) + ' · ' + escape(result.input.profile.birth_time || c.timeUnknown) + '<br>' + escape(result.input.profile.birthplace) + ' · ' + escape(result.input.profile.timezone) + '</p>' + (!result.input.profile.birth_time ? '<p>' + escape(ui[language].timeNote) + '</p>' : '') + '<p class="label">' + (result.format === 'western-compact' ? '' : escape(c.methodValue) + '<br>') + escape(c.timeRange) + ': ' + escape(reportReference(result, c)) + '<br>' + escape(result.id.toUpperCase()) + '</p></header>';
+  return '<!doctype html><html lang="' + language + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(c.title) + '</title><style>html{background:#130c24;color-scheme:dark}*{box-sizing:border-box}body{max-width:820px;margin:0 auto;padding:40px 28px;background:radial-gradient(ellipse at 0 0,#352044,transparent 55%),#130c24;color:#fff5df;font:15px/1.95 "Noto Sans SC","Noto Sans Thai",system-ui,sans-serif}h1,h2,h3,h4,h5{break-after:avoid}h1{font-size:36px;font-weight:500}h2{font-size:25px;color:#e4bc78}h3{font-size:19px;color:#e4bc78}h4{font-size:17px;margin:0 0 12px}h5{font-size:14px;color:#e4bc78;margin-bottom:6px}p,li{overflow-wrap:anywhere;color:#d5c8e3}p{margin:12px 0}.label{font-size:12px;color:#e4bc78}.takeaway{font-size:20px;color:#fff5df}section{border-top:1px solid #e4bc7850;margin-top:34px;padding-top:18px}.personal-free-keywords{background:linear-gradient(135deg,#422650,#251733);border-color:#d5ae7080}.personal-signs{font-size:26px;font-weight:700;line-height:1.4;color:#fff5df;margin:10px 0}.personal-signs span{display:inline-block;margin-right:6px}.personal-keywords{display:flex;flex-wrap:wrap;gap:8px}.personal-keywords span{padding:2px 12px;border:1px solid #d5ae70;border-radius:30px;color:#e4bc78;font-size:13px}.personal-trait{padding:12px 0}.personal-trait+.personal-trait{border-top:1px solid #d5ae7044}.personal-trait h4{margin:0;font-size:16px}.personal-trait p{margin:3px 0 0;font-size:14px;line-height:1.6}.personal-free-opportunity .personal-free-line{font-size:20px;font-weight:600;color:#fff5df}.personal-free-zone h3{margin:0 0 8px;font-size:14px}.personal-free-zone{margin:16px 0}.personal-free-opportunity{background:linear-gradient(135deg,#463344,#2b1c35);border-color:#d5ae7080}article{margin:26px 0;padding:18px;background:#21162f;border:1px solid #e4bc7830;border-radius:12px;break-inside:avoid}details{font-size:12px;background:#160f24;border:1px solid #e4bc7830;border-radius:8px;padding:12px;margin-top:16px;color:#b4a8c6}summary{color:#e4bc78;cursor:pointer}li{padding-left:4px;margin:10px 0}header{border:1px solid #e4bc7860;border-radius:16px;padding:24px;background:#241535}footer{margin-top:36px;font-size:11px;color:#b4a8c6}@page{size:A4;margin:16mm}@media print{html,body{background:#130c24!important;color:#fff5df;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:0;max-width:none;font-size:11pt}details{display:block}details>*{display:block}article{break-inside:auto}section{break-before:auto}}</style></head><body>' + header + preview + personalBody + catalog + chapters + plan + (personalCopy ? '' : '<footer>' + escape(c.sourceVersion) + ' · ' + escape(result.method.version) + ' / ' + escape(result.version) + '</footer>') + '</body></html>';
 }

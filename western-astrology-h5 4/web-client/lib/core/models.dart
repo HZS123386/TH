@@ -18,6 +18,7 @@ const fortuneKeys = [
   'romance',
 ];
 const westernKeys = ['natal', 'career', 'wealth', 'love', 'risk'];
+const personalKeys = ['talent', 'node-1', 'node-2', 'node-3'];
 const previewKeys = [
   'preview_summary',
   'preview_strength',
@@ -53,8 +54,9 @@ class Copy {
     };
     if (report.western) {
       labels['methodValue'] = forLanguage(language).t('jy', 'chart.western');
-      labels['plan'] = forLanguage(language)
-          .t('jy', 'report.westernSections.plan');
+      labels['plan'] = forLanguage(
+        language,
+      ).t('jy', 'report.westernSections.plan');
     }
     final question = object(report.input['career_question']);
     if (question.isNotEmpty) {
@@ -181,11 +183,25 @@ class LifeReport {
       full &&
       json['full_state'] == 'ready' &&
       json['preview_state'] == 'ready' &&
-      preview.isNotEmpty &&
+      hasPreview &&
       object(json['progress'])['completed'] ==
           object(json['progress'])['total'];
   bool get career => input['career'] != null;
-  bool get western => json['format'] == 'western-compact';
+  bool get personalReport => json['format'] == 'western-personal';
+  bool get western => personalReport || json['format'] == 'western-compact';
+  Json get personal => object(json['personal']);
+  List<String> get freeLines =>
+      (personal['free_lines'] as List? ?? []).map(text).toList();
+  List<Json> get freeTraits => objects(personal['traits']);
+  String get opportunityAction => text(personal['opportunity_action']);
+  bool get hasPreview => personalReport
+      ? freeLines.length == 3 &&
+            freeLines.every((line) => line.trim().isNotEmpty)
+      : preview.isNotEmpty;
+  Json get talent => full ? object(personal['talent']) : {};
+  List<Json> get nodes => full ? objects(personal['nodes']) : [];
+  String get availabilityReason =>
+      text(object(personal['availability'])['reason']);
   Json get preview => object(json['preview']);
   List<Json> get catalog => objects(json['catalog']);
   List<Json> get chapters => full ? objects(json['chapters']) : [];
@@ -195,10 +211,14 @@ class LifeReport {
   bool get paysoTest => price['mode'] == 'payso_test';
   bool get orderOnly => price['mode'] == 'sunlands_order_only';
   bool get canPay =>
-      orderOnly || paysoTest || json['payment_simulation'] == true;
+      (!personalReport ||
+          object(personal['availability'])['full_report'] == true) &&
+      (orderOnly || paysoTest || json['payment_simulation'] == true);
   bool get estimated => object(json['time_accuracy'])['mode'] == 'estimated';
   List<String> get progressKeys => career
       ? ['work']
+      : personalReport
+      ? personalKeys
       : western
       ? [...westernKeys, 'plan']
       : input['report_kind'] == 'fortune'
@@ -211,8 +231,11 @@ class LifeReport {
     final catalog = objects(row['catalog']), progress = object(row['progress']);
     final language = profile['language'];
     final price = object(row['price']);
+    final isPersonal = row['format'] == 'western-personal';
     final expectedCount = input['career'] != null
         ? 1
+        : isPersonal
+        ? 4
         : row['format'] == 'western-compact'
         ? 5
         : input['report_kind'] == 'fortune'
@@ -247,7 +270,13 @@ class LifeReport {
             catalog.any((c) => !westernKeys.contains(c['key'])))) {
       throw const FormatException('invalid_catalog');
     }
-    if (row['format'] != 'western-compact' &&
+    if (isPersonal &&
+        (catalog.map((c) => c['key']).toSet().length != 4 ||
+            catalog.any((c) => !personalKeys.contains(c['key'])))) {
+      throw const FormatException('invalid_catalog');
+    }
+    if (!isPersonal &&
+        row['format'] != 'western-compact' &&
         input['report_kind'] == 'fortune' &&
         input['career'] == null &&
         (catalog.map((c) => c['key']).toSet().length != 7 ||
@@ -261,6 +290,78 @@ class LifeReport {
       throw const FormatException('invalid_preview');
     }
     final report = LifeReport._(row);
+    if (isPersonal) {
+      final personal = report.personal;
+      final lines = personal['free_lines'];
+      final traits = personal['traits'];
+      final opportunityAction = personal['opportunity_action'];
+      final availability = object(personal['availability']);
+      if (traits != null &&
+              (traits is! List ||
+                  ![0, 3].contains(traits.length) ||
+                  traits.any(
+                    (item) =>
+                        item is! Map ||
+                        item['title'] is! String ||
+                        text(item['title']).trim().isEmpty ||
+                        item['text'] is! String ||
+                        text(item['text']).trim().isEmpty,
+                  )) ||
+          opportunityAction != null && opportunityAction is! String) {
+        throw const FormatException('invalid_personal_preview');
+      }
+      if (row['preview'] != null ||
+          objects(row['chapters']).isNotEmpty ||
+          row['plan'] != null ||
+          personal.isNotEmpty &&
+              (lines is! List ||
+                  lines.length > 3 ||
+                  lines.any((line) => line is! String) ||
+                  availability['full_report'] is! bool ||
+                  ![
+                    'ready',
+                    'time_unknown',
+                    'unavailable',
+                    'insufficient_periods',
+                  ].contains(availability['reason'])) ||
+          row['preview_state'] == 'ready' &&
+              (!report.hasPreview ||
+                  text(personal['sun_sign']).isEmpty ||
+                  personal['ascendant_sign'] != null &&
+                      personal['ascendant_sign'] is! String) ||
+          text(profile['birth_time']).isEmpty &&
+              personal['ascendant_sign'] != null) {
+        throw const FormatException('invalid_personal_report');
+      }
+      if (row['full_state'] == 'ready' && report.full) {
+        final talent = report.talent,
+            directions = objects(report.talent['directions']),
+            nodes = report.nodes;
+        if (text(talent['text']).isEmpty ||
+            directions.length != 3 ||
+            directions.any(
+              (item) =>
+                  text(item['title']).isEmpty || text(item['text']).isEmpty,
+            ) ||
+            nodes.length != 3 ||
+            nodes.map((item) => item['month']).toSet().length != 3 ||
+            nodes.any(
+              (item) =>
+                  !RegExp(
+                    r'^\d{4}-(0[1-9]|1[0-2])$',
+                  ).hasMatch(text(item['month'])) ||
+                  [
+                    'theme',
+                    'benefit',
+                    'caution',
+                    'action',
+                  ].any((key) => text(item[key]).trim().isEmpty) ||
+                  item['evidence'] is! List,
+            )) {
+          throw const FormatException('invalid_personal_content');
+        }
+      }
+    }
     if (row['chart'] != null) {
       final chart = object(row['chart']);
       final planets = objects(chart['planets']),
@@ -330,7 +431,7 @@ class LifeReport {
   double percent(bool complete) {
     final done = complete
         ? ready
-        : preview.isNotEmpty && json['preview_state'] == 'ready';
+        : hasPreview && json['preview_state'] == 'ready';
     if (done) return 100;
     final detail = object(
       json[complete ? 'generation_progress' : 'preview_generation_progress'],
@@ -349,6 +450,8 @@ class LifeReport {
     if (!ready) 'access': 'preview',
     if (!ready) 'chapters': <Json>[],
     if (!ready) 'plan': null,
+    if (personalReport && !ready)
+      'personal': {...personal, 'talent': null, 'nodes': <Json>[]},
   };
 }
 

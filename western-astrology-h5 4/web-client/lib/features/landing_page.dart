@@ -645,7 +645,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                           : () => _generate(h5),
                     ),
                     const SizedBox(height: 19),
-                    ThemeBoards(copy: c),
+                    ThemeBoards(copy: c, personal: true),
                   ],
                 ),
               ),

@@ -24,8 +24,9 @@
       "swipe": "Geser ke atas untuk mulai"
     },
     "persona": "Astrolog AI pribadi Anda",
+      "personal": {"title": "Bacaan astrologi Barat pribadi Anda", "freeTitle": "Bacaan gratis", "freeHint": "Kenali kepribadian alami dan cara Anda mengekspresikan diri.", "paidHint": "Bakat pribadi dan tiga bulan penting", "talent": "Bakat pribadi", "node-1": "Peluang pertama", "node-2": "Peluang kedua", "node-3": "Peluang ketiga", "benefit": "Hal yang mendukung", "caution": "Pengingat ringan", "action": "Langkah kecil", "timeUnknown": "Tambahkan waktu lahir yang akurat untuk mengakses bacaan pribadi lengkap.", "unavailable": "Informasi bulanan belum lengkap sehingga bacaan lengkap belum tersedia.", "nodesTitle": "Tiga bulan penting", "keywords": "Kata kunci bagan Anda", "traits": "Ciri pribadi", "opportunity": "Peluang dalam waktu dekat"},
     "formTitle": "Kenali diri melalui bagan kelahiran",
-    "formCaption": "Baca sifat diri gratis, lalu jelajahi enam tema",
+    "formCaption": "Mulai dengan bacaan gratis, lalu kenali bakat Anda dan tiga bulan yang spesifik.",
     "topicLabel": "Isi pembacaan Anda",
     "date": "Tanggal lahir",
     "calendar": "Kalender Masehi",
@@ -165,7 +166,8 @@
     "report": {
       "title": "Laporan bagan kelahiran Anda",
       "freeTitle": "Pembacaan gratis Anda",
-      "freeHint": "Kenali kepribadian, lingkungan, satu faktor pendukung, satu perhatian dan tema terdekat. Buka periode, dasar analisis dan langkah praktis.",
+      "freeHint": "Kepribadian, pengaruh lingkungan dan tren dalam waktu dekat.",
+        "previewParagraphs": {"identity": "Kepribadian dan potensi", "environment": "Lingkungan dan pengaruh", "recent": "Hal yang perlu diperhatikan", "legacyEnvironment": "Laporan tersimpan ini belum memiliki informasi lengkap tentang lingkungan dan pengaruhnya. Buat laporan baru untuk membacanya.", "legacyRecent": "Laporan tersimpan ini tidak memuat informasi waktu dalam periode terdekat. Buat laporan baru untuk membacanya."},
       "contents": "Isi laporan",
       "sections": {
         "overall": "Gambaran kehidupan",
@@ -190,7 +192,7 @@
       },
       "housesUnavailable": "Waktu lahir tepat diperlukan untuk menampilkan rumah tema ini",
       "readingUnavailable": "Belum ada pembacaan untuk posisi yang dipastikan pada tema ini"
-    , "questions": {"who": "Siapakah saya?", "environment": "Lingkungan apa yang mungkin sesuai?", "influence": "Bagaimana lingkungan dapat memengaruhi saya?", "timing": "Kapan perlu lebih memperhatikan?", "identityDetails": "Lihat kepribadian, kekuatan dan keterbatasan", "favorable": "Faktor pendukung", "unfavorable": "Pola yang perlu diperhatikan", "window": "Periode pengamatan", "eventDate": "Tanggal hasil perhitungan", "timeUnknown": "Waktu lahir yang tepat diperlukan untuk periode pribadi. Lengkapi lalu buat laporan baru.", "unavailable": "Data waktu belum tersedia saat laporan ini dibuat, sehingga tren berdasarkan waktu tidak disimpulkan.", "empty": "Belum ada penanda waktu pribadi untuk ditampilkan dalam sampel gratis ini. Ini bukan berarti kehidupan tidak akan berubah.", "legacy": "Laporan lama ini belum memuat bagian ini. Buat laporan baru untuk empat pertanyaan.", "timingNote": "Gunakan periode ini untuk mengamati tema dan merencanakan percakapan, bukan jaminan kejadian. Tanggal memakai UTC.", "freeResponse": "Satu saran karier gratis", "freePeriod": "Satu periode karier untuk diperhatikan"}},
+    , "questions": {"who": "Siapakah saya?", "environment": "Lingkungan apa yang mungkin sesuai?", "influence": "Bagaimana lingkungan dapat memengaruhi saya?", "timing": "Kapan perlu lebih memperhatikan?", "identityDetails": "Lihat kepribadian, kekuatan dan keterbatasan", "favorable": "Faktor pendukung", "unfavorable": "Pola yang perlu diperhatikan", "window": "Periode pengamatan", "eventDate": "Tanggal hasil perhitungan", "timeUnknown": "Tanpa waktu lahir yang akurat, periode pribadi belum dapat ditentukan.", "unavailable": "Data waktu belum tersedia saat laporan ini dibuat, sehingga tren berdasarkan waktu tidak disimpulkan.", "empty": "Belum ada penanda waktu pribadi untuk ditampilkan dalam sampel gratis ini. Ini bukan berarti kehidupan tidak akan berubah.", "legacy": "Laporan lama ini belum memuat bagian ini. Buat laporan baru untuk empat pertanyaan.", "timingNote": "Periode ini hanya sebagai acuan, bukan jaminan suatu peristiwa akan terjadi.", "freeResponse": "Saran saat ini", "freePeriod": "Tren karier"}},
     "chart": {
       "title": "Bagan kelahiran Anda",
       "exact": "Suriyayatra Thai · Rumah tanda penuh",

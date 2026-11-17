@@ -116,7 +116,13 @@ class _GenerationDialogState extends State<GenerationDialog> {
   }
 
   void _advance() {
-    if (!mounted || !_reviewDone || widget.state.error.isNotEmpty) return;
+    if (!mounted || widget.state.error.isNotEmpty) return;
+    if (!widget.full && widget.state.complete) {
+      // Validated free content is ready; the presentation must not keep the reader waiting.
+      _finish();
+      return;
+    }
+    if (!_reviewDone) return;
     if (!_reduced && _step == 0 && widget.state.report != null) {
       setState(() => _step = 1);
       _stageTimer = Timer(const Duration(milliseconds: 2400), () {
@@ -333,14 +339,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                                   style: const TextStyle(
                                                     color: gold,
                                                     fontSize: 12,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  c.t('jy', 'generation.basis'),
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: lavender,
                                                   ),
                                                 ),
                                               ],

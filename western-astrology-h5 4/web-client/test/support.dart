@@ -13,6 +13,78 @@ Json fixture({String language = 'zh', bool full = false}) => object(
 Json translations() =>
     object(jsonDecode(File('assets/copy.json').readAsStringSync()));
 
+Json personalFixture({String language = 'zh', bool full = false}) {
+  final data = fixture(language: language);
+  data.addAll({
+    'format': 'western-personal',
+    'preview': null,
+    'chapters': <Json>[],
+    'plan': null,
+    'preview_state': 'ready',
+    'full_state': full ? 'ready' : 'not_started',
+    'access': full ? 'full' : 'preview',
+    'price': {
+      'amount': 3000,
+      'currency': 'THB',
+      'display': '฿30',
+      'mode': 'sunlands_order_only',
+    },
+    'progress': {'completed': full ? 4 : 0, 'total': 4},
+    'catalog': [
+      for (final key in personalKeys)
+        {
+          'key': key,
+          'title': key,
+          'questions': <String>[],
+          'houses': <int>[],
+          'ready': full,
+        },
+    ],
+    'personal': {
+      'free_lines': [
+        'Synthetic free line one.',
+        'Synthetic free line two.',
+        'Synthetic free line three.',
+      ],
+      'traits': [
+        for (var i = 0; i < 3; i++)
+          {'title': 'Personal trait $i', 'text': 'Everyday behavior $i.'},
+      ],
+      'opportunity_action': 'Prepare one example to share.',
+      'sun_sign': 'Cancer',
+      'ascendant_sign': 'Leo',
+      'availability': {'full_report': true, 'reason': 'ready'},
+      'talent': full
+          ? {
+              'text': 'Synthetic personal talent.',
+              'directions': [
+                for (var i = 0; i < 3; i++)
+                  {
+                    'title': 'Direction $i',
+                    'text': 'Synthetic direction detail $i.',
+                  },
+              ],
+            }
+          : null,
+      'nodes': full
+          ? [
+              for (var i = 1; i <= 3; i++)
+                {
+                  'month': '2027-0$i',
+                  'theme': 'Synthetic theme $i',
+                  'benefit': 'Synthetic benefit $i',
+                  'caution': 'Synthetic gentle reminder $i',
+                  'action': 'Synthetic small action $i',
+                  'evidence': <Json>[],
+                },
+            ]
+          : <Json>[],
+    },
+  });
+  data.remove('generation_progress');
+  return data;
+}
+
 class TestBrowser implements BrowserPort {
   final openedPages = <String>[];
   @override

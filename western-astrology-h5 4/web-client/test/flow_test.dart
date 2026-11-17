@@ -17,7 +17,6 @@ import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/report_view_model.dart';
 import 'package:fate_h5/features/place_picker.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
-import 'package:fate_h5/ui/jy_components.dart';
 
 import 'support.dart';
 
@@ -57,9 +56,12 @@ Future<void> click(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
-  for (final language in ['zh', 'th', 'en']) {
+  for (final variant in ['zh', 'th', 'en', 'zh-legacy', 'zh-unknown']) {
+    final language = variant.split('-').first;
+    final legacy = variant == 'zh-legacy';
+    final unknown = variant == 'zh-unknown';
     testWidgets(
-      'four-question preview keeps six themes and verified-payment entry in $language',
+      'three-paragraph preview keeps free answers, evidence and verified-payment entry in $variant',
       (tester) async {
         phone(tester);
         final browser = TestBrowser();
@@ -68,8 +70,19 @@ void main() {
         data['format'] = 'western-compact';
         data['input'] = {
           ...input,
-          'profile': {...object(input['profile']), 'language': language},
+          'profile': {
+            ...object(input['profile']),
+            'language': language,
+            if (unknown) 'birth_time': null,
+          },
         };
+        if (unknown) {
+          data.remove('chart');
+          data['time_accuracy'] = {
+            'mode': 'estimated',
+            'assumed_local_time': '12:00',
+          };
+        }
         data['catalog'] = [
           for (final item in objects(data['catalog']).take(5).indexed)
             {...item.$2, 'key': westernKeys[item.$1]},
@@ -88,8 +101,41 @@ void main() {
           'timezone': 'UTC',
         };
         final summary = object(object(data['preview'])['summary']);
+        if (legacy) {
+          summary['text'] =
+              '你的内心节奏偏向沉稳，习惯在行动前确认环境的舒适度与可行性。'
+              '这种对质感的重视让你在处理日常事务时显得从容，但也容易因过度斟酌而放慢脚步。';
+        }
+        const legacyTraits = [
+          '你往往被具体、可触摸的美好事物吸引，无论是美食还是整洁的空间，都能迅速为你补充精力。'
+              '这种对生活质感的敏锐度让你在平凡日子里也能找到满足感，不易被外界的喧嚣带走注意力。',
+          '面对选择时，你倾向于反复权衡利弊，直到找到一个既安全又具实际价值的方案才肯放手去做。'
+              '这种谨慎能帮你避开许多不必要的风险，但有时也会因为害怕出错而陷入犹豫。',
+          '在人际交往中，你渴望一种温和且充满感官愉悦的连接方式，喜欢通过分享好物或共同享受闲暇来拉近距离。'
+              '当对话变得过于尖锐或匆忙时，你可能会感到不适并选择退后一步观察。',
+        ];
         data['preview'] = {
           ...object(data['preview']),
+          'summary': summary,
+          'traits': [
+            for (final item in objects(
+              object(data['preview'])['traits'],
+            ).indexed)
+              {
+                ...item.$2,
+                'text': legacy
+                    ? legacyTraits[item.$1]
+                    : 'Synthetic identity detail ${item.$1 + 1}.\nContinued.',
+                'evidence': [
+                  ...objects(summary['evidence']),
+                  {
+                    'id': 'identity-${item.$1}',
+                    'title': 'Identity factor ${item.$1 + 1}',
+                    'detail': 'Supporting detail ${item.$1 + 1}',
+                  },
+                ],
+              },
+          ],
           'environment': {...summary, 'text': 'Synthetic environment answer'},
           'favorable': {...summary, 'text': 'Synthetic helpful factor'},
           'unfavorable': {...summary, 'text': 'Synthetic manageable pressure'},
@@ -107,6 +153,18 @@ void main() {
           },
         };
         data['chapters'] = fixture(full: true)['chapters'];
+        if (legacy) {
+          for (final key in [
+            'environment',
+            'favorable',
+            'unfavorable',
+            'recent',
+            'response',
+          ]) {
+            (data['preview'] as Json).remove(key);
+          }
+          data.remove('outlook');
+        }
         data['plan'] = fixture(full: true)['plan'];
         final calls = <String>[];
         final h5 = H5Controller(
@@ -135,18 +193,131 @@ void main() {
         for (final key in ['who', 'environment', 'influence', 'timing']) {
           expect(
             find.text(h5.copy.t('jy', 'report.questions.$key')),
+            findsNothing,
+          );
+        }
+        for (final key in ['identity', 'environment', 'recent']) {
+          if (key == 'recent' && (legacy || unknown)) {
+            expect(
+              find.byKey(ValueKey('preview-paragraph-$key')),
+              findsNothing,
+            );
+            expect(
+              find.byKey(const ValueKey('preview-timing-unavailable')),
+              findsOneWidget,
+            );
+            continue;
+          }
+          expect(
+            find.byKey(ValueKey('preview-paragraph-$key')),
+            findsOneWidget,
+          );
+          expect(
+            find.text(h5.copy.t('jy', 'report.previewParagraphs.$key')),
             findsOneWidget,
           );
         }
-        expect(find.byType(ThemeBoards), findsOneWidget);
-        expect(find.text('Synthetic environment answer'), findsOneWidget);
-        expect(find.text('One free career response'), findsOneWidget);
+        final identity = find.byKey(
+          const ValueKey('preview-paragraph-identity'),
+        );
+        final identityText = [
+          text(summary['text']),
+          for (var i = 1; i <= 3; i++)
+            legacy
+                ? legacyTraits[i - 1]
+                : 'Synthetic identity detail $i. Continued.',
+        ].join(language == 'zh' ? '' : ' ');
         expect(
-          find.text(h5.copy.t('jy', 'report.questions.freePeriod')),
+          find.descendant(of: identity, matching: find.text(identityText)),
           findsOneWidget,
         );
+        expect(find.byKey(const ValueKey('identity-details')), findsNothing);
+        for (final trait in objects(object(data['preview'])['traits'])) {
+          expect(find.text(text(trait['title'])), findsNothing);
+        }
+        final identityEvidence = find.descendant(
+          of: identity,
+          matching: find.byType(ExpansionTile),
+        );
+        expect(identityEvidence, findsOneWidget);
+        await click(tester, identityEvidence);
+        for (final item in objects(summary['evidence'])) {
+          expect(
+            find.descendant(
+              of: identity,
+              matching: find.text(text(item['title'])),
+            ),
+            findsOneWidget,
+          );
+        }
+        for (var i = 1; i <= 3; i++) {
+          expect(
+            find.descendant(
+              of: identity,
+              matching: find.text('Identity factor $i'),
+            ),
+            findsOneWidget,
+          );
+        }
+        await click(tester, identityEvidence);
+        expect(
+          find.byKey(const ValueKey('checkout-theme-badges')),
+          findsOneWidget,
+        );
+        if (legacy) {
+          expect(
+            find.textContaining(
+              h5.copy.t('jy', 'report.previewParagraphs.legacyEnvironment'),
+            ),
+            findsOneWidget,
+          );
+          expect(
+            find.textContaining(
+              h5.copy.t('jy', 'report.previewParagraphs.legacyRecent'),
+            ),
+            findsOneWidget,
+          );
+        } else {
+          expect(
+            find.textContaining('Synthetic environment answer'),
+            findsOneWidget,
+          );
+          expect(
+            find.textContaining('Synthetic helpful factor'),
+            findsOneWidget,
+          );
+          expect(
+            find.textContaining('Synthetic manageable pressure'),
+            findsOneWidget,
+          );
+          expect(
+            find.textContaining('One free career response'),
+            unknown ? findsNothing : findsOneWidget,
+          );
+          expect(
+            find.textContaining('Synthetic near-term theme'),
+            unknown ? findsNothing : findsOneWidget,
+          );
+          if (unknown) {
+            expect(
+              find.textContaining(
+                h5.copy.t('jy', 'report.questions.timeUnknown'),
+              ),
+              findsOneWidget,
+            );
+            expect(
+              find.textContaining(
+                h5.copy.t('jy', 'report.questions.timingNote'),
+              ),
+              findsNothing,
+            );
+          }
+        }
         expect(find.text(h5.copy.t('jy', 'checkout.pay')), findsOneWidget);
-        expect(find.textContaining('2026-11-23 – 2026-11-29'), findsOneWidget);
+        expect(
+          find.textContaining('2026-11-23 – 2026-11-29'),
+          legacy || unknown ? findsNothing : findsOneWidget,
+        );
         expect(find.textContaining('付费专属分析正文'), findsNothing);
         await click(tester, find.byKey(const ValueKey('jy-payment-preview')));
         expect(find.byKey(const ValueKey('order-mobile')), findsOneWidget);
@@ -1100,7 +1271,7 @@ void main() {
     },
   );
   testWidgets(
-    'generation keeps the same visible wheel across stages until the report is ready',
+    'paid generation keeps the same visible wheel across stages until the report is ready',
     (tester) async {
       phone(tester);
       tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
@@ -1120,7 +1291,7 @@ void main() {
           home: GenerationDialog(
             h5: h5,
             state: state,
-            full: false,
+            full: true,
             onCancel: () => cancelled++,
             onRetry: () {},
             onComplete: (_) => completed++,
@@ -1167,6 +1338,56 @@ void main() {
       h5.dispose();
     },
   );
+
+  for (final wait in [Duration.zero, const Duration(seconds: 20)]) {
+    testWidgets(
+      'free report opens on readiness without waiting for the wheel: $wait',
+      (tester) async {
+        phone(tester);
+        tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: false);
+        final browser = TestBrowser();
+        final h5 = H5Controller(
+          translations(),
+          ReportRepository(browser),
+          browser,
+          language: 'zh',
+        );
+        final report = LifeReport.parse(fixture());
+        final state = GenerationState()..update(report, 99, 'preview');
+        var completed = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: GenerationDialog(
+              h5: h5,
+              state: state,
+              full: false,
+              onCancel: () {},
+              onRetry: () {},
+              onComplete: (_) => completed++,
+            ),
+          ),
+        );
+        await tester.pump(wait);
+        expect(completed, 0);
+        state.ready(report);
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(completed, 1);
+        expect(
+          tester
+              .widget<GenerationVideo>(find.byType(GenerationVideo))
+              .finishing,
+          isFalse,
+        );
+        await tester.pump(const Duration(seconds: 10));
+        expect(completed, 1);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        state.dispose();
+        h5.dispose();
+      },
+    );
+  }
 
   testWidgets(
     'Thai birth picker fits a small phone and language switching preserves the entry URL',

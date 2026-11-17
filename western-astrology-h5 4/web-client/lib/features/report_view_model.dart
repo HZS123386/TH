@@ -35,7 +35,7 @@ class ReportViewModel extends ChangeNotifier {
         throw const ApiFailure('network');
       }
       if (_disposed || token.cancelled) return;
-      if (next.full || next.preview.isNotEmpty) {
+      if (next.full || next.hasPreview) {
         await h5.prepareText(jsonEncode(next.json), language: next.language);
       }
       if (_disposed || token.cancelled) return;
