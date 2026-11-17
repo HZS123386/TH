@@ -182,9 +182,31 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       if (_country.isNotEmpty) {
         _countryText.text = _countryName;
       }
-      if (_province != null) _provinceText.text = _province!.name(c.language);
-      if (_city != null) _cityText.text = _city!.name(c.language);
+      unawaited(_localizeSelectedPlace(c.language));
     }
+  }
+
+  Future<void> _localizeSelectedPlace(String language) async {
+    final province = _province, city = _city;
+    final names = [
+      if (province != null) province.name(language),
+      if (city != null) city.name(language),
+    ];
+    if (names.isEmpty) return;
+    try {
+      await widget.h5.prepareText(names.join(), language: language);
+    } catch (_) {
+      // Keep the readable names until their translated glyphs are available.
+      return;
+    }
+    if (!mounted ||
+        _language != language ||
+        !identical(_province, province) ||
+        !identical(_city, city)) {
+      return;
+    }
+    if (province != null) _provinceText.text = province.name(language);
+    if (city != null) _cityText.text = city.name(language);
   }
 
   void _clearCity() {

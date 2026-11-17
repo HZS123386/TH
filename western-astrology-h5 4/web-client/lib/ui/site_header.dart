@@ -75,7 +75,17 @@ class SiteHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.language_outlined, size: 20, color: gold),
+                  if (h5.languageLoading)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.6,
+                        color: gold,
+                      ),
+                    )
+                  else
+                    const Icon(Icons.language_outlined, size: 20, color: gold),
                   const SizedBox(width: 7),
                   Text(
                     h5Languages.firstWhere((item) => item.$1 == h5.language).$2,

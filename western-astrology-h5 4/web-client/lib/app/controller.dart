@@ -12,6 +12,7 @@ class H5Controller extends ChangeNotifier {
     this.browser, {
     String language = 'th',
     this.ensureFont,
+    this.warmFont,
     this.ensureTextFont,
   }) : _language = h5Language(language) {
     repository.language = _language;
@@ -23,6 +24,7 @@ class H5Controller extends ChangeNotifier {
   final ReportRepository repository;
   final BrowserPort browser;
   final Future<void> Function(String)? ensureFont;
+  final Future<void> Function(String)? warmFont;
   final Future<void> Function(String, String)? ensureTextFont;
   late bool welcomeOpen;
   late final bool returningVisitor;
@@ -67,7 +69,7 @@ class H5Controller extends ChangeNotifier {
     notifyListeners();
     unawaited(recordVisit());
     // Warm later place/report text after the welcome is already visible.
-    unawaited(ensureFont?.call(language).catchError((_) {}));
+    unawaited((warmFont ?? ensureFont)?.call(language).catchError((_) {}));
   }
 
   void prepareLanding() {
@@ -153,6 +155,7 @@ class H5Controller extends ChangeNotifier {
     repository.language = language;
     browser.setLanguage(language, copy.t('jy', 'title'));
     notifyListeners();
+    unawaited(warmFont?.call(language).catchError((_) {}));
     return true;
   }
 
@@ -160,7 +163,19 @@ class H5Controller extends ChangeNotifier {
     final c = labels ?? copy;
     if (error is FormatException) return c.t('ui', 'badResult');
     if (error is ApiFailure) {
-      for (final group in ['checkout', 'experience', 'generation', 'ui', 'life']) {
+      if (error.code == 'life_personal_time_required') {
+        return c.t('jy', 'personal.timeUnknown');
+      }
+      if (error.code == 'life_personal_periods_unavailable') {
+        return c.t('jy', 'personal.unavailable');
+      }
+      for (final group in [
+        'checkout',
+        'experience',
+        'generation',
+        'ui',
+        'life',
+      ]) {
         final value = c.t(group, error.code);
         if (value.isNotEmpty) return value;
       }

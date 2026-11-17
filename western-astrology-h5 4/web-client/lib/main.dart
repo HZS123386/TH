@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -73,9 +74,19 @@ Future<void> _startApp(WebBrowserPort browser) async {
     repository,
     browser,
     language: language,
-    ensureFont: fonts.ensureCommon,
+    ensureFont: fonts.ensure,
+    warmFont: fonts.ensureCommon,
     ensureTextFont: fonts.ensureText,
   );
   browser.setLanguage(language, controller.copy.t('jy', 'title'));
   runApp(H5App(controller: controller));
+  if (language != 'zh') {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        WidgetsBinding.instance.waitUntilFirstFrameRasterized
+            .then((_) => fonts.ensure('zh'))
+            .catchError((_) {}),
+      );
+    });
+  }
 }

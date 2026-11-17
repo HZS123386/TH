@@ -24,14 +24,14 @@ async function moveBuild(source,target){
     }
   }
 }
-export async function buildLanding({release=false}={}){
+export async function buildLanding({release=false,noPub=false}={}){
   await import('./prepare-flutter.mjs');
   const temporary=path.resolve(projectRoot,'tmp'),destination=path.resolve(projectRoot,'site');
   await mkdir(temporary,{recursive:true});
   const generated=await mkdtemp(path.join(temporary,'flutter-site-'));
   const previous=path.join(temporary,`site-previous-${Date.now()}`);
   if(!generated.startsWith(temporary+path.sep)||!previous.startsWith(temporary+path.sep)||destination!==path.join(projectRoot,'site'))throw Error('Unexpected build directory');
-  await flutter(['build','web','--release','--wasm','--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
+  await flutter(['build','web','--release','--wasm',...(noPub?['--no-pub']:[]),'--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
   const bootstrap=await readFile(path.join(generated,'flutter_bootstrap.js'),'utf8');
   const engineRevision=/"engineRevision":"([a-f0-9]{40})"/.exec(bootstrap)?.[1];
   if(!engineRevision)throw Error('Missing Flutter engine revision');
