@@ -24,6 +24,15 @@ function personalFixture(language: typeof languages[number] = "zh", full = false
 }
 
 describe("personal Western report contract and export", () => {
+  it("accepts free content while paid calculations are deferred", () => {
+    const report = personalFixture();
+    report.outlook = { state: 'not_started' };
+    report.personal!.availability = { full_report: true, reason: 'not_started' };
+    expect(isLifeReport(report)).toBe(true);
+    expect(hasLifePreview(report)).toBe(true);
+    expect(reportHtml(report, lifeLabels(report))).toContain(report.personal!.free_lines[1]);
+    expect(reportHtml(report, lifeLabels(report))).not.toContain('PRIVATE_');
+  });
   for (const language of languages) {
     it(`shows three distinct free areas and isolates four paid blocks in ${language}`, () => {
       const report = personalFixture(language, true);

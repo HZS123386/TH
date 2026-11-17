@@ -434,7 +434,7 @@ class RoxyAstrology(RoxyClient):
                 months.append({"month": event["date"][:7], "transit_id": identifier,
                                "supporting_natal_ids": ["P_" + point_id(event["target"])]})
         bundle.update(stage="personal_full" if full else "personal_preview", reading="personal-full" if full else "personal-preview",
-                      evidence=facts, personal_signs=signs, forecast={"state": chart.get("forecast", {}).get("state", "unavailable")})
+                      evidence=facts, personal_signs=signs, forecast={"state": chart.get("forecast", {}).get("state", "not_started" if known else "time_unknown")})
         bundle["topic_evidence"] = [key for key in bundle["topic_evidence"] if key in facts]
         bundle["citation_rules"].update(topic_ids=bundle["topic_evidence"], timing_ids=[item["transit_id"] for item in months], months=months)
         return bundle

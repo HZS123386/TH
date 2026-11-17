@@ -20,7 +20,7 @@ export interface PersonalNode { month: string; theme: string; benefit: string; c
 export interface PersonalReading {
   free_lines: string[]; sun_sign: string | null; ascendant_sign: string | null;
   traits?: { title: string; text: string }[]; opportunity_action?: string;
-  availability: { full_report: boolean; reason: "ready" | "time_unknown" | "unavailable" | "insufficient_periods" };
+  availability: { full_report: boolean; reason: "not_started" | "ready" | "time_unknown" | "unavailable" | "insufficient_periods" };
   talent: PersonalTalent | null; nodes: PersonalNode[];
 }
 export interface LifePoint extends ReadingItem { evidence: LifeEvidence[]; window?: LifeWindow }
@@ -40,7 +40,7 @@ export interface LifeReport {
   title: string;
   input: LifeInput;
   reference_period?: { start: string; end: string };
-  outlook?: { state?: "ready" | "time_unknown" | "unavailable"; start?: string; end?: string; timezone?: string };
+  outlook?: { state?: "not_started" | "ready" | "time_unknown" | "unavailable"; start?: string; end?: string; timezone?: string };
   created_at: string;
   location: Partial<Place> & { nameEnglish: string; timeZone: string };
   method: { name: string; house_system: string; version: string };
@@ -273,7 +273,7 @@ export function isLifeReport(value: unknown): value is LifeReport {
     const p = report.personal;
     if (report.preview !== null || !Array.isArray(report.chapters) || report.chapters.length || report.plan !== null) return false;
     if (p && (!Array.isArray(p.free_lines) || p.free_lines.length > 3 || p.free_lines.some(line => typeof line !== "string") ||
-      typeof p.availability?.full_report !== "boolean" || !["ready", "time_unknown", "unavailable", "insufficient_periods"].includes(p.availability.reason))) return false;
+      typeof p.availability?.full_report !== "boolean" || !["not_started", "ready", "time_unknown", "unavailable", "insufficient_periods"].includes(p.availability.reason))) return false;
     if (p && (p.traits !== undefined && (!Array.isArray(p.traits) || ![0, 3].includes(p.traits.length) ||
       p.traits.some(trait => !trait || !nonempty(trait.title) || !nonempty(trait.text))) ||
       p.opportunity_action !== undefined && typeof p.opportunity_action !== "string")) return false;

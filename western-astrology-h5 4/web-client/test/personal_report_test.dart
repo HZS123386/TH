@@ -12,6 +12,20 @@ import 'package:fate_h5/ui/jy_components.dart';
 import 'support.dart';
 
 void main() {
+  test('free report can open checkout before paid timing is prepared', () {
+    final data = personalFixture();
+    data['outlook'] = {'state': 'not_started'};
+    data['personal'] = {
+      ...object(data['personal']),
+      'availability': {'full_report': true, 'reason': 'not_started'},
+    };
+    final report = LifeReport.parse(data);
+    expect(report.hasPreview, isTrue);
+    expect(report.canPay, isTrue);
+    expect(report.full, isFalse);
+    expect(report.ready, isFalse);
+    expect(report.nodes, isEmpty);
+  });
   testWidgets(
     'landing promises the same four personal blocks while preserving the original board artwork',
     (tester) async {

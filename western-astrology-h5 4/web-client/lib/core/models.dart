@@ -320,6 +320,7 @@ class LifeReport {
                   availability['full_report'] is! bool ||
                   ![
                     'ready',
+                    'not_started',
                     'time_unknown',
                     'unavailable',
                     'insufficient_periods',

@@ -276,17 +276,38 @@ class LifeReports:
 
     def personal_availability(self, chart):
         reason = ("time_unknown" if not chart.get("time_known") else
+                  "not_started" if "forecast" not in chart else
                   "unavailable" if chart.get("forecast", {}).get("state") != "ready" else
                   "insufficient_periods" if len(self.adapters["astrology"].personal_events(chart)) != 3 else "ready")
-        return {"full_report": reason == "ready", "reason": reason}
+        return {"full_report": reason in ("not_started", "ready"), "reason": reason}
 
     def require_personal_full(self, row):
         chart = json.loads(row["chart"])
         if personal_chart(chart):
             availability = self.personal_availability(chart)
-            if not availability["full_report"]:
+            if availability["reason"] != "ready":
                 raise HTTPException(422 if availability["reason"] == "time_unknown" else 409,
                                     "life_personal_time_required" if availability["reason"] == "time_unknown" else "life_personal_periods_unavailable")
+
+    async def prepare_personal_full(self, row, owner, network, *, lease=None):
+        chart = json.loads(row["chart"])
+        if not personal_chart(chart):
+            return row
+        if not chart.get("time_known"):
+            self.require_personal_full(row)
+        if self.personal_availability(chart)["reason"] != "ready":
+            # Paid timing is prepared only on a checkout attempt, never while reading the free report.
+            async with self.calculation_slots:
+                row = self.row(row["id"], owner)
+                chart = json.loads(row["chart"])
+                if self.personal_availability(chart)["reason"] != "ready":
+                    profile = LifeInput.model_validate_json(row["input"]).profile
+                    chart["forecast"] = await self.adapters["astrology"].forecast(
+                        profile, owner, network, **({"refresh": True} if "forecast" in chart else {}))
+                    self.update(row["id"], expected_lease=lease, chart=encoded(chart))
+                    row = self.row(row["id"], owner)
+        self.require_personal_full(row)
+        return row
 
     async def create(self, body, owner, network, *, wait=True):
         profile = body.profile.model_dump(mode="json")
@@ -324,7 +345,7 @@ class LifeReports:
         else:
             async with self.calculation_slots:
                 # Keep the submitted time unknown; only this report's calculation uses an explicit noon estimate.
-                chart = (await self.adapters["astrology"].calculate(body.profile, owner, network, include_forecast=True) if use_roxy else
+                chart = (await self.adapters["astrology"].calculate(body.profile, owner, network) if use_roxy else
                          await asyncio.to_thread(thai.natal, {**profile, "birth_time": profile["birth_time"] or "12:00"}))
             if chart["status"] != "ready":
                 raise HTTPException(422, "thai_reading_details_required")
@@ -399,16 +420,7 @@ class LifeReports:
             self.update(row["id"], expected_lease=lease, preview=encoded(preview),
                         preview_state="ready", lease="", lease_until=0)
             return
-        retry_personal_forecast = (row["preview_state"] != "pending" and personal_chart(chart) and chart.get("time_known") and "forecast" in chart
-                                   and not self.adapters["astrology"].personal_events(chart))
-        if western(chart) and ("forecast" not in chart or retry_personal_forecast):
-            chart["forecast"] = await self.adapters["astrology"].forecast(body.profile, owner, network,
-                                                                         **({"refresh": True} if retry_personal_forecast else {}))
-            self.update(row["id"], expected_lease=lease, chart=encoded(chart))
         if personal_chart(chart):
-            if chart.get("time_known") and not self.adapters["astrology"].personal_events(chart):
-                self.update(row["id"], expected_lease=lease, preview_state="unavailable", lease="", lease_until=0)
-                return
             bundle = self.adapters["astrology"].personal_bundle(body, chart)
             if body.user_question:
                 bundle["user_question"] = body.user_question
@@ -421,6 +433,9 @@ class LifeReports:
                 values["preview_state"] = "unavailable"
             self.update(row["id"], expected_lease=lease, **values)
             return
+        if western(chart) and "forecast" not in chart:
+            chart["forecast"] = await self.adapters["astrology"].forecast(body.profile, owner, network)
+            self.update(row["id"], expected_lease=lease, chart=encoded(chart))
         bundle = self.bundle(body, chart, "overview")
         if western(chart):
             sample = self.bundle(body, chart, "career")
@@ -609,7 +624,7 @@ class LifeReports:
         if is_personal:
             signs = self.adapters["astrology"].personal_bundle(LifeInput.model_validate(body), chart)["personal_signs"]
             record = records.get("personal") if row["unlocked"] else None
-            result["outlook"] = {"state": chart.get("forecast", {}).get("state", "unavailable")}
+            result["outlook"] = {"state": chart.get("forecast", {}).get("state", "not_started" if chart.get("time_known") else "time_unknown")}
             result["personal"] = {"free_lines": preview["story"]["free_lines"] if preview else [],
                 "traits": preview["story"].get("traits", []) if preview else [],
                 "opportunity_action": preview["story"].get("opportunity_action", "") if preview else "",
@@ -694,12 +709,12 @@ class LifeReports:
         row = self.row(report_id, owner)
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
-        self.require_personal_full(row)
         if not row["unlocked"]:
             career = json.loads(row["input"]).get("career")
             if (self.card_payments.order_only or self.can_simulate_payment(career) or self.card_payments.order_for(report_id)
                     or (self.card_payments.enabled and not career)):
                 raise HTTPException(402, "life_payment_required")
+            await self.prepare_personal_full(row, owner, network)
             self.update(report_id, unlocked=1)
         await self.start_full_generation(report_id, owner, network)
         return self.get(report_id, owner)
@@ -714,15 +729,17 @@ class LifeReports:
             raise HTTPException(409, "life_payment_unavailable")
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
-        self.require_personal_full(row)
         career = body.get("career")
+        if not (self.card_payments.order_only or self.can_simulate_payment(career) or self.card_payments.enabled and not career):
+            raise HTTPException(409, "life_payment_unavailable")
+        row = await self.prepare_personal_full(row, owner, network)
+        if row["unlocked"]:
+            raise HTTPException(409, "life_payment_unavailable")
         if self.card_payments.order_only:
             return await self.card_payments.create_sunlands(
                 report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "")
         if self.can_simulate_payment(career):
             return self.card_payments.create_simulated(report_id, network)
-        if not self.card_payments.enabled or career:
-            raise HTTPException(409, "life_payment_unavailable")
         return self.card_payments.create(report_id, network, body["profile"]["language"])
 
     async def simulate_payment(self, report_id, owner, network, reference):
@@ -746,15 +763,14 @@ class LifeReports:
 
     async def start_full_generation(self, report_id, owner, network):
         row = self.row(report_id, owner)
-        if not row["preview"]:
+        if not row["preview"] or not row["unlocked"]:
             return
-        self.require_personal_full(row)
         if row["full_state"] == "ready" or report_id in self.tasks:
             return
         lease = secrets.token_hex(16)
         with self.store.connect() as db:
             cursor = db.execute("UPDATE life_reports SET full_state='generating',lease=?,lease_until=? "
-                                "WHERE id=? AND owner=? AND lease_until<? AND full_state<>'ready'", (lease, time.time() + self.lease_seconds, report_id, owner, time.time()))
+                                "WHERE id=? AND owner=? AND unlocked=1 AND lease_until<? AND full_state<>'ready'", (lease, time.time() + self.lease_seconds, report_id, owner, time.time()))
         if cursor.rowcount:
             if not json.loads(row["input"]).get("career") and self.writer.enabled and not self.writer.reserve_run(owner, network):
                 self.update(report_id, expected_lease=lease, full_state="limited", lease="", lease_until=0)
@@ -777,7 +793,8 @@ class LifeReports:
                 return
             chart, preview_record = json.loads(row["chart"]), json.loads(row["preview"])
             if personal_chart(chart):
-                self.require_personal_full(row)
+                row = await self.prepare_personal_full(row, owner, network, lease=lease)
+                chart = json.loads(row["chart"])
                 bundle = self.adapters["astrology"].personal_bundle(body, chart, full=True)
                 bundle["free_lines"] = preview_record["story"]["free_lines"]
                 generated = await self.write_part(report_id, lease, bundle, owner, network)

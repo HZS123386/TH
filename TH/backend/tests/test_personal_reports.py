@@ -14,7 +14,7 @@ from backend.app.life_reports import LifeInput
 from backend.app.main import create_app
 from backend.app.storage import Storage
 from backend.tests.test_personal_report_content import personal_draft, personal_fixture_bundle
-from backend.tests.test_roxy_astrology import HEADERS, PROFILE, forecast_fixture, settings, transport as roxy_transport, unlock_after_simulated_payment
+from backend.tests.test_roxy_astrology import HEADERS, PROFILE, forecast_fixture, settings, transport as roxy_transport
 
 transport = roxy_transport
 
@@ -52,20 +52,33 @@ def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_
         assert free["format"] == "western-personal" and free["preview_state"] == "ready"
         assert len(free["personal"]["free_lines"]) == 3 and free["personal"]["ascendant_sign"]
         assert len(free["personal"]["traits"]) == 3 and free["personal"]["opportunity_action"]
-        assert free["personal"]["availability"] == {"full_report": True, "reason": "ready"}
+        assert free["personal"]["availability"] == {"full_report": True, "reason": "not_started"}
         assert free["personal"]["talent"] is None and free["personal"]["nodes"] == []
         assert free["preview"] is None and free["chapters"] == [] and free["plan"] is None
-        assert free["outlook"] == {"state": "ready"}
+        assert free["outlook"] == {"state": "not_started"}
         assert [item["key"] for item in free["catalog"]] == ["talent", "node-1", "node-2", "node-3"]
         assert free["progress"] == {"completed": 0, "total": 4}
         assert [call["stage"] for call in calls] == ["personal_preview"]
+        assert snapshots == [] and len(transport[0]) == 1
         assert calls[0]["citation_rules"]["months"] == []
         assert not any(fact["type"] == "transit" for fact in calls[0]["evidence"].values())
         assert "2027-01" not in json.dumps(free, ensure_ascii=False)
         path = "/api/life-reports/" + free["id"]
         assert client.get(path, headers={"X-Report-Key": "different-synthetic-owner-key-12345678"}).status_code == 404
         assert client.post("/api/life-reports", json=body, headers=HEADERS).json()["id"] == free["id"]
-        unlock_after_simulated_payment(client, path)
+        assert client.post(path + "/unlock", headers=HEADERS).status_code == 402
+        assert snapshots == []
+        order = client.post(path + "/payment", json={}, headers=HEADERS)
+        assert order.status_code == 200, order.text
+        assert len(snapshots) == 1 and [call["stage"] for call in calls] == ["personal_preview"]
+        waiting = client.get(path, headers=HEADERS).json()
+        assert waiting["access"] == "preview" and waiting["full_state"] == "not_started"
+        assert waiting["personal"]["availability"] == {"full_report": True, "reason": "ready"}
+        assert client.post(path + "/payment", json={}, headers=HEADERS).json()["reference"] == order.json()["reference"]
+        assert len(snapshots) == 1
+        paid = client.post(path + "/payment/simulate", json={"reference": order.json()["reference"]}, headers=HEADERS)
+        assert paid.status_code == 200 and paid.json()["paid"] is True
+        assert client.post(path + "/unlock", headers=HEADERS).status_code == 200
         async def finish():
             await asyncio.gather(*client.app.state.life_reports.tasks.values())
         client.portal.call(finish)
@@ -110,10 +123,11 @@ def test_free_personal_report_can_be_read_but_payment_is_blocked_without_three_a
         assert report["preview_state"] == "ready", report
         assert len(report["personal"]["free_lines"]) == 3
         assert bool(report["personal"]["ascendant_sign"]) == known
-        assert report["personal"]["availability"] == {"full_report": False, "reason": reason}
+        assert report["personal"]["availability"] == {"full_report": known, "reason": "not_started" if known else "time_unknown"}
         path = "/api/life-reports/" + report["id"]
         assert client.post(path + "/payment", headers=HEADERS, json={}).status_code == status
-        assert client.post(path + "/unlock", headers=HEADERS).status_code == status
+        assert client.post(path + "/unlock", headers=HEADERS).status_code == 402
+        assert client.get(path, headers=HEADERS).json()["personal"]["availability"] == {"full_report": False, "reason": reason}
         assert report["personal"]["nodes"] == [] and len(calls) == 1
         with client.app.state.store.connect() as db:
             assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 0
@@ -133,7 +147,7 @@ def test_personal_month_selection_uses_real_distinct_months_and_keeps_free_input
 
 
 @pytest.mark.parametrize("state,periods", [("unavailable", 0), ("ready", 0)])
-def test_failed_or_empty_forecast_blocks_generic_free_report_and_retry_fetches_fresh_calculation(tmp_path, monkeypatch, transport, state, periods):
+def test_failed_or_empty_paid_forecast_keeps_free_report_and_retries_at_checkout(tmp_path, monkeypatch, transport, state, periods):
     calls = writer_stub(monkeypatch)
     with TestClient(create_app(settings(tmp_path))) as client:
         mode, attempts = {"state": state, "periods": periods}, []
@@ -142,19 +156,26 @@ def test_failed_or_empty_forecast_blocks_generic_free_report_and_retry_fetches_f
             return frozen_forecast(mode["state"], periods=mode["periods"])
         monkeypatch.setattr(client.app.state.life_reports.adapters["astrology"], "forecast", forecast)
         body = {"profile": PROFILE, "year": 2026}
-        failed = client.post("/api/life-reports", json=body, headers=HEADERS).json()
-        assert failed["preview_state"] == "unavailable" and failed["personal"]["free_lines"] == []
-        assert not calls and attempts == [False]
-        path = "/api/life-reports/" + failed["id"]
+        free = client.post("/api/life-reports", json=body, headers=HEADERS).json()
+        assert free["preview_state"] == "ready" and len(free["personal"]["free_lines"]) == 3
+        assert len(calls) == 1 and attempts == []
+        path = "/api/life-reports/" + free["id"]
         assert client.post(path + "/payment", json={}, headers=HEADERS).status_code == 409
-        assert client.post(path + "/unlock", headers=HEADERS).status_code == 409
+        assert client.post(path + "/unlock", headers=HEADERS).status_code == 402
+        failed = client.get(path, headers=HEADERS).json()
+        assert failed["preview_state"] == "ready" and failed["personal"]["free_lines"] == free["personal"]["free_lines"]
+        assert failed["full_state"] == "not_started" and failed["access"] == "preview"
+        assert attempts == [False] and len(calls) == 1
+        with client.app.state.store.connect() as db:
+            assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 0
         mode.update(state="ready", periods=3)
+        assert client.post(path + "/payment", json={}, headers=HEADERS).status_code == 200
         recovered = client.post("/api/life-reports", json=body, headers=HEADERS).json()
         assert recovered["id"] == failed["id"] and recovered["input"] == failed["input"]
         assert recovered["preview_state"] == "ready" and len(recovered["personal"]["free_lines"]) == 3
         assert attempts == [False, True] and len(calls) == 1
         with client.app.state.store.connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 1
 
 
 def test_personal_forecast_refresh_clears_only_its_own_memory_cache_and_failure(tmp_path, monkeypatch):

@@ -1,14 +1,64 @@
 """Preview latency checks use isolated storage and synthetic external responses."""
 import asyncio
 from copy import deepcopy
+import json
 
 import pytest
 
 from backend.app.astrology import RoxyAstrology
 from backend.app.life_reports import LifeInput, LifeReports
+from backend.app.life_report_content import LifeWriter
 from backend.app.roxy import RoxyError
 from backend.app.storage import Storage
 from backend.tests.test_roxy_astrology import GOLDEN, PROFILE, forecast_fixture, settings
+from backend.tests.test_personal_report_content import personal_draft
+from backend.tests.test_personal_reports import frozen_forecast, transport as personal_transport
+
+transport = personal_transport
+
+
+def test_personal_free_report_does_not_wait_for_paid_calculations(tmp_path, monkeypatch, transport):
+    async def run():
+        config = settings(tmp_path)
+        service = LifeReports(Storage(config.database_path), config, asyncio.Semaphore(4), asyncio.Semaphore(2))
+        body = LifeInput.model_validate({"profile": PROFILE, "year": 2026})
+        started, release = asyncio.Event(), asyncio.Event()
+        calls, order_task = [], None
+
+        async def forecast(*args):
+            started.set()
+            await release.wait()
+            return frozen_forecast()
+
+        async def write(writer, bundle, *args):
+            calls.append(bundle["stage"])
+            return writer.validate(json.dumps(personal_draft(bundle), ensure_ascii=False), bundle)
+
+        monkeypatch.setattr(service.adapters["astrology"], "forecast", forecast)
+        monkeypatch.setattr(LifeWriter, "write", write)
+        try:
+            free = await asyncio.wait_for(service.create(body, "owner", "network"), 1)
+            assert free["preview_state"] == "ready" and not started.is_set()
+            assert free["full_state"] == "not_started" and calls == ["personal_preview"]
+            await service.start_full_generation(free["id"], "owner", "network")
+            assert not service.tasks and not started.is_set()  # No unpaid background work, even via an internal caller.
+            order_task = asyncio.create_task(service.create_card_order(free["id"], "owner", "network"))
+            await asyncio.wait_for(started.wait(), 1)
+            waiting = service.get(free["id"], "owner")
+            assert waiting["preview_state"] == "ready" and waiting["personal"]["free_lines"] == free["personal"]["free_lines"]
+            assert waiting["access"] == "preview" and calls == ["personal_preview"]
+            with service.store.connect() as db:
+                assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 0
+            release.set()
+            await asyncio.wait_for(order_task, 1)
+            assert not service.tasks and calls == ["personal_preview"]
+        finally:
+            release.set()
+            if order_task:
+                await asyncio.gather(order_task, return_exceptions=True)
+            await service.close()
+
+    asyncio.run(run())
 
 
 def test_report_calculations_overlap_and_forecast_is_kept(tmp_path, monkeypatch):
