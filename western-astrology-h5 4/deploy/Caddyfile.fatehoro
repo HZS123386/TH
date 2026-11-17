@@ -1,0 +1,13 @@
+# BEGIN FATE dedicated domain
+fatehoro.top {
+    route {
+        # Keep the existing Flutter base path and preserve language query options.
+        redir / /thai-landing/?{query} 302
+        import astro_landing_routes
+    }
+}
+
+www.fatehoro.top {
+    redir https://fatehoro.top{uri} 308
+}
+# END FATE dedicated domain

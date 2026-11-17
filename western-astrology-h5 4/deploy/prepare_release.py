@@ -23,7 +23,7 @@ def copy_tree(source: Path, target: Path):
 def prepare(release: Path, version: str):
     context = release / 'context'
     context.mkdir(parents=True)
-    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain'):
+    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain', 'Caddyfile.fatehoro'):
         shutil.copy2(ROOT / 'deploy' / name, context / name)
     copy_tree(TH / 'backend', context / 'TH' / 'backend')
     copy_tree(TH / 'scripts', context / 'TH' / 'scripts')

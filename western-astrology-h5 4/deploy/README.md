@@ -2,7 +2,8 @@
 
 部署目标为 `ubuntu@129.226.126.212`。使用当前本地落地页及相邻的 `TH` 后端源码，保留服务器已有的 `ipplay.top` 网站。
 
-- 域名入口：`https://ipplay.top/thai-landing/`，默认泰语；中文加 `?lang=zh`。
+- 域名入口：`https://fatehoro.top/`，进入 `/thai-landing/` 后默认泰语；中文入口为 `https://fatehoro.top/thai-landing/?lang=zh`。
+- `www.fatehoro.top` 自动跳转至主域名；旧域名入口 `https://ipplay.top/thai-landing/` 继续保留。
 - 原 IP 入口：`https://129.226.126.212/thai-landing/?lang=zh`。
 - 健康检查：`http://129.226.126.212/health`
 - 应用容器：`astro-life-report`，Python 3.12、Node.js 24、单个 Uvicorn worker。
@@ -40,7 +41,9 @@ sudo docker compose logs --tail 80 app
 
 复用 `ipplay.top` 时，`Caddyfile.domain` 仅包含落地页静态资源及报告接口路由，插入原站域名配置，不接管 `/`、`/api/v1/` 或管理后台。通过 `publish_proxy.py <本次IP配置> <现有IP配置> --domain-routes Caddyfile.domain --release vYYYY.MM.DD.N` 校验后热重载，所有容器保持运行。配置更新也使用独立版本，回执写入 `/opt/ipplay/shared/releases/`，原网关备份放在 `/opt/ipplay/shared/config-releases/<版本>/`，同步更新原站 `deploy/server/releases.json`。后续更换独立域名时只调整网关和 DNS，应用继续使用同源接口及 `/thai-landing/` base 路径。
 
-域名和原 IP 属于不同浏览器来源，原 IP 上保存的报告访问凭证不会自动转到新域名。保留原 IP 入口供已有访客查看历史报告，不把访问凭证放进 URL。
+独立域名使用 `Caddyfile.fatehoro`，复用现有 `astro_landing_routes`，不改变原 `APP_DOMAIN=ipplay.top`。DNSPod 将 `@` 和 `www` 指向 `129.226.126.212`；Caddy 沿用证书持久化卷自动签发和续期免费 HTTPS。解析生效后，通过 `publish_proxy.py <本次IP配置> <现有IP配置> --site-routes Caddyfile.fatehoro --release vYYYY.MM.DD.N` 校验、备份并热重载。根路径跳转保留语言等查询参数，`www` 统一跳到裸域；落地页和报告接口保持同源。此次不更换应用镜像、模型配置或数据库。
+
+新旧域名和原 IP 属于不同浏览器来源，已有报告访问凭证不会自动转到新域名。保留旧域名及原 IP 入口供已有访客查看历史报告，不把访问凭证放进 URL，也不强制将历史报告链接跳到新域名。
 
 ## 首屏资源
 
@@ -64,7 +67,7 @@ Flutter 的入口、业务文件和资源清单继续使用 no-cache 与 ETag �
 
 2026-11-11 的 `20261111-181148` 发布将新报告切换为 RoxyAPI 西洋排盘、Qwen 解读，资料说明版本为 `h5-data-use-2`；历史泰式报告保留原计算依据。运行配置新增 `LIFE_ASTROLOGY_PROVIDER=roxy`、`ROXY_ENABLED=true` 及仅保存在服务器的 `ROXY_API_KEY`。数据库中出现西洋报告后，不能直接回退到尚不支持该格式的旧后端；应保留同时支持 `legacy` 和 `western-compact` 的读取能力。失败回退须先停止写入、等待服务退出再检查记录，不能用旧数据库备份覆盖新报告。发布与验证记录位于 `../output/local-release-20261111-1752/deployment-result.json`。
 
-公网推荐入口为 `https://129.226.126.212/thai-landing/?lang=zh`。`Caddyfile.ip` 使用 Let's Encrypt `shortlived` profile 申请免费公网 IP 证书，自动续期依赖现有持久化 `ipplay_caddy_data` 卷。Docker 网关必须在全局设置 `default_sni 129.226.126.212`，否则不发送 SNI 的 IP 客户端会选不到证书。`publish_proxy.py` 在保留其他域名站点的前提下放置全局选项、校验后热重载，遇到其他全局配置会停止而不覆盖。
+公网推荐入口为 `https://fatehoro.top/`。原 IP 仍可使用 `https://129.226.126.212/thai-landing/?lang=zh`；`Caddyfile.ip` 使用 Let's Encrypt `shortlived` profile 申请免费公网 IP 证书，自动续期依赖现有持久化 `ipplay_caddy_data` 卷。Docker 网关必须在全局设置 `default_sni 129.226.126.212`，否则不发送 SNI 的 IP 客户端会选不到证书。`publish_proxy.py` 在保留其他域名站点的前提下放置全局选项、校验后热重载，遇到其他全局配置会停止而不覆盖。
 
 部署整个 `site`，包括 `.br` 与 `.gz` 文件。发布构建离线生成最高级别 Brotli，服务端根据 `Accept-Encoding` 的质量值选择 Brotli、gzip 或原文件，缺少压缩文件时继续协商回退；保留各表示的 ETag、HEAD 长度与 `Vary`。视频 Range 使用原文件，报告接口仍为 `no-store`。
 

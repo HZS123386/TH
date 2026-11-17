@@ -21,7 +21,7 @@ def release(tmp_path):
         (folder / 'fixture.txt').write_text('source fixture', encoding='utf-8')
     (module.TH / 'package.json').write_text('{}', encoding='utf-8')
     (module.ROOT / 'deploy').mkdir(parents=True)
-    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain'):
+    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain', 'Caddyfile.fatehoro'):
         (module.ROOT / 'deploy' / name).write_text('deployment fixture', encoding='utf-8')
     (module.ROOT / 'site').mkdir()
     (module.ROOT / 'site/index.html').write_text('compiled landing', encoding='utf-8')
