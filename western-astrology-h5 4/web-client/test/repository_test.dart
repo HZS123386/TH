@@ -112,10 +112,7 @@ void main() {
         percentages.add(percent);
         phases.add(phase);
       });
-      expect(token.delays, [
-        const Duration(seconds: 3),
-        const Duration(seconds: 7),
-      ]);
+      expect(token.delays, [Duration.zero, const Duration(seconds: 7)]);
       expect(phases, contains('waiting'));
       expect(percentages.where((p) => p == 100), hasLength(1));
     },
@@ -226,7 +223,7 @@ void main() {
     },
   );
   test(
-    'free preview polls sooner near completion and still waits for saved content',
+    'free preview starts a completion wait immediately and still requires saved content',
     () async {
       final ready = fixture();
       Json generating(int percent) => {
@@ -246,25 +243,25 @@ void main() {
       final repo = ReportRepository(
         TestBrowser(),
         baseUrl: 'https://example.test',
-        client: MockClient(
-          (request) async => jsonResponse(
+        client: MockClient((request) async {
+          if (request.method == 'GET') {
+            expect(request.url.queryParameters['wait_preview'], 'true');
+          }
+          return jsonResponse(
             request.method == 'POST'
                 ? generating(20)
                 : reads++ == 0
                 ? generating(99)
                 : ready,
-          ),
-        ),
+          );
+        }),
       );
       await repo.generate(
         object(ready['input']),
         token,
         (_, percent, _) => percentages.add(percent),
       );
-      expect(token.delays, [
-        const Duration(seconds: 3),
-        const Duration(seconds: 1),
-      ]);
+      expect(token.delays, [Duration.zero, const Duration(seconds: 3)]);
       expect(percentages, [20, 99, 100]);
     },
   );
@@ -277,31 +274,48 @@ void main() {
       'preview_state': 'generating',
       'preview_generation_progress': {
         'percent': 99,
-        'sections': [for (final key in previewKeys) {'key': key, 'percent': 99}],
+        'sections': [
+          for (final key in previewKeys) {'key': key, 'percent': 99},
+        ],
       },
     };
     final token = ImmediateToken();
     final accepted = <int>[];
     var reads = 0, rejected = 0;
     final repo = ReportRepository(
-      TestBrowser(), baseUrl: 'https://example.test',
+      TestBrowser(),
+      baseUrl: 'https://example.test',
       client: MockClient((request) async {
         if (request.method == 'POST') return jsonResponse(generating);
-        final elapsed = token.delays.fold<int>(0, (sum, delay) => sum + delay.inSeconds);
+        final elapsed = token.delays.fold<int>(
+          0,
+          (sum, delay) => sum + delay.inSeconds,
+        );
         accepted.removeWhere((time) => time <= elapsed - 60);
         if (accepted.length >= 30) {
           rejected++;
-          return http.Response('{"detail":"limited"}', 429, headers: {'retry-after': '30'});
+          return http.Response(
+            '{"detail":"limited"}',
+            429,
+            headers: {'retry-after': '30'},
+          );
         }
         accepted.add(elapsed);
         return jsonResponse(reads++ < 40 ? generating : ready);
       }),
     );
-    final result = await repo.generate(object(ready['input']), token, (_, _, _) {});
+    final result = await repo.generate(
+      object(ready['input']),
+      token,
+      (_, _, _) {},
+    );
     expect(result.preview, isNotEmpty);
     expect(rejected, 0);
-    expect(token.delays.fold<int>(0, (sum, delay) => sum + delay.inSeconds), greaterThan(60));
-    expect(token.delays, contains(const Duration(seconds: 1)));
+    expect(
+      token.delays.fold<int>(0, (sum, delay) => sum + delay.inSeconds),
+      greaterThan(60),
+    );
+    expect(token.delays.first, Duration.zero);
     expect(token.delays.last, const Duration(seconds: 3));
   });
 

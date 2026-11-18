@@ -24,7 +24,7 @@
       "swipe": "Geser ke atas untuk mulai"
     },
     "persona": "Astrolog AI pribadi Anda",
-      "personal": {"title": "Bacaan astrologi Barat pribadi Anda", "freeTitle": "Bacaan gratis", "freeHint": "Kenali kepribadian alami dan cara Anda mengekspresikan diri.", "paidHint": "Bakat pribadi dan tiga bulan penting", "talent": "Bakat pribadi", "node-1": "Peluang pertama", "node-2": "Peluang kedua", "node-3": "Peluang ketiga", "benefit": "Hal yang mendukung", "caution": "Pengingat ringan", "action": "Langkah kecil", "timeUnknown": "Tambahkan waktu lahir yang akurat untuk mengakses bacaan pribadi lengkap.", "unavailable": "Informasi bulanan belum lengkap sehingga bacaan lengkap belum tersedia.", "nodesTitle": "Tiga bulan penting", "keywords": "Kata kunci bagan Anda", "traits": "Ciri pribadi", "opportunity": "Peluang dalam waktu dekat"},
+      "personal": {"relationshipUnlock": "Buka laporan lengkap untuk panduan hubungan pribadi", "relationshipTitle": "Hal yang menghambat hubungan", "relationshipAction": "Satu langkah untuk dicoba", "title": "Bacaan astrologi Barat pribadi Anda", "freeTitle": "Bacaan gratis", "freeHint": "Kenali kepribadian alami dan cara Anda mengekspresikan diri.", "paidHint": "Bakat pribadi dan tiga bulan penting", "talent": "Bakat pribadi", "node-1": "Peluang pertama", "node-2": "Peluang kedua", "node-3": "Peluang ketiga", "benefit": "Hal yang mendukung", "caution": "Pengingat ringan", "action": "Langkah kecil", "timeUnknown": "Tambahkan waktu lahir yang akurat untuk mengakses bacaan pribadi lengkap.", "unavailable": "Informasi bulanan belum lengkap sehingga bacaan lengkap belum tersedia.", "nodesTitle": "Tiga bulan penting", "keywords": "Kata kunci bagan Anda", "traits": "Ciri pribadi", "opportunity": "Peluang dalam waktu dekat"},
     "formTitle": "Kenali diri melalui bagan kelahiran",
     "formCaption": "Mulai dengan bacaan gratis, lalu kenali bakat Anda dan tiga bulan yang spesifik.",
     "topicLabel": "Isi pembacaan Anda",
@@ -155,6 +155,8 @@
       "appTestingTitle": "Aplikasi sedang diuji",
       "appTestingMessage": "Aplikasi masih dalam pengujian dan belum dapat diunduh. Terima kasih atas minat Anda. Nantikan peluncuran resminya!",
       "appTestingClose": "Mengerti",
+      "relationshipAboutTitle": ["Hubungan terasa buntu, masih layak dilanjutkan?", "Sudah sepenuh hati, tetapi rasanya berusaha sendirian?"],
+      "relationshipAbout": "Laporan lengkap membahas lebih jauh tanda dalam bacaan gratis. Kamu akan mendapat satu pertanyaan untuk dibicarakan dan petunjuk kapan layak mencoba bersama atau memperlambat langkah.",
       "aboutTitle": [
         "Bingung karena pekerjaan dan cinta tidak sesuai harapan?",
         "Kehilangan arah atau merasa lelah?"

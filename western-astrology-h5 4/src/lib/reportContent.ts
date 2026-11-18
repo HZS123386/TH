@@ -1,4 +1,5 @@
 import type { LifeLabels, LifePoint, LifeReport, LifeSummary, ReportTopic } from "./lifeReport";
+import { personalTopicKeys, legacyPersonalTopicKeys } from "./lifeReport";
 import { fortuneTopics, fortuneTopicTitle, type FortuneTopicKey } from "./fortuneTopics";
 import originalJyCopy from "../content/jy.json";
 import { additionalCopy, additionalLocales } from "./locales";
@@ -109,12 +110,14 @@ export function reportContent(report: LifeReport): ReportSection[] {
   const labels = copy[language];
   if (report.format === "western-personal") {
     const personal = jyCopy.jy[language].personal;
+    const names = jyCopy.jy[language].report.westernSections;
+    const six = report.catalog.length === personalTopicKeys.length;
     const full = report.access === "full" && report.full_state === "ready";
     return [
       { key: "basics", title: labels.sections[0][1], description: "", paid: false, ready: true, summaries: [], groups: [] },
       { key: "summary", title: personal.freeTitle, description: "", paid: false, ready: report.personal?.free_lines.length === 3, summaries: [], groups: [] },
-      ...(["talent", "node-1", "node-2", "node-3"] as const).map((key, index): ReportSection => ({
-        key, title: full && index > 0 && report.personal?.nodes[index - 1] ? `${report.personal.nodes[index - 1].month} · ${report.personal.nodes[index - 1].theme}` : personal[key],
+      ...(six ? personalTopicKeys : legacyPersonalTopicKeys).map((key, index): ReportSection => ({
+        key, title: six ? names[key as keyof typeof names] : full && index > 0 && report.personal?.nodes[index - 1] ? `${report.personal.nodes[index - 1].month} · ${report.personal.nodes[index - 1].theme}` : personal[key as keyof typeof personal],
         description: "", paid: true, ready: full, summaries: [], groups: [],
       })),
     ];

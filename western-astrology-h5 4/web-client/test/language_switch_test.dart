@@ -15,70 +15,56 @@ import 'package:fate_h5/ui/language_fonts.dart';
 import 'support.dart';
 
 void main() {
-  test('language switch waits for UI but not the common font warmup', () async {
-    final common = Completer<void>();
-    final loaded = <String>[];
-    final fonts = LanguageFonts(
-      loadFont: (family, asset) async {
-        loaded.add(family);
-        if (family == 'NotoSansSCCommon') await common.future;
-      },
-    );
-    final browser = TestBrowser();
-    final controller = H5Controller(
-      translations(),
-      ReportRepository(browser),
-      browser,
-      ensureFont: fonts.ensure,
-      warmFont: fonts.ensureCommon,
-    );
-    expect(await controller.changeLanguage('zh'), isTrue);
-    expect(controller.language, 'zh');
-    expect(controller.languageLoading, isFalse);
-    await Future<void>.delayed(Duration.zero);
-    expect(loaded, ['NotoSansSC', 'NotoSansSCCommon']);
-    expect(common.isCompleted, isFalse);
-    common.complete();
-    await Future<void>.delayed(Duration.zero);
-    controller.dispose();
-  });
-
-  test('failed background warmup does not undo a successful switch', () async {
-    final browser = TestBrowser();
-    final controller = H5Controller(
-      translations(),
-      ReportRepository(browser),
-      browser,
-      ensureFont: (_) async {},
-      warmFont: (_) async => throw StateError('offline'),
-    );
-    expect(await controller.changeLanguage('zh'), isTrue);
-    await Future<void>.delayed(Duration.zero);
-    expect(controller.language, 'zh');
-    expect(controller.languageLoading, isFalse);
-    expect(browser.locale, 'zh');
-    controller.dispose();
-  });
+  test(
+    'language switch and landing entry defer common fonts until text needs them',
+    () async {
+      final common = Completer<void>();
+      final loaded = <String>[];
+      final fonts = LanguageFonts(
+        loadFont: (family, asset) async {
+          loaded.add(family);
+          if (family == 'NotoSansSCCommon') await common.future;
+        },
+      );
+      final browser = TestBrowser();
+      final controller = H5Controller(
+        translations(),
+        ReportRepository(browser),
+        browser,
+        ensureFont: fonts.ensure,
+        ensureTextFont: fonts.ensureText,
+      );
+      expect(await controller.changeLanguage('zh'), isTrue);
+      expect(controller.language, 'zh');
+      expect(controller.languageLoading, isFalse);
+      controller.enterLanding();
+      await Future<void>.delayed(Duration.zero);
+      expect(loaded, ['NotoSansSC']);
+      final text = controller.prepareText('龘');
+      await Future<void>.delayed(Duration.zero);
+      expect(loaded, ['NotoSansSC', 'NotoSansSCCommon']);
+      expect(common.isCompleted, isFalse);
+      common.complete();
+      await text;
+      expect(loaded, ['NotoSansSC', 'NotoSansSCCommon', 'NotoSansSCFull']);
+      controller.dispose();
+    },
+  );
 
   test('failed UI font leaves the active language unchanged', () async {
     final browser = TestBrowser();
-    var warmups = 0;
     final repository = ReportRepository(browser);
     final controller = H5Controller(
       translations(),
       repository,
       browser,
       ensureFont: (_) async => throw StateError('offline'),
-      warmFont: (_) async {
-        warmups++;
-      },
     );
     expect(await controller.changeLanguage('zh'), isFalse);
     expect(controller.language, 'th');
     expect(repository.language, 'th');
     expect(controller.languageLoading, isFalse);
     expect(browser.locale, isEmpty);
-    expect(warmups, 0);
     controller.dispose();
   });
 
@@ -94,9 +80,7 @@ void main() {
       addTearDown(
         tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue,
       );
-      final ui = Completer<void>(),
-          body = Completer<void>(),
-          warm = Completer<void>();
+      final ui = Completer<void>(), body = Completer<void>();
       final browser = TestBrowser();
       final calls = <String>[];
       final controller =
@@ -112,8 +96,6 @@ void main() {
               browser,
               ensureFont: (language) =>
                   language == 'zh' ? ui.future : Future.value(),
-              warmFont: (language) =>
-                  language == 'zh' ? warm.future : Future.value(),
               ensureTextFont: (language, value) =>
                   language == 'zh' ? body.future : Future.value(),
             )
@@ -165,7 +147,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.language, 'zh');
       expect(controller.languageLoading, isFalse);
-      expect(warm.isCompleted, isFalse);
       expect(identical(tester.state(page), initialState), isTrue);
       expect(scroll.position.pixels, closeTo(initialOffset, 1));
       expect(
@@ -189,7 +170,6 @@ void main() {
       expect(tester.widget<TextFormField>(city).controller!.text, '抚顺市');
       expect(calls.where((method) => method != 'GET'), isEmpty);
       expect(tester.takeException(), isNull);
-      warm.complete();
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
     },

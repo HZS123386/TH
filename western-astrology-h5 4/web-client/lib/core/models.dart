@@ -18,7 +18,8 @@ const fortuneKeys = [
   'romance',
 ];
 const westernKeys = ['natal', 'career', 'wealth', 'love', 'risk'];
-const personalKeys = ['talent', 'node-1', 'node-2', 'node-3'];
+const personalKeys = [...westernKeys, 'plan'];
+const legacyPersonalKeys = ['talent', 'node-1', 'node-2', 'node-3'];
 const previewKeys = [
   'preview_summary',
   'preview_strength',
@@ -190,6 +191,7 @@ class LifeReport {
   bool get personalReport => json['format'] == 'western-personal';
   bool get western => personalReport || json['format'] == 'western-compact';
   Json get personal => object(json['personal']);
+  Json get relationshipPreview => object(personal['relationship']);
   List<String> get freeLines =>
       (personal['free_lines'] as List? ?? []).map(text).toList();
   List<Json> get freeTraits => objects(personal['traits']);
@@ -199,6 +201,9 @@ class LifeReport {
             freeLines.every((line) => line.trim().isNotEmpty)
       : preview.isNotEmpty;
   Json get talent => full ? object(personal['talent']) : {};
+  Json get personalThemes => full ? object(personal['themes']) : {};
+  bool get sixPersonalThemes =>
+      personalReport && catalog.length == personalKeys.length;
   List<Json> get nodes => full ? objects(personal['nodes']) : [];
   String get availabilityReason =>
       text(object(personal['availability'])['reason']);
@@ -218,7 +223,7 @@ class LifeReport {
   List<String> get progressKeys => career
       ? ['work']
       : personalReport
-      ? personalKeys
+      ? (sixPersonalThemes ? personalKeys : legacyPersonalKeys)
       : western
       ? [...westernKeys, 'plan']
       : input['report_kind'] == 'fortune'
@@ -235,7 +240,9 @@ class LifeReport {
     final expectedCount = input['career'] != null
         ? 1
         : isPersonal
-        ? 4
+        ? (catalog.length == legacyPersonalKeys.length
+              ? legacyPersonalKeys.length
+              : personalKeys.length)
         : row['format'] == 'western-compact'
         ? 5
         : input['report_kind'] == 'fortune'
@@ -271,8 +278,14 @@ class LifeReport {
       throw const FormatException('invalid_catalog');
     }
     if (isPersonal &&
-        (catalog.map((c) => c['key']).toSet().length != 4 ||
-            catalog.any((c) => !personalKeys.contains(c['key'])))) {
+        (catalog.map((c) => c['key']).toSet().length != expectedCount ||
+            catalog.any(
+              (c) =>
+                  !(expectedCount == personalKeys.length
+                          ? personalKeys
+                          : legacyPersonalKeys)
+                      .contains(c['key']),
+            ))) {
       throw const FormatException('invalid_catalog');
     }
     if (!isPersonal &&
@@ -295,6 +308,30 @@ class LifeReport {
       final lines = personal['free_lines'];
       final traits = personal['traits'];
       final opportunityAction = personal['opportunity_action'];
+      final relationship = report.relationshipPreview;
+      final relationshipVersion = RegExp(
+        r'^western-personal-(\d+)$',
+      ).firstMatch(text(row['version']));
+      final requiresRelationship =
+          (int.tryParse(relationshipVersion?.group(1) ?? '') ?? 0) >= 8;
+      if (personal['relationship'] != null ||
+          requiresRelationship && row['preview_state'] == 'ready') {
+        final facts = objects(relationship['evidence']);
+        if (text(relationship['text']).trim().isEmpty ||
+            text(relationship['action']).trim().isEmpty ||
+            relationship['evidence'] is! List ||
+            facts.length != 2 ||
+            facts.map((fact) => fact['id']).toSet().length != 2 ||
+            facts.any(
+              (fact) => [
+                'id',
+                'title',
+                'detail',
+              ].any((field) => text(fact[field]).trim().isEmpty),
+            )) {
+          throw const FormatException('invalid_relationship_preview');
+        }
+      }
       final availability = object(personal['availability']);
       if (traits != null &&
               (traits is! List ||
@@ -335,6 +372,26 @@ class LifeReport {
         throw const FormatException('invalid_personal_report');
       }
       if (row['full_state'] == 'ready' && report.full) {
+        if (report.sixPersonalThemes) {
+          final themes = report.personalThemes;
+          if (themes.length != 3 ||
+              ['wealth', 'love', 'risk'].any((key) {
+                final point = object(themes[key]);
+                final facts = objects(point['evidence']);
+                return text(point['text']).trim().isEmpty ||
+                    point['evidence'] is! List ||
+                    facts.length != 2 ||
+                    facts.any(
+                      (fact) => [
+                        'id',
+                        'title',
+                        'detail',
+                      ].any((field) => text(fact[field]).trim().isEmpty),
+                    );
+              })) {
+            throw const FormatException('invalid_personal_themes');
+          }
+        }
         final talent = report.talent,
             directions = objects(report.talent['directions']),
             nodes = report.nodes;
@@ -452,7 +509,12 @@ class LifeReport {
     if (!ready) 'chapters': <Json>[],
     if (!ready) 'plan': null,
     if (personalReport && !ready)
-      'personal': {...personal, 'talent': null, 'nodes': <Json>[]},
+      'personal': {
+        ...personal,
+        'talent': null,
+        'themes': null,
+        'nodes': <Json>[],
+      },
   };
 }
 

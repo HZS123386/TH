@@ -25,6 +25,8 @@ FORTUNE_FALLBACK_PROVIDER=qwen
 LIFE_ASTROLOGY_PROVIDER=roxy
 ```
 
+可通过 `LIFE_PREVIEW_OPENAI_MODEL=gpt-6.1-terra` 和 `LIFE_PREVIEW_OPENAI_REASONING_EFFORT=none` 单独配置 Roxy 免费解读。预览复用 `OPENAI_API_KEY`，完整报告按 `OPENAI_MODEL` 与 `OPENAI_REASONING_EFFORT` 生成。用 `LIFE_PREVIEW_OPENAI_LANGUAGES` 指定采用预览模型的逗号分隔语言代码。留空表示覆盖所有语言。免费模型字段留空时，两种报告共用原配置。
+
 `ROXY_ENABLED`、Roxy 服务端密钥保持现有值。`OPENAI_PROXY_URL` 仅在本地配置了本机已有代理；这是客户端出站网络配置，不是新的 API 转发服务。后续部署不得直接复制本机回环代理地址，须按服务器实际网络条件设置或留空。
 
 模型接口依据 [OpenAI GPT-6.1 Sol 官方文档](https://developers.openai.com/api/docs/models/gpt-6.1-sol)：支持流式 Chat Completions、结构化输出和 low reasoning effort。Qwen 兜底复用服务端已有 `QWEN_*` 配置，当前本地模型为 `qwen3.7-plus`。这是故障切换，不是每份报告先后调用两个模型润色。
@@ -34,7 +36,7 @@ LIFE_ASTROLOGY_PROVIDER=roxy
 - 仅对 H5 的 OpenAI 写作服务启用。未配置主服务，或连接失败、超时、认证/额度/限流及其他 HTTP 接口错误时，按原阶段和同一份依据调用 Qwen。
 - 使用原有 `LifeWriter`、传输、结构及引用校验器，Qwen 从原始依据重新生成，不接收主模型的失败草稿作为结论。内容/引用校验失败、本地次数限制、正在生成和取消等待不会触发兜底来绕过原规则。
 - Roxy 排盘仍是必要前提；排盘失败不会转为模型自行推算。完整报告保持五章加行动建议六块内容。
-- 试读与完整章节共享 60 秒主服务冷却时间，避免同一故障反复拖慢每章；冷却到期会再次尝试 OpenAI。OpenAI 单次读取超时为 60 秒，Qwen 保留 25 秒，整体阶段超时仍受原有上限控制。
+- 使用同一模型配置的试读与完整章节共享 60 秒主服务冷却时间。使用独立预览模型时，两个配置各自冷却，期满后再次尝试 OpenAI。OpenAI 单次读取超时为 60 秒，Qwen 保留 25 秒，整体阶段超时仍受原有上限控制。
 - 一次逻辑请求仅计入一次报告次数限额；真实失败调用及兜底调用的模型用量分别留痕。Qwen 也失败时保留已完成章节并返回未完成，不生成固定假报告或循环切换。
 
 ## 结构与缓存

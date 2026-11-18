@@ -411,18 +411,50 @@ class RoxyAstrology(RoxyClient):
             chosen.setdefault(event["date"][:7], event)
         return [chosen[month] for month in sorted(chosen)[:3]]
 
+    @staticmethod
+    def personal_signs(chart, language):
+        raw = chart["raw"]
+        sun = next(row for row in raw["planets"] if row["name"] == "Sun")
+        ascendant = raw["ascendant"] if chart["time_known"] else None
+        return {
+            name: {"evidence_id": "P_" + name, "sign": point["sign"],
+                   "label": SIGN_LABELS[language][SIGNS.index(point["sign"])]} if point else None
+            for name, point in (("sun", sun), ("ascendant", ascendant))
+        }
+
     @classmethod
     def personal_bundle(cls, body, chart, *, full=False):
         bundle = cls.bundle(body, chart, "natal")
         language, known = body.profile.language, chart["time_known"]
         facts = {key: value for key, value in bundle["evidence"].items() if value["type"] != "transit"}
-        signs = {}
-        for name, identifier, point in (("sun", "P_sun", next(row for row in chart["raw"]["planets"] if row["name"] == "Sun")),
-                                        ("ascendant", "P_ascendant", chart["raw"]["ascendant"] if known else None)):
-            signs[name] = ({"evidence_id": identifier, "sign": point["sign"],
-                            "label": SIGN_LABELS[language][SIGNS.index(point["sign"])]} if point else None)
+        if not full:
+            relationship_bundle = cls.bundle(body, chart, "love")
+            relationship_facts = {key: fact for key, fact in relationship_bundle["evidence"].items() if fact["type"] != "transit"}
+            relationship_ids = [key for key in relationship_bundle["topic_evidence"] if key in relationship_facts]
+            # Anchor the teaser to one verified natal aspect, preferring a closer tension aspect.
+            aspects = [(key, relationship_facts[key]) for key in relationship_ids if relationship_facts[key]["type"] == "aspect"]
+            bundle["relationship_aspect_label"] = ""
+            if aspects:
+                aspect_id, aspect = min(aspects, key=lambda item: (item[1]["aspect"] not in ("SQUARE", "OPPOSITION"), item[1]["orb"]))
+                relationship_ids = [aspect_id, "P_" + aspect["planet1"], "P_" + aspect["planet2"]]
+                aspect_name = ASPECTS[aspect["aspect"]][LANGUAGE_COLUMNS[language]]
+                bundle["relationship_aspect_label"] = (f"（{aspect['title'].replace(' · ', '与')}{aspect_name}）" if language == "zh"
+                                                       else f" ({aspect['title']} · {aspect_name})")
+            facts.update({key: relationship_facts[key] for key in relationship_ids})
+            # The short preview needs the source summary, not a second long explanation of every placement.
+            for fact in facts.values():
+                if summary := fact.get("interpretation", {}).get("summary"):
+                    fact["interpretation"] = {"summary": summary}
+        signs = cls.personal_signs(chart, language)
         months = []
         if full:
+            # Give each added subject its own natal factors, instead of reusing the personality subset.
+            theme_ids = {}
+            for topic in ("wealth", "love", "risk"):
+                topic_bundle = cls.bundle(body, chart, topic)
+                topical = {key: fact for key, fact in topic_bundle["evidence"].items() if fact["type"] != "transit"}
+                facts.update(topical)
+                theme_ids[topic] = [key for key in topic_bundle["topic_evidence"] if key in topical]
             for event in cls.personal_events(chart):
                 aspect = event["aspect"].upper()
                 identifier = "T_" + hashlib.sha256(f"{event['datetime']}|{event['body']}|{event['target']}|{aspect}".encode()).hexdigest()[:12]
@@ -437,4 +469,8 @@ class RoxyAstrology(RoxyClient):
                       evidence=facts, personal_signs=signs, forecast={"state": chart.get("forecast", {}).get("state", "not_started" if known else "time_unknown")})
         bundle["topic_evidence"] = [key for key in bundle["topic_evidence"] if key in facts]
         bundle["citation_rules"].update(topic_ids=bundle["topic_evidence"], timing_ids=[item["transit_id"] for item in months], months=months)
+        if full:
+            bundle["citation_rules"]["themes"] = theme_ids
+        else:
+            bundle["citation_rules"]["relationship_ids"] = relationship_ids
         return bundle

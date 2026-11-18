@@ -262,7 +262,11 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
     const planets = readingCopy(language).planets;
     const separator = language === 'zh' ? '' : ' ';
     const signs = [personal?.sun_sign ? planets.sun + separator + personal.sun_sign : '', personal?.ascendant_sign ? planets.ascendant + separator + personal.ascendant_sign : ''].filter(Boolean);
-    preview = '<section><h2>' + escape(personalCopy.freeTitle) + '</h2>' + (result.personal?.free_lines || []).map((line, index) => {
+    const relationship = personal?.relationship;
+    const lovePreview = relationship ? '<article class="personal-free-zone personal-free-relationship"><h3>' + escape(personalCopy.relationshipTitle)
+      + '</h3><p>' + escape(relationship.text) + '</p><h4>' + escape(personalCopy.relationshipAction) + '</h4><p>' + escape(relationship.action) + '</p>'
+      + evidence({text:'',evidence:relationship.evidence,period:null}) + '</article>' : '';
+    preview = '<section><h2>' + escape(personalCopy.freeTitle) + '</h2>' + lovePreview + (result.personal?.free_lines || []).map((line, index) => {
       const key = (['keywords', 'traits', 'opportunity'] as const)[index];
       const content = structured && index === 0
         ? '<p class="personal-signs">' + signs.map((sign, index) => '<span>' + (index ? '+ ' : '') + escape(sign) + '</span>').join(' ') + '</p><p class="personal-keywords">' + personal!.traits!.slice(0, 2).map(trait => '<span>' + escape(trait.title) + '</span>').join(' ') + '</p><p class="personal-free-line">' + escape(personal!.free_lines[1]) + '</p>'
@@ -273,11 +277,22 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
       return '<article class="personal-free-zone personal-free-' + key + '"><h3>' + escape(personalCopy[key]) + '</h3>' + content + action + '</article>';
     }).join('') + '</section>';
   }
-  const personalBody = full && personalCopy && result.personal?.talent ? '<section><h2>' + escape(personalCopy.talent) + '</h2><p>' + escape(result.personal.talent.text) + '</p>'
-    + result.personal.talent.directions.map(direction => '<article><h4>' + escape(direction.title) + '</h4><p>' + escape(direction.text) + '</p></article>').join('') + '</section>'
-    + result.personal.nodes.map(node => '<section class="personal-node"><h2>' + escape(node.month + ' · ' + node.theme) + '</h2>'
+  let personalBody = '';
+  if (full && personalCopy && result.personal?.talent) {
+    const names = language === 'zh' || language === 'th' ? informationCopy.jy[language].report.westernSections : additionalLocales[language].jy.report.westernSections;
+    const themes = result.personal.themes;
+    const directions = result.personal.talent.directions.map(direction => '<article><h4>' + escape(direction.title) + '</h4><p>' + escape(direction.text) + '</p></article>').join('');
+    const nodes = result.personal.nodes.map(node => '<article class="personal-node"><h3>' + escape(node.month + ' · ' + node.theme) + '</h3>'
       + (['benefit', 'caution', 'action'] as const).map(key => '<h4>' + escape(personalCopy[key]) + '</h4><p>' + escape(node[key]) + '</p>').join('')
-      + (node.evidence.length ? evidence({ text: '', evidence: node.evidence, period: null }) : '') + '</section>').join('') : '';
+      + (node.evidence.length ? evidence({ text: '', evidence: node.evidence, period: null }) : '') + '</article>').join('');
+    personalBody = themes
+      ? '<section><h2>' + escape(names.natal) + '</h2><p>' + escape(result.personal.talent.text) + '</p></section>'
+        + '<section><h2>' + escape(names.career) + '</h2>' + directions + '</section>'
+        + (['wealth', 'love', 'risk'] as const).map(key => '<section><h2>' + escape(names[key]) + '</h2><p>' + escape(themes[key].text) + '</p>'
+          + evidence({ ...themes[key], period: null }) + '</section>').join('')
+        + '<section><h2>' + escape(names.plan) + '</h2>' + nodes + '</section>'
+      : '<section><h2>' + escape(personalCopy.talent) + '</h2><p>' + escape(result.personal.talent.text) + '</p>' + directions + '</section>' + nodes;
+  }
   const catalog = personalCopy ? '' : '<section><h2>' + escape(c.catalog) + '</h2>' + sections.filter(section => full || !section.paid).map(section => '<h3>' + escape(section.title) + '</h3><p>' + escape(section.description) + '</p>').join('') + '</section>';
   const chapters = full ? sections.filter(section => section.paid && section.groups.length).map(section => '<section><h2>' + escape(section.title) + '</h2>' + section.summaries.map(summary => window(summary) + '<p class="takeaway">' + escape(summary.text) + '</p>' + evidence(summary)).join('') + section.groups.map(group => '<h3>' + escape(group.title) + '</h3>' + group.entries.map(entry => point(entry.point)).join('')).join('') + '</section>').join('') : '';
   const plan = full && result.plan && advice ? '<section><h2>' + escape(advice.title) + '</h2><p>' + escape(advice.description) + '</p>' + result.plan.phases.map((phase,index) => '<h3>' + escape(c.priority) + ' ' + (index + 1) + '</h3><h4>' + escape(phase.title) + '</h4><p>' + escape(phase.text) + '</p>' + phase.actions.map(action => '<h4>' + escape(action.title) + '</h4>' + window(action) + list(action.steps || [],true)).join('')).join('') + '</section>' : '';

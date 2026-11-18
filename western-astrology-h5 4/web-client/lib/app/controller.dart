@@ -12,8 +12,8 @@ class H5Controller extends ChangeNotifier {
     this.browser, {
     String language = 'th',
     this.ensureFont,
-    this.warmFont,
     this.ensureTextFont,
+    this.ensureReportFont,
   }) : _language = h5Language(language) {
     repository.language = _language;
     welcomeOpen = true;
@@ -24,19 +24,28 @@ class H5Controller extends ChangeNotifier {
   final ReportRepository repository;
   final BrowserPort browser;
   final Future<void> Function(String)? ensureFont;
-  final Future<void> Function(String)? warmFont;
   final Future<void> Function(String, String)? ensureTextFont;
+  final Future<void> Function(String)? ensureReportFont;
   late bool welcomeOpen;
   late final bool returningVisitor;
   bool welcomePortraitRevealed = false;
   bool landingPrepared = false;
   Json? landingInput;
   Place? landingPlace;
+  LifeReport? _generatedPreview;
   Future<void>? _visitRequest;
   Json _visit = {};
   final _events = <String>{};
   final _submissions = <String, Future<void>>{};
   final _background = CancelToken();
+
+  void stageGeneratedPreview(LifeReport report) => _generatedPreview = report;
+
+  LifeReport? takeGeneratedPreview(String id) {
+    final report = _generatedPreview;
+    _generatedPreview = null;
+    return report?.id == id && report?.language == language ? report : null;
+  }
 
   void restoreLandingFromReport(LifeReport? report) {
     if (report != null) {
@@ -68,8 +77,6 @@ class H5Controller extends ChangeNotifier {
     welcomePortraitRevealed = true;
     notifyListeners();
     unawaited(recordVisit());
-    // Warm later place/report text after the welcome is already visible.
-    unawaited((warmFont ?? ensureFont)?.call(language).catchError((_) {}));
   }
 
   void prepareLanding() {
@@ -80,6 +87,13 @@ class H5Controller extends ChangeNotifier {
 
   Future<void> prepareText(String value, {String? language}) async {
     await ensureTextFont?.call(language ?? this.language, value);
+  }
+
+  void warmReportFont() {
+    final load = ensureReportFont;
+    if (language == 'zh' && load != null) {
+      unawaited(load(language).catchError((_) {}));
+    }
   }
 
   void revealLandingPortrait() {
@@ -155,7 +169,6 @@ class H5Controller extends ChangeNotifier {
     repository.language = language;
     browser.setLanguage(language, copy.t('jy', 'title'));
     notifyListeners();
-    unawaited(warmFont?.call(language).catchError((_) {}));
     return true;
   }
 

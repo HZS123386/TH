@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from copy import deepcopy
+from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
@@ -37,6 +38,9 @@ PERSONAL_CATALOG = {
     "ms": ("Bakat dan arah perkembangan", "Peluang pertama", "Peluang kedua", "Peluang ketiga"),
     "id": ("Bakat dan arah pengembangan", "Peluang pertama", "Peluang kedua", "Peluang ketiga"),
 }
+PERSONAL_ACTION_TITLES = {"zh": "行动建议", "th": "คำแนะนำที่นำไปใช้ได้", "en": "Actionable advice",
+    "vi": "Gợi ý hành động", "my": "လက်တွေ့လုပ်ဆောင်ရန် အကြံပြုချက်များ", "km": "ការណែនាំសម្រាប់អនុវត្ត",
+    "lo": "ຄຳແນະນຳທີ່ນຳໄປໃຊ້ໄດ້", "ms": "Cadangan tindakan", "id": "Saran tindakan"}
 
 
 def personal_chart(chart):
@@ -211,6 +215,17 @@ class LifeReports:
         # Domain adapters own calculations/evidence; report access and generation remain here.
         self.adapters = {"astrology": RoxyAstrology(settings, store)}
         self.writer = LifeWriter(store, settings, model_slots)
+        self.fast_preview_writer = self.writer
+        primary = settings.providers.get(settings.fortune_provider)
+        if (settings.life_astrology_provider == "roxy" and settings.fortune_provider == "openai"
+                and settings.life_preview_openai_model and primary):
+            preview_config = replace(
+                primary, model=settings.life_preview_openai_model,
+                reasoning_effort=settings.life_preview_openai_reasoning_effort or primary.reasoning_effort,
+            )
+            if preview_config != primary:
+                preview_settings = replace(settings, providers={**settings.providers, "openai": preview_config})
+                self.fast_preview_writer = LifeWriter(store, preview_settings, model_slots)
         self.parts_writer = LifeWriter(store, settings, model_slots, charge=False, availability=self.writer.availability)
         # Production has four shared model slots; paid work leaves capacity for a free preview.
         self.parts_writer.request_slots = asyncio.Semaphore(self.chapter_concurrency)
@@ -309,6 +324,10 @@ class LifeReports:
         self.require_personal_full(row)
         return row
 
+    def preview_writer_for(self, language):
+        languages = self.settings.life_preview_openai_languages
+        return self.fast_preview_writer if not languages or language in languages else self.writer
+
     async def create(self, body, owner, network, *, wait=True):
         profile = body.profile.model_dump(mode="json")
         snapshot = body.model_dump(mode="json", exclude=None if body.career else {"career"})
@@ -327,11 +346,12 @@ class LifeReports:
         if use_roxy:
             identity.append(["forecast", FORECAST_VERSION, datetime.now(timezone.utc).date().isoformat()])
         if not body.career:
-            config = self.writer.config
-            identity.append([self.writer.provider, config.base_url if config else None, config.model if config else None,
+            writer = self.preview_writer_for(body.profile.language) if use_roxy else self.writer
+            config = writer.config
+            identity.append([writer.provider, config.base_url if config else None, config.model if config else None,
                              config.reasoning_effort if config else None])
-            if self.writer.fallback_writer:
-                fallback = self.writer.fallback_writer
+            if writer.fallback_writer:
+                fallback = writer.fallback_writer
                 config = fallback.config
                 identity.append([fallback.provider, config.base_url if config else None, config.model if config else None,
                                  config.reasoning_effort if config else None])
@@ -424,11 +444,12 @@ class LifeReports:
             bundle = self.adapters["astrology"].personal_bundle(body, chart)
             if body.user_question:
                 bundle["user_question"] = body.user_question
-            generated = await self.writer.generate(bundle, owner, network)
+            generated = await self.preview_writer_for(body.profile.language).generate(bundle, owner, network)
             values = {"preview_state": generated["state"], "lease": "", "lease_until": 0}
             if generated["state"] == "ready" and generated.get("story"):
                 values["preview"] = encoded({"presentation": "western-personal", "version": PERSONAL_WRITING_VERSION,
-                                             "story": generated["story"], "evidence": bundle["evidence"]})
+                                             "story": generated["story"], "evidence": bundle["evidence"],
+                                             "relationship_aspect_label": bundle["relationship_aspect_label"]})
             elif generated["state"] == "ready":
                 values["preview_state"] = "unavailable"
             self.update(row["id"], expected_lease=lease, **values)
@@ -579,11 +600,14 @@ class LifeReports:
             titles[0] = (REGIONAL_LANGUAGES[language]["annual_title"].replace("{year}", str(body["year"])) if language in REGIONAL_LANGUAGES else {"zh": f"{body['year']}年运程", "th": f"ดวงปี {body['year']}", "en": f"{body['year']} yearly themes", "vi": f"Chủ đề năm {body['year']}"}[language])
             questions = [FORTUNE_TOPICS[key][language]["questions"] for key in chapter_keys]
         if is_personal:
-            chapter_keys = ("talent", "node-1", "node-2", "node-3")
-            titles = PERSONAL_CATALOG[language]
+            saved_personal = records.get("personal", {}).get("story", {})
+            # Saved four-part reports remain readable; new writing always supplies all six subjects.
+            six_themes = not saved_personal or "themes" in saved_personal
+            chapter_keys = (*WESTERN_CHAPTERS, "plan") if six_themes else ("talent", "node-1", "node-2", "node-3")
+            titles = (*WESTERN_TITLES[language], PERSONAL_ACTION_TITLES[language]) if six_themes else PERSONAL_CATALOG[language]
             questions = [[] for _ in chapter_keys]
             ready = row["full_state"] == "ready" and "personal" in records
-            completed = 4 if ready else 0
+            completed = len(chapter_keys) if ready else 0
             sections = [{"key": key, "percent": 100 if ready else min(99, marks.get("personal_full", 0))} for key in chapter_keys]
             version = preview.get("version", PERSONAL_WRITING_VERSION) if preview else PERSONAL_WRITING_VERSION
         percent = int(sum(section["percent"] for section in sections) / len(sections))
@@ -622,15 +646,24 @@ class LifeReports:
             "chapters": [], "plan": None,
         }
         if is_personal:
-            signs = self.adapters["astrology"].personal_bundle(LifeInput.model_validate(body), chart)["personal_signs"]
+            signs = self.adapters["astrology"].personal_signs(chart, language)
             record = records.get("personal") if row["unlocked"] else None
+            relationship = None
+            if preview and (love := preview["story"].get("relationship")):
+                relationship = {"text": love["text"] + preview.get("relationship_aspect_label", ""),
+                                "action": love["action"],
+                                "evidence": [explain(key, preview["evidence"][key], language) for key in love["evidence_ids"]]}
             result["outlook"] = {"state": chart.get("forecast", {}).get("state", "not_started" if chart.get("time_known") else "time_unknown")}
             result["personal"] = {"free_lines": preview["story"]["free_lines"] if preview else [],
+                "relationship": relationship,
                 "traits": preview["story"].get("traits", []) if preview else [],
                 "opportunity_action": preview["story"].get("opportunity_action", "") if preview else "",
                 "sun_sign": signs["sun"]["label"], "ascendant_sign": signs["ascendant"]["label"] if signs["ascendant"] else None,
                 "availability": self.personal_availability(chart),
                 "talent": record["story"]["talent"] if record else None,
+                "themes": {key: {"text": item["text"],
+                    "evidence": [explain(identifier, record["evidence"][identifier], language) for identifier in item["evidence_ids"]]}
+                    for key, item in record["story"]["themes"].items()} if record and "themes" in record["story"] else None,
                 "nodes": [{**{key: item[key] for key in ("month", "theme", "benefit", "caution", "action")},
                            "evidence": [explain(key, record["evidence"][key], language) for key in item["evidence_ids"]]}
                           for item in record["story"]["nodes"]] if record else []}
@@ -796,7 +829,16 @@ class LifeReports:
                 row = await self.prepare_personal_full(row, owner, network, lease=lease)
                 chart = json.loads(row["chart"])
                 bundle = self.adapters["astrology"].personal_bundle(body, chart, full=True)
-                bundle["free_lines"] = preview_record["story"]["free_lines"]
+                free_story = preview_record["story"]
+                bundle["previous_points"] = [*free_story["free_lines"],
+                    *(item["text"] for item in free_story.get("traits", [])), free_story.get("opportunity_action", "")]
+                if relationship := free_story.get("relationship"):
+                    allowed = bundle["citation_rules"]["themes"]["love"]
+                    aspect = next((key for key in relationship.get("evidence_ids", ())
+                                   if key in allowed and bundle["evidence"][key]["type"] == "aspect"), None)
+                    bundle["relationship_preview"] = {"text": relationship["text"], "action": relationship["action"],
+                                                      "natal_aspect_id": aspect}
+                bundle["free_lines"] = free_story["free_lines"]
                 generated = await self.write_part(report_id, lease, bundle, owner, network)
                 values = {"full_state": generated["state"], "lease": "", "lease_until": 0}
                 if generated["state"] == "ready" and generated.get("story"):
@@ -924,8 +966,15 @@ def life_report_router(service):
         return {"items": service.list(scopes(key, request)[0])}
 
     @router.get("/{report_id}")
-    async def get(report_id: str, request: Request, key: key_header):
-        return service.get(report_id, scopes(key, request)[0])
+    async def get(report_id: str, request: Request, key: key_header, wait_preview: bool = False):
+        owner = scopes(key, request)[0]
+        result = service.get(report_id, owner)
+        task = service.preview_tasks.get(report_id)
+        if wait_preview and result["preview_state"] == "generating" and task and not task.done():
+            # Return as soon as the saved preview is ready; a disconnected reader must not cancel its generation.
+            await asyncio.wait({task}, timeout=3)
+            result = service.get(report_id, owner)
+        return result
 
     @router.delete("/{report_id}", status_code=204)
     async def delete(report_id: str, request: Request, key: key_header):

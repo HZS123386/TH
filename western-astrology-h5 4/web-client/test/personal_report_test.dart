@@ -27,7 +27,7 @@ void main() {
     expect(report.nodes, isEmpty);
   });
   testWidgets(
-    'landing promises the same four personal blocks while preserving the original board artwork',
+    'landing restores six themes while preserving the original board artwork',
     (tester) async {
       tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
@@ -56,26 +56,22 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump();
       final board = find.byType(ThemeBoards);
-      expect(tester.widget<ThemeBoards>(board).personal, isTrue);
+      for (final label in ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议']) {
+        expect(
+          find.descendant(of: board, matching: find.text(label)),
+          findsOneWidget,
+        );
+      }
+      expect(find.text(controller.copy.t('jy', 'formCaption')), findsOneWidget);
       for (final key in personalKeys) {
         expect(
           find.descendant(
             of: board,
             matching: find.text(controller.copy.t('jy', 'personal.$key')),
           ),
-          findsOneWidget,
+          findsNothing,
         );
       }
-      expect(find.text(controller.copy.t('jy', 'formCaption')), findsOneWidget);
-      expect(
-        find.descendant(
-          of: board,
-          matching: find.text(
-            controller.copy.t('jy', 'report.westernSections.career'),
-          ),
-        ),
-        findsNothing,
-      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
@@ -149,6 +145,26 @@ void main() {
             );
           }
           expect(find.byKey(const ValueKey('personal-signs')), findsOneWidget);
+          final relationship = find.byKey(
+            const ValueKey('free-relationship-preview'),
+          );
+          expect(relationship, findsOneWidget);
+          expect(
+            find.text(
+              'A distinct view of closeness, needs and relationship boundaries.',
+            ),
+            findsOneWidget,
+          );
+          expect(
+            tester.getTopLeft(relationship).dy,
+            lessThan(
+              tester
+                  .getTopLeft(
+                    find.byKey(const ValueKey('personal-free-zone-0')),
+                  )
+                  .dy,
+            ),
+          );
           for (var i = 0; i < 2; i++) {
             expect(
               find.byKey(ValueKey('personal-keyword-Personal trait $i')),
@@ -168,10 +184,33 @@ void main() {
           if (full) {
             expect(find.byType(ReportCheckout), findsNothing);
             expect(find.text('Synthetic personal talent.'), findsOneWidget);
+            for (final key in ['wealth', 'love', 'risk']) {
+              expect(find.text('Synthetic $key reading.'), findsOneWidget);
+            }
             expect(find.text('2027-03 · Synthetic theme 3'), findsOneWidget);
             expect(find.text('Synthetic small action 3'), findsOneWidget);
           } else {
             expect(find.byType(ReportCheckout), findsOneWidget);
+            final unlock = tester.widget<JYButton>(
+              find.byKey(const ValueKey('jy-payment-preview')),
+            );
+            expect(
+              unlock.label,
+              controller.copy.t('jy', 'personal.relationshipUnlock'),
+            );
+            expect(unlock.label, isNotEmpty);
+            final aboutTitles = controller.copy.list(
+              'jy',
+              'checkout.relationshipAboutTitle',
+            );
+            expect(aboutTitles, hasLength(2));
+            for (final title in aboutTitles) {
+              expect(find.text(title), findsOneWidget);
+            }
+            expect(
+              find.text(controller.copy.t('jy', 'checkout.relationshipAbout')),
+              findsOneWidget,
+            );
             for (var i = 0; i < 3; i++) {
               expect(
                 find.byKey(ValueKey('personal-free-zone-$i')),
@@ -185,6 +224,9 @@ void main() {
               );
             }
             expect(find.text('Synthetic personal talent.'), findsNothing);
+            for (final key in ['wealth', 'love', 'risk']) {
+              expect(find.text('Synthetic $key reading.'), findsNothing);
+            }
             expect(find.textContaining('2027-01'), findsNothing);
             expect(find.textContaining('Synthetic theme'), findsNothing);
             expect(find.textContaining('Synthetic benefit'), findsNothing);

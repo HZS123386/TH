@@ -29,9 +29,10 @@
   <!-- FATE_FONT_PRELOADS -->
   <script>
     const fatePreload=(href,priority='high')=>{const link=document.createElement('link');link.rel='preload';link.href=href;link.as='fetch';link.crossOrigin='anonymous';link.fetchPriority=priority;document.head.append(link);};
-    if(document.documentElement.lang==='zh')fatePreload('assets/assets/fonts/FateChineseUI.otf');
-    const regionalFont={my:'Myanmar',km:'Khmer',lo:'Lao'}[document.documentElement.lang];
-    if(regionalFont)fatePreload(`assets/assets/fonts/NotoSans${regionalFont}-Regular.ttf`);
+    // Prepare switch fonts during startup; only the active language has high priority.
+    for(const [language,file] of Object.entries({zh:'FateChineseUI.otf',my:'NotoSansMyanmar-Regular.ttf',km:'NotoSansKhmer-Regular.ttf',lo:'NotoSansLao-Regular.ttf'})) {
+      fatePreload(`assets/assets/fonts/${file}`,document.documentElement.lang===language?'high':'low');
+    }
     fatePreload('assets/FontManifest.json','low');
     fatePreload('assets/AssetManifest.bin.json','low');
     fatePreload('assets/assets/copy.json','low');

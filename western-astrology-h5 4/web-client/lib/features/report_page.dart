@@ -47,7 +47,13 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _model.addListener(_changed);
-    unawaited(_model.load());
+    final generated = widget.h5.takeGeneratedPreview(widget.id);
+    if (generated != null) {
+      // From the form, this report was already fetched, validated, and prepared for display.
+      _model.accept(generated);
+    } else {
+      unawaited(_model.load());
+    }
   }
 
   void _changed() {
@@ -507,6 +513,70 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
             const SizedBox(height: 20),
           ] else
             const SizedBox(height: 16),
+        ],
+        if (report.personalReport && report.relationshipPreview.isNotEmpty) ...[
+          JYCard(
+            key: const ValueKey('free-relationship-preview'),
+            radius: 14,
+            borderColor: const Color(0xFFB878A4),
+            colors: const [Color(0xFF3D2445), Color(0xFF24182F)],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.favorite_border,
+                      color: Color(0xFFF3BDDB),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        c.t('jy', 'personal.relationshipTitle'),
+                        style: const TextStyle(
+                          color: Color(0xFFFFD6EC),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  text(report.relationshipPreview['text']),
+                  key: const ValueKey('free-relationship-text'),
+                  style: const TextStyle(
+                    color: cream,
+                    fontSize: 14,
+                    height: 1.8,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  c.t('jy', 'personal.relationshipAction'),
+                  style: const TextStyle(
+                    color: gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  text(report.relationshipPreview['action']),
+                  key: const ValueKey('free-relationship-action'),
+                  style: const TextStyle(
+                    color: cream,
+                    fontSize: 14,
+                    height: 1.8,
+                  ),
+                ),
+                _evidence(report.relationshipPreview['evidence'], c),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
         ],
         if (report.personalReport)
           ..._personalPreview(report, c)
@@ -1073,12 +1143,12 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (r.personalReport)
+                        if (r.personalReport && !r.sixPersonalThemes)
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              for (final key in personalKeys)
+                              for (final key in r.progressKeys)
                                 ActionChip(
                                   label: Text(c.t('jy', 'personal.$key')),
                                   onPressed: () => _navigate('report-$key'),
@@ -1180,12 +1250,22 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     },
   );
   List<Widget> _personalSections(LifeReport report, Copy c) => [
-    _sectionTitle('talent', c.t('jy', 'personal.talent')),
+    _sectionTitle(
+      report.sixPersonalThemes ? 'natal' : 'talent',
+      c.t(
+        'jy',
+        report.sixPersonalThemes
+            ? 'report.westernSections.natal'
+            : 'personal.talent',
+      ),
+    ),
     if (report.talent.isNotEmpty) ...[
       Text(
         text(report.talent['text']),
         style: const TextStyle(fontSize: 14, height: 1.8),
       ),
+      if (report.sixPersonalThemes)
+        _sectionTitle('career', c.t('jy', 'report.westernSections.career')),
       for (final direction in objects(report.talent['directions']))
         Padding(
           padding: const EdgeInsets.only(top: 16),
@@ -1208,6 +1288,17 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
             ],
           ),
         ),
+    ],
+    if (report.sixPersonalThemes) ...[
+      for (final key in ['wealth', 'love', 'risk']) ...[
+        _sectionTitle(key, c.t('jy', 'report.westernSections.$key')),
+        Text(
+          text(object(report.personalThemes[key])['text']),
+          style: const TextStyle(fontSize: 14, height: 1.8),
+        ),
+        _evidence(object(report.personalThemes[key])['evidence'], c),
+      ],
+      _sectionTitle('plan', c.t('jy', 'report.westernSections.plan')),
     ],
     for (final node in report.nodes.indexed) ...[
       _sectionTitle(

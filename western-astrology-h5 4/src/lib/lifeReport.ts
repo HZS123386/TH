@@ -8,8 +8,9 @@ export type CareerFocus = "decision" | "stay" | "move" | "next";
 type CareerQuestion = { stage: CareerStage; start: string; focus?: CareerFocus | null };
 export type LifeInput = Omit<ReadingInput, "reading"> & { report_kind?: "life" | "fortune"; career?: CareerQuestion; career_question?: CareerQuestion; user_question?: string };
 export const westernTopicKeys = ["natal", "career", "wealth", "love", "risk"] as const;
-export const personalTopicKeys = ["talent", "node-1", "node-2", "node-3"] as const;
-export type ReportTopic = Reading | FortuneTopicKey | typeof westernTopicKeys[number] | typeof personalTopicKeys[number];
+export const personalTopicKeys = [...westernTopicKeys, "plan"] as const;
+export const legacyPersonalTopicKeys = ["talent", "node-1", "node-2", "node-3"] as const;
+export type ReportTopic = Reading | FortuneTopicKey | typeof westernTopicKeys[number] | typeof personalTopicKeys[number] | typeof legacyPersonalTopicKeys[number];
 export type LifeState = "not_started" | "pending" | "generating" | "ready" | "limited" | "unavailable" | "unconfigured";
 export type Feedback = "close" | "partly" | "different";
 export interface LifeEvidence { id: string; title: string; detail: string }
@@ -17,11 +18,14 @@ export interface LifeWindow { start: string; end: string; event_date: string; ti
 export interface LifeSummary { text: string; evidence: LifeEvidence[]; period: { year: number; month: number } | null; window?: LifeWindow }
 export interface PersonalTalent { text: string; directions: { title: string; text: string }[] }
 export interface PersonalNode { month: string; theme: string; benefit: string; caution: string; action: string; evidence: LifeEvidence[] }
+export interface PersonalTopic { text: string; evidence: LifeEvidence[] }
 export interface PersonalReading {
+  relationship?: (PersonalTopic & { action: string }) | null;
   free_lines: string[]; sun_sign: string | null; ascendant_sign: string | null;
   traits?: { title: string; text: string }[]; opportunity_action?: string;
   availability: { full_report: boolean; reason: "not_started" | "ready" | "time_unknown" | "unavailable" | "insufficient_periods" };
   talent: PersonalTalent | null; nodes: PersonalNode[];
+  themes?: Record<"wealth" | "love" | "risk", PersonalTopic> | null;
 }
 export interface LifePoint extends ReadingItem { evidence: LifeEvidence[]; window?: LifeWindow }
 export interface LifeChapter {
@@ -256,7 +260,7 @@ const fortuneProgressKeys = [...fortuneTopicKeys, "plan"];
 const westernProgressKeys = [...westernTopicKeys, "plan"];
 const careerProgressKeys = ["work"];
 const previewProgressKeys = ["preview_summary", "preview_strength", "preview_decisions", "preview_relationships"];
-function isContentProgress(value: unknown, keys: string[]): boolean {
+function isContentProgress(value: unknown, keys: readonly string[]): boolean {
   if (!value || typeof value !== "object") return false;
   const progress = value as { percent: number; sections: { key: string; percent: number }[] };
   return Number.isInteger(progress.percent) && progress.percent >= 0 && progress.percent <= 100
@@ -268,9 +272,17 @@ export function isLifeReport(value: unknown): value is LifeReport {
   if (!value || typeof value !== "object") return false;
   const report = value as LifeReport;
   const personal = report.format === "western-personal";
+  const personalKeys = personalProgressKeys(report);
   const nonempty = (value: unknown): value is string => typeof value === "string" && !!value.trim();
   if (personal) {
     const p = report.personal;
+    const relationship = p?.relationship;
+    const requiresRelationship = Number(report.version?.match(/^western-personal-(\d+)$/)?.[1] || 0) >= 8;
+    if (relationship != null || requiresRelationship && report.preview_state === 'ready') {
+      if (!relationship || !nonempty(relationship.text) || !nonempty(relationship.action) || !Array.isArray(relationship.evidence) ||
+          relationship.evidence.length !== 2 || new Set(relationship.evidence.map(fact => fact?.id)).size !== 2 ||
+          relationship.evidence.some(fact => !fact || !nonempty(fact.id) || !nonempty(fact.title) || !nonempty(fact.detail))) return false;
+    }
     if (report.preview !== null || !Array.isArray(report.chapters) || report.chapters.length || report.plan !== null) return false;
     if (p && (!Array.isArray(p.free_lines) || p.free_lines.length > 3 || p.free_lines.some(line => typeof line !== "string") ||
       typeof p.availability?.full_report !== "boolean" || !["not_started", "ready", "time_unknown", "unavailable", "insufficient_periods"].includes(p.availability.reason))) return false;
@@ -280,6 +292,14 @@ export function isLifeReport(value: unknown): value is LifeReport {
     if (report.preview_state === "ready" && (!hasLifePreview(report) || typeof p?.sun_sign !== "string" || !p.sun_sign.trim() || p.ascendant_sign !== null && typeof p.ascendant_sign !== "string")) return false;
     if (!report.input?.profile?.birth_time && p?.ascendant_sign != null) return false;
     if (report.access === "full" && report.full_state === "ready") {
+      if (personalKeys.length === personalTopicKeys.length) {
+        const themes = p?.themes;
+        if (!themes || Object.keys(themes).length !== 3 || (["wealth", "love", "risk"] as const).some(key => {
+          const point = themes[key];
+          return !point || !nonempty(point.text) || !Array.isArray(point.evidence) || point.evidence.length !== 2 ||
+            point.evidence.some(fact => !fact || !nonempty(fact.id) || !nonempty(fact.title) || !nonempty(fact.detail));
+        })) return false;
+      }
       const talent = p?.talent, nodes = p?.nodes;
       if (!talent || !nonempty(talent.text) || !Array.isArray(talent.directions) || talent.directions.length !== 3 || !Array.isArray(nodes) || nodes.length !== 3) return false;
       if (talent.directions.some(item => !item || !nonempty(item.title) || !nonempty(item.text)) || nodes.some(node => !node) || new Set(nodes.map(node => node.month)).size !== 3) return false;
@@ -288,13 +308,17 @@ export function isLifeReport(value: unknown): value is LifeReport {
     }
   }
   return typeof report.id === "string" && !!report.input?.profile && languages.includes(report.input.profile.language)
-    && Array.isArray(report.catalog) && report.catalog.length === (personal ? 4 : report.input.career ? 1 : report.format === "western-compact" ? 5 : report.input.report_kind === "fortune" ? 7 : 5) && Array.isArray(report.chapters)
-    && (personal ? new Set(report.catalog.map(item => item.key)).size === 4 && report.catalog.every(item => (personalTopicKeys as readonly string[]).includes(item.key)) : report.format === "western-compact" ? new Set(report.catalog.map(item => item.key)).size === 5 && report.catalog.every(item => (westernTopicKeys as readonly string[]).includes(item.key)) : report.input.report_kind !== "fortune" || new Set(report.catalog.map(item => item.key)).size === 7 && report.catalog.every(item => fortuneTopicKeys.includes(item.key as FortuneTopicKey)))
+    && Array.isArray(report.catalog) && report.catalog.length === (personal ? personalKeys.length : report.input.career ? 1 : report.format === "western-compact" ? 5 : report.input.report_kind === "fortune" ? 7 : 5) && Array.isArray(report.chapters)
+    && (personal ? new Set(report.catalog.map(item => item.key)).size === personalKeys.length && report.catalog.every(item => personalKeys.includes(item.key)) : report.format === "western-compact" ? new Set(report.catalog.map(item => item.key)).size === 5 && report.catalog.every(item => (westernTopicKeys as readonly string[]).includes(item.key)) : report.input.report_kind !== "fortune" || new Set(report.catalog.map(item => item.key)).size === 7 && report.catalog.every(item => fortuneTopicKeys.includes(item.key as FortuneTopicKey)))
     && (!report.preview || Array.isArray(report.preview.traits) && report.preview.traits.length === 3)
     && ["preview", "full"].includes(report.access) && Number.isInteger(report.progress?.completed)
     && Number.isInteger(report.progress?.total) && report.progress.total > 0 && report.progress.completed >= 0 && report.progress.completed <= report.progress.total
-    && (!report.generation_progress || isContentProgress(report.generation_progress, personal ? [...personalTopicKeys] : report.input.career ? careerProgressKeys : report.format === "western-compact" ? westernProgressKeys : report.input.report_kind === "fortune" ? fortuneProgressKeys : fullProgressKeys))
+    && (!report.generation_progress || isContentProgress(report.generation_progress, personal ? personalKeys : report.input.career ? careerProgressKeys : report.format === "western-compact" ? westernProgressKeys : report.input.report_kind === "fortune" ? fortuneProgressKeys : fullProgressKeys))
     && (!report.preview_generation_progress || isContentProgress(report.preview_generation_progress, previewProgressKeys));
+}
+
+export function personalProgressKeys(report: Pick<LifeReport, "catalog">): readonly string[] {
+  return report.catalog?.length === personalTopicKeys.length ? personalTopicKeys : legacyPersonalTopicKeys;
 }
 
 export function hasLifePreview(report: LifeReport): boolean {
@@ -325,7 +349,7 @@ export function reportGenerationProgress(report: LifeReport): GenerationProgress
   const preview = hasLifePreview(report) && report.preview_state === "ready";
   const ready = preview && report.full_state === "ready" && completed === total;
   const detailed = report.generation_progress;
-  if (detailed && !isContentProgress(detailed, report.format === "western-personal" ? [...personalTopicKeys] : report.input.career ? careerProgressKeys : report.format === "western-compact" ? westernProgressKeys : report.input.report_kind === "fortune" ? fortuneProgressKeys : fullProgressKeys)) throw new Error(ui[report.input.profile.language].badResult);
+  if (detailed && !isContentProgress(detailed, report.format === "western-personal" ? personalProgressKeys(report) : report.input.career ? careerProgressKeys : report.format === "western-compact" ? westernProgressKeys : report.input.report_kind === "fortune" ? fortuneProgressKeys : fullProgressKeys)) throw new Error(ui[report.input.profile.language].badResult);
   const percent = ready ? 100 : Math.min(99, detailed?.percent ?? Math.floor(completed / total * 100));
   return {
     percent, completed: percent, total: 100, sections: detailed?.sections,

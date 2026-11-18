@@ -34,7 +34,10 @@ def personal_draft(bundle):
     sun = bundle["personal_signs"]["sun"]["label"]
     asc = bundle["personal_signs"]["ascendant"]
     if bundle["stage"] == "personal_preview":
-        return {**base, "free_lines": [
+        return {**base, "relationship": {
+            "text": "感情里越想说清自己的真心，越可能在回应还不明确时先交出信任。被认真听见很珍贵，也容易让你忽略对方有没有用行动回应。",
+            "action": "留意总能接住你的情绪，却反复绕开见面安排的人。",
+            "evidence_ids": bundle["citation_rules"]["relationship_ids"][:2]}, "free_lines": [
             f"太阳{sun}与上升{asc['label']}，让主动表达与照顾他人感受的倾向相互配合。" if asc else f"太阳{sun}提示主动表达的可能，上升仍需准确出生时间才能确认。",
             "你擅长在回应需要的过程中，连接他人并逐步建立信任。",
             "近期或有被关键人物看见的机会窗口。",
@@ -51,13 +54,21 @@ def personal_draft(bundle):
         {"theme": "连接与取舍", "benefit": "把分散的信息连成清楚的思路，有利于交换资源，也为进一步讨论打开空间，让不同需要之间能够衔接的条件更容易浮现。",
          "caution": "想法铺得太大时，先确认能落实的部分。", "action": "选一个真实需求，找到一项能够衔接的资源。"},
     ]
+    theme_ids = {key: ids[:2] for key, ids in bundle["citation_rules"]["themes"].items()}
+    if aspect := bundle.get("relationship_preview", {}).get("natal_aspect_id"):
+        theme_ids["love"] = [aspect, next(key for key in theme_ids["love"] if key != aspect)]
     return {**base, "talent": {
         "text": "你擅长把自己的想法说清楚，也在意他人的真实感受；通过倾听需要、连接合适的信息与资源，清晰表达与体贴回应能够形成配合。",
         "directions": [
             {"title": "回应需要", "text": "面对需要帮助的人，先问清最在意的问题，再用对方容易理解的方式回应，保留彼此选择的空间。"},
             {"title": "连接资源", "text": "当不同的人各有需要时，先整理哪些条件能够衔接，再确认双方是否愿意继续交流，避免替人答应未确定的安排。"},
             {"title": "传递信息", "text": "把复杂信息讲清楚时，先抓住一个重点，再用贴近日常的例子说明，让对方更容易理解并形成自己的判断。"},
-        ]}, "nodes": [
+        ]}, "themes": {key: {"text": text, "evidence_ids": theme_ids[key]}
+            for key, text in {
+                "wealth": "对资源的安全感更容易来自清楚的使用边界，而不只是拥有多少。面对一项支出时，留意它是满足长期需要，还是为了缓解当下的不安；共同承担费用前，把各自能接受的范围说清楚。",
+                "love": "聊到见面安排时，试着问‘我们先定一个都方便的时间，好吗？’若对方愿意一起确认，临时有事也主动另约，关系就有继续磨合的空间。若几次商量都只得到模糊答复，先把时间留给自己的安排，等对方提出具体时间再回应。",
+                "risk": "当多个要求同时增加时，容易把完成速度当成衡量自己的唯一标准。若开始反复检查已经确认过的细节、却迟迟不愿交出结果，这就是负担过重的信号；先划清责任范围，比不断加码更能恢复稳定。",
+            }.items()}, "nodes": [
             {"month": rule["month"], **copy,
              "evidence_ids": [rule["transit_id"], rule["supporting_natal_ids"][0]]}
             for rule, copy in zip(bundle["citation_rules"]["months"], node_copy)]}
@@ -76,6 +87,7 @@ def test_personal_free_localized_sign_names_keep_the_requested_language(tmp_path
     bundle = personal_fixture_bundle(language=language)
     signs = bundle["personal_signs"]
     value = {"language": language, "reading": "personal-preview", **writing}
+    value["relationship"]["evidence_ids"] = bundle["citation_rules"]["relationship_ids"][:2]
     value["free_lines"][0] = signs["sun"]["label"] + " / " + signs["ascendant"]["label"] + ": " + value["free_lines"][0]
     writer = personal_writer(tmp_path, "openai")
     assert len(writer.validate(json.dumps(value, ensure_ascii=False), bundle)["free_lines"]) == 3
@@ -92,9 +104,12 @@ def test_personal_free_three_lines_use_actual_signs_and_no_paid_timing(tmp_path,
     assert len(result["free_lines"]) == 3
     assert len(result["traits"]) == 3 and result["opportunity_action"]
     schema = writer.response_format(bundle)["json_schema"]["schema"]
-    assert {"traits", "opportunity_action"} <= set(schema["required"])
+    assert {"relationship", "traits", "opportunity_action"} <= set(schema["required"])
+    assert set(schema["$defs"]["PersonalRelationship"]["required"]) == {"text", "action", "evidence_ids"}
+    assert len(result["relationship"]["evidence_ids"]) == 2
     assert schema["$defs"]["PersonalTrait"]["required"] == ["title", "text"]
     assert bundle["citation_rules"]["months"] == []
+    assert bool(bundle["relationship_aspect_label"]) == known
     assert not any(row["type"] == "transit" for row in bundle["evidence"].values())
     if not known:
         assert bundle["personal_signs"]["ascendant"] is None
@@ -104,7 +119,7 @@ def test_personal_free_three_lines_use_actual_signs_and_no_paid_timing(tmp_path,
     assert 0 < personal_writing_progress(json.dumps(value, ensure_ascii=False), bundle["stage"]) < 100
 
 
-@pytest.mark.parametrize("target", ["overview", "trait", "action", "title", "missing_trait"])
+@pytest.mark.parametrize("target", ["overview", "trait", "action", "title", "missing_trait", "relationship"])
 def test_personal_free_sections_add_new_information(tmp_path, target):
     writer = personal_writer(tmp_path, "openai")
     bundle = personal_fixture_bundle()
@@ -118,6 +133,8 @@ def test_personal_free_sections_add_new_information(tmp_path, target):
         value["opportunity_action"] = value["free_lines"][2]
     elif target == "title":
         value["traits"][1]["title"] = value["traits"][0]["title"]
+    elif target == "relationship":
+        value["relationship"]["action"] = value["opportunity_action"]
     else:
         value["traits"].pop()
     with pytest.raises(InvalidBaziReport, match="distinct short titles" if target == "title" else "schema" if target == "missing_trait" else "repeats"):
@@ -128,12 +145,33 @@ def test_personal_free_allows_short_shared_keywords_and_progress_includes_detail
     writer = personal_writer(tmp_path, "qwen")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
-    value["traits"][0]["text"] = "交流中愿意先提出自己的想法，帮助大家找到可以共同参与的起点。"
-    value["traits"][1]["text"] = "交流时留意对方没有说完的顾虑，通常先听完整再给出自己的回应。"
+    value["traits"][0]["text"] = "交流中愿意先提出想法，让大家有个共同的起点。"
+    value["traits"][1]["text"] = "交流时留意没说完的顾虑，听完整再作回应。"
     writer.validate(json.dumps(value, ensure_ascii=False), bundle)
     start = personal_writing_progress(json.dumps({"free_lines": value["free_lines"]}, ensure_ascii=False), bundle["stage"])
     end = personal_writing_progress(json.dumps(value, ensure_ascii=False), bundle["stage"])
     assert 0 < start < 50 < end < 100
+
+
+@pytest.mark.parametrize("change", ["missing", "unrelated_evidence", "duplicate_evidence", "missing_aspect", "outsider", "decision", "partner_feelings", "over_combined_limit"])
+def test_free_love_preview_is_required_grounded_and_does_not_judge_third_parties(tmp_path, change):
+    writer = personal_writer(tmp_path, "openai")
+    bundle = personal_fixture_bundle()
+    value = personal_draft(bundle)
+    if change == "missing":
+        value.pop("relationship")
+    elif change == "unrelated_evidence":
+        value["relationship"]["evidence_ids"] = ["P_sun", "P_mercury"]
+    elif change == "duplicate_evidence":
+        value["relationship"]["evidence_ids"] = [bundle["citation_rules"]["relationship_ids"][0]] * 2
+    elif change == "missing_aspect":
+        value["relationship"]["evidence_ids"] = bundle["citation_rules"]["relationship_ids"][1:]
+    elif change == "over_combined_limit":
+        value["relationship"]["text"] += "。" * 80
+    else:
+        value["relationship"]["text"] += {"outsider": "存在搅局的人。", "decision": "必须分手。", "partner_feelings": "对方一定会回心转意。"}[change]
+    with pytest.raises(InvalidBaziReport, match="combined prose" if change == "over_combined_limit" else "personal"):
+        writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
 @pytest.mark.parametrize("provider", ["openai", "qwen"])
@@ -150,9 +188,12 @@ def test_personal_paid_template_schema_and_exact_month_citations(tmp_path, provi
             assert set(node["required"]) == set(node["properties"])
             assert node["additionalProperties"] is False
     assert "translations" not in schema["properties"]
+    assert "themes" in schema["required"]
+    assert set(schema["$defs"]["PersonalThemes"]["required"]) == {"wealth", "love", "risk"}
     assert schema["$defs"]["PersonalNode"]["properties"]["month"]["enum"] == ["2026-11", "2026-12", "2027-01"]
     assert 0 < writing_progress(json.dumps(value, ensure_ascii=False), "personal_full") < 100
     prompt = writer.prompt(bundle)
+    assert "SIX distinct subjects" in prompt and "previous_points" in prompt
     assert "No specific industries" in prompt and "EXACTLY THREE" in prompt
     assert all(rule["transit_id"] in prompt for rule in bundle["citation_rules"]["months"])
     assert prompt.startswith("You are FATE's dedicated Western astrology report generator.")
@@ -169,15 +210,16 @@ def test_personal_paid_natural_bounds_match_validator_and_provider_schema(tmp_pa
     writer = personal_writer(tmp_path, "openai")
     bundle = personal_fixture_bundle(full=True, language=language)
     value = personal_draft(bundle)
-    bounds = ({"talent": (50, 160), "direction": (25, 75), "theme": (4, 14), "benefit": (35, 110), "caution": (10, 35), "action": (12, 45)} if language == "zh" else
-              {"talent": (150, 500), "direction": (75, 230), "theme": (4, 55), "benefit": (105, 340), "caution": (30, 110), "action": (36, 140)})
+    bounds = ({"talent": (50, 160), "direction": (25, 75), "topic": (50, 140), "theme": (4, 14), "benefit": (35, 110), "caution": (10, 35), "action": (12, 45)} if language == "zh" else
+              {"talent": (150, 500), "direction": (75, 230), "topic": (150, 440), "theme": (4, 55), "benefit": (105, 340), "caution": (30, 110), "action": (36, 140)})
     if language == "en":
         for part, title in zip(value["talent"]["directions"], ("Useful service", "Resource links", "Clear information")):
             part["title"] = title
     fields = [(value["talent"], "text", "talent")]
     fields += [(part, "text", "direction") for part in value["talent"]["directions"]]
+    fields += [(part, "text", "topic") for part in value["themes"].values()]
     fields += [(part, field, field) for part in value["nodes"] for field in ("theme", "benefit", "caution", "action")]
-    alphabet = "稳清明宽真静细亮柔暖实简恰诚顺敏" if language == "zh" else "abcdefghijklmnop"
+    alphabet = "稳清明宽真静细亮柔暖实简恰诚顺敏和安定善勤" if language == "zh" else "abcdefghijklmnopqrstuvwxyz"
     def sample(index, field, length):
         prefix = ("写下" if language == "zh" else "Write ") if field == "action" else ""
         return prefix + alphabet[index] * (length - len(prefix))
@@ -193,12 +235,53 @@ def test_personal_paid_natural_bounds_match_validator_and_provider_schema(tmp_pa
                 writer.validate(json.dumps(value, ensure_ascii=False), bundle)
         part[field] = original
     definitions = writer.response_format(bundle)["json_schema"]["schema"]["$defs"]
-    for name, key in (("PersonalTalent", "talent"), ("PersonalDirection", "direction")):
+    for name, key in (("PersonalTalent", "talent"), ("PersonalDirection", "direction"), ("PersonalTopic", "topic")):
         schema = definitions[name]["properties"]["text"]
         assert (schema["minLength"], schema["maxLength"]) == (bounds[key][0], bounds[key][1] + (30 if language == "zh" else 0))
     for key in ("theme", "benefit", "caution", "action"):
         schema = definitions["PersonalNode"]["properties"][key]
         assert (schema["minLength"], schema["maxLength"]) == (bounds[key][0], bounds[key][1] + (20 if language == "zh" else 0))
+
+
+@pytest.mark.parametrize("key", ["wealth", "love", "risk"])
+def test_personal_full_requires_each_promised_subject_and_its_own_evidence(tmp_path, key):
+    bundle = personal_fixture_bundle(full=True)
+    writer = personal_writer(tmp_path, "openai")
+    value = personal_draft(bundle)
+    missing = deepcopy(value)
+    del missing["themes"][key]
+    with pytest.raises(InvalidBaziReport, match="personal schema"):
+        writer.validate(json.dumps(missing, ensure_ascii=False), bundle)
+    wrong = deepcopy(value)
+    wrong["themes"][key]["evidence_ids"] = [bundle["citation_rules"]["months"][0]["transit_id"], "P_sun"]
+    with pytest.raises(InvalidBaziReport, match=f"themes.{key}"):
+        writer.validate(json.dumps(wrong, ensure_ascii=False), bundle)
+
+
+@pytest.mark.parametrize("paraphrase", [False, True])
+def test_personal_full_rejects_repeated_ideas_across_different_subjects(tmp_path, paraphrase):
+    bundle = personal_fixture_bundle(full=True)
+    writer = personal_writer(tmp_path, "openai")
+    value = personal_draft(bundle)
+    copied = value["themes"]["wealth"]["text"]
+    if paraphrase:
+        # Minor wording substitutions remove long verbatim spans without adding a new conclusion.
+        copied = "".join("同" if index % 6 == 0 else char for index, char in enumerate(copied))
+    value["themes"]["love"]["text"] = copied
+    with pytest.raises(InvalidBaziReport, match="repeats themes.wealth"):
+        writer.validate(json.dumps(value, ensure_ascii=False), bundle)
+
+
+def test_personal_full_does_not_copy_the_saved_free_action(tmp_path):
+    bundle = personal_fixture_bundle(full=True)
+    writer = personal_writer(tmp_path, "openai")
+    value = personal_draft(bundle)
+    saved = personal_draft(personal_fixture_bundle())["opportunity_action"]
+    value["nodes"][0]["action"] = saved
+    writer.validate(json.dumps(value, ensure_ascii=False), bundle)
+    bundle["previous_points"] = [saved]
+    with pytest.raises(InvalidBaziReport, match="repeats free preview"):
+        writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
 @pytest.mark.parametrize("field", ["benefit", "caution", "action"])

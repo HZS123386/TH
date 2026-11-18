@@ -75,18 +75,16 @@ Future<void> _startApp(WebBrowserPort browser) async {
     browser,
     language: language,
     ensureFont: fonts.ensure,
-    warmFont: fonts.ensureCommon,
     ensureTextFont: fonts.ensureText,
+    ensureReportFont: fonts.ensureCommon,
   );
   browser.setLanguage(language, controller.copy.t('jy', 'title'));
   runApp(H5App(controller: controller));
-  if (language != 'zh') {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(
-        WidgetsBinding.instance.waitUntilFirstFrameRasterized
-            .then((_) => fonts.ensure('zh'))
-            .catchError((_) {}),
-      );
-    });
-  }
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(
+      WidgetsBinding.instance.waitUntilFirstFrameRasterized
+          .then((_) => fonts.warmSwitchLanguages())
+          .catchError((_) {}),
+    );
+  });
 }

@@ -48,6 +48,10 @@ class SiteHeader extends StatelessWidget {
             tooltip: h5.copy.t('jy', 'language'),
             enabled: !h5.languageLoading,
             initialValue: h5.language,
+            popUpAnimationStyle: const AnimationStyle(
+              duration: Duration(milliseconds: 120),
+              reverseDuration: Duration(milliseconds: 80),
+            ),
             position: PopupMenuPosition.under,
             color: panel,
             shape: RoundedRectangleBorder(

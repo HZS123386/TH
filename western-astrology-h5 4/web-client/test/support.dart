@@ -17,6 +17,7 @@ Json personalFixture({String language = 'zh', bool full = false}) {
   final data = fixture(language: language);
   data.addAll({
     'format': 'western-personal',
+    'version': 'western-personal-8',
     'preview': null,
     'chapters': <Json>[],
     'plan': null,
@@ -29,7 +30,10 @@ Json personalFixture({String language = 'zh', bool full = false}) {
       'display': '฿30',
       'mode': 'sunlands_order_only',
     },
-    'progress': {'completed': full ? 4 : 0, 'total': 4},
+    'progress': {
+      'completed': full ? personalKeys.length : 0,
+      'total': personalKeys.length,
+    },
     'catalog': [
       for (final key in personalKeys)
         {
@@ -41,6 +45,20 @@ Json personalFixture({String language = 'zh', bool full = false}) {
         },
     ],
     'personal': {
+      'relationship': {
+        'text':
+            'A distinct view of closeness, needs and relationship boundaries.',
+        'action':
+            'Ask which pace of contact feels comfortable for both people.',
+        'evidence': [
+          for (var i = 0; i < 2; i++)
+            {
+              'id': 'relationship-$i',
+              'title': 'Relationship factor $i',
+              'detail': 'Verified natal relationship factor $i',
+            },
+        ],
+      },
       'free_lines': [
         'Synthetic free line one.',
         'Synthetic free line two.',
@@ -64,6 +82,22 @@ Json personalFixture({String language = 'zh', bool full = false}) {
                     'text': 'Synthetic direction detail $i.',
                   },
               ],
+            }
+          : null,
+      'themes': full
+          ? {
+              for (final key in ['wealth', 'love', 'risk'])
+                key: {
+                  'text': 'Synthetic $key reading.',
+                  'evidence': [
+                    for (var i = 0; i < 2; i++)
+                      {
+                        'id': '$key-$i',
+                        'title': 'Factor $i',
+                        'detail': 'Verified natal factor $i',
+                      },
+                  ],
+                },
             }
           : null,
       'nodes': full

@@ -206,7 +206,6 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
     }
     if (tag === "SECTION") {
       const title = element.querySelector(":scope > h2")?.textContent || "";
-      if (personal && element.classList.contains("personal-node")) return [{ stack: children(), unbreakable: true, margin: [0, 3, 0, 0] }];
       if (!full && title === labels.catalog) return [];
       if (compact && title === labels.catalog) {
         return [{ stack: [
@@ -239,6 +238,7 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
     if (tag === "HEADER") return reportHeader(report, labels);
     if (tag === "ARTICLE") {
       const content = children();
+      if (personal && element.classList.contains("personal-node")) return [{ stack: content, unbreakable: true, margin: [0, 3, 0, 0] }];
       if (personal && element.classList.contains("personal-free-zone")) {
         return [{ stack: [panel(content, element.classList.contains("personal-free-opportunity") ? "#F8EBD2" : palette.lavender, palette.gold, true)], unbreakable: true }];
       }

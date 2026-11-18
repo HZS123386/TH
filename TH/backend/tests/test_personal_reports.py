@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from backend.app.astrology import RoxyAstrology
+from backend.app.bazi_reports import InvalidBaziReport
 from backend.app.life_report_content import LifeWriter
 from backend.app.life_reports import LifeInput
 from backend.app.main import create_app
@@ -52,12 +53,17 @@ def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_
         assert free["format"] == "western-personal" and free["preview_state"] == "ready"
         assert len(free["personal"]["free_lines"]) == 3 and free["personal"]["ascendant_sign"]
         assert len(free["personal"]["traits"]) == 3 and free["personal"]["opportunity_action"]
+        assert free["personal"]["relationship"]["text"] and free["personal"]["relationship"]["action"]
+        relation = free["personal"]["relationship"]
+        assert len(relation["evidence"]) == 2
+        assert relation["text"].endswith("（月亮与水星对分相）")
+        assert sum(fact["id"].startswith("A") for fact in relation["evidence"]) == 1
         assert free["personal"]["availability"] == {"full_report": True, "reason": "not_started"}
-        assert free["personal"]["talent"] is None and free["personal"]["nodes"] == []
+        assert free["personal"]["talent"] is None and free["personal"]["themes"] is None and free["personal"]["nodes"] == []
         assert free["preview"] is None and free["chapters"] == [] and free["plan"] is None
         assert free["outlook"] == {"state": "not_started"}
-        assert [item["key"] for item in free["catalog"]] == ["talent", "node-1", "node-2", "node-3"]
-        assert free["progress"] == {"completed": 0, "total": 4}
+        assert [item["key"] for item in free["catalog"]] == ["natal", "career", "wealth", "love", "risk", "plan"]
+        assert free["progress"] == {"completed": 0, "total": 6}
         assert [call["stage"] for call in calls] == ["personal_preview"]
         assert snapshots == [] and len(transport[0]) == 1
         assert calls[0]["citation_rules"]["months"] == []
@@ -86,15 +92,37 @@ def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_
         assert full["full_state"] == "ready", full
         assert [call["stage"] for call in calls] == ["personal_preview", "personal_full"]
         assert len(full["personal"]["talent"]["directions"]) == 3
+        assert set(full["personal"]["themes"]) == {"wealth", "love", "risk"}
+        assert all(len(item["evidence"]) == 2 for item in full["personal"]["themes"].values())
+        assert calls[-1]["previous_points"][:3] == free["personal"]["free_lines"]
+        aspect_id = next(fact["id"] for fact in relation["evidence"] if fact["id"].startswith("A"))
+        assert calls[-1]["relationship_preview"] == {"text": relation["text"].removesuffix("（月亮与水星对分相）"),
+                                                      "action": relation["action"], "natal_aspect_id": aspect_id}
+        assert any(fact["id"] == aspect_id for fact in full["personal"]["themes"]["love"]["evidence"])
+        unrelated = personal_draft(calls[-1])
+        unrelated["themes"]["love"]["evidence_ids"] = [key for key in calls[-1]["citation_rules"]["themes"]["love"] if key != aspect_id][:2]
+        with pytest.raises(InvalidBaziReport, match="build on the free relationship aspect"):
+            LifeWriter.validate(json.dumps(unrelated, ensure_ascii=False), calls[-1])
         assert [item["month"] for item in full["personal"]["nodes"]] == ["2026-11", "2026-12", "2027-01"]
         assert all(len(item["evidence"]) == 2 for item in full["personal"]["nodes"])
-        assert full["progress"] == {"completed": 4, "total": 4} and full["generation_progress"]["percent"] == 100
+        assert full["progress"] == {"completed": 6, "total": 6} and full["generation_progress"]["percent"] == 100
         assert len(snapshots) == 1 and len(transport[0]) == 1
+        with client.app.state.store.connect() as db:
+            chapter_snapshot = db.execute("SELECT chapters FROM life_reports WHERE id=?", (free["id"],)).fetchone()["chapters"]
+            previous_chapters = json.loads(chapter_snapshot)
+            previous_chapters["personal"]["story"].pop("themes")
+            db.execute("UPDATE life_reports SET chapters=? WHERE id=?", (json.dumps(previous_chapters), free["id"]))
+        previous = client.get(path, headers=HEADERS).json()
+        assert previous["full_state"] == "ready" and previous["personal"]["themes"] is None
+        assert [item["key"] for item in previous["catalog"]] == ["talent", "node-1", "node-2", "node-3"]
+        assert previous["progress"] == {"completed": 4, "total": 4}
+        with client.app.state.store.connect() as db:
+            db.execute("UPDATE life_reports SET chapters=? WHERE id=?", (chapter_snapshot, free["id"]))
         with client.app.state.store.connect() as db:
             original = db.execute("SELECT chart FROM life_reports WHERE id=?", (free["id"],)).fetchone()["chart"]
             db.execute("UPDATE life_reports SET unlocked=0 WHERE id=?", (free["id"],))
         locked = client.get(path, headers=HEADERS).json()
-        assert locked["personal"]["talent"] is None and locked["personal"]["nodes"] == []
+        assert locked["personal"]["talent"] is None and locked["personal"]["themes"] is None and locked["personal"]["nodes"] == []
         assert locked["outlook"] == {"state": "ready"}
         with client.app.state.store.connect() as db:
             assert db.execute("SELECT chart FROM life_reports WHERE id=?", (free["id"],)).fetchone()["chart"] == original
@@ -105,6 +133,11 @@ def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_
         saved = client.get(path, headers=HEADERS).json()["personal"]
         assert saved["free_lines"] == free["personal"]["free_lines"]
         assert saved["traits"] == [] and saved["opportunity_action"] == ""
+        with client.app.state.store.connect() as db:
+            saved_preview["story"].pop("relationship")
+            saved_preview["version"] = "western-personal-7"
+            db.execute("UPDATE life_reports SET preview=? WHERE id=?", (json.dumps(saved_preview, ensure_ascii=False), free["id"]))
+        assert client.get(path, headers=HEADERS).json()["personal"]["relationship"] is None
         assert len(calls) == 2  # Opening a saved older report must not spend another generation call.
 
 

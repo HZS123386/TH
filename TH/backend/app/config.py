@@ -31,6 +31,9 @@ class Settings:
     chat_per_day: int = 200
     fortune_provider: str = "qwen"
     fortune_fallback_provider: str = ""
+    life_preview_openai_model: str = ""
+    life_preview_openai_reasoning_effort: str = ""
+    life_preview_openai_languages: frozenset[str] = frozenset()
     fortune_per_minute: int = 3
     fortune_per_day: int = 12
     fortune_network_per_day: int = 120
@@ -88,6 +91,11 @@ class Settings:
             chat_per_day=max(0, int(os.getenv("CHAT_TURNS_PER_DAY", "200"))),
             fortune_provider=os.getenv("FORTUNE_PROVIDER", "qwen"),
             fortune_fallback_provider=os.getenv("FORTUNE_FALLBACK_PROVIDER", "").lower(),
+            life_preview_openai_model=os.getenv("LIFE_PREVIEW_OPENAI_MODEL", "").strip(),
+            life_preview_openai_reasoning_effort=os.getenv("LIFE_PREVIEW_OPENAI_REASONING_EFFORT", "").strip(),
+            life_preview_openai_languages=frozenset(
+                code.strip().lower() for code in os.getenv("LIFE_PREVIEW_OPENAI_LANGUAGES", "").split(",") if code.strip()
+            ),
             fortune_per_minute=max(0, int(os.getenv("FORTUNE_REPORTS_PER_MINUTE", "3"))),
             fortune_per_day=max(0, int(os.getenv("FORTUNE_REPORTS_PER_DAY", "12"))),
             fortune_network_per_day=max(0, int(os.getenv("FORTUNE_NETWORK_REPORTS_PER_DAY", "120"))),

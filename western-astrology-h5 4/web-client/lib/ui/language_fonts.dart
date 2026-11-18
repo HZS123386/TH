@@ -47,6 +47,14 @@ class LanguageFonts {
     await _ensure('NotoSansSC', 'assets/fonts/FateChineseUI.otf');
   }
 
+  Future<void> warmSwitchLanguages() async {
+    // Register the small switch fonts after first paint; large CJK sets stay on demand.
+    await Future.wait([
+      for (final language in ['zh', 'my', 'km', 'lo'])
+        ensure(language).catchError((_) {}),
+    ]);
+  }
+
   Future<void> ensureCommon(String language) async {
     await ensure(language);
     if (language != 'zh') return;

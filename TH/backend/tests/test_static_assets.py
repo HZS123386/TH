@@ -32,13 +32,18 @@ def test_precompressed_get_head_and_conditional_cache_preserve_content_and_mime(
     assert response.status_code == 200 and response.content == content
     assert response.headers['content-type'] == 'application/wasm'
     assert response.headers['content-encoding'] == 'gzip'
+    assert response.headers['cache-control'] == 'no-cache'
     assert 'Accept-Encoding' in response.headers['vary']
     assert int(response.headers['content-length']) == len(gzip.compress(content, mtime=0))
     head = client.head('/thai-landing/main.wasm', headers={'Accept-Encoding': 'gzip'})
     assert head.content == b'' and head.headers['content-length'] == response.headers['content-length']
+    assert head.headers['cache-control'] == 'no-cache'
     cached = client.get('/thai-landing/main.wasm', headers={'Accept-Encoding': 'gzip', 'If-None-Match': response.headers['etag']})
     assert cached.status_code == 304 and cached.content == b''
-    assert client.get('/thai-landing/', headers={'Accept-Encoding': 'gzip'}).content == b'<html>FATE</html>'
+    assert cached.headers['cache-control'] == 'no-cache'
+    index = client.get('/thai-landing/', headers={'Accept-Encoding': 'gzip'})
+    assert index.content == b'<html>FATE</html>'
+    assert index.headers['cache-control'] == 'no-cache'
 
 
 @pytest.mark.parametrize('encoding', ['identity', 'gzip;q=0', '*;q=1, gzip;q=0, br;q=0', 'gzip;q=invalid'])
@@ -62,6 +67,7 @@ def test_brotli_quality_selection_and_explicit_rejection(assets, accept, selecte
     expected = {'br': BROTLI_PAYLOAD, 'gzip': gzip.compress(content, mtime=0), None: content}[selected]
     with client.stream('GET', '/thai-landing/main.wasm', headers={'Accept-Encoding': accept}) as response:
         assert response.status_code == 200
+        assert response.headers['cache-control'] == 'no-cache'
         assert response.headers.get('content-encoding') == selected
         assert response.headers['content-type'] == 'application/wasm'
         assert int(response.headers['content-length']) == len(expected)
@@ -89,6 +95,43 @@ def test_ranges_missing_files_and_path_boundaries_retain_static_file_behavior(as
     client, content = assets
     response = client.get('/thai-landing/main.wasm', headers={'Accept-Encoding': 'gzip', 'Range': 'bytes=0-7'})
     assert response.status_code == 206 and response.content == content[:8]
+    assert response.headers['cache-control'] == 'no-cache'
     assert 'content-encoding' not in response.headers
     assert client.get('/thai-landing/missing.wasm').status_code == 404
     assert client.get('/thai-landing/%2e%2e/private.wasm').status_code == 404
+
+
+@pytest.mark.parametrize('encoding', ['identity', 'gzip'])
+def test_app_assets_revalidate_to_new_build_instead_of_reusing_old_content(assets, tmp_path, encoding):
+    client, _ = assets
+    headers = {'Accept-Encoding': encoding}
+    original = client.get('/thai-landing/main.wasm', headers=headers)
+    updated = b'new-app-build' * 500
+    (tmp_path / 'main.wasm').write_bytes(updated)
+    (tmp_path / 'main.wasm.gz').write_bytes(gzip.compress(updated, mtime=0))
+
+    response = client.get('/thai-landing/main.wasm', headers={**headers, 'If-None-Match': original.headers['etag']})
+    assert response.status_code == 200 and response.content == updated
+    assert response.headers['etag'] != original.headers['etag']
+    assert response.headers['cache-control'] == 'no-cache'
+    cached = client.get('/thai-landing/main.wasm', headers={**headers, 'If-None-Match': response.headers['etag']})
+    assert cached.status_code == 304
+    assert cached.headers['cache-control'] == 'no-cache'
+
+
+@pytest.mark.parametrize('encoding', ['identity', 'gzip'])
+def test_revisioned_engine_retains_long_cache_for_unchanged_runtime(assets, tmp_path, encoding):
+    client, _ = assets
+    engine = tmp_path / 'engine' / ('a' * 40)
+    engine.mkdir(parents=True)
+    content = b'unchanged-engine'
+    (engine / 'skwasm.wasm').write_bytes(content)
+    (engine / 'skwasm.wasm.gz').write_bytes(gzip.compress(content, mtime=0))
+    url = f'/thai-landing/engine/{engine.name}/skwasm.wasm'
+    headers = {'Accept-Encoding': encoding}
+    response = client.get(url, headers=headers)
+    assert response.status_code == 200 and response.content == content
+    assert response.headers['cache-control'] == 'public, max-age=31536000, immutable'
+    cached = client.get(url, headers={**headers, 'If-None-Match': response.headers['etag']})
+    assert cached.status_code == 304
+    assert cached.headers['cache-control'] == response.headers['cache-control']

@@ -135,13 +135,17 @@ class ReportRepository {
     return data;
   }
 
-  Future<LifeReport> load(String id, CancelToken token) async {
+  Future<LifeReport> load(
+    String id,
+    CancelToken token, {
+    bool waitForPreview = false,
+  }) async {
     if (!RegExp(r'^[A-Za-z0-9_-]{8,128}$').hasMatch(id)) {
       throw const ApiFailure('missing');
     }
     return LifeReport.parse(
       await request(
-        '/api/life-reports/$id',
+        '/api/life-reports/$id${waitForPreview ? '?wait_preview=true' : ''}',
         token,
         timeout: const Duration(seconds: 15),
       ),
@@ -268,7 +272,7 @@ class ReportRepository {
     String? id,
   }) async {
     var failures = 0;
-    var fastPollsRemaining = 8;
+    var previousReadSeconds = full ? 0 : 3;
     while (true) {
       token.check();
       final report = LifeReport.parse(value, id: id, expectedInput: input);
@@ -283,16 +287,17 @@ class ReportRepository {
           (!full && report.json['preview_state'] == 'ready')) {
         throw ApiFailure('${full ? 'states' : 'previewStates'}.$state');
       }
-      var delay = const Duration(seconds: 3);
-      // Keep a short final burst within the server's 30 requests/minute budget.
-      if (!full && percent >= 75 && fastPollsRemaining > 0) {
-        fastPollsRemaining--;
-        delay = const Duration(seconds: 1);
-      }
+      // The server waits up to three seconds, returning immediately on completion.
+      // Count time spent waiting there toward the polling budget, including other workers' immediate responses.
+      var delay = Duration(
+        seconds: full ? 3 : (3 - previousReadSeconds).clamp(0, 3),
+      );
       while (true) {
         await token.pause(delay);
         try {
-          value = (await load(id, token)).json;
+          final started = Stopwatch()..start();
+          value = (await load(id, token, waitForPreview: !full)).json;
+          previousReadSeconds = started.elapsed.inSeconds;
           failures = 0;
           break;
         } on ApiFailure catch (error) {

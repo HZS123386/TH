@@ -323,6 +323,9 @@ class BaziReports:
     def response_format(self, bundle):
         return {"type": "json_object"}
 
+    def model_input(self, bundle):
+        return {key: value for key, value in bundle.items() if key != "fixed_translations"}
+
     def record_model_usage(self, bundle, usage, request_id, validated):
         report_id, phase = report_usage_context.get()
         usage = usage if isinstance(usage, dict) else {}
@@ -342,7 +345,7 @@ class BaziReports:
         config = self.config
         progress = report_progress_context.get()
         provider = self.provider
-        model_input = {key: value for key, value in bundle.items() if key != "fixed_translations"}
+        model_input = self.model_input(bundle)
         if correction:
             model_input["correction"] = correction
         payload = {"model": config.model, "messages": [{"role": "system", "content": self.prompt(bundle)}, {"role": "user", "content": json.dumps(model_input, ensure_ascii=False, separators=(",", ":"))}],
