@@ -1,4 +1,3 @@
-import sqlite3
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -15,8 +14,8 @@ DATE_ONLY = {**PROFILE, "birth_time": None, "birthplace": ""}
 
 
 @pytest.fixture
-def client(tmp_path):
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "fortune.db")))) as client:
+def client(postgres_url):
+    with TestClient(create_app(Settings(database_url=postgres_url))) as client:
         yield client
 
 
@@ -105,7 +104,7 @@ def test_known_clock_rejects_dst_gap_or_fold():
             thai.fortune({**PROFILE, "birth_date": day, "birth_time": clock, "timezone": "America/New_York"}, "today", NOW)
 
 
-def test_free_api_requires_date_but_neither_account_time_nor_city(client, tmp_path):
+def test_free_api_requires_date_but_neither_account_time_nor_city(client):
     assert client.post("/api/fortune", json={"profile": {}}).status_code == 422
     assert client.post("/api/fortune", json={"profile": {"birth_date": "1999-02-30"}}).status_code == 422
     assert client.post("/api/fortune", json={"profile": DATE_ONLY, "period": "other"}).status_code == 422
@@ -113,9 +112,9 @@ def test_free_api_requires_date_but_neither_account_time_nor_city(client, tmp_pa
     result = client.post("/api/fortune", json={"profile": {"birth_date": "1999-02-20"}, "period": "week"})
     assert result.status_code == 200
     assert result.json()["birth"]["date"] == "1999-02-20"
-    with sqlite3.connect(tmp_path / "fortune.db") as database:
+    with client.app.state.store.connect() as database:
         for table in ("users", "profiles"):
-            assert database.execute(f"SELECT count(*) FROM {table}").fetchone()[0] == 0
+            assert database.execute(f"SELECT count(*) FROM {table}").fetchone()["count"] == 0
 
 
 def test_guest_preview_is_stateless_and_never_replaces_an_account_birth(client):

@@ -115,6 +115,9 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     _menus[_open]?.hide();
     _open = id;
     _menus[id]?.show();
+    if (id.isNotEmpty) {
+      widget.h5.trackActivity('birth_form', 'select_birthplace');
+    }
   }
 
   Widget _floatingOptions(
@@ -209,11 +212,11 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     if (city != null) _cityText.text = city.name(language);
   }
 
-  void _clearCity() {
+  void _clearCity([Place? province]) {
     _city = null;
     _cityQuery = '';
     _cityText.clear();
-    widget.onSelected(null);
+    widget.onSelected(province);
   }
 
   void _setCountry(String country) {
@@ -396,7 +399,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                     _province = value;
                     _provinceText.text = value.name(c.language);
                     _provinceQuery = '';
-                    _clearCity();
+                    _clearCity(value);
                     _setOpen('');
                   }),
                 ),
@@ -421,7 +424,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                 (v) => setState(() {
                   _cityQuery = v;
                   _city = null;
-                  widget.onSelected(null);
+                  widget.onSelected(v.trim().isEmpty ? _province : null);
                   _setOpen('birth-city');
                 }),
                 PlacePicker(
@@ -443,6 +446,13 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
             ),
           ],
         ),
+        if (c.t('jy', 'placeHint').isNotEmpty) ...[
+          const SizedBox(height: 7),
+          Text(
+            c.t('jy', 'placeHint'),
+            style: const TextStyle(fontSize: 10, height: 1.8, color: lavender),
+          ),
+        ],
       ],
     );
   }

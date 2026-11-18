@@ -17,8 +17,8 @@ from backend.tests.test_providers import mock_transport
 
 
 @pytest.fixture
-def client(tmp_path):
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "companion.db")))) as client:
+def client(postgres_url):
+    with TestClient(create_app(Settings(database_url=postgres_url))) as client:
         yield client
 
 
@@ -155,8 +155,8 @@ def test_model_failure_does_not_save_partial_reply_or_memory(client):
     assert client.get("/api/history", headers=headers).json() == []
 
 
-def test_embedding_semantic_recall_and_safe_fallback(monkeypatch, tmp_path):
-    store = Storage(str(tmp_path / "memory.db"))
+def test_embedding_semantic_recall_and_safe_fallback(monkeypatch, postgres_url):
+    store = Storage(postgres_url)
     owner = store.login(1)["user_id"]
     other = store.login(1)["user_id"]
     memory = CompanionMemory(store, ProviderConfig("private-key", "https://example.test/v1", "embedding-model"))
@@ -184,8 +184,8 @@ def test_embedding_semantic_recall_and_safe_fallback(monkeypatch, tmp_path):
     assert store.reading(owner, newer)
 
 
-def test_recall_survives_new_service_instance_and_model_change(tmp_path):
-    path = str(tmp_path / "reopen.db")
+def test_recall_survives_new_service_instance_and_model_change(postgres_url):
+    path = postgres_url
     store = Storage(path)
     owner = store.login(1)["user_id"]
     one = CompanionMemory(store, ProviderConfig())
@@ -202,8 +202,8 @@ def test_rejects_invalid_provider_vectors(value):
         vector(value)
 
 
-def test_spend_limits_are_atomic_per_user_and_survive_new_storage_instances(tmp_path):
-    path = str(tmp_path / "quota.db")
+def test_spend_limits_are_atomic_per_user_and_survive_new_storage_instances(postgres_url):
+    path = postgres_url
     store = Storage(path)
     owner, other = store.login(1)["user_id"], store.login(1)["user_id"]
     with ThreadPoolExecutor(max_workers=6) as pool:

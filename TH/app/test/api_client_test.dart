@@ -7,6 +7,55 @@ import 'package:fate_app/core/network/api_client.dart';
 
 void main() {
   test(
+    'chat counts only a complete saved reply and preserves Thai text',
+    () async {
+      final api = ApiClient(
+        'https://api.example.test',
+        client: MockClient((request) async {
+          expect(request.headers['Accept'], 'text/event-stream');
+          return http.Response(
+            'event: token\ndata: {"text":"สวัสดี"}\n\n'
+            'event: done\ndata: {"message_id":"reply-1"}\n\n',
+            200,
+            headers: {'content-type': 'text/event-stream; charset=utf-8'},
+          );
+        }),
+      );
+      addTearDown(api.close);
+      expect(await api.request('POST', '/api/chat', readEvents: true), {
+        'id': 'reply-1',
+        'content': 'สวัสดี',
+      });
+    },
+  );
+  test('partial and failed chat streams cannot become saved replies', () async {
+    for (final ending in [
+      '',
+      'event: error\ndata: {"code":"reply_timeout"}\n\n',
+    ]) {
+      final api = ApiClient(
+        'https://api.example.test',
+        client: MockClient(
+          (_) async => http.Response(
+            'event: token\ndata: {"text":"partial"}\n\n$ending',
+            200,
+          ),
+        ),
+      );
+      await expectLater(
+        api.request('POST', '/api/chat', readEvents: true),
+        throwsA(
+          isA<ApiFailure>().having(
+            (error) => error.code,
+            'code',
+            ending.isEmpty ? 'reply_incomplete' : 'reply_timeout',
+          ),
+        ),
+      );
+      api.close();
+    }
+  });
+  test(
     'does not replay an old request under a new account after a refresh',
     () async {
       final started = Completer<void>(), refresh = Completer<bool>();

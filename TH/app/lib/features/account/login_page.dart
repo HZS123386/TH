@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/dependencies.dart';
+import '../../core/network/api_client.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
 
@@ -14,9 +16,37 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final username = TextEditingController(),
       password = TextEditingController(),
-      confirmation = TextEditingController();
+      confirmation = TextEditingController(),
+      h5Code = TextEditingController();
   bool register = false, busy = false;
-  String? error;
+  String? error, h5Error;
+  Future<void> submitH5Code() async {
+    if (busy) return;
+    final d = DependencyScope.of(context), s = AppLocalizations.of(context);
+    setState(() {
+      busy = true;
+      h5Error = null;
+    });
+    try {
+      await d.auth.signInH5Code(h5Code.text);
+      if (mounted) context.go('/reports');
+    } on ApiFailure catch (failure) {
+      if (mounted) {
+        setState(
+          () => h5Error = switch (failure.code) {
+            'h5_login_code_invalid' => s.h5CodeInvalid,
+            'too_many_requests' => s.h5CodeRateLimited,
+            _ => s.error,
+          },
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => h5Error = s.error);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> submit({bool apple = false}) async {
     if (busy) return;
     final d = DependencyScope.of(context), s = AppLocalizations.of(context);
@@ -56,7 +86,50 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            PageHeading(s.account, s.accountText),
+            PageHeading(s.account, s.accountText, icon: Icons.lock_outline),
+            FateCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.h5CodeLogin,
+                    style: const TextStyle(color: goldColor, fontSize: 17),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(s.h5CodeHelp),
+                  const SizedBox(height: 14),
+                  TextField(
+                    key: const ValueKey('h5-code-input'),
+                    controller: h5Code,
+                    enabled: !busy,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textCapitalization: TextCapitalization.characters,
+                    textInputAction: TextInputAction.go,
+                    maxLength: 6,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                    ],
+                    decoration: InputDecoration(labelText: s.h5CodeField),
+                    onSubmitted: (_) => submitH5Code(),
+                  ),
+                  FilledButton(
+                    key: const ValueKey('h5-code-submit'),
+                    onPressed: busy ? null : submitH5Code,
+                    child: Text(busy ? s.waiting : s.login),
+                  ),
+                  if (h5Error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        h5Error!,
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
             FateCard(
               child: Column(
                 children: [
@@ -79,11 +152,16 @@ class _LoginPageState extends State<LoginPage> {
                     icon: const Icon(Icons.apple),
                     label: Text(s.appleLogin),
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    s.nativeSetup,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  if (!d.session.capabilities.appleLogin ||
+                      kIsWeb ||
+                      defaultTargetPlatform != TargetPlatform.iOS) ...[
+                    const SizedBox(height: 14),
+                    Text(
+                      s.appleLoginUnavailable,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -145,6 +223,20 @@ class _LoginPageState extends State<LoginPage> {
                   style: const TextStyle(color: Colors.redAccent),
                 ),
               ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              children: [
+                TextButton(
+                  onPressed: busy ? null : () => context.push('/privacy'),
+                  child: Text(s.privacyCenter),
+                ),
+                TextButton(
+                  onPressed: busy ? null : () => context.push('/support'),
+                  child: Text(s.termsTitle),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -156,6 +248,7 @@ class _LoginPageState extends State<LoginPage> {
     username.dispose();
     password.dispose();
     confirmation.dispose();
+    h5Code.dispose();
     super.dispose();
   }
 }

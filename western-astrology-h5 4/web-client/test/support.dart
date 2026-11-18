@@ -122,11 +122,10 @@ Json personalFixture({String language = 'zh', bool full = false}) {
 class TestBrowser implements BrowserPort {
   final openedPages = <String>[];
   @override
+  Duration get welcomeAge => Duration.zero;
+  @override
   void openPage(String path) => openedPages.add(path);
-  final settings = <String, String>{
-    'session:fate-welcome-dismissed': '1',
-    'fate-data-use-version': 'h5-data-use-2',
-  };
+  final settings = <String, String>{'fate-data-use-version': 'h5-data-use-3'};
   Json visit = {};
   @override
   String? readSetting(String key, {bool session = false}) =>
@@ -136,6 +135,13 @@ class TestBrowser implements BrowserPort {
       settings[session ? 'session:$key' : key] = value;
   @override
   Json visitContext() => visit;
+  final activities = <Json>[];
+  @override
+  void trackActivity(String page, String action) =>
+      activities.add({'page': page, 'action': action});
+  @override
+  void trackFailure(String path, String code, String method) =>
+      activities.add({'path': path, 'code': code, 'method': method});
   String key = List.filled(48, 'a').join();
   String title = '', locale = '';
   Json? exported;

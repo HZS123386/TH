@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 
 const h5FontFamily = 'NotoSansThai';
+const h5PageMaxWidth = 900.0, h5PortraitMaxWidth = 560.0;
+
+// Keep the welcome transition aligned with the landing artwork at every width.
+double landingHeroHeight(double width) =>
+    (width.clamp(0.0, h5PortraitMaxWidth) * .78).clamp(276.0, 420.0);
+
 const h5FontFallback = [
   'FateLatin',
   'NotoMyanmar',

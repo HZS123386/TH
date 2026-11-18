@@ -49,6 +49,8 @@ MESSAGES = {
         "A reply is in progress. Wait for it to finish or stop it first.",
     ),
     "credentials_invalid": ("账号或密码不正确", "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "Tên tài khoản hoặc mật khẩu không đúng.", "Incorrect username or password."),
+    "h5_login_code_invalid": ("登录码无效、已过期或已使用。请在网页重新获取。", "รหัสไม่ถูกต้อง หมดอายุ หรือถูกใช้แล้ว โปรดขอรหัสใหม่จากหน้าเว็บ", "Mã không hợp lệ, đã hết hạn hoặc đã được dùng. Hãy lấy mã mới trên web.", "The sign-in code is invalid, expired or already used. Get a new code on the web."),
+    "h5_login_code_unavailable": ("暂时无法获取登录码，请稍后重试。", "ยังไม่สามารถขอรหัสเข้าสู่ระบบได้ โปรดลองใหม่อีกครั้ง", "Tạm thời không thể lấy mã đăng nhập. Hãy thử lại sau.", "The sign-in code is unavailable. Try again shortly."),
     "memory_not_found": ("记忆不存在", "ไม่พบความทรงจำนี้", "Không tìm thấy ghi nhớ này.", "This memory was not found."),
     "profile_required": ("请先保存出生档案", "กรุณาบันทึกข้อมูลวันเกิดก่อน", "Hãy lưu hồ sơ ngày sinh trước.", "Please save your birth profile first."),
     "provider_unconfigured": (

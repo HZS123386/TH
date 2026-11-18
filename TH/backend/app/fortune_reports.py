@@ -161,13 +161,6 @@ def validate_story(raw: str, value: dict, language: str):
 class FortuneReports:
     def __init__(self, store: Storage, settings: Settings, slots: asyncio.Semaphore):
         self.store, self.settings, self.slots = store, settings, slots
-        with store.connect() as db:
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS fortune_reports(cache_key TEXT PRIMARY KEY, expires REAL NOT NULL, pending_until REAL NOT NULL DEFAULT 0, retry_after REAL NOT NULL DEFAULT 0, lease TEXT NOT NULL DEFAULT '', payload TEXT);
-                CREATE INDEX IF NOT EXISTS fortune_reports_expiry ON fortune_reports(expires);
-                CREATE TABLE IF NOT EXISTS fortune_usage(scope TEXT NOT NULL, created REAL NOT NULL);
-                CREATE INDEX IF NOT EXISTS fortune_usage_scope_created ON fortune_usage(scope,created);
-            """)
 
     @property
     def provider(self):
@@ -192,7 +185,7 @@ class FortuneReports:
 
     def cached(self, key):
         with self.store.connect() as db:
-            row = db.execute("SELECT payload FROM fortune_reports WHERE cache_key=? AND expires>? AND payload IS NOT NULL", (key, time.time())).fetchone()
+            row = db.execute("SELECT payload FROM fortune_reports WHERE cache_key=%s AND expires>%s AND payload IS NOT NULL", (key, time.time())).fetchone()
         return json.loads(row["payload"]) if row else None
 
     def preview(self, value, profile, owner):
@@ -205,11 +198,11 @@ class FortuneReports:
     def claim(self, key, owner, network, expires):
         now, lease = time.time(), secrets.token_hex(12)
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            db.execute("DELETE FROM fortune_reports WHERE rowid IN (SELECT rowid FROM fortune_reports WHERE expires<? LIMIT 512)", (now,))
-            db.execute("DELETE FROM fortune_reports WHERE cache_key=? AND expires<=?", (key, now))
-            db.execute("DELETE FROM fortune_usage WHERE created<?", (now - 86400,))
-            row = db.execute("SELECT payload,pending_until,retry_after FROM fortune_reports WHERE cache_key=?", (key,)).fetchone()
+            db.execute("LOCK TABLE fortune_reports, fortune_usage IN SHARE ROW EXCLUSIVE MODE")
+            db.execute("DELETE FROM fortune_reports WHERE cache_key IN (SELECT cache_key FROM fortune_reports WHERE expires<%s LIMIT 512)", (now,))
+            db.execute("DELETE FROM fortune_reports WHERE cache_key=%s AND expires<=%s", (key, now))
+            db.execute("DELETE FROM fortune_usage WHERE created<%s", (now - 86400,))
+            row = db.execute("SELECT payload,pending_until,retry_after FROM fortune_reports WHERE cache_key=%s", (key,)).fetchone()
             if row and row["payload"]:
                 return "cached", "", {}
             if row and row["pending_until"] > now:
@@ -218,24 +211,26 @@ class FortuneReports:
                 return "cooldown", "", {"retry_after": max(1, math.ceil(row["retry_after"] - now))}
             limits = [(owner, self.settings.fortune_per_minute, self.settings.fortune_per_day), (network, 15, self.settings.fortune_network_per_day)]
             for scope, minute_limit, day_limit in limits:
-                minute, day = db.execute("SELECT COALESCE(SUM(created>=?),0),COUNT(*) FROM fortune_usage WHERE scope=? AND created>=?", (now - 60, scope, now - 86400)).fetchone()
+                usage = db.execute("SELECT COUNT(*) FILTER (WHERE created>=%s) AS minute,COUNT(*) AS day "
+                                   "FROM fortune_usage WHERE scope=%s AND created>=%s", (now - 60, scope, now - 86400)).fetchone()
+                minute, day = usage["minute"], usage["day"]
                 if minute >= minute_limit or day >= day_limit:
                     window, limit = (86400, day_limit) if day >= day_limit else (60, minute_limit)
                     # A rolling limit frees a slot when the corresponding usage row expires.
                     oldest = db.execute(
-                        "SELECT created FROM fortune_usage WHERE scope=? AND created>=? ORDER BY created LIMIT 1 OFFSET ?",
+                        "SELECT created FROM fortune_usage WHERE scope=%s AND created>=%s ORDER BY created LIMIT 1 OFFSET %s",
                         (scope, now - window, max(0, (day if window == 86400 else minute) - limit)),
                     ).fetchone()
-                    wait = max(1, math.ceil(oldest[0] + window - now)) if oldest else window
+                    wait = max(1, math.ceil(oldest["created"] + window - now)) if oldest else window
                     personal = scope == owner and owner.startswith("account:")
                     return "limited", "", {"limit_scope": "personal" if personal else "network", "retry_after": wait}
-            db.executemany("INSERT INTO fortune_usage VALUES (?,?)", [(owner, now), (network, now)])
-            db.execute("INSERT INTO fortune_reports(cache_key,expires,pending_until,lease) VALUES (?,?,?,?) ON CONFLICT(cache_key) DO UPDATE SET expires=excluded.expires,pending_until=excluded.pending_until,lease=excluded.lease", (key, expires, now + 45, lease))
+            db.cursor().executemany("INSERT INTO fortune_usage VALUES (%s,%s)", [(owner, now), (network, now)])
+            db.execute("INSERT INTO fortune_reports(cache_key,expires,pending_until,lease) VALUES (%s,%s,%s,%s) ON CONFLICT(cache_key) DO UPDATE SET expires=excluded.expires,pending_until=excluded.pending_until,lease=excluded.lease", (key, expires, now + 45, lease))
         return "claimed", lease, {}
 
     def finish(self, key, lease, story=None):
         with self.store.connect() as db:
-            db.execute("UPDATE fortune_reports SET payload=?,pending_until=0,retry_after=? WHERE cache_key=? AND lease=?", (json.dumps(story, ensure_ascii=False) if story else None, 0 if story else time.time() + 45, key, lease))
+            db.execute("UPDATE fortune_reports SET payload=%s,pending_until=0,retry_after=%s WHERE cache_key=%s AND lease=%s", (json.dumps(story, ensure_ascii=False) if story else None, 0 if story else time.time() + 45, key, lease))
 
     async def write(self, value, language):
         config = self.config

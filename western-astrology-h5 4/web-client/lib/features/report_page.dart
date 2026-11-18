@@ -36,6 +36,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   bool _deleting = false, _paying = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
+  bool _resumedPreview = false;
 
   void _backHome() {
     widget.h5.restoreLandingFromReport(_model.report);
@@ -46,6 +47,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.h5.trackActivity('report_loading');
     _model.addListener(_changed);
     final generated = widget.h5.takeGeneratedPreview(widget.id);
     if (generated != null) {
@@ -58,27 +60,46 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
 
   void _changed() {
     final r = _model.report;
-    if (r == null) return;
+    if (r == null) {
+      if (_model.error.isNotEmpty) {
+        widget.h5.trackActivity('report_loading', 'report_failed');
+      }
+      return;
+    }
+    if (!_resumedPreview && !r.hasPreview && r.previewInProgress) {
+      _resumedPreview = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_generating) unawaited(_generate(false));
+      });
+    }
     if (!_reported && r.hasPreview) {
       _reported = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           widget.h5.browser.pageReady('report-content');
           unawaited(widget.h5.trackReport(r.id, 'seen'));
+          if (!_paying && !_generating && !r.ready) {
+            widget.h5.trackActivity('preview_report', 'report_ready');
+          }
         }
       });
     }
     if (!_reportedFull && r.ready) {
       _reportedFull = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.h5.browser.pageReady('report-full-content');
+        if (mounted) {
+          widget.h5.browser.pageReady('report-full-content');
+          if (!_paying && !_generating) {
+            widget.h5.trackActivity('full_report', 'report_ready');
+          }
+        }
       });
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed && !_generating) {
       _model.resume();
     } else {
       _model.pause();
@@ -151,11 +172,22 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         context: context,
         builder: (_) => ReportPaymentDialog(h5: widget.h5, report: report),
       );
-      if (mounted && paid == true && _model.report?.ready != true) {
-        await _generate(true);
+      if (mounted) {
+        widget.h5.trackActivity(
+          _model.report?.ready == true ? 'full_report' : 'preview_report',
+          'close_payment',
+        );
+      }
+      if (mounted && paid == true) {
+        await _model.load(background: true);
+        if (mounted && _model.report?.fullInProgress == true) {
+          await _generate(true);
+        }
       }
     } finally {
-      if (mounted) setState(() => _paying = false);
+      if (mounted) {
+        setState(() => _paying = false);
+      }
     }
   }
 
@@ -163,14 +195,29 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     final initial = _model.report;
     if (initial == null || _generating) return;
     setState(() => _generating = true);
+    _model.pause();
     final state = GenerationState()..phase = full ? 'full' : 'preview';
+    final page = full ? 'generating_full' : 'generating_preview';
+    var attempts = 0;
     Future<void> run() async {
       _generationRequest?.cancel();
       final token = CancelToken();
       _generationRequest = token;
       state.retry();
+      final first = attempts++ == 0;
+      widget.h5.trackActivity(page, first ? 'generate' : 'retry_generation');
       try {
-        final result = full
+        final resume =
+            first &&
+            (full ? initial.fullInProgress : initial.previewInProgress);
+        final result = resume
+            ? await widget.h5.repository.resumeGeneration(
+                initial,
+                token,
+                state.update,
+                full: full,
+              )
+            : full
             ? await widget.h5.repository.unlock(initial, token, state.update)
             : await widget.h5.repository.generate(
                 initial.input,
@@ -183,7 +230,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         );
         if (mounted && !token.cancelled) state.ready(result);
       } catch (error) {
-        if (mounted && !token.cancelled) state.fail(widget.h5.message(error));
+        if (mounted && !token.cancelled) {
+          state.fail(widget.h5.message(error));
+          widget.h5.trackActivity(page, 'generation_failed');
+        }
       }
     }
 
@@ -216,7 +266,14 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     );
     _generationRequest?.cancel();
     state.dispose();
-    if (mounted) setState(() => _generating = false);
+    if (mounted) {
+      setState(() => _generating = false);
+      _model.resume();
+      widget.h5.trackActivity(
+        _model.report?.ready == true ? 'full_report' : 'preview_report',
+        state.complete ? 'report_ready' : 'cancel_generation',
+      );
+    }
   }
 
   void _navigate(String key) {
@@ -578,6 +635,8 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 18),
         ],
+        AppLoginCodePanel(h5: widget.h5, reportId: report.id),
+        const SizedBox(height: 16),
         if (report.personalReport)
           ..._personalPreview(report, c)
         else if (report.western)
@@ -1008,9 +1067,14 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                 const FateBrand(compact: true),
                 const SizedBox(height: 24),
                 Text(c.t('report', 'previewStates.${r.json['preview_state']}')),
+                const SizedBox(height: 12),
+                AppLoginCodePanel(h5: widget.h5, reportId: r.id),
                 const SizedBox(height: 18),
                 JYButton(
-                  label: c.t('report', 'retryPreview'),
+                  label: c.t(
+                    'report',
+                    r.previewInProgress ? 'viewProgress' : 'retryPreview',
+                  ),
                   onPressed: _generating ? null : () => _generate(false),
                 ),
                 TextButton(
@@ -1069,6 +1133,8 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            AppLoginCodePanel(h5: widget.h5, reportId: r.id),
             const SizedBox(height: 18),
             JYCard(
               padding: const EdgeInsets.all(24),
@@ -1226,6 +1292,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   ],
                   if (!r.ready) ...[
                     const SizedBox(height: 16),
+                    Text(
+                      c.t('report', 'states.${r.json['full_state']}'),
+                      style: const TextStyle(fontSize: 12, color: lavender),
+                    ),
                     ReadingProgress(
                       percent: r.percent(true),
                       reduced: MediaQuery.disableAnimationsOf(context),
@@ -1233,7 +1303,12 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                     ),
                     OutlinedButton(
                       onPressed: _generating ? null : () => _generate(true),
-                      child: Text(c.t('report', 'retry')),
+                      child: Text(
+                        c.t(
+                          'report',
+                          r.fullInProgress ? 'viewProgress' : 'retry',
+                        ),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 20),

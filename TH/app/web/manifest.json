@@ -3,9 +3,9 @@
     "short_name": "FATE",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#130c24",
-    "theme_color": "#130c24",
-    "description": "FATE · Western astrology and personal reports",
+    "background_color": "#130C24",
+    "theme_color": "#130C24",
+    "description": "FATE · Your Thai-inspired sanctuary for astrology, tarot and AI companionship",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

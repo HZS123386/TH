@@ -152,6 +152,10 @@ class LanguageInput(Input):
     language: LanguageCode
 
 
+class H5AppLoginInput(Input):
+    code: str = Field(pattern=r"^[a-zA-Z0-9]{6}$", min_length=6, max_length=6)
+
+
 class AccountInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     username: str = Field(min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_]+$")

@@ -85,7 +85,12 @@ class _WheelPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: value,
-          style: TextStyle(fontSize: fontSize, color: color),
+          style: TextStyle(
+            fontFamily: 'NotoSansSymbols',
+            fontFamilyFallback: const ['NotoSansThai'],
+            fontSize: fontSize,
+            color: color,
+          ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();

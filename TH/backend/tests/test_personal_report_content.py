@@ -79,30 +79,30 @@ def personal_draft(bundle):
             for rule, copy in zip(bundle["citation_rules"]["months"], node_copy)]}
 
 
-def personal_writer(tmp_path, provider):
-    config = settings(tmp_path)
+def personal_writer(postgres_url, provider):
+    config = settings(postgres_url)
     config.fortune_provider = provider
     config.providers.setdefault("openai", ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt"))
-    return LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    return LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
 
 
 @pytest.mark.parametrize("language", ["th", "en", "vi", "my", "km", "lo", "ms", "id"])
-def test_personal_free_localized_sign_names_keep_the_requested_language(tmp_path, language):
+def test_personal_free_localized_sign_names_keep_the_requested_language(postgres_url, language):
     writing = json.loads((Path(__file__).parent / "fixtures/personal-preview.json").read_text(encoding="utf-8"))[language]
     bundle = personal_fixture_bundle(language=language)
     signs = bundle["personal_signs"]
     value = {"language": language, "reading": "personal-preview", **writing}
     value["relationship"]["evidence_ids"] = bundle["citation_rules"]["relationship_ids"][:2]
     value["free_lines"][0] = signs["sun"]["label"] + " / " + signs["ascendant"]["label"] + ": " + value["free_lines"][0]
-    writer = personal_writer(tmp_path, "openai")
+    writer = personal_writer(postgres_url, "openai")
     assert len(writer.validate(json.dumps(value, ensure_ascii=False), bundle)["free_lines"]) == 3
     assert "language=" + language in writer.prompt(bundle)
 
 
 @pytest.mark.parametrize("provider", ["openai", "qwen"])
 @pytest.mark.parametrize("known", [True, False])
-def test_personal_free_three_lines_use_actual_signs_and_no_paid_timing(tmp_path, provider, known):
-    writer = personal_writer(tmp_path, provider)
+def test_personal_free_three_lines_use_actual_signs_and_no_paid_timing(postgres_url, provider, known):
+    writer = personal_writer(postgres_url, provider)
     bundle = personal_fixture_bundle(known=known)
     value = personal_draft(bundle)
     result = writer.validate(json.dumps(value, ensure_ascii=False), bundle)
@@ -125,8 +125,8 @@ def test_personal_free_three_lines_use_actual_signs_and_no_paid_timing(tmp_path,
 
 
 @pytest.mark.parametrize("target", ["overview", "trait", "action", "title", "missing_trait", "relationship"])
-def test_personal_free_sections_add_new_information(tmp_path, target):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_free_sections_add_new_information(postgres_url, target):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     if target == "overview":
@@ -146,8 +146,8 @@ def test_personal_free_sections_add_new_information(tmp_path, target):
         writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
-def test_personal_free_allows_short_shared_keywords_and_progress_includes_details(tmp_path):
-    writer = personal_writer(tmp_path, "qwen")
+def test_personal_free_allows_short_shared_keywords_and_progress_includes_details(postgres_url):
+    writer = personal_writer(postgres_url, "qwen")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     value["traits"][0]["text"] = "交流中愿意先提出想法，让大家有个共同的起点。"
@@ -159,8 +159,8 @@ def test_personal_free_allows_short_shared_keywords_and_progress_includes_detail
 
 
 @pytest.mark.parametrize("change", ["missing", "unrelated_evidence", "duplicate_evidence", "missing_aspect", "outsider", "decision", "partner_feelings", "over_combined_limit"])
-def test_free_love_preview_is_required_grounded_and_does_not_judge_third_parties(tmp_path, change):
-    writer = personal_writer(tmp_path, "openai")
+def test_free_love_preview_is_required_grounded_and_does_not_judge_third_parties(postgres_url, change):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     if change == "missing":
@@ -180,8 +180,8 @@ def test_free_love_preview_is_required_grounded_and_does_not_judge_third_parties
 
 
 @pytest.mark.parametrize("provider", ["openai", "qwen"])
-def test_personal_paid_template_schema_and_exact_month_citations(tmp_path, provider):
-    writer = personal_writer(tmp_path, provider)
+def test_personal_paid_template_schema_and_exact_month_citations(postgres_url, provider):
+    writer = personal_writer(postgres_url, provider)
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     result = writer.validate(json.dumps(value, ensure_ascii=False), bundle)
@@ -213,8 +213,8 @@ def test_personal_paid_template_schema_and_exact_month_citations(tmp_path, provi
 
 
 @pytest.mark.parametrize("language", ["zh", "en"])
-def test_personal_paid_natural_bounds_match_validator_and_provider_schema(tmp_path, language):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_paid_natural_bounds_match_validator_and_provider_schema(postgres_url, language):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(full=True, language=language)
     value = personal_draft(bundle)
     bounds = ({"talent": (50, 160), "direction": (25, 75), "topic": (50, 140), "theme": (4, 14),
@@ -261,9 +261,9 @@ def test_personal_paid_natural_bounds_match_validator_and_provider_schema(tmp_pa
 
 
 @pytest.mark.parametrize("key", ["wealth", "love", "risk"])
-def test_personal_full_requires_each_promised_subject_and_its_own_evidence(tmp_path, key):
+def test_personal_full_requires_each_promised_subject_and_its_own_evidence(postgres_url, key):
     bundle = personal_fixture_bundle(full=True)
-    writer = personal_writer(tmp_path, "openai")
+    writer = personal_writer(postgres_url, "openai")
     value = personal_draft(bundle)
     missing = deepcopy(value)
     del missing["themes"][key]
@@ -285,9 +285,9 @@ def test_personal_full_requires_each_relationship_answer(field):
 
 
 @pytest.mark.parametrize("paraphrase", [False, True])
-def test_personal_full_rejects_repeated_ideas_across_different_subjects(tmp_path, paraphrase):
+def test_personal_full_rejects_repeated_ideas_across_different_subjects(postgres_url, paraphrase):
     bundle = personal_fixture_bundle(full=True)
-    writer = personal_writer(tmp_path, "openai")
+    writer = personal_writer(postgres_url, "openai")
     value = personal_draft(bundle)
     copied = value["themes"]["wealth"]["text"]
     if paraphrase:
@@ -298,9 +298,9 @@ def test_personal_full_rejects_repeated_ideas_across_different_subjects(tmp_path
         writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
-def test_personal_full_does_not_copy_the_saved_free_action(tmp_path):
+def test_personal_full_does_not_copy_the_saved_free_action(postgres_url):
     bundle = personal_fixture_bundle(full=True)
-    writer = personal_writer(tmp_path, "openai")
+    writer = personal_writer(postgres_url, "openai")
     value = personal_draft(bundle)
     saved = personal_draft(personal_fixture_bundle())["opportunity_action"]
     value["nodes"][0]["action"] = saved
@@ -311,8 +311,8 @@ def test_personal_full_does_not_copy_the_saved_free_action(tmp_path):
 
 
 @pytest.mark.parametrize("field", ["benefit", "caution", "action"])
-def test_personal_paid_months_cannot_repeat_complete_sentences(tmp_path, field):
-    writer = personal_writer(tmp_path, "qwen")
+def test_personal_paid_months_cannot_repeat_complete_sentences(postgres_url, field):
+    writer = personal_writer(postgres_url, "qwen")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     value["nodes"][1][field] = value["nodes"][0][field]
@@ -321,8 +321,8 @@ def test_personal_paid_months_cannot_repeat_complete_sentences(tmp_path, field):
 
 
 @pytest.mark.parametrize("sentences", [2, 3])
-def test_personal_benefit_allows_two_connected_sentences_but_not_three(tmp_path, sentences):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_benefit_allows_two_connected_sentences_but_not_three(postgres_url, sentences):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     ending = "。也为后续了解彼此的想法打开交流空间。" if sentences == 3 else "，也为后续了解彼此的想法打开交流空间。"
@@ -334,8 +334,8 @@ def test_personal_benefit_allows_two_connected_sentences_but_not_three(tmp_path,
             writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
-def test_personal_paid_rejects_long_reused_clause_but_accepts_shared_short_words(tmp_path):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_paid_rejects_long_reused_clause_but_accepts_shared_short_words(postgres_url):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     value["nodes"][0]["caution"] = "交流过快时，也给对方留下回应的空间。"
@@ -353,8 +353,8 @@ def test_personal_paid_rejects_long_reused_clause_but_accepts_shared_short_words
     "保持耐心并等待合适的回应和机会。",
     "让自己慢慢调整状态并保持开放的心态。",
 ])
-def test_personal_action_needs_an_observable_step_not_generic_patience(tmp_path, action):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_action_needs_an_observable_step_not_generic_patience(postgres_url, action):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     value["nodes"][0]["action"] = action
@@ -363,8 +363,8 @@ def test_personal_action_needs_an_observable_step_not_generic_patience(tmp_path,
 
 
 @pytest.mark.parametrize("change", ["wrong_sign", "date_in_free", "past_identity", "occupation", "guarantee", "four_lines"])
-def test_personal_free_rejects_fabricated_or_private_claims(tmp_path, change):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_free_rejects_fabricated_or_private_claims(postgres_url, change):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     if change == "wrong_sign":
@@ -384,8 +384,8 @@ def test_personal_free_rejects_fabricated_or_private_claims(tmp_path, change):
         writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
-def test_unknown_birth_time_cannot_assign_ascendant_traits(tmp_path):
-    writer = personal_writer(tmp_path, "openai")
+def test_unknown_birth_time_cannot_assign_ascendant_traits(postgres_url):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(known=False)
     value = personal_draft(bundle)
     value["free_lines"][0] = "太阳" + bundle["personal_signs"]["sun"]["label"] + "让你主动表达，上升也带来照顾他人感受的倾向。"
@@ -398,8 +398,8 @@ def test_unknown_birth_time_cannot_assign_ascendant_traits(tmp_path):
     "近期或有被理解的机会，合适的人也可能愿意继续交流。",
     "近期你的表达或能被关键人物看见，也值得保持清楚。",
 ])
-def test_personal_free_third_line_requires_a_near_term_visibility_opportunity(tmp_path, line):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_free_third_line_requires_a_near_term_visibility_opportunity(postgres_url, line):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     value["free_lines"][2] = line
@@ -408,8 +408,8 @@ def test_personal_free_third_line_requires_a_near_term_visibility_opportunity(tm
 
 
 @pytest.mark.parametrize("change", ["wrong_month", "wrong_transit", "wrong_natal", "duplicate_month", "missing_node", "specific_job"])
-def test_personal_full_rejects_unsupported_node_or_talent_claims(tmp_path, change):
-    writer = personal_writer(tmp_path, "qwen")
+def test_personal_full_rejects_unsupported_node_or_talent_claims(postgres_url, change):
+    writer = personal_writer(postgres_url, "qwen")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     if change == "wrong_month":
@@ -429,11 +429,11 @@ def test_personal_full_rejects_unsupported_node_or_talent_claims(tmp_path, chang
 
 
 @pytest.mark.parametrize("primary_unavailable", [False, True])
-def test_personal_writer_keeps_provider_fallback_usage_and_cache(tmp_path, monkeypatch, primary_unavailable):
-    config = settings(tmp_path)
+def test_personal_writer_keeps_provider_fallback_usage_and_cache(postgres_url, monkeypatch, primary_unavailable):
+    config = settings(postgres_url)
     config.fortune_provider, config.fortune_fallback_provider = "openai", "qwen"
     config.providers["openai"] = ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt")
-    store = Storage(config.database_path)
+    store = Storage(config.database_url)
     writer = LifeWriter(store, config, asyncio.Semaphore(2))
     original_client, calls = httpx.AsyncClient, []
     def respond(request):
@@ -464,7 +464,7 @@ def test_personal_writer_keeps_provider_fallback_usage_and_cache(tmp_path, monke
     assert all(result["state"] == "ready" for result in results)
     assert not any("private-account-metadata" in str(result) for result in results)
     with store.connect() as db:
-        rows = db.execute("SELECT provider,phase,stage,validated FROM report_model_usage WHERE report_id=? ORDER BY id", ("synthetic-personal-flow",)).fetchall()
+        rows = db.execute("SELECT provider,phase,stage,validated FROM report_model_usage WHERE report_id=%s ORDER BY id", ("synthetic-personal-flow",)).fetchall()
     ready = [row for row in rows if row["validated"]]
     assert len(ready) == 2
     assert [row["stage"] for row in ready] == ["personal_preview", "personal_full"]

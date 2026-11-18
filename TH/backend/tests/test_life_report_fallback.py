@@ -25,8 +25,8 @@ def legacy_fallback_contract(monkeypatch):
     monkeypatch.setattr("backend.app.life_reports.personal_chart", lambda chart: False)
 
 
-def fallback_settings(tmp_path):
-    config = settings(tmp_path)
+def fallback_settings(postgres_url):
+    config = settings(postgres_url)
     config.fortune_provider = "openai"
     config.fortune_fallback_provider = "qwen"
     config.providers = {
@@ -108,10 +108,10 @@ def create_preview(client):
 
 
 @pytest.mark.parametrize("failure", ["401", "quota", "503", "network", "timeout"])
-def test_primary_service_failure_uses_qwen_for_free_and_all_six_roxy_parts(tmp_path, model_transport, failure):
+def test_primary_service_failure_uses_qwen_for_free_and_all_six_roxy_parts(postgres_url, model_transport, failure):
     mode, calls, calculations = model_transport
     mode["primary"] = failure
-    with TestClient(create_app(fallback_settings(tmp_path))) as client:
+    with TestClient(create_app(fallback_settings(postgres_url))) as client:
         preview = create_preview(client)
         assert preview["preview_state"] == "ready" and not preview["chapters"]
         path = "/api/life-reports/" + preview["id"]
@@ -129,7 +129,7 @@ def test_primary_service_failure_uses_qwen_for_free_and_all_six_roxy_parts(tmp_p
         assert [provider for provider, _ in calls] == ["openai"] + ["qwen"] * 7
         assert len(calculations) == 1
         with client.app.state.store.connect() as db:
-            rows = db.execute("SELECT * FROM report_model_usage WHERE report_id=? ORDER BY id", (preview["id"],)).fetchall()
+            rows = db.execute("SELECT * FROM report_model_usage WHERE report_id=%s ORDER BY id", (preview["id"],)).fetchall()
         assert len(rows) == 8
         assert rows[0]["provider"] == "openai" and not rows[0]["validated"]
         assert all(row["provider"] == "qwen" and row["model"] == "qwen3.7-plus" and row["validated"] for row in rows[1:])
@@ -139,40 +139,41 @@ def test_primary_service_failure_uses_qwen_for_free_and_all_six_roxy_parts(tmp_p
         assert len(calls) == 8
 
 
-def test_successful_primary_never_uses_qwen(tmp_path, model_transport):
+def test_successful_primary_never_uses_qwen(postgres_url, model_transport):
     mode, calls, calculations = model_transport
     mode["primary"] = "success"
-    with TestClient(create_app(fallback_settings(tmp_path))) as client:
+    with TestClient(create_app(fallback_settings(postgres_url))) as client:
         assert create_preview(client)["preview_state"] == "ready"
         assert [provider for provider, _ in calls] == ["openai"] and len(calculations) == 1
 
 
 @pytest.mark.parametrize("fallback", ["", "qwen"])
-def test_unavailable_fallback_does_not_fabricate_report(tmp_path, model_transport, fallback):
+def test_unavailable_fallback_does_not_fabricate_report(postgres_url, model_transport, fallback):
     mode, calls, _ = model_transport
     mode["fallback"] = "503"
-    config = fallback_settings(tmp_path)
+    config = fallback_settings(postgres_url)
     config.fortune_fallback_provider = fallback
     with TestClient(create_app(config)) as client:
         result = create_preview(client)
         assert result["preview_state"] == "unavailable" and result["preview"] is None
         assert not result["chapters"] and result["plan"] is None
-        assert [provider for provider, _ in calls] == (["openai", "qwen"] if fallback else ["openai"])
+        providers = [provider for provider, _ in calls]
+    assert providers == (["openai"] + ["qwen"] * LifeWriter.max_attempts if fallback else ["openai"])
 
 
-def test_primary_unconfigured_still_allows_configured_qwen(tmp_path, model_transport):
+def test_primary_unconfigured_still_allows_configured_qwen(postgres_url, model_transport):
     _, calls, calculations = model_transport
-    config = fallback_settings(tmp_path)
+    config = fallback_settings(postgres_url)
     config.providers["openai"].key = ""
     with TestClient(create_app(config)) as client:
         assert create_preview(client)["preview_state"] == "ready"
         assert [provider for provider, _ in calls] == ["qwen"] and len(calculations) == 1
 
 
-def test_invalid_primary_citations_cannot_be_overridden_by_qwen(tmp_path, model_transport):
+def test_invalid_primary_citations_cannot_be_overridden_by_qwen(postgres_url, model_transport):
     mode, calls, _ = model_transport
     mode["primary"] = "invalid_evidence"
-    with TestClient(create_app(fallback_settings(tmp_path))) as client:
+    with TestClient(create_app(fallback_settings(postgres_url))) as client:
         result = create_preview(client)
         assert result["preview_state"] == "unavailable" and result["preview"] is None
         assert [provider for provider, _ in calls] == ["openai"] * LifeWriter.max_attempts
@@ -180,10 +181,10 @@ def test_invalid_primary_citations_cannot_be_overridden_by_qwen(tmp_path, model_
 
 
 @pytest.mark.parametrize("rejection", ["refusal", "content_filter"])
-def test_primary_safety_rejection_cannot_be_overridden_by_qwen(tmp_path, model_transport, rejection):
+def test_primary_safety_rejection_cannot_be_overridden_by_qwen(postgres_url, model_transport, rejection):
     mode, calls, _ = model_transport
     mode["primary"] = rejection
-    with TestClient(create_app(fallback_settings(tmp_path))) as client:
+    with TestClient(create_app(fallback_settings(postgres_url))) as client:
         result = create_preview(client)
         assert result["preview_state"] == "unavailable" and result["preview"] is None
         assert calls and all(provider == "openai" for provider, _ in calls)
@@ -192,9 +193,9 @@ def test_primary_safety_rejection_cannot_be_overridden_by_qwen(tmp_path, model_t
 
 
 @pytest.mark.parametrize("state", ["limited", "pending", "cancelled"])
-def test_fallback_does_not_bypass_admission_or_cancellation(tmp_path, monkeypatch, state):
-    config = fallback_settings(tmp_path)
-    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+def test_fallback_does_not_bypass_admission_or_cancellation(postgres_url, monkeypatch, state):
+    config = fallback_settings(postgres_url)
+    writer = LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
     calls = []
 
     async def generate(self, bundle, owner, network):
@@ -211,10 +212,10 @@ def test_fallback_does_not_bypass_admission_or_cancellation(tmp_path, monkeypatc
     assert calls == ["openai"] and not writer.availability["retry_at"]
 
 
-def test_primary_recovers_after_shared_service_cooldown(tmp_path, model_transport):
+def test_primary_recovers_after_shared_service_cooldown(postgres_url, model_transport):
     mode, calls, _ = model_transport
-    config = fallback_settings(tmp_path)
-    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    config = fallback_settings(postgres_url)
+    writer = LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
     body = LifeInput.model_validate({"profile": PROFILE, "year": 2026})
     chart = {"provider": "roxy", "domain": "astrology", "time_known": True, "raw": GOLDEN}
     bundle = RoxyAstrology.bundle(body, chart, "overview")
@@ -236,13 +237,13 @@ def test_primary_recovers_after_shared_service_cooldown(tmp_path, model_transpor
 
 
 @pytest.mark.parametrize("primary_configured", [True, False])
-def test_fallback_preview_uses_one_admission_and_cached_hits_do_not_bypass_caps(tmp_path, model_transport, primary_configured):
+def test_fallback_preview_uses_one_admission_and_cached_hits_do_not_bypass_caps(postgres_url, model_transport, primary_configured):
     _, calls, _ = model_transport
-    config = fallback_settings(tmp_path)
+    config = fallback_settings(postgres_url)
     config.bazi_reports_per_minute = 1
     if not primary_configured:
         config.providers["openai"].key = ""
-    store = Storage(config.database_path)
+    store = Storage(config.database_url)
     writer = LifeWriter(store, config, asyncio.Semaphore(1))
     body = LifeInput.model_validate({"profile": PROFILE, "year": 2026})
     chart = {"provider": "roxy", "domain": "astrology", "time_known": True, "raw": GOLDEN}
@@ -262,6 +263,6 @@ def test_fallback_preview_uses_one_admission_and_cached_hits_do_not_bypass_caps(
         assert limited["state"] == "limited"
         assert [provider for provider, _ in calls] == expected
         with store.connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM bazi_report_usage WHERE scope='owner'").fetchone()[0] == 1
-            assert db.execute("SELECT COUNT(*) FROM bazi_report_usage WHERE scope='network'").fetchone()[0] == 1
+            assert db.execute("SELECT COUNT(*) AS total FROM bazi_report_usage WHERE scope='owner'").fetchone()["total"] == 1
+            assert db.execute("SELECT COUNT(*) AS total FROM bazi_report_usage WHERE scope='network'").fetchone()["total"] == 1
     asyncio.run(run())

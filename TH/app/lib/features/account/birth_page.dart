@@ -9,7 +9,13 @@ import '../../ui/theme.dart';
 import 'birthplace_fields.dart';
 
 class BirthPage extends StatefulWidget {
-  const BirthPage({super.key});
+  const BirthPage({
+    this.returnToPrevious = false,
+    this.openThaiChart = false,
+    super.key,
+  });
+  final bool returnToPrevious;
+  final bool openThaiChart;
   @override
   State<BirthPage> createState() => _BirthPageState();
 }
@@ -81,7 +87,15 @@ class _BirthPageState extends State<BirthPage> {
           revision: original?.revision,
         ),
       );
-      if (mounted) context.go('/chart');
+      if (mounted) {
+        if (widget.openThaiChart) {
+          context.pushReplacement('/chart/thai');
+        } else if (widget.returnToPrevious && context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/chart');
+        }
+      }
     } catch (_) {
       if (mounted) setState(() => error = s.error);
     } finally {
@@ -117,6 +131,7 @@ class _BirthPageState extends State<BirthPage> {
                         : () async {
                             final next = await showModalBottomSheet<String>(
                               context: context,
+                              sheetAnimationStyle: FateMotion.dialog(context),
                               isScrollControlled: true,
                               useRootNavigator: true,
                               useSafeArea: true,

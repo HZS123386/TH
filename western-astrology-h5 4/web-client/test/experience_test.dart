@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +17,7 @@ import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/features/information_page.dart';
 import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/welcome_page.dart';
+
 import 'support.dart';
 
 http.Response reply(dynamic value, [int status = 200]) => http.Response(
@@ -187,8 +189,33 @@ void main() {
           initialLocation: '/?lang=zh&topic=love&utm_source=facebook',
         ),
       );
-      await tester.pumpAndSettle();
-      expect(find.text('谁在影响你的感情？'), findsOneWidget);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      final name = find.byKey(const ValueKey('welcome-name-strokes'));
+      expect(name, findsOneWidget);
+      final initialInk = tester.widget<CustomPaint>(name).painter!;
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(
+        tester.widget<CustomPaint>(name).painter!.shouldRepaint(initialInk),
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 520));
+      expect(find.text('情缘法宗师'), findsOneWidget);
+      expect(find.text('该断该续？'), findsOneWidget);
+      expect(find.text('揪出搅局的人'), findsOneWidget);
+      expect(
+        tester.getCenter(name).dx,
+        greaterThan(tester.getCenter(find.text('该断该续？')).dx),
+      );
+      final shimmer = find.byKey(const ValueKey('welcome-name-shimmer'));
+      final bright = tester.widget<Opacity>(shimmer).opacity;
+      final completedInk = tester.widget<CustomPaint>(name).painter!;
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
+        tester.widget<CustomPaint>(name).painter!.shouldRepaint(completedInk),
+        isFalse,
+      );
+      expect(tester.widget<Opacity>(shimmer).opacity, lessThan(bright));
       expect(find.byType(LandingPage), findsNothing);
       await tester.tap(find.byKey(const ValueKey('welcome-start')));
       await tester.pump();
@@ -202,27 +229,42 @@ void main() {
       ).routeInformationProvider.value.uri;
       expect(uri.queryParameters['topic'], 'love');
       expect(uri.queryParameters['utm_source'], 'facebook');
-      expect(browser.readSetting('fate-welcome-seen'), '1');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
-      expect(
-        H5Controller(
+      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      // Browsers with the old preference still show the same welcome page.
+      browser.writeSetting('fate-welcome-dismissed', '1', session: true);
+      for (final language in ['zh', 'th']) {
+        final reopened = H5Controller(
           translations(),
           ReportRepository(browser),
           browser,
-        ).welcomeOpen,
-        isTrue,
-      );
-      browser.settings.remove('session:fate-welcome-dismissed');
-      final returning = H5Controller(
-        translations(),
-        ReportRepository(browser),
-        browser,
-      );
-      expect(returning.returningVisitor, isTrue);
-      expect(returning.welcomeOpen, isTrue);
-      returning.dispose();
+          language: language,
+        );
+        await tester.pumpWidget(
+          H5App(controller: reopened, initialLocation: '/?lang=$language'),
+        );
+        await tester.pump();
+        expect(find.byType(WelcomePage), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('welcome-name-strokes')),
+          findsOneWidget,
+        );
+        expect(
+          find.text(language == 'zh' ? '该断该续？' : 'ควรพอหรือไปต่อ?'),
+          findsOneWidget,
+        );
+        expect(find.byType(LandingPage), findsNothing);
+        await tester.tap(find.byKey(const ValueKey('welcome-start')));
+        await tester.pump();
+        expect(find.byType(WelcomePage), findsNothing);
+        expect(find.byType(LandingPage), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        reopened.dispose();
+      }
     },
   );
 
@@ -498,7 +540,7 @@ void main() {
           final name = text(body['event']);
           events.add(name.isEmpty ? 'visit' : name);
           if (name == 'submitted') await gate.future;
-          return reply({'ok': true});
+          return reply({'recorded': name.isNotEmpty});
         }),
       );
       final h5 = H5Controller(translations(), repo, browser);
@@ -510,6 +552,189 @@ void main() {
       await Future.wait([submitted, seen]);
       await h5.trackReport('report-id', 'seen');
       expect(events, ['visit', 'submitted', 'seen']);
+      h5.dispose();
+    },
+  );
+
+  testWidgets(
+    'data-use cancel sends nothing; failed acceptance can retry before saving the preference',
+    (tester) async {
+      phone(tester);
+      final browser = TestBrowser()..settings.remove('fate-data-use-version');
+      var attempts = 0;
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          if (request.url.path == '/api/landing/config') {
+            return reply({'notice_version': H5Controller.noticeVersion});
+          }
+          expect(request.url.path, '/api/landing/consents');
+          expect(request.headers['X-Report-Key'], browser.key);
+          expect(jsonDecode(request.body), {
+            'notice_version': H5Controller.noticeVersion,
+            'granted': true,
+          });
+          attempts++;
+          return attempts == 1
+              ? reply({'code': 'busy'}, 503)
+              : reply({
+                  'accepted': true,
+                  'notice_version': H5Controller.noticeVersion,
+                });
+        }),
+      );
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+      bool? accepted;
+      await tester.pumpWidget(
+        H5Scope(
+          controller: h5,
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    accepted = await confirmDataUse(context, h5);
+                  },
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(accepted, isFalse);
+      expect(attempts, 0);
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
+      await tester.pumpAndSettle();
+      expect(h5.noticeAccepted, isFalse);
+      expect(browser.readSetting('fate-data-use-version'), isNull);
+      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
+      await tester.pumpAndSettle();
+      expect(accepted, isTrue);
+      expect(h5.noticeAccepted, isTrue);
+      expect(
+        browser.readSetting('fate-data-use-version'),
+        H5Controller.noticeVersion,
+      );
+      expect(attempts, 2);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
+    },
+  );
+
+  testWidgets(
+    'outdated data-use notice offers a fresh page without submitting consent',
+    (tester) async {
+      phone(tester);
+      final browser = TestBrowser()..settings.remove('fate-data-use-version');
+      var unexpected = 0;
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          if (request.url.path == '/api/landing/config') {
+            return reply({'notice_version': 'h5-data-use-future'});
+          }
+          unexpected++;
+          return reply({}, 500);
+        }),
+      );
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+      await tester.pumpWidget(
+        H5Scope(
+          controller: h5,
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => confirmDataUse(context, h5),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
+      await tester.pumpAndSettle();
+      expect(find.text(h5.copy.t('jy', 'noticeOutdated')), findsOneWidget);
+      expect(find.byKey(const ValueKey('data-use-agree')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('data-use-reload')));
+      expect(browser.openedPages.single, contains('?lang=zh&preview=notice-'));
+      expect(browser.readSetting('fate-data-use-version'), isNull);
+      expect(h5.noticeAccepted, isFalse);
+      expect(unexpected, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
+    },
+  );
+
+  test('an invalid consent acknowledgement cannot save acceptance', () async {
+    final browser = TestBrowser()..settings.remove('fate-data-use-version');
+    final repo = ReportRepository(
+      browser,
+      baseUrl: 'https://example.test',
+      client: MockClient(
+        (request) async => reply(
+          request.url.path == '/api/landing/config'
+              ? {'notice_version': H5Controller.noticeVersion}
+              : {
+                  'accepted': false,
+                  'notice_version': H5Controller.noticeVersion,
+                },
+        ),
+      ),
+    );
+    final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+    await expectLater(
+      h5.acceptDataUse(),
+      throwsA(
+        isA<ApiFailure>().having(
+          (e) => e.code,
+          'code',
+          'landing_consent_failed',
+        ),
+      ),
+    );
+    expect(browser.readSetting('fate-data-use-version'), isNull);
+    expect(h5.noticeAccepted, isFalse);
+    h5.dispose();
+  });
+
+  test(
+    'funnel retries a failed visit and submission before recording a preview',
+    () async {
+      final browser = TestBrowser()
+        ..visit = {'id': 'visit-retry', 'region': 'TH'};
+      final attempts = <String>[];
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          final body = object(jsonDecode(request.body));
+          final event = text(body['event']);
+          final step = event.isEmpty ? 'visit' : event;
+          if (event.isEmpty) expect(body['region'], 'TH');
+          final first = !attempts.contains(step);
+          attempts.add(step);
+          if (first && step != 'seen') return reply({'code': 'temporary'}, 503);
+          return reply({'ok': true, 'recorded': true});
+        }),
+      );
+      final h5 = H5Controller(translations(), repo, browser);
+      await h5.recordVisit();
+      await h5.trackReport('report-retry', 'submitted');
+      await h5.trackReport('report-retry', 'seen');
+      expect(attempts, ['visit', 'visit', 'submitted', 'submitted', 'seen']);
       h5.dispose();
     },
   );

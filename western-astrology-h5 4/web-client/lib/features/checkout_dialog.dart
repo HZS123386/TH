@@ -6,6 +6,7 @@ import '../app/controller.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
 import '../ui/theme.dart';
+import 'phone_country_picker.dart';
 import '../ui/jy_components.dart';
 
 class ReportCheckout extends StatefulWidget {
@@ -218,9 +219,11 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                     const SizedBox(height: 8),
                     JYButton(
                       key: const ValueKey('jy-payment-preview'),
-                      label: relationshipUnlock.isEmpty
-                          ? c.t('jy', 'checkout.pay')
-                          : relationshipUnlock,
+                      label: relationshipUnlock.isNotEmpty
+                          ? relationshipUnlock
+                          : widget.report.orderOnly
+                          ? c.t('checkout', 'title')
+                          : c.t('jy', 'checkout.pay'),
                       icon: 'lock',
                       onPressed: widget.busy ? null : widget.onPay,
                       dimDisabled: false,
@@ -231,7 +234,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                           ? c.t(
                               'checkout',
                               widget.report.orderOnly
-                                  ? 'orderOnlyHint'
+                                  ? 'entryHint'
                                   : widget.report.paysoTest
                                   ? 'payso'
                                   : 'demoHint',
@@ -347,7 +350,12 @@ class ReportPaymentDialog extends StatefulWidget {
 class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
   final _request = CancelToken();
   final _mobile = TextEditingController();
-  final _nationCode = TextEditingController(text: '66');
+  late final _countries = objects(
+    widget.h5.translations['phoneCountries'],
+  ).map(PhoneCountry.new).toList();
+  late PhoneCountry _country = _countries.firstWhere(
+    (item) => item.iso2 == 'TH',
+  );
   final _cardNumber = TextEditingController();
   final _expiry = TextEditingController();
   final _securityCode = TextEditingController();
@@ -362,19 +370,21 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
   @override
   void initState() {
     super.initState();
+    widget.h5.trackActivity('payment', 'open_payment');
     unawaited(_prepare(existingOnly: widget.report.orderOnly));
   }
 
   Future<void> _prepare({bool existingOnly = false}) async {
     if (_preparing || _request.cancelled || !_canRetry) return;
     final mobile = _mobile.text.trim().replaceAll(RegExp(r'[ \t()-]'), '');
-    final nationCode = _nationCode.text.trim().replaceFirst(RegExp(r'^\+'), '');
+    final nationCode = _country.dialCode;
     if (widget.report.orderOnly &&
         !existingOnly &&
         (!RegExp(r'^[0-9]{6,14}$').hasMatch(mobile) ||
             !RegExp(r'^[1-9][0-9]{0,2}$').hasMatch(nationCode) ||
             mobile.length + nationCode.length > 15)) {
       setState(() => _error = _copy.t('checkout', 'life_order_phone_invalid'));
+      widget.h5.trackActivity('payment', 'invalid_phone');
       return;
     }
     setState(() {
@@ -383,6 +393,7 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
       _canRetry = true;
     });
     final repository = widget.h5.repository;
+    if (!existingOnly) widget.h5.trackActivity('payment', 'create_order');
     try {
       try {
         // Reopening reads the saved order; only the explicit create button can submit one.
@@ -395,6 +406,9 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
                 nationCode: nationCode,
               );
         if (mounted) {
+          if (!existingOnly) {
+            widget.h5.trackActivity('payment', 'order_created');
+          }
           setState(() {
             _order = order;
             if (existingOnly) _existingChecked = true;
@@ -415,6 +429,7 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
       }
     } catch (error) {
       if (mounted && !_request.cancelled) {
+        widget.h5.trackActivity('payment', 'order_failed');
         final code = error is ApiFailure ? error.code : '';
         final label = switch (code) {
           'life_order_configuration_required' => 'configurationRequired',
@@ -449,7 +464,9 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
     if (url == null || url.isEmpty) return;
     try {
       widget.h5.browser.openPage(url);
+      widget.h5.trackActivity('payment', 'open_cashier');
     } catch (error) {
+      widget.h5.trackActivity('payment', 'cashier_failed');
       setState(() => _error = widget.h5.message(error, labels: _copy));
       return;
     }
@@ -462,7 +479,9 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
     try {
       // Submit from the tap so browsers can open the hosted checkout tab.
       widget.h5.browser.postPayment(order.action, order.fields);
+      widget.h5.trackActivity('payment', 'open_cashier');
     } catch (error) {
+      widget.h5.trackActivity('payment', 'cashier_failed');
       setState(() => _error = widget.h5.message(error, labels: _copy));
       return;
     }
@@ -471,6 +490,7 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
 
   void _startWaiting({bool immediately = false}) {
     if (_waiting || _paid || _request.cancelled) return;
+    if (immediately) widget.h5.trackActivity('payment', 'check_payment');
     setState(() {
       _waiting = true;
       _error = '';
@@ -559,6 +579,7 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
 
   Future<void> _showSuccess() async {
     if (ModalRoute.of(context)?.isCurrent != true) return;
+    widget.h5.trackActivity('payment', 'payment_result');
     setState(() {
       _paid = true;
       _error = '';
@@ -571,7 +592,6 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
   void dispose() {
     _request.cancel();
     _mobile.dispose();
-    _nationCode.dispose();
     _cardNumber.dispose();
     _expiry.dispose();
     _securityCode.dispose();
@@ -655,12 +675,77 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
     ],
   );
 
+  Widget _phoneFields(Copy c) {
+    final narrow = MediaQuery.sizeOf(context).width < 360;
+    final country = PhoneCountryPicker(
+      key: const ValueKey('order-nation-code'),
+      copy: c,
+      countries: _countries,
+      country: _country,
+      showName: narrow,
+      enabled: !_preparing,
+      onChanged: (country) => setState(() => _country = country),
+    );
+    final mobile = TextField(
+      key: const ValueKey('order-mobile'),
+      controller: _mobile,
+      enabled: !_preparing,
+      keyboardType: TextInputType.phone,
+      textInputAction: TextInputAction.done,
+      autofillHints: const [AutofillHints.telephoneNumberNational],
+      autocorrect: false,
+      enableSuggestions: false,
+      style: const TextStyle(fontSize: 16),
+      decoration: InputDecoration(
+        labelText: c.t('checkout', 'mobile'),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        hintText: c.t('checkout', 'mobileHint'),
+        hintStyle: const TextStyle(color: lavender, fontSize: 12),
+      ),
+    );
+    return narrow
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [country, const SizedBox(height: 12), mobile],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: 116, child: country),
+              const SizedBox(width: 12),
+              Expanded(child: mobile),
+            ],
+          );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = _copy;
     final payso = widget.report.paysoTest;
     final orderOnly = widget.report.orderOnly;
     return AlertDialog(
+      constraints: const BoxConstraints(maxWidth: 440),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      backgroundColor: panel,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: line),
+      ),
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+        color: cream,
+        fontSize: 22,
+        height: 1.35,
+        fontWeight: FontWeight.w700,
+      ),
+      contentTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: lavender,
+        fontSize: 13,
+        height: 1.6,
+      ),
       title: Text(
         c.t(
           'checkout',
@@ -672,158 +757,201 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
         ),
       ),
       scrollable: true,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.report.priceLabel,
-            style: const TextStyle(color: gold, fontSize: 24),
-          ),
-          const SizedBox(height: 8),
-          if (_order case final order?) ...[
-            Text(
-              '${c.t('checkout', orderOnly ? 'localOrder' : 'order')} · '
-              '${payso ? order.reference : int.parse(order.reference).toString().padLeft(4, '0')}',
-              style: const TextStyle(color: lavender, fontSize: 12),
+      content: SizedBox(
+        width: 392,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: gold.withValues(alpha: .07),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: gold.withValues(alpha: .25)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      c.t('checkout', 'once'),
+                      style: const TextStyle(color: cream, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    widget.report.priceLabel,
+                    style: const TextStyle(
+                      color: gold,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            if (orderOnly && !_paid) ...[
-              Text(
-                c.t('checkout', 'pendingOrder'),
-                style: const TextStyle(color: gold),
-              ),
-              const SizedBox(height: 8),
-              SelectableText(
-                '${c.t('checkout', 'gatewayOrder')} · ${order.gatewayOrder}',
-              ),
-              const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            if (_order case final order?) ...[
+              if (!orderOnly) ...[
+                Text(
+                  '${c.t('checkout', 'order')} · '
+                  '${payso ? order.reference : int.parse(order.reference).toString().padLeft(4, '0')}',
+                  style: const TextStyle(color: lavender, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+              ],
+              if (orderOnly && !_paid) ...[
+                Text(
+                  c.t('checkout', 'pendingOrder'),
+                  style: const TextStyle(color: gold),
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  '${c.t('checkout', 'gatewayOrder')} · ${order.gatewayOrder}',
+                  style: const TextStyle(color: lavender, fontSize: 11),
+                ),
+                const SizedBox(height: 8),
+              ],
             ],
-          ],
-          if (_paid)
-            Semantics(
-              liveRegion: true,
-              child: Text(c.t('checkout', 'successHint')),
-            )
-          else
-            Text(
-              c.t(
-                'checkout',
-                orderOnly
-                    ? (_order == null
-                          ? 'orderOnlyHint'
-                          : _order!.checkoutUrl.isEmpty
-                          ? 'cashierUnavailable'
-                          : 'cashierPreviewHint')
-                    : payso
-                    ? 'paysoHint'
-                    : 'demoHint',
-              ),
-            ),
-          if (orderOnly && _existingChecked && _order == null && _canRetry) ...[
-            const SizedBox(height: 16),
-            TextField(
-              key: const ValueKey('order-nation-code'),
-              controller: _nationCode,
-              enabled: !_preparing,
-              keyboardType: TextInputType.phone,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: InputDecoration(
-                labelText: c.t('checkout', 'nationCode'),
-                prefixText: '+',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const ValueKey('order-mobile'),
-              controller: _mobile,
-              enabled: !_preparing,
-              keyboardType: TextInputType.phone,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: InputDecoration(labelText: c.t('checkout', 'mobile')),
-            ),
-          ],
-          if (!_paid && !payso && !orderOnly && _order != null) ...[
-            const SizedBox(height: 16),
-            _testCard(c),
-          ],
-          if (!_paid && (_preparing || _waiting))
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Semantics(
+            if (_paid)
+              Semantics(
                 liveRegion: true,
-                child: Text(
-                  c.t(
-                    'checkout',
-                    _preparing
-                        ? (orderOnly && !_existingChecked
-                              ? 'loadingOrder'
-                              : 'preparing')
-                        : payso || orderOnly
-                        ? (orderOnly ? 'sunlandsWaiting' : 'paysoWaiting')
-                        : 'confirming',
+                child: Text(c.t('checkout', 'successHint')),
+              )
+            else
+              Text(
+                c.t(
+                  'checkout',
+                  orderOnly
+                      ? (_order == null
+                            ? 'orderOnlyHint'
+                            : _order!.checkoutUrl.isEmpty
+                            ? 'cashierUnavailable'
+                            : 'cashierPreviewHint')
+                      : payso
+                      ? 'paysoHint'
+                      : 'demoHint',
+                ),
+              ),
+            if (orderOnly &&
+                _existingChecked &&
+                _order == null &&
+                _canRetry) ...[
+              const SizedBox(height: 20),
+              _phoneFields(c),
+              const SizedBox(height: 8),
+              Text(
+                c.t('checkout', 'phoneHint'),
+                style: const TextStyle(
+                  color: lavender,
+                  fontSize: 11,
+                  height: 1.5,
+                ),
+              ),
+            ],
+            if (!_paid && !payso && !orderOnly && _order != null) ...[
+              const SizedBox(height: 16),
+              _testCard(c),
+            ],
+            if (!_paid && (_preparing || _waiting))
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    c.t(
+                      'checkout',
+                      _preparing
+                          ? (orderOnly && !_existingChecked
+                                ? 'loadingOrder'
+                                : 'preparing')
+                          : payso || orderOnly
+                          ? (orderOnly ? 'sunlandsWaiting' : 'paysoWaiting')
+                          : 'confirming',
+                    ),
                   ),
                 ),
               ),
-            ),
-          errorMessage(_error),
-        ],
+            errorMessage(_error),
+          ],
+        ),
       ),
       actions: [
-        if (_paid)
-          FilledButton(
-            onPressed: () => _close(true),
-            child: Text(c.t('checkout', 'openReport')),
-          )
-        else ...[
-          TextButton(
-            onPressed: _waiting && !payso && !orderOnly
-                ? null
-                : () => _close(false),
-            child: Text(
-              c.t(
-                'checkout',
-                orderOnly && _order == null && _canRetry
-                    ? 'cancelOrderEntry'
-                    : 'close',
-              ),
-            ),
-          ),
-          if (orderOnly && _order != null)
-            TextButton(
-              onPressed: _waiting
-                  ? null
-                  : () => _startWaiting(immediately: true),
-              child: Text(c.t('checkout', 'checkPayment')),
-            ),
-          if (orderOnly && _order != null && _order!.checkoutUrl.isNotEmpty)
-            FilledButton(
-              onPressed: _openSunlands,
-              child: Text(c.t('checkout', 'openCashier')),
-            )
-          else if (_order != null && !orderOnly)
-            FilledButton(
-              onPressed: payso
-                  ? _openPayso
-                  : !_waiting
-                  ? _simulatePayment
-                  : null,
-              child: Text(c.t('checkout', payso ? 'paysoOpen' : 'cardConfirm')),
-            )
-          else if (_order == null && !_preparing && _canRetry)
-            FilledButton(
-              onPressed: () =>
-                  _prepare(existingOnly: orderOnly && !_existingChecked),
-              child: Text(
-                c.t(
-                  'checkout',
-                  orderOnly && _existingChecked ? 'createOrderOnly' : 'retry',
+        SizedBox(
+          width: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_paid)
+                FilledButton(
+                  onPressed: () => _close(true),
+                  child: Text(c.t('checkout', 'openReport')),
+                )
+              else ...[
+                if (orderOnly &&
+                    _order != null &&
+                    _order!.checkoutUrl.isNotEmpty)
+                  FilledButton(
+                    onPressed: _openSunlands,
+                    child: Text(c.t('checkout', 'openCashier')),
+                  )
+                else if (_order != null && !orderOnly)
+                  FilledButton(
+                    onPressed: payso
+                        ? _openPayso
+                        : !_waiting
+                        ? _simulatePayment
+                        : null,
+                    child: Text(
+                      c.t('checkout', payso ? 'paysoOpen' : 'cardConfirm'),
+                    ),
+                  )
+                else if (_order == null && !_preparing && _canRetry)
+                  FilledButton(
+                    onPressed: () =>
+                        _prepare(existingOnly: orderOnly && !_existingChecked),
+                    child: Text(
+                      c.t(
+                        'checkout',
+                        orderOnly && _existingChecked
+                            ? 'createOrderOnly'
+                            : 'retry',
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: _waiting && !payso && !orderOnly
+                          ? null
+                          : () => _close(false),
+                      style: TextButton.styleFrom(foregroundColor: lavender),
+                      child: Text(
+                        c.t(
+                          'checkout',
+                          orderOnly && _order == null && _canRetry
+                              ? 'cancelOrderEntry'
+                              : 'close',
+                        ),
+                      ),
+                    ),
+                    if (orderOnly && _order != null)
+                      TextButton(
+                        onPressed: _waiting
+                            ? null
+                            : () => _startWaiting(immediately: true),
+                        child: Text(c.t('checkout', 'checkPayment')),
+                      ),
+                  ],
                 ),
-              ),
-            ),
-        ],
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }

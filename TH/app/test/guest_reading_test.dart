@@ -55,10 +55,16 @@ void main() {
       );
       final d = AppDependencies(
         await SharedPreferences.getInstance(),
-        secureStore: GuestSessionStore(),
+        secureStore: GuestSessionStore()..value = {'token': 'records-token'},
         client: ApiClient(
           'https://api.example.test',
           client: MockClient((request) async {
+            if (request.url.path == '/api/auth/me') {
+              return http.Response(
+                '{"user_id":"records-owner","kind":"guest"}',
+                200,
+              );
+            }
             if (request.method == 'DELETE') return http.Response('', 204);
             if (request.url.queryParameters['q'] == 'slow') {
               final response = Completer<http.Response>();
@@ -70,7 +76,7 @@ void main() {
           }),
         ),
       );
-      d.auth.account = {'user_id': 'records-owner', 'kind': 'guest'};
+      await d.auth.restore();
       d.session.capabilities = const AppCapabilities(reports: true);
       final old = d.reports.loadHistory(query: 'slow');
       await requested[0].future;

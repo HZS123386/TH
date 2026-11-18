@@ -3,6 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/session_store.dart';
 import '../data/auth_repository.dart';
+import '../data/account_services_repository.dart';
+import '../data/companion_repository.dart';
+import '../features/actions/action_ledger.dart';
+import '../features/companion/companion_view_model.dart';
 import '../data/configuration_repository.dart';
 import '../data/daily_horoscope_repository.dart';
 import '../data/thai_calendar_repository.dart';
@@ -44,6 +48,9 @@ class AppDependencies {
       preferences,
       session,
     );
+    accountServices = AccountServicesRepository(api, session);
+    companion = CompanionViewModel(CompanionRepository(api), session);
+    actions = ActionLedger(drafts);
     chart = ChartViewModel(WesternRepository(api), session);
     reports = ReportsViewModel(ReportsRepository(api, drafts), session);
     purchaseRepository = PurchaseRepository(api, drafts)
@@ -52,6 +59,9 @@ class AppDependencies {
   }
   late final ApiClient api;
   late final AuthRepository auth;
+  late final AccountServicesRepository accountServices;
+  late final CompanionViewModel companion;
+  late final ActionLedger actions;
   late final ThaiCalendarRepository thaiCalendar;
   late final DailyHoroscopeViewModel dailyHoroscope;
   late final SessionViewModel session;
@@ -59,7 +69,11 @@ class AppDependencies {
   late final ReportsViewModel reports;
   late final PurchaseRepository purchaseRepository;
   late final PurchaseViewModel purchases;
+  final demoCart = ValueNotifier<Map<String, int>>(const {});
   void dispose() {
+    demoCart.dispose();
+    actions.dispose();
+    companion.dispose();
     dailyHoroscope.dispose();
     purchases.dispose();
     purchaseRepository.dispose();

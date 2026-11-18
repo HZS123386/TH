@@ -46,8 +46,8 @@ def mixed_forecast_fixture(body):
     return value
 
 
-def test_mixed_western_forecast_accepts_provider_events_and_keeps_supported_report_evidence(tmp_path, monkeypatch):
-    adapter = RoxyAstrology(settings(tmp_path), Storage(str(tmp_path / "isolated.db")))
+def test_mixed_western_forecast_accepts_provider_events_and_keeps_supported_report_evidence(postgres_url, monkeypatch):
+    adapter = RoxyAstrology(settings(postgres_url), Storage(postgres_url))
     async def request(operation, body, *args):
         assert operation == "transits"
         raw = mixed_forecast_fixture(body)
@@ -84,12 +84,12 @@ def test_mixed_forecast_rejects_invalid_event_discriminators(kind, field, value)
         validate_astrology("transits", raw, BODY)
 
 
-def test_forecast_revision_creates_fresh_report_after_saved_unavailable_result(tmp_path, monkeypatch, transport):
+def test_forecast_revision_creates_fresh_report_after_saved_unavailable_result(postgres_url, monkeypatch, transport):
     from backend.app import life_reports as reports_module
     async def write(self, bundle, **kwargs):
         return self.validate(json.dumps(draft(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         adapter = client.app.state.life_reports.adapters["astrology"]
         real_forecast = adapter.forecast
         async def unavailable(*args):
@@ -159,8 +159,8 @@ def test_four_question_draft_requires_grounded_answers_and_dates():
             LifeWriter.validate(json.dumps(changed, ensure_ascii=False), bundle)
 
 
-def test_unknown_time_never_requests_a_forecast(tmp_path, monkeypatch):
-    adapter = RoxyAstrology(settings(tmp_path), Storage(str(tmp_path / "isolated.db")))
+def test_unknown_time_never_requests_a_forecast(postgres_url, monkeypatch):
+    adapter = RoxyAstrology(settings(postgres_url), Storage(postgres_url))
     async def forbidden(*args):
         raise AssertionError("Unknown birth time must not request a timed forecast")
     monkeypatch.setattr(adapter, "request", forbidden)
@@ -170,8 +170,8 @@ def test_unknown_time_never_requests_a_forecast(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("state", ["empty", "unavailable"])
-def test_missing_forecast_data_keeps_dates_absent(tmp_path, monkeypatch, state):
-    adapter = RoxyAstrology(settings(tmp_path), Storage(str(tmp_path / "isolated.db")))
+def test_missing_forecast_data_keeps_dates_absent(postgres_url, monkeypatch, state):
+    adapter = RoxyAstrology(settings(postgres_url), Storage(postgres_url))
     async def request(operation, body, *args):
         if state == "unavailable":
             raise RoxyError("roxy_unavailable")
@@ -189,7 +189,7 @@ def test_missing_forecast_data_keeps_dates_absent(tmp_path, monkeypatch, state):
 
 
 @pytest.mark.parametrize("mode", ["known", "unknown", "legacy"])
-def test_free_excerpt_reuses_frozen_career_content_without_generating_paid_topics_early(tmp_path, monkeypatch, transport, mode):
+def test_free_excerpt_reuses_frozen_career_content_without_generating_paid_topics_early(postgres_url, monkeypatch, transport, mode):
     previews, parts = [], []
     async def write(self, bundle, *args):
         if bundle['stage'] == 'preview':
@@ -198,7 +198,7 @@ def test_free_excerpt_reuses_frozen_career_content_without_generating_paid_topic
             parts.append(deepcopy(bundle))
         return self.validate(json.dumps(draft(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         profile = {**PROFILE, **({"birth_time": None} if mode == "unknown" else {})}
         preview = client.post('/api/life-reports', json={"profile": profile, "year": 2026}, headers=HEADERS).json()
         assert preview['preview_state'] == 'ready'
@@ -221,12 +221,12 @@ def test_free_excerpt_reuses_frozen_career_content_without_generating_paid_topic
         path = '/api/life-reports/' + preview['id']
         store = client.app.state.store
         with store.connect() as db:
-            original = json.loads(db.execute('SELECT chart FROM life_reports WHERE id=?', (preview['id'],)).fetchone()['chart'])['forecast']
-            stored = json.loads(db.execute('SELECT preview FROM life_reports WHERE id=?', (preview['id'],)).fetchone()['preview'])
+            original = json.loads(db.execute('SELECT chart FROM life_reports WHERE id=%s', (preview['id'],)).fetchone()['chart'])['forecast']
+            stored = json.loads(db.execute('SELECT preview FROM life_reports WHERE id=%s', (preview['id'],)).fetchone()['preview'])
             assert stored['free_excerpt_origin'] == {'version': 1, 'topic': 'career'}
             if mode == 'legacy':
                 stored.pop('free_excerpt_origin')
-                db.execute('UPDATE life_reports SET preview=? WHERE id=?', (json.dumps(stored), preview['id']))
+                db.execute('UPDATE life_reports SET preview=%s WHERE id=%s', (json.dumps(stored), preview['id']))
         unlock_after_simulated_payment(client, path)
         async def finish():
             await asyncio.gather(*client.app.state.life_reports.tasks.values())
@@ -251,8 +251,8 @@ def test_free_excerpt_reuses_frozen_career_content_without_generating_paid_topic
         assert all(bool(chapter['summary'].get('window')) == (mode != 'unknown') for chapter in full['chapters'])
         assert all(bool(point.get('window')) == (mode != 'unknown') for chapter in full['chapters'] for point in chapter['actions'])
         with store.connect() as db:
-            assert json.loads(db.execute('SELECT chart FROM life_reports WHERE id=?', (preview['id'],)).fetchone()['chart'])['forecast'] == original
-            db.execute('UPDATE life_reports SET unlocked=0 WHERE id=?', (preview['id'],))
+            assert json.loads(db.execute('SELECT chart FROM life_reports WHERE id=%s', (preview['id'],)).fetchone()['chart'])['forecast'] == original
+            db.execute('UPDATE life_reports SET unlocked=0 WHERE id=%s', (preview['id'],))
         locked = client.get(path, headers=HEADERS).json()
         assert not locked['chapters'] and locked['plan'] is None
         assert locked['preview'] == preview['preview']

@@ -14,8 +14,8 @@ PROFILE = {"display_name": "Nok", "birth_date": "1995-08-17", "birth_time": "09:
 
 
 @pytest.fixture
-def client(tmp_path):
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "test.db")))) as client:
+def client(postgres_url):
+    with TestClient(create_app(Settings(database_url=postgres_url))) as client:
         yield client
 
 
@@ -123,8 +123,8 @@ def test_user_isolation_and_foreign_memory_deletion(client):
     assert client.delete(f"/api/memories/{memory['id']}", headers=first).status_code == 204
 
 
-def test_restart_retains_profile_history_and_memory(tmp_path):
-    settings = Settings(database_path=str(tmp_path / "persist.db"))
+def test_restart_retains_profile_history_and_memory(postgres_url):
+    settings = Settings(database_url=postgres_url)
     with TestClient(create_app(settings)) as first:
         headers = setup_profile(first)
         first.post("/api/memories", headers=headers, json={"content": "persistent"})
@@ -168,11 +168,11 @@ def test_memory_limits_and_clear_history_keeps_memory(client):
     assert len(client.get("/api/memories", headers=headers).json()) == 20
 
 
-def test_production_disables_demo_and_chat_but_keeps_private_guest_profiles(tmp_path):
-    settings = Settings(database_path=str(tmp_path / "production.db"))
+def test_production_disables_demo_and_chat_but_keeps_private_guest_profiles(postgres_url):
+    settings = Settings(database_url=postgres_url)
     with TestClient(create_app(settings)) as dev:
         headers = login(dev)
-    with TestClient(create_app(Settings(database_path=settings.database_path, app_env="production"))) as prod:
+    with TestClient(create_app(Settings(database_url=settings.database_url, app_env="production"))) as prod:
         assert prod.post("/api/auth/demo").status_code == 403
         assert prod.get("/api/profile", headers=headers).status_code == 200
         assert prod.get("/api/profile").status_code == 401
@@ -190,6 +190,26 @@ def test_body_limit_and_rate_limit(client):
     limited = client.get("/api/config")
     assert limited.status_code == 429
     assert 1 <= int(limited.headers["Retry-After"]) <= 60
+
+
+@pytest.mark.parametrize("language", ["zh", "th"])
+def test_report_burst_limit_preserves_payment_limits(postgres_url, monkeypatch, language):
+    monkeypatch.setenv("LIFE_REQUESTS_PER_MINUTE", "120")
+    settings = Settings.from_env()
+    assert settings.life_requests_per_minute == 120
+    with TestClient(create_app(Settings(database_url=postgres_url, life_requests_per_minute=settings.life_requests_per_minute))) as http:
+        headers = {"Accept-Language": language, "X-Report-Key": "rate-limit-test-owner-with-more-than-thirty-two-characters"}
+        # Invalid profiles exercise the public boundary without generating content or creating orders.
+        for _ in range(100):
+            assert http.post("/api/life-reports?wait=false", json={}, headers=headers).status_code == 422
+        for _ in range(20):
+            assert http.get("/api/life-reports", headers=headers).status_code == 200
+        limited = http.post("/api/life-reports?wait=false", json={}, headers=headers)
+        assert limited.status_code == 429 and limited.json()["code"] == "too_many_requests"
+        assert 1 <= int(limited.headers["Retry-After"]) <= 60
+        for _ in range(30):
+            assert http.get("/api/life-reports/rate-limit-probe/payment", headers=headers).status_code == 404
+        assert http.get("/api/life-reports/rate-limit-probe/payment", headers=headers).status_code == 429
 
 
 def test_context_keeps_user_data_out_of_system_rules():

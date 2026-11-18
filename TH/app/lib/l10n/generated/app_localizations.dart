@@ -102,6 +102,1140 @@ abstract class AppLocalizations {
     Locale('zh'),
   ];
 
+  /// No description provided for @h5CodeLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with a web code'**
+  String get h5CodeLogin;
+
+  /// No description provided for @h5CodeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the six-character code shown on the H5 report screen to sync that browser’s reports.'**
+  String get h5CodeHelp;
+
+  /// No description provided for @h5CodeField.
+  ///
+  /// In en, this message translates to:
+  /// **'Web sign-in code'**
+  String get h5CodeField;
+
+  /// No description provided for @h5CodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This code is invalid, expired or already used. Get a new code on H5.'**
+  String get h5CodeInvalid;
+
+  /// No description provided for @h5CodeRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again in a few minutes.'**
+  String get h5CodeRateLimited;
+
+  /// No description provided for @h5Account.
+  ///
+  /// In en, this message translates to:
+  /// **'Web account'**
+  String get h5Account;
+
+  /// No description provided for @h5Reports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports from H5'**
+  String get h5Reports;
+
+  /// No description provided for @h5ReportsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser has no reports yet.'**
+  String get h5ReportsEmpty;
+
+  /// No description provided for @h5LoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load older reports'**
+  String get h5LoadMore;
+
+  /// No description provided for @h5Refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh reports'**
+  String get h5Refresh;
+
+  /// No description provided for @h5ReportUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This report could not be loaded. Refresh or view it on H5.'**
+  String get h5ReportUnavailable;
+
+  /// No description provided for @h5ReportQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked · In queue'**
+  String get h5ReportQueued;
+
+  /// No description provided for @h5ReportGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked · Generating'**
+  String get h5ReportGenerating;
+
+  /// No description provided for @h5ReportLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked · Generation limit reached'**
+  String get h5ReportLimited;
+
+  /// No description provided for @h5ReportIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked · Report unfinished'**
+  String get h5ReportIncomplete;
+
+  /// No description provided for @h5ReportLimitedHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed chapters are available. Return to the original web page to continue generating the report later.'**
+  String get h5ReportLimitedHelp;
+
+  /// No description provided for @h5Plan.
+  ///
+  /// In en, this message translates to:
+  /// **'Action plan'**
+  String get h5Plan;
+
+  /// No description provided for @h5Insight.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights'**
+  String get h5Insight;
+
+  /// No description provided for @h5Watchpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'What to watch for'**
+  String get h5Watchpoint;
+
+  /// No description provided for @h5Example.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyday example'**
+  String get h5Example;
+
+  /// No description provided for @h5Pitfall.
+  ///
+  /// In en, this message translates to:
+  /// **'What to avoid'**
+  String get h5Pitfall;
+
+  /// No description provided for @h5Check.
+  ///
+  /// In en, this message translates to:
+  /// **'How to check your progress'**
+  String get h5Check;
+
+  /// No description provided for @actionTodo.
+  ///
+  /// In en, this message translates to:
+  /// **'To do'**
+  String get actionTodo;
+
+  /// No description provided for @actionReviewAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to review'**
+  String get actionReviewAvailable;
+
+  /// No description provided for @actionTypeService.
+  ///
+  /// In en, this message translates to:
+  /// **'Help and share knowledge'**
+  String get actionTypeService;
+
+  /// No description provided for @actionTypePractice.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal practice'**
+  String get actionTypePractice;
+
+  /// No description provided for @actionCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get actionCompleted;
+
+  /// No description provided for @newVisitorNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a reader to begin'**
+  String get newVisitorNote;
+
+  /// No description provided for @returningVisitorNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with a previous reading'**
+  String get returningVisitorNote;
+
+  /// No description provided for @todayTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get todayTab;
+
+  /// No description provided for @actionTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get actionTab;
+
+  /// No description provided for @liveTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get liveTab;
+
+  /// No description provided for @objectsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Objects'**
+  String get objectsTab;
+
+  /// No description provided for @todayQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to explore today?'**
+  String get todayQuestion;
+
+  /// No description provided for @todayNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Three ways to find clarity'**
+  String get todayNote;
+
+  /// No description provided for @thaiGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Thai astrology'**
+  String get thaiGuide;
+
+  /// No description provided for @sevenGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Seven characters'**
+  String get sevenGuide;
+
+  /// No description provided for @tarotGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Tarot reading'**
+  String get tarotGuide;
+
+  /// No description provided for @sirin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sirin'**
+  String get sirin;
+
+  /// No description provided for @arun.
+  ///
+  /// In en, this message translates to:
+  /// **'Arun'**
+  String get arun;
+
+  /// No description provided for @mira.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira'**
+  String get mira;
+
+  /// No description provided for @sirinFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Fortune · Year ahead'**
+  String get sirinFocus;
+
+  /// No description provided for @arunFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Character · Life rhythms'**
+  String get arunFocus;
+
+  /// No description provided for @miraFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'The present · The next step'**
+  String get miraFocus;
+
+  /// No description provided for @sirinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore your timing for the next step.'**
+  String get sirinHint;
+
+  /// No description provided for @arunHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore your rhythms through birth numbers.'**
+  String get arunHint;
+
+  /// No description provided for @miraHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring a question and see what the cards say.'**
+  String get miraHint;
+
+  /// No description provided for @startThaiGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter birth details to begin'**
+  String get startThaiGuide;
+
+  /// No description provided for @viewThaiGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'View my Thai chart'**
+  String get viewThaiGuide;
+
+  /// No description provided for @startSevenGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview seven-character readings'**
+  String get startSevenGuide;
+
+  /// No description provided for @startTarotGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a tarot reading'**
+  String get startTarotGuide;
+
+  /// No description provided for @textReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Text reading'**
+  String get textReading;
+
+  /// No description provided for @textReadingNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask and keep talking'**
+  String get textReadingNote;
+
+  /// No description provided for @voiceReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice chat'**
+  String get voiceReading;
+
+  /// No description provided for @voiceReadingNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk through your question'**
+  String get voiceReadingNote;
+
+  /// No description provided for @textChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Text chat'**
+  String get textChat;
+
+  /// No description provided for @voiceChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice chat'**
+  String get voiceChat;
+
+  /// No description provided for @voicePreviewNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice chat is unavailable in this preview. You can continue by text.'**
+  String get voicePreviewNotice;
+
+  /// No description provided for @guideChatHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk it through with {name}'**
+  String guideChatHeading(String name);
+
+  /// No description provided for @startReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Start reading'**
+  String get startReading;
+
+  /// No description provided for @guideChatDemo.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo chat · Replies and history stay on this device'**
+  String get guideChatDemo;
+
+  /// No description provided for @guideGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'What’s on your mind today?'**
+  String get guideGreeting;
+
+  /// No description provided for @guidePromptWork.
+  ///
+  /// In en, this message translates to:
+  /// **'I feel unsure about work'**
+  String get guidePromptWork;
+
+  /// No description provided for @guidePromptLove.
+  ///
+  /// In en, this message translates to:
+  /// **'Should I take the lead in my relationship?'**
+  String get guidePromptLove;
+
+  /// No description provided for @guideWorkReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate what you know from what you’re waiting for. What could you clarify this week?'**
+  String get guideWorkReply;
+
+  /// No description provided for @guideLoveReply.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like the other person to know? Start with a simple hello and notice how you feel.'**
+  String get guideLoveReply;
+
+  /// No description provided for @guideReflectReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Think about what you can control in “{question}”. What’s one thing you could do in ten minutes?'**
+  String guideReflectReply(String question);
+
+  /// No description provided for @continueSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with your example reading'**
+  String get continueSample;
+
+  /// No description provided for @readingSampleQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'I’m waiting to hear back about work. What can I do this week?'**
+  String get readingSampleQuestion;
+
+  /// No description provided for @readingSampleLove.
+  ///
+  /// In en, this message translates to:
+  /// **'What’s the next step in this relationship?'**
+  String get readingSampleLove;
+
+  /// No description provided for @readingSampleLife.
+  ///
+  /// In en, this message translates to:
+  /// **'My routine changed. Where should I start?'**
+  String get readingSampleLife;
+
+  /// No description provided for @recoverReports.
+  ///
+  /// In en, this message translates to:
+  /// **'My reports'**
+  String get recoverReports;
+
+  /// No description provided for @recentReadings.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent readings'**
+  String get recentReadings;
+
+  /// No description provided for @reportLookup.
+  ///
+  /// In en, this message translates to:
+  /// **'Report link or code'**
+  String get reportLookup;
+
+  /// No description provided for @findReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Look up'**
+  String get findReport;
+
+  /// No description provided for @reportLookupDemo.
+  ///
+  /// In en, this message translates to:
+  /// **'Use an example code here. Personal reports are in your report library.'**
+  String get reportLookupDemo;
+
+  /// No description provided for @reportCodeMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Example not found. Try FATE-THAI-001.'**
+  String get reportCodeMissing;
+
+  /// No description provided for @newVisitor.
+  ///
+  /// In en, this message translates to:
+  /// **'I’m new here'**
+  String get newVisitor;
+
+  /// No description provided for @returningVisitor.
+  ///
+  /// In en, this message translates to:
+  /// **'I’m returning'**
+  String get returningVisitor;
+
+  /// No description provided for @guideWelcomeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Three readers · Three traditions'**
+  String get guideWelcomeLabel;
+
+  /// No description provided for @guideWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A conversation\nwith destiny.'**
+  String get guideWelcomeTitle;
+
+  /// No description provided for @guideWelcomeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with one question and see where you stand.'**
+  String get guideWelcomeNote;
+
+  /// No description provided for @onAirNow.
+  ///
+  /// In en, this message translates to:
+  /// **'On air now'**
+  String get onAirNow;
+
+  /// No description provided for @demo.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo'**
+  String get demo;
+
+  /// No description provided for @allItems.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get allItems;
+
+  /// No description provided for @templeRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Temple blessing'**
+  String get templeRoom;
+
+  /// No description provided for @templeTeaser.
+  ///
+  /// In en, this message translates to:
+  /// **'Temple ceremony'**
+  String get templeTeaser;
+
+  /// No description provided for @objectsRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Objects unboxing'**
+  String get objectsRoom;
+
+  /// No description provided for @templeTeaserNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch the ritual'**
+  String get templeTeaserNote;
+
+  /// No description provided for @objectsTeaserNote.
+  ///
+  /// In en, this message translates to:
+  /// **'See how it’s used'**
+  String get objectsTeaserNote;
+
+  /// No description provided for @templeRoomNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Partner Temple A · Example'**
+  String get templeRoomNote;
+
+  /// No description provided for @switchRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch room'**
+  String get switchRoom;
+
+  /// No description provided for @templePosterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'One wish,\none special encounter'**
+  String get templePosterTitle;
+
+  /// No description provided for @objectsPosterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring a little intention\ninto every day'**
+  String get objectsPosterTitle;
+
+  /// No description provided for @liveDemoNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Live preview · Illustrative scenes'**
+  String get liveDemoNotice;
+
+  /// No description provided for @livestreamPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause preview'**
+  String get livestreamPause;
+
+  /// No description provided for @livestreamPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play preview'**
+  String get livestreamPlay;
+
+  /// No description provided for @fullScreenPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Enlarge preview'**
+  String get fullScreenPreview;
+
+  /// No description provided for @templeRoomHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring your wish to the temple'**
+  String get templeRoomHeading;
+
+  /// No description provided for @templeService.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal blessing'**
+  String get templeService;
+
+  /// No description provided for @samplePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample price'**
+  String get samplePrice;
+
+  /// No description provided for @bookingInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking information'**
+  String get bookingInfo;
+
+  /// No description provided for @bookingDemoNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview the ceremony and booking steps. Actual dates are pending.'**
+  String get bookingDemoNotice;
+
+  /// No description provided for @roomChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Room chat'**
+  String get roomChat;
+
+  /// No description provided for @ceremonyInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'About the ceremony'**
+  String get ceremonyInfo;
+
+  /// No description provided for @roomObjectsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured objects'**
+  String get roomObjectsInfo;
+
+  /// No description provided for @roomWelcomeDemo.
+  ///
+  /// In en, this message translates to:
+  /// **'Host · Demo    Welcome. Take a look at the room details below.'**
+  String get roomWelcomeDemo;
+
+  /// No description provided for @templeSegmentOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Write down your wish'**
+  String get templeSegmentOne;
+
+  /// No description provided for @templeSegmentTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn about the blessing ritual'**
+  String get templeSegmentTwo;
+
+  /// No description provided for @templeSegmentThree.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep a record of your wish'**
+  String get templeSegmentThree;
+
+  /// No description provided for @roomMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a local chat message'**
+  String get roomMessageHint;
+
+  /// No description provided for @myActions.
+  ///
+  /// In en, this message translates to:
+  /// **'My actions'**
+  String get myActions;
+
+  /// No description provided for @actionPending.
+  ///
+  /// In en, this message translates to:
+  /// **'To do'**
+  String get actionPending;
+
+  /// No description provided for @actionDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get actionDone;
+
+  /// No description provided for @actionReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to review'**
+  String get actionReady;
+
+  /// No description provided for @chooseFamilyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan a day for family'**
+  String get chooseFamilyAction;
+
+  /// No description provided for @weeklyMoment.
+  ///
+  /// In en, this message translates to:
+  /// **'Set aside a day for action'**
+  String get weeklyMoment;
+
+  /// No description provided for @weeklyMomentNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick one day a week for a few small acts. Keep it flexible.'**
+  String get weeklyMomentNote;
+
+  /// No description provided for @myWeeklyDay.
+  ///
+  /// In en, this message translates to:
+  /// **'My action day'**
+  String get myWeeklyDay;
+
+  /// No description provided for @arrangeDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a day'**
+  String get arrangeDay;
+
+  /// No description provided for @actionLedger.
+  ///
+  /// In en, this message translates to:
+  /// **'My action journal'**
+  String get actionLedger;
+
+  /// No description provided for @actionDailySuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s suggestion'**
+  String get actionDailySuggestion;
+
+  /// No description provided for @actionUseSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Add this'**
+  String get actionUseSuggestion;
+
+  /// No description provided for @actionCustomPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Set my own action'**
+  String get actionCustomPlan;
+
+  /// No description provided for @actionCompleteNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get actionCompleteNow;
+
+  /// No description provided for @actionSuggestionThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a thank-you to someone who helped you'**
+  String get actionSuggestionThanks;
+
+  /// No description provided for @actionSuggestionCheckIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Check in with a friend'**
+  String get actionSuggestionCheckIn;
+
+  /// No description provided for @actionSuggestionShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share something useful with someone'**
+  String get actionSuggestionShare;
+
+  /// No description provided for @offeringEnergy.
+  ///
+  /// In en, this message translates to:
+  /// **'Action energy'**
+  String get offeringEnergy;
+
+  /// No description provided for @offeringJasmine.
+  ///
+  /// In en, this message translates to:
+  /// **'Jasmine garland'**
+  String get offeringJasmine;
+
+  /// No description provided for @offeringLotus.
+  ///
+  /// In en, this message translates to:
+  /// **'Lotus offering'**
+  String get offeringLotus;
+
+  /// No description provided for @offeringMarigold.
+  ///
+  /// In en, this message translates to:
+  /// **'Marigold garland'**
+  String get offeringMarigold;
+
+  /// No description provided for @offeringCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'Collected {count}'**
+  String offeringCollected(int count);
+
+  /// No description provided for @offeringPerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete an action to add {points} energy.'**
+  String offeringPerAction(int points);
+
+  /// No description provided for @offeringPresenting.
+  ///
+  /// In en, this message translates to:
+  /// **'Presenting your offering…'**
+  String get offeringPresenting;
+
+  /// No description provided for @offeringComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Offering presented'**
+  String get offeringComplete;
+
+  /// No description provided for @offeringBlessing.
+  ///
+  /// In en, this message translates to:
+  /// **'May your good deeds lift you up. May good fortune stay with you, and may your hopes come true.'**
+  String get offeringBlessing;
+
+  /// No description provided for @offeringNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Your next action starts a new offering.'**
+  String get offeringNext;
+
+  /// No description provided for @newPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'New plan'**
+  String get newPlan;
+
+  /// No description provided for @noActionPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'The small things you choose to do will appear here.'**
+  String get noActionPlan;
+
+  /// No description provided for @actionRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'My action record'**
+  String get actionRecord;
+
+  /// No description provided for @actionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What I want to do'**
+  String get actionTitle;
+
+  /// No description provided for @careAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Give someone a helping hand'**
+  String get careAction;
+
+  /// No description provided for @familyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Do a few small things for family'**
+  String get familyAction;
+
+  /// No description provided for @actionCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Action type'**
+  String get actionCategory;
+
+  /// No description provided for @beneficiary.
+  ///
+  /// In en, this message translates to:
+  /// **'Who it’s for'**
+  String get beneficiary;
+
+  /// No description provided for @forSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'Myself'**
+  String get forSelf;
+
+  /// No description provided for @forOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone nearby'**
+  String get forOthers;
+
+  /// No description provided for @forFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get forFamily;
+
+  /// No description provided for @recordMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording method'**
+  String get recordMethod;
+
+  /// No description provided for @recordOnDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes on this device'**
+  String get recordOnDevice;
+
+  /// No description provided for @actionDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Action date'**
+  String get actionDate;
+
+  /// No description provided for @reviewDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Review date'**
+  String get reviewDate;
+
+  /// No description provided for @actionNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'What I did'**
+  String get actionNotes;
+
+  /// No description provided for @actionReview.
+  ///
+  /// In en, this message translates to:
+  /// **'My reflection on this action'**
+  String get actionReview;
+
+  /// No description provided for @questionProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'What changed about the original question?'**
+  String get questionProgress;
+
+  /// No description provided for @actionReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed'**
+  String get actionReviewed;
+
+  /// No description provided for @recordAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a small action'**
+  String get recordAction;
+
+  /// No description provided for @clearPrototypeRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear local actions and demo chats'**
+  String get clearPrototypeRecords;
+
+  /// No description provided for @storeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Objects with intention'**
+  String get storeTitle;
+
+  /// No description provided for @storeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring the things you love into everyday life.'**
+  String get storeIntro;
+
+  /// No description provided for @storeSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search journals, scents, jewelry…'**
+  String get storeSearch;
+
+  /// No description provided for @scentCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Fragrance'**
+  String get scentCategory;
+
+  /// No description provided for @jewelryCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Jewelry'**
+  String get jewelryCategory;
+
+  /// No description provided for @journalCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Journals'**
+  String get journalCategory;
+
+  /// No description provided for @lifeCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Living'**
+  String get lifeCategory;
+
+  /// No description provided for @sampleCatalog.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample catalog'**
+  String get sampleCatalog;
+
+  /// No description provided for @objectJournal.
+  ///
+  /// In en, this message translates to:
+  /// **'Action journal'**
+  String get objectJournal;
+
+  /// No description provided for @objectCandle.
+  ///
+  /// In en, this message translates to:
+  /// **'Evening candle'**
+  String get objectCandle;
+
+  /// No description provided for @objectBracelet.
+  ///
+  /// In en, this message translates to:
+  /// **'Wish bracelet'**
+  String get objectBracelet;
+
+  /// No description provided for @objectDiffuser.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning diffuser'**
+  String get objectDiffuser;
+
+  /// No description provided for @objectJournalNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn a wish into a next step'**
+  String get objectJournalNote;
+
+  /// No description provided for @objectCandleNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Give yourself a quiet moment'**
+  String get objectCandleNote;
+
+  /// No description provided for @objectBraceletNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Carry a little wish with you'**
+  String get objectBraceletNote;
+
+  /// No description provided for @objectDiffuserNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the day with a familiar scent'**
+  String get objectDiffuserNote;
+
+  /// No description provided for @shopOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'My orders'**
+  String get shopOrders;
+
+  /// No description provided for @shopCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart'**
+  String get shopCart;
+
+  /// No description provided for @addToCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to cart'**
+  String get addToCart;
+
+  /// No description provided for @cartEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cart is empty'**
+  String get cartEmpty;
+
+  /// No description provided for @shopEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching objects'**
+  String get shopEmpty;
+
+  /// No description provided for @shopOrdersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No object orders yet'**
+  String get shopOrdersEmpty;
+
+  /// No description provided for @shopDemoNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This sample shop is browsing-only. Orders are unavailable.'**
+  String get shopDemoNotice;
+
+  /// No description provided for @mySpace.
+  ///
+  /// In en, this message translates to:
+  /// **'My readings and records'**
+  String get mySpace;
+
+  /// No description provided for @mySpaceIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Find your reports, actions, and plans here.'**
+  String get mySpaceIntro;
+
+  /// No description provided for @actionsAndReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions & review'**
+  String get actionsAndReviews;
+
+  /// No description provided for @resumeCompanion.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue your conversation'**
+  String get resumeCompanion;
+
+  /// No description provided for @fortunePeriods.
+  ///
+  /// In en, this message translates to:
+  /// **'Today, week, month & year outlook'**
+  String get fortunePeriods;
+
+  /// No description provided for @thaiChartIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'See the Thai chart for your birth date, time, and place.'**
+  String get thaiChartIntro;
+
+  /// No description provided for @sevenPreviewNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Seven-character calculations are unavailable in this preview. Try a demo conversation with Arun.'**
+  String get sevenPreviewNote;
+
   /// No description provided for @country.
   ///
   /// In en, this message translates to:
@@ -504,179 +1638,11 @@ abstract class AppLocalizations {
   /// **'Without a birth time, an estimated chart uses 12:00 local time at your birthplace. You can add your time later.'**
   String get unknownTime;
 
-  /// No description provided for @estimated.
-  ///
-  /// In en, this message translates to:
-  /// **'Estimated'**
-  String get estimated;
-
-  /// No description provided for @estimatedChart.
-  ///
-  /// In en, this message translates to:
-  /// **'Estimated chart · 12:00 local time'**
-  String get estimatedChart;
-
-  /// No description provided for @estimatedChartNote.
-  ///
-  /// In en, this message translates to:
-  /// **'No exact birth time was provided. This chart uses 12:00 local time at your birthplace. The Moon, ascendant, houses and aspects are estimates and may change with your actual birth time. Add your time to recalculate.'**
-  String get estimatedChartNote;
-
   /// No description provided for @chartRead.
   ///
   /// In en, this message translates to:
   /// **'Full reading'**
   String get chartRead;
-
-  /// No description provided for @readingChart.
-  ///
-  /// In en, this message translates to:
-  /// **'The chart behind this reading'**
-  String get readingChart;
-
-  /// No description provided for @readingChartIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'The reading below is based on this natal chart. Tap a planet to see its position.'**
-  String get readingChartIntro;
-
-  /// No description provided for @readingContents.
-  ///
-  /// In en, this message translates to:
-  /// **'In this reading'**
-  String get readingContents;
-
-  /// No description provided for @readingContentsHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a topic to jump to that section.'**
-  String get readingContentsHint;
-
-  /// No description provided for @backToChart.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to my chart'**
-  String get backToChart;
-
-  /// No description provided for @savedReadings.
-  ///
-  /// In en, this message translates to:
-  /// **'Reading history'**
-  String get savedReadings;
-
-  /// No description provided for @noSavedReports.
-  ///
-  /// In en, this message translates to:
-  /// **'No reports yet'**
-  String get noSavedReports;
-
-  /// No description provided for @reportRecords.
-  ///
-  /// In en, this message translates to:
-  /// **'Report records'**
-  String get reportRecords;
-
-  /// No description provided for @reportRecordsIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'Reports are sorted by generation time. Search by report number to find a record.'**
-  String get reportRecordsIntro;
-
-  /// No description provided for @searchReportNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Search by report number'**
-  String get searchReportNumber;
-
-  /// No description provided for @clearSearch.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear search'**
-  String get clearSearch;
-
-  /// No description provided for @noMatchingReports.
-  ///
-  /// In en, this message translates to:
-  /// **'No report matches this number. Check the number and try again.'**
-  String get noMatchingReports;
-
-  /// No description provided for @reportNumberLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Report number'**
-  String get reportNumberLabel;
-
-  /// No description provided for @generatedAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Generated on'**
-  String get generatedAt;
-
-  /// No description provided for @reportReady.
-  ///
-  /// In en, this message translates to:
-  /// **'Ready'**
-  String get reportReady;
-
-  /// No description provided for @reportRunning.
-  ///
-  /// In en, this message translates to:
-  /// **'Generating'**
-  String get reportRunning;
-
-  /// No description provided for @reportFailedShort.
-  ///
-  /// In en, this message translates to:
-  /// **'Not completed'**
-  String get reportFailedShort;
-
-  /// No description provided for @deleteReport.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete report'**
-  String get deleteReport;
-
-  /// No description provided for @deleteReportConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete this report record? You will no longer be able to open it from your records.'**
-  String get deleteReportConfirm;
-
-  /// No description provided for @reportDeleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Report record deleted'**
-  String get reportDeleted;
-
-  /// No description provided for @deleteReportFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'The report was kept because deletion failed. Please try again later.'**
-  String get deleteReportFailed;
-
-  /// No description provided for @reportDeleteBusy.
-  ///
-  /// In en, this message translates to:
-  /// **'This report is still generating. Wait until it finishes before deleting it.'**
-  String get reportDeleteBusy;
-
-  /// No description provided for @loadReportsFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Report records could not be loaded. Please try again.'**
-  String get loadReportsFailed;
-
-  /// No description provided for @refreshRecords.
-  ///
-  /// In en, this message translates to:
-  /// **'Reload records'**
-  String get refreshRecords;
-
-  /// No description provided for @chartReportsLocation.
-  ///
-  /// In en, this message translates to:
-  /// **'Chart readings have their own page. Open Chart to read yours.'**
-  String get chartReportsLocation;
 
   /// No description provided for @house.
   ///
@@ -981,7 +1947,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyText.
   ///
   /// In en, this message translates to:
-  /// **'Drafts and access credentials stay on this device. Birth details, charts and reports belong to your current guest session or account. RoxyAPI calculates charts; the AI service receives chart facts without your name, city text or chat history. Clearing local details does not delete server records.'**
+  /// **'Drafts and access credentials stay on this device. Birth details, charts and reports belong to your current guest session or account. RoxyAPI calculates charts; AI chart reports use chart facts without your name, city text or chat history.\n\nGuardian chat sends your messages, birth details, relevant conversations, confirmed memories and selected visible readings to the AI service for replies and continuity. Clearing local details does not delete server records.'**
   String get privacyText;
 
   /// No description provided for @clearBirth.
@@ -1013,6 +1979,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save and view my chart'**
   String get saveBirth;
+
+  /// No description provided for @nickname.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred name (optional)'**
+  String get nickname;
+
+  /// No description provided for @nicknamePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'What should we call you?'**
+  String get nicknamePlaceholder;
 
   /// No description provided for @placeRequired.
   ///
@@ -1284,6 +2262,12 @@ abstract class AppLocalizations {
   /// **'Gregorian'**
   String get calendarGregorian;
 
+  /// No description provided for @calendarBuddhist.
+  ///
+  /// In en, this message translates to:
+  /// **'Buddhist Era'**
+  String get calendarBuddhist;
+
   /// No description provided for @timeUnknown.
   ///
   /// In en, this message translates to:
@@ -1535,330 +2519,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pisces'**
   String get zPisces;
-
-  /// No description provided for @chartRules.
-  ///
-  /// In en, this message translates to:
-  /// **'Tropical zodiac · Placidus houses · True node'**
-  String get chartRules;
-
-  /// No description provided for @chartSource.
-  ///
-  /// In en, this message translates to:
-  /// **'Calculated by RoxyAPI from your birth details'**
-  String get chartSource;
-
-  /// No description provided for @dateOnlyRules.
-  ///
-  /// In en, this message translates to:
-  /// **'Birth time unknown: planetary positions are noon estimates. Moon, angles, houses, aspects and uncertain sign placements are omitted.'**
-  String get dateOnlyRules;
-
-  /// No description provided for @calculateChart.
-  ///
-  /// In en, this message translates to:
-  /// **'Calculate my chart'**
-  String get calculateChart;
-
-  /// No description provided for @saveForChart.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm and save your birth details before creating your personal chart.'**
-  String get saveForChart;
-
-  /// No description provided for @retrograde.
-  ///
-  /// In en, this message translates to:
-  /// **'Retrograde'**
-  String get retrograde;
-
-  /// No description provided for @orb.
-  ///
-  /// In en, this message translates to:
-  /// **'Orb'**
-  String get orb;
-
-  /// No description provided for @aspectConjunction.
-  ///
-  /// In en, this message translates to:
-  /// **'Conjunction'**
-  String get aspectConjunction;
-
-  /// No description provided for @aspectSextile.
-  ///
-  /// In en, this message translates to:
-  /// **'Sextile'**
-  String get aspectSextile;
-
-  /// No description provided for @aspectSquare.
-  ///
-  /// In en, this message translates to:
-  /// **'Square'**
-  String get aspectSquare;
-
-  /// No description provided for @aspectTrine.
-  ///
-  /// In en, this message translates to:
-  /// **'Trine'**
-  String get aspectTrine;
-
-  /// No description provided for @aspectOpposition.
-  ///
-  /// In en, this message translates to:
-  /// **'Opposition'**
-  String get aspectOpposition;
-
-  /// No description provided for @fullReading.
-  ///
-  /// In en, this message translates to:
-  /// **'Your full reading'**
-  String get fullReading;
-
-  /// No description provided for @developmentReport.
-  ///
-  /// In en, this message translates to:
-  /// **'Local development preview: the full report is free here. No purchase or payment has taken place.'**
-  String get developmentReport;
-
-  /// No description provided for @reportGeneratingText.
-  ///
-  /// In en, this message translates to:
-  /// **'We are preparing your reading from your planets, houses and aspects. It will appear automatically. You can leave and return to it later.'**
-  String get reportGeneratingText;
-
-  /// No description provided for @reportFailedText.
-  ///
-  /// In en, this message translates to:
-  /// **'This reading could not be completed yet. Use the button below to try again. Your chart has been kept.'**
-  String get reportFailedText;
-
-  /// No description provided for @progressTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Creating your reading'**
-  String get progressTitle;
-
-  /// No description provided for @progressIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'Six topics are being prepared and checked. Your reading will open automatically when it is ready.'**
-  String get progressIntro;
-
-  /// No description provided for @progressPreparing.
-  ///
-  /// In en, this message translates to:
-  /// **'Preparing your chart details'**
-  String get progressPreparing;
-
-  /// No description provided for @progressWriting.
-  ///
-  /// In en, this message translates to:
-  /// **'Writing your personal reading'**
-  String get progressWriting;
-
-  /// No description provided for @progressChecking.
-  ///
-  /// In en, this message translates to:
-  /// **'Checking the complete report'**
-  String get progressChecking;
-
-  /// No description provided for @progressRefining.
-  ///
-  /// In en, this message translates to:
-  /// **'Refining your reading and advice'**
-  String get progressRefining;
-
-  /// No description provided for @progressComplete.
-  ///
-  /// In en, this message translates to:
-  /// **'Your report is ready. Opening it now'**
-  String get progressComplete;
-
-  /// No description provided for @progressFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Your reading is not complete yet'**
-  String get progressFailed;
-
-  /// No description provided for @progressTopics.
-  ///
-  /// In en, this message translates to:
-  /// **'{completed} of {total} topics prepared'**
-  String progressTopics(Object completed, Object total);
-
-  /// No description provided for @progressReturn.
-  ///
-  /// In en, this message translates to:
-  /// **'Return to report'**
-  String get progressReturn;
-
-  /// No description provided for @progressReconnect.
-  ///
-  /// In en, this message translates to:
-  /// **'Reconnect'**
-  String get progressReconnect;
-
-  /// No description provided for @progressDisconnected.
-  ///
-  /// In en, this message translates to:
-  /// **'The latest progress is temporarily unavailable. Your background task has not been cancelled. Reconnect or come back later.'**
-  String get progressDisconnected;
-
-  /// No description provided for @progressLater.
-  ///
-  /// In en, this message translates to:
-  /// **'Come back later'**
-  String get progressLater;
-
-  /// No description provided for @progressPersonality.
-  ///
-  /// In en, this message translates to:
-  /// **'Personality and strengths'**
-  String get progressPersonality;
-
-  /// No description provided for @progressCareer.
-  ///
-  /// In en, this message translates to:
-  /// **'Career development'**
-  String get progressCareer;
-
-  /// No description provided for @progressMoney.
-  ///
-  /// In en, this message translates to:
-  /// **'Money habits'**
-  String get progressMoney;
-
-  /// No description provided for @progressRelationships.
-  ///
-  /// In en, this message translates to:
-  /// **'Relationships and family'**
-  String get progressRelationships;
-
-  /// No description provided for @progressWatch.
-  ///
-  /// In en, this message translates to:
-  /// **'Patterns to watch'**
-  String get progressWatch;
-
-  /// No description provided for @progressActions.
-  ///
-  /// In en, this message translates to:
-  /// **'Practical next steps'**
-  String get progressActions;
-
-  /// No description provided for @reportServiceBusy.
-  ///
-  /// In en, this message translates to:
-  /// **'The reading service is temporarily busy, so your report is not ready yet. Your chart has been saved. Please try again later.'**
-  String get reportServiceBusy;
-
-  /// No description provided for @reportServiceTimeout.
-  ///
-  /// In en, this message translates to:
-  /// **'The reading request timed out before your report was ready. Your chart has been saved. Please try again later.'**
-  String get reportServiceTimeout;
-
-  /// No description provided for @roxyUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'The chart service is unavailable. Please try again later.'**
-  String get roxyUnavailable;
-
-  /// No description provided for @roxyQuota.
-  ///
-  /// In en, this message translates to:
-  /// **'There are too many chart requests. Please try again later.'**
-  String get roxyQuota;
-
-  /// No description provided for @profileChanged.
-  ///
-  /// In en, this message translates to:
-  /// **'Your birth details changed. Open the birth details page, confirm and save them again.'**
-  String get profileChanged;
-
-  /// No description provided for @birthRegion.
-  ///
-  /// In en, this message translates to:
-  /// **'Province / region'**
-  String get birthRegion;
-
-  /// No description provided for @selectCountry.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose or search a country'**
-  String get selectCountry;
-
-  /// No description provided for @selectRegion.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose or search a region'**
-  String get selectRegion;
-
-  /// No description provided for @selectBirthCity.
-  ///
-  /// In en, this message translates to:
-  /// **'Select your birth city from the suggestions'**
-  String get selectBirthCity;
-
-  /// No description provided for @countryFirst.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a country first'**
-  String get countryFirst;
-
-  /// No description provided for @regionFirst.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a region first'**
-  String get regionFirst;
-
-  /// No description provided for @regionNotNeeded.
-  ///
-  /// In en, this message translates to:
-  /// **'Not required'**
-  String get regionNotNeeded;
-
-  /// No description provided for @birthLocationHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Type to search or open the list to choose. Location details are matched automatically.'**
-  String get birthLocationHint;
-
-  /// No description provided for @moreLocations.
-  ///
-  /// In en, this message translates to:
-  /// **'Load more places'**
-  String get moreLocations;
-
-  /// No description provided for @guestReading.
-  ///
-  /// In en, this message translates to:
-  /// **'View your chart and report without signing in.'**
-  String get guestReading;
-
-  /// No description provided for @optionalLogin.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in or register (optional)'**
-  String get optionalLogin;
-
-  /// No description provided for @nickname.
-  ///
-  /// In en, this message translates to:
-  /// **'Preferred name (optional)'**
-  String get nickname;
-
-  /// No description provided for @nicknamePlaceholder.
-  ///
-  /// In en, this message translates to:
-  /// **'What should we call you?'**
-  String get nicknamePlaceholder;
-
-  /// No description provided for @calendarBuddhist.
-  ///
-  /// In en, this message translates to:
-  /// **'Buddhist Era'**
-  String get calendarBuddhist;
 
   /// No description provided for @skipOpening.
   ///
@@ -3005,6 +3665,1452 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{tone, select, supportive{A little movement or a short break can help you keep a steady rhythm today.} reflective{Leave some space between plans and take a break when you need one.} other{Keep your usual routine and step away from the screen for a moment.}}'**
   String dailyHoroscopeHealthAdvice(String tone);
+
+  /// No description provided for @chartRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Tropical zodiac · Placidus houses · True node'**
+  String get chartRules;
+
+  /// No description provided for @chartSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated by RoxyAPI from your birth details'**
+  String get chartSource;
+
+  /// No description provided for @dateOnlyRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Birth time unknown: planetary positions are noon estimates. Moon, angles, houses, aspects and uncertain sign placements are omitted.'**
+  String get dateOnlyRules;
+
+  /// No description provided for @calculateChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate my chart'**
+  String get calculateChart;
+
+  /// No description provided for @saveForChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm and save your birth details before creating your personal chart.'**
+  String get saveForChart;
+
+  /// No description provided for @retrograde.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrograde'**
+  String get retrograde;
+
+  /// No description provided for @orb.
+  ///
+  /// In en, this message translates to:
+  /// **'Orb'**
+  String get orb;
+
+  /// No description provided for @aspectConjunction.
+  ///
+  /// In en, this message translates to:
+  /// **'Conjunction'**
+  String get aspectConjunction;
+
+  /// No description provided for @aspectSextile.
+  ///
+  /// In en, this message translates to:
+  /// **'Sextile'**
+  String get aspectSextile;
+
+  /// No description provided for @aspectSquare.
+  ///
+  /// In en, this message translates to:
+  /// **'Square'**
+  String get aspectSquare;
+
+  /// No description provided for @aspectTrine.
+  ///
+  /// In en, this message translates to:
+  /// **'Trine'**
+  String get aspectTrine;
+
+  /// No description provided for @aspectOpposition.
+  ///
+  /// In en, this message translates to:
+  /// **'Opposition'**
+  String get aspectOpposition;
+
+  /// No description provided for @fullReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Your full reading'**
+  String get fullReading;
+
+  /// No description provided for @developmentReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Local development preview: the full report is free here. No purchase or payment has taken place.'**
+  String get developmentReport;
+
+  /// No description provided for @reportGeneratingText.
+  ///
+  /// In en, this message translates to:
+  /// **'We are preparing your reading from your planets, houses and aspects. It will appear automatically. You can leave and return to it later.'**
+  String get reportGeneratingText;
+
+  /// No description provided for @reportFailedText.
+  ///
+  /// In en, this message translates to:
+  /// **'This reading could not be completed yet. Use the button below to try again. Your chart has been kept.'**
+  String get reportFailedText;
+
+  /// No description provided for @roxyUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The chart service is unavailable. Please try again later.'**
+  String get roxyUnavailable;
+
+  /// No description provided for @roxyQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'There are too many chart requests. Please try again later.'**
+  String get roxyQuota;
+
+  /// No description provided for @profileChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Your birth details changed. Open the birth details page, confirm and save them again.'**
+  String get profileChanged;
+
+  /// No description provided for @birthRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Province / region'**
+  String get birthRegion;
+
+  /// No description provided for @selectCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose or search a country'**
+  String get selectCountry;
+
+  /// No description provided for @selectRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose or search a region'**
+  String get selectRegion;
+
+  /// No description provided for @selectBirthCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Select your birth city from the suggestions'**
+  String get selectBirthCity;
+
+  /// No description provided for @countryFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a country first'**
+  String get countryFirst;
+
+  /// No description provided for @regionFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a region first'**
+  String get regionFirst;
+
+  /// No description provided for @regionNotNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not required'**
+  String get regionNotNeeded;
+
+  /// No description provided for @birthLocationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type to search or open the list to choose. Location details are matched automatically.'**
+  String get birthLocationHint;
+
+  /// No description provided for @moreLocations.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more places'**
+  String get moreLocations;
+
+  /// No description provided for @guestReading.
+  ///
+  /// In en, this message translates to:
+  /// **'View your chart and report without signing in.'**
+  String get guestReading;
+
+  /// No description provided for @optionalLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in or register (optional)'**
+  String get optionalLogin;
+
+  /// No description provided for @templeNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Temple'**
+  String get templeNav;
+
+  /// No description provided for @divinationNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover'**
+  String get divinationNav;
+
+  /// No description provided for @bondNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Our bond'**
+  String get bondNav;
+
+  /// No description provided for @moreNav.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get moreNav;
+
+  /// No description provided for @templeWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a breath.\nYou are heard.'**
+  String get templeWelcome;
+
+  /// No description provided for @templeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'A quiet place for\nwhatever is on your mind.'**
+  String get templeIntro;
+
+  /// No description provided for @chooseGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Who is on your mind today?'**
+  String get chooseGuardian;
+
+  /// No description provided for @aiCompanionNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'AI companions · for entertainment and reflection'**
+  String get aiCompanionNotice;
+
+  /// No description provided for @loveGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Love guardian'**
+  String get loveGuardian;
+
+  /// No description provided for @careerGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Career guardian'**
+  String get careerGuardian;
+
+  /// No description provided for @wealthGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Wealth guardian'**
+  String get wealthGuardian;
+
+  /// No description provided for @wellbeingGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Wellbeing guardian'**
+  String get wellbeingGuardian;
+
+  /// No description provided for @loveGuardianNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Love · connection'**
+  String get loveGuardianNote;
+
+  /// No description provided for @careerGuardianNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Direction · growth'**
+  String get careerGuardianNote;
+
+  /// No description provided for @wealthGuardianNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources · balance'**
+  String get wealthGuardianNote;
+
+  /// No description provided for @wellbeingGuardianNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest · self-care'**
+  String get wellbeingGuardianNote;
+
+  /// No description provided for @continueConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick up our conversation'**
+  String get continueConversation;
+
+  /// No description provided for @startConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a conversation'**
+  String get startConversation;
+
+  /// No description provided for @listenIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not need the perfect words. Start wherever you like.'**
+  String get listenIntro;
+
+  /// No description provided for @messageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What is on your mind?'**
+  String get messageHint;
+
+  /// No description provided for @sendMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get sendMessage;
+
+  /// No description provided for @assistantListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening and putting thoughts together…'**
+  String get assistantListening;
+
+  /// No description provided for @chatUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation is unavailable right now. Please try again later.'**
+  String get chatUnavailable;
+
+  /// No description provided for @chatProfileNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your birth details to connect readings to you.'**
+  String get chatProfileNeeded;
+
+  /// No description provided for @chatFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'The reply did not finish. Please retry; this turn is not counted.'**
+  String get chatFailure;
+
+  /// No description provided for @selectedReading.
+  ///
+  /// In en, this message translates to:
+  /// **'This reading'**
+  String get selectedReading;
+
+  /// No description provided for @continueReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Discuss with a guardian'**
+  String get continueReading;
+
+  /// No description provided for @readingQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What in this reading should I reflect on?'**
+  String get readingQuestion;
+
+  /// No description provided for @divinationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A little perspective'**
+  String get divinationTitle;
+
+  /// No description provided for @divinationIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw a card, explore your stars, then talk it through.'**
+  String get divinationIntro;
+
+  /// No description provided for @dailyDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'A card for today'**
+  String get dailyDraw;
+
+  /// No description provided for @dailyDrawNote.
+  ///
+  /// In en, this message translates to:
+  /// **'A quiet moment to reflect'**
+  String get dailyDrawNote;
+
+  /// No description provided for @weeklyEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get weeklyEvents;
+
+  /// No description provided for @weeklyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your week, in perspective'**
+  String get weeklyNote;
+
+  /// No description provided for @weeklyPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What should I pay attention to this week? Let us think it through.'**
+  String get weeklyPrompt;
+
+  /// No description provided for @lovePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'There is something about a relationship I want to talk about.'**
+  String get lovePrompt;
+
+  /// No description provided for @careerPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'I have been unsure about my direction at work.'**
+  String get careerPrompt;
+
+  /// No description provided for @wealthPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'I want to think through some money worries.'**
+  String get wealthPrompt;
+
+  /// No description provided for @wellbeingPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'I have been tired lately and want to talk.'**
+  String get wellbeingPrompt;
+
+  /// No description provided for @bondTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting to know you'**
+  String get bondTitle;
+
+  /// No description provided for @bondIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'A connection built from the things you choose to share.'**
+  String get bondIntro;
+
+  /// No description provided for @bondNew.
+  ///
+  /// In en, this message translates to:
+  /// **'First meeting'**
+  String get bondNew;
+
+  /// No description provided for @bondFamiliar.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting acquainted'**
+  String get bondFamiliar;
+
+  /// No description provided for @bondGrowing.
+  ///
+  /// In en, this message translates to:
+  /// **'Growing understanding'**
+  String get bondGrowing;
+
+  /// No description provided for @bondCount.
+  ///
+  /// In en, this message translates to:
+  /// **'recent conversations'**
+  String get bondCount;
+
+  /// No description provided for @bondRecentNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Stages reflect recent completed conversations, not prediction accuracy.'**
+  String get bondRecentNote;
+
+  /// No description provided for @bondMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'What you want remembered'**
+  String get bondMemory;
+
+  /// No description provided for @memoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No confirmed memories yet. Share what matters to you.'**
+  String get memoryEmpty;
+
+  /// No description provided for @addMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a memory'**
+  String get addMemory;
+
+  /// No description provided for @memoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example: I am considering a job change.'**
+  String get memoryHint;
+
+  /// No description provided for @memoryHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed by you, shared by all four guardians. Edit or delete anytime.'**
+  String get memoryHelp;
+
+  /// No description provided for @recentConversations.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent conversations'**
+  String get recentConversations;
+
+  /// No description provided for @noConversations.
+  ///
+  /// In en, this message translates to:
+  /// **'Every connection starts with a hello.'**
+  String get noConversations;
+
+  /// No description provided for @profileSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'About you'**
+  String get profileSelf;
+
+  /// No description provided for @memoryDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this confirmed memory?'**
+  String get memoryDeleteConfirm;
+
+  /// No description provided for @sharedHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'The four guardians share conversation memory.'**
+  String get sharedHistory;
+
+  /// No description provided for @editMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit memory'**
+  String get editMemory;
+
+  /// No description provided for @saveMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Save memory'**
+  String get saveMemory;
+
+  /// No description provided for @guardianSectionNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Four guardians, a place for every feeling'**
+  String get guardianSectionNote;
+
+  /// No description provided for @dailyHoroscopeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your zodiac sign for today\'s love, work and life guidance.'**
+  String get dailyHoroscopeEmpty;
+
+  /// No description provided for @appleLoginUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple sign-in is unavailable on this device. You can continue as a guest.'**
+  String get appleLoginUnavailable;
+
+  /// No description provided for @purchaseUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases are not available yet. Please check back later.'**
+  String get purchaseUnavailable;
+
+  /// No description provided for @chatTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get chatTryAgain;
+
+  /// No description provided for @copyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get copyLink;
+
+  /// No description provided for @privacyCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & permissions'**
+  String get privacyCenter;
+
+  /// No description provided for @privacyIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Your information, your choices. Review what FATE uses and manage it here.'**
+  String get privacyIntro;
+
+  /// No description provided for @dataProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Birth information'**
+  String get dataProfileTitle;
+
+  /// No description provided for @dataProfileBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your date, time, birthplace and time zone are saved to prepare your chart. Your saved profile is linked to your guest session or signed-in account.'**
+  String get dataProfileBody;
+
+  /// No description provided for @dataChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI conversations & readings'**
+  String get dataChatTitle;
+
+  /// No description provided for @dataChatBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart reports send calculated chart facts to an AI provider after your permission. Companion chat also shares your message, profile, recent conversation, saved memories and any reading you choose to discuss. Avoid entering information you do not want processed by AI.'**
+  String get dataChatBody;
+
+  /// No description provided for @dataPurchaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases & access'**
+  String get dataPurchaseTitle;
+
+  /// No description provided for @dataPurchaseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The store handles payment. FATE verifies the transaction with its server before granting access. This app does not ask for your card number. Local previews do not create a purchase.'**
+  String get dataPurchaseBody;
+
+  /// No description provided for @dataControlTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Managing your data'**
+  String get dataControlTitle;
+
+  /// No description provided for @dataControlBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You can edit your profile and saved memories, clear conversation history, and withdraw permission for future AI chats. Clearing birth information here removes only the local copy. Account deletion is a separate action and requires confirmation from the service.'**
+  String get dataControlBody;
+
+  /// No description provided for @aiPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Before you talk'**
+  String get aiPermission;
+
+  /// No description provided for @aiPermissionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your message, birth profile, recent chats, saved memories and selected reading will be processed by the configured AI service ({provider}) to reply to you. Replies may be inaccurate. You can decline and still use other tools, or withdraw permission in Privacy at any time. Withdrawal stops future sharing on this device; it does not delete data already processed.'**
+  String aiPermissionBody(String provider);
+
+  /// No description provided for @aiAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow & continue'**
+  String get aiAllow;
+
+  /// No description provided for @aiEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'AI chat permission is on'**
+  String get aiEnabled;
+
+  /// No description provided for @aiPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'AI chat permission is off'**
+  String get aiPaused;
+
+  /// No description provided for @aiRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw chat permission'**
+  String get aiRevoke;
+
+  /// No description provided for @aiRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission withdrawn. New messages will ask again.'**
+  String get aiRevoked;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Full privacy policy'**
+  String get privacyPolicy;
+
+  /// No description provided for @policyUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The published policy link is not available yet.'**
+  String get policyUnavailable;
+
+  /// No description provided for @termsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Using FATE'**
+  String get termsTitle;
+
+  /// No description provided for @termsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'FATE offers AI companionship and astrology for reflection and entertainment. Readings are not guaranteed predictions or medical, financial or legal advice. Guardians are fictional AI characters. Paid content is available only after verified payment; price and availability come from the store. Do not use FATE to harass others or submit unlawful content.'**
+  String get termsBody;
+
+  /// No description provided for @supportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & support'**
+  String get supportTitle;
+
+  /// No description provided for @supportIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'A little guidance, whenever you need it.'**
+  String get supportIntro;
+
+  /// No description provided for @supportUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Support contact details are not available yet. Please try again later.'**
+  String get supportUnavailable;
+
+  /// No description provided for @supportContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact support'**
+  String get supportContact;
+
+  /// No description provided for @copyAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy email address'**
+  String get copyAddress;
+
+  /// No description provided for @copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get copied;
+
+  /// No description provided for @openFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to open this link. You can copy the address instead.'**
+  String get openFailed;
+
+  /// No description provided for @faqReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where are my readings?'**
+  String get faqReportTitle;
+
+  /// No description provided for @faqReportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Readings to view your saved reports. Use the same account and language. Example readings are labelled separately and do not represent a personal calculation.'**
+  String get faqReportBody;
+
+  /// No description provided for @faqChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can I continue an earlier chat?'**
+  String get faqChatTitle;
+
+  /// No description provided for @faqChatBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the same browser or app installation and choose the same guardian. Guests may lose access after clearing app data or reinstalling. Saved memories can be reviewed and removed in Bonds.'**
+  String get faqChatBody;
+
+  /// No description provided for @faqPurchaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid but still locked?'**
+  String get faqPurchaseTitle;
+
+  /// No description provided for @faqPurchaseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Do not buy again while verification is pending. Open Purchases & restore and retry verification, then refresh your report. Restoring requests a store check; only the server can confirm access.'**
+  String get faqPurchaseBody;
+
+  /// No description provided for @licenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source licenses'**
+  String get licenses;
+
+  /// No description provided for @deleteAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently removes the current account and associated profile, conversations and memories from the service. Data required for transaction records may be retained. Deletion does not issue a refund. A guest session cannot be recovered after deletion.'**
+  String get deleteAccountBody;
+
+  /// No description provided for @deleteUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deletion is not available from the service yet. Nothing has been deleted. Clearing local information or signing out does not delete your account.'**
+  String get deleteUnavailable;
+
+  /// No description provided for @deleteAcknowledge.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand that this cannot be undone.'**
+  String get deleteAcknowledge;
+
+  /// No description provided for @deleteNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete'**
+  String get deleteNow;
+
+  /// No description provided for @deleteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deletion confirmed.'**
+  String get deleteSuccess;
+
+  /// No description provided for @deleteFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion was not confirmed. Your session has been kept. Please retry or contact support.'**
+  String get deleteFailure;
+
+  /// No description provided for @clearHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear conversations'**
+  String get clearHistory;
+
+  /// No description provided for @clearHistoryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes your conversation history from the service for all four guardians. Saved memories remain in Bonds and can be deleted there. This cannot be undone.'**
+  String get clearHistoryBody;
+
+  /// No description provided for @clearHistoryDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation history cleared.'**
+  String get clearHistoryDone;
+
+  /// No description provided for @contentReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report content'**
+  String get contentReport;
+
+  /// No description provided for @contentReportIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us what is wrong with this AI response. Only its reference and the details you enter are included; your full conversation is not attached.'**
+  String get contentReportIntro;
+
+  /// No description provided for @reportReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get reportReason;
+
+  /// No description provided for @reasonHarmful.
+  ///
+  /// In en, this message translates to:
+  /// **'Harmful or unsafe'**
+  String get reasonHarmful;
+
+  /// No description provided for @reasonSexual.
+  ///
+  /// In en, this message translates to:
+  /// **'Sexual content'**
+  String get reasonSexual;
+
+  /// No description provided for @reasonHate.
+  ///
+  /// In en, this message translates to:
+  /// **'Hate or harassment'**
+  String get reasonHate;
+
+  /// No description provided for @reasonPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get reasonPrivacy;
+
+  /// No description provided for @reasonMisleading.
+  ///
+  /// In en, this message translates to:
+  /// **'Misleading advice'**
+  String get reasonMisleading;
+
+  /// No description provided for @reasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Something else'**
+  String get reasonOther;
+
+  /// No description provided for @reportDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'More details (optional)'**
+  String get reportDetails;
+
+  /// No description provided for @reportSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit report'**
+  String get reportSend;
+
+  /// No description provided for @reportUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Reporting is temporarily unavailable. No report has been sent. You can try again later or check Help & support.'**
+  String get reportUnavailable;
+
+  /// No description provided for @reportReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Report received · {receipt}'**
+  String reportReceived(String receipt);
+
+  /// No description provided for @purchaseCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases & restore'**
+  String get purchaseCenter;
+
+  /// No description provided for @purchaseCenterIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Check access and recover an existing purchase.'**
+  String get purchaseCenterIntro;
+
+  /// No description provided for @restoreCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking your purchases…'**
+  String get restoreCheck;
+
+  /// No description provided for @restoreChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'The store check has finished. Refresh your reports to see server-confirmed access. This message is not a purchase confirmation.'**
+  String get restoreChecked;
+
+  /// No description provided for @verifiedContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your report library'**
+  String get verifiedContent;
+
+  /// No description provided for @verifiedContentIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a report to see its current access. A saved report or example does not by itself mean it has been purchased.'**
+  String get verifiedContentIntro;
+
+  /// No description provided for @reportLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this report draft?'**
+  String get reportLeave;
+
+  /// No description provided for @serviceRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get serviceRetry;
+
+  /// No description provided for @deleteCleanup.
+  ///
+  /// In en, this message translates to:
+  /// **'The server confirmed deletion, but some local data could not be cleared. Sign-in has been cleared from memory; clear this app’s storage on this device.'**
+  String get deleteCleanup;
+
+  /// No description provided for @storeBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy in the store'**
+  String get storeBuy;
+
+  /// No description provided for @restoreUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore is unavailable on this device or account. Use a supported device with the original store and FATE account.'**
+  String get restoreUnavailable;
+
+  /// No description provided for @calendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Astrology calendar'**
+  String get calendarTitle;
+
+  /// No description provided for @calendarOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'View calendar'**
+  String get calendarOpen;
+
+  /// No description provided for @calendarToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get calendarToday;
+
+  /// No description provided for @calendarSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A little space to plan your days'**
+  String get calendarSubtitle;
+
+  /// No description provided for @calendarYears.
+  ///
+  /// In en, this message translates to:
+  /// **'B.E. {be} · C.E. {ce}'**
+  String calendarYears(int be, int ce);
+
+  /// No description provided for @calendarSmallEra.
+  ///
+  /// In en, this message translates to:
+  /// **'Chula Sakarat {year}'**
+  String calendarSmallEra(int year);
+
+  /// No description provided for @calendarSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a date to explore its five details'**
+  String get calendarSelectHint;
+
+  /// No description provided for @calendarLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening your calendar…'**
+  String get calendarLoading;
+
+  /// No description provided for @calendarUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This month could not be loaded. Please try again.'**
+  String get calendarUnavailable;
+
+  /// No description provided for @calendarRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Available offline · {start}–{end} C.E.'**
+  String calendarRange(int start, int end);
+
+  /// No description provided for @calendarOutOfRange.
+  ///
+  /// In en, this message translates to:
+  /// **'This date is outside the available calendar.'**
+  String get calendarOutOfRange;
+
+  /// No description provided for @calendarWanPhra.
+  ///
+  /// In en, this message translates to:
+  /// **'Buddhist observance'**
+  String get calendarWanPhra;
+
+  /// No description provided for @calendarKalayokTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kalayok · day indications'**
+  String get calendarKalayokTitle;
+
+  /// No description provided for @calendarFlag.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind, select, thongchai{Thongchai · victory} athibodi{Athibodi · authority} ubat{Ubat · caution} other{Lokawinas · caution}}'**
+  String calendarFlag(String kind);
+
+  /// No description provided for @calendarFlagBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind, select, thongchai{Traditionally associated with a new beginning.} athibodi{Traditionally associated with leading and organising.} ubat{Traditionally a day to review plans with care.} other{Traditionally a day to avoid rushing major commitments.}}'**
+  String calendarFlagBody(String kind);
+
+  /// No description provided for @calendarNoKalayok.
+  ///
+  /// In en, this message translates to:
+  /// **'No Kalayok day indication'**
+  String get calendarNoKalayok;
+
+  /// No description provided for @calendarMixedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'More than one tradition applies today; all indications are shown.'**
+  String get calendarMixedNote;
+
+  /// No description provided for @calendarLunarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunar day'**
+  String get calendarLunarTitle;
+
+  /// No description provided for @calendarRiangMon.
+  ///
+  /// In en, this message translates to:
+  /// **'Dithi Riang Mon'**
+  String get calendarRiangMon;
+
+  /// No description provided for @calendarRiangMonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A lunar date traditionally considered when choosing a wedding day.'**
+  String get calendarRiangMonBody;
+
+  /// No description provided for @calendarLunarOrdinary.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a Dithi Riang Mon date.'**
+  String get calendarLunarOrdinary;
+
+  /// No description provided for @calendarUbakong.
+  ///
+  /// In en, this message translates to:
+  /// **'Ubakong · good hours'**
+  String get calendarUbakong;
+
+  /// No description provided for @calendarDaylight.
+  ///
+  /// In en, this message translates to:
+  /// **'Daytime · 06:00–18:00 · Bangkok'**
+  String get calendarDaylight;
+
+  /// No description provided for @calendarMansion.
+  ///
+  /// In en, this message translates to:
+  /// **'The 27 lunar mansions'**
+  String get calendarMansion;
+
+  /// No description provided for @calendarMansionPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Mansion {index} of 27 · quarter {quarter}'**
+  String calendarMansionPosition(int index, int quarter);
+
+  /// No description provided for @calendarMansionReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Moon position at Bangkok noon; the mansion may change within the day.'**
+  String get calendarMansionReference;
+
+  /// No description provided for @calendarReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Traditional Thai calendar · for cultural reference and entertainment.'**
+  String get calendarReference;
+
+  /// No description provided for @calendarLunarShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{phase, select, waxing{W} other{D}}{day}'**
+  String calendarLunarShort(String phase, int day);
+
+  /// No description provided for @calendarMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'{month, select, 1{January} 2{February} 3{March} 4{April} 5{May} 6{June} 7{July} 8{August} 9{September} 10{October} 11{November} 12{December} other{}}'**
+  String calendarMonth(String month);
+
+  /// No description provided for @calendarMansionName.
+  ///
+  /// In en, this message translates to:
+  /// **'{index, select, 1{Ashwini} 2{Bharani} 3{Krittika} 4{Rohini} 5{Mrigashira} 6{Ardra} 7{Punarvasu} 8{Pushya} 9{Ashlesha} 10{Magha} 11{Purva Phalguni} 12{Uttara Phalguni} 13{Hasta} 14{Chitra} 15{Swati} 16{Vishakha} 17{Anuradha} 18{Jyeshtha} 19{Mula} 20{Purva Ashadha} 21{Uttara Ashadha} 22{Shravana} 23{Dhanishta} 24{Shatabhisha} 25{Purva Bhadrapada} 26{Uttara Bhadrapada} 27{Revati} other{}}'**
+  String calendarMansionName(String index);
+
+  /// No description provided for @estimated.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated'**
+  String get estimated;
+
+  /// No description provided for @estimatedChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated chart · 12:00 local time'**
+  String get estimatedChart;
+
+  /// No description provided for @estimatedChartNote.
+  ///
+  /// In en, this message translates to:
+  /// **'No exact birth time was provided. This chart uses 12:00 local time at your birthplace. The Moon, ascendant, houses and aspects are estimates and may change with your actual birth time. Add your time to recalculate.'**
+  String get estimatedChartNote;
+
+  /// No description provided for @readingChart.
+  ///
+  /// In en, this message translates to:
+  /// **'The chart behind this reading'**
+  String get readingChart;
+
+  /// No description provided for @readingChartIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The reading below is based on this natal chart. Tap a planet to see its position.'**
+  String get readingChartIntro;
+
+  /// No description provided for @readingContents.
+  ///
+  /// In en, this message translates to:
+  /// **'In this reading'**
+  String get readingContents;
+
+  /// No description provided for @readingContentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a topic to jump to that section.'**
+  String get readingContentsHint;
+
+  /// No description provided for @backToChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to my chart'**
+  String get backToChart;
+
+  /// No description provided for @savedReadings.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading history'**
+  String get savedReadings;
+
+  /// No description provided for @noSavedReports.
+  ///
+  /// In en, this message translates to:
+  /// **'No reports yet'**
+  String get noSavedReports;
+
+  /// No description provided for @reportRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Report records'**
+  String get reportRecords;
+
+  /// No description provided for @reportRecordsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports are sorted by generation time. Search by report number to find a record.'**
+  String get reportRecordsIntro;
+
+  /// No description provided for @searchReportNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by report number'**
+  String get searchReportNumber;
+
+  /// No description provided for @clearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get clearSearch;
+
+  /// No description provided for @noMatchingReports.
+  ///
+  /// In en, this message translates to:
+  /// **'No report matches this number. Check the number and try again.'**
+  String get noMatchingReports;
+
+  /// No description provided for @reportNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Report number'**
+  String get reportNumberLabel;
+
+  /// No description provided for @generatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated on'**
+  String get generatedAt;
+
+  /// No description provided for @reportReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get reportReady;
+
+  /// No description provided for @reportRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating'**
+  String get reportRunning;
+
+  /// No description provided for @reportFailedShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Not completed'**
+  String get reportFailedShort;
+
+  /// No description provided for @deleteReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete report'**
+  String get deleteReport;
+
+  /// No description provided for @deleteReportConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this report record? You will no longer be able to open it from your records.'**
+  String get deleteReportConfirm;
+
+  /// No description provided for @reportDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Report record deleted'**
+  String get reportDeleted;
+
+  /// No description provided for @deleteReportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The report was kept because deletion failed. Please try again later.'**
+  String get deleteReportFailed;
+
+  /// No description provided for @reportDeleteBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'This report is still generating. Wait until it finishes before deleting it.'**
+  String get reportDeleteBusy;
+
+  /// No description provided for @loadReportsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Report records could not be loaded. Please try again.'**
+  String get loadReportsFailed;
+
+  /// No description provided for @refreshRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload records'**
+  String get refreshRecords;
+
+  /// No description provided for @chartReportsLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart readings have their own page. Open Chart to read yours.'**
+  String get chartReportsLocation;
+
+  /// No description provided for @progressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating your reading'**
+  String get progressTitle;
+
+  /// No description provided for @progressIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Six topics are being prepared and checked. Your reading will open automatically when it is ready.'**
+  String get progressIntro;
+
+  /// No description provided for @progressPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your chart details'**
+  String get progressPreparing;
+
+  /// No description provided for @progressWriting.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing your personal reading'**
+  String get progressWriting;
+
+  /// No description provided for @progressChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the complete report'**
+  String get progressChecking;
+
+  /// No description provided for @progressRefining.
+  ///
+  /// In en, this message translates to:
+  /// **'Refining your reading and advice'**
+  String get progressRefining;
+
+  /// No description provided for @progressComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Your report is ready. Opening it now'**
+  String get progressComplete;
+
+  /// No description provided for @progressFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your reading is not complete yet'**
+  String get progressFailed;
+
+  /// No description provided for @progressTopics.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} of {total} topics prepared'**
+  String progressTopics(Object completed, Object total);
+
+  /// No description provided for @progressReturn.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to report'**
+  String get progressReturn;
+
+  /// No description provided for @progressReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get progressReconnect;
+
+  /// No description provided for @progressDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'The latest progress is temporarily unavailable. Your background task has not been cancelled. Reconnect or come back later.'**
+  String get progressDisconnected;
+
+  /// No description provided for @progressLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Come back later'**
+  String get progressLater;
+
+  /// No description provided for @progressPersonality.
+  ///
+  /// In en, this message translates to:
+  /// **'Personality and strengths'**
+  String get progressPersonality;
+
+  /// No description provided for @progressCareer.
+  ///
+  /// In en, this message translates to:
+  /// **'Career development'**
+  String get progressCareer;
+
+  /// No description provided for @progressMoney.
+  ///
+  /// In en, this message translates to:
+  /// **'Money habits'**
+  String get progressMoney;
+
+  /// No description provided for @progressRelationships.
+  ///
+  /// In en, this message translates to:
+  /// **'Relationships and family'**
+  String get progressRelationships;
+
+  /// No description provided for @progressWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Patterns to watch'**
+  String get progressWatch;
+
+  /// No description provided for @progressActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Practical next steps'**
+  String get progressActions;
+
+  /// No description provided for @reportServiceBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The reading service is temporarily busy, so your report is not ready yet. Your chart has been saved. Please try again later.'**
+  String get reportServiceBusy;
+
+  /// No description provided for @reportServiceTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The reading request timed out before your report was ready. Your chart has been saved. Please try again later.'**
+  String get reportServiceTimeout;
 }
 
 class _AppLocalizationsDelegate

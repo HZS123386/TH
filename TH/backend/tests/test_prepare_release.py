@@ -7,7 +7,8 @@ import pytest
 
 
 @pytest.fixture
-def release(tmp_path):
+def release(tmp_path, monkeypatch):
+    monkeypatch.setenv("FATE_DEPLOY_DATABASE_URL", "postgresql://test-example@db.example.test/fate_test")
     script = Path(__file__).resolve().parents[3] / 'western-astrology-h5 4/deploy/prepare_release.py'
     spec = importlib.util.spec_from_file_location('fate_prepare_release', script)
     module = importlib.util.module_from_spec(spec)
@@ -15,7 +16,7 @@ def release(tmp_path):
     module.ROOT = tmp_path / 'h5'
     module.TH = tmp_path / 'TH'
     module.PRIVATE = tmp_path / 'output/deploy'
-    for name in ('backend', 'scripts', 'src/content', 'src/locales', 'src/data', 'node_modules/thai-astrology'):
+    for name in ('backend', 'h5_admin', 'scripts', 'src/content', 'src/locales', 'src/data', 'node_modules/thai-astrology'):
         folder = module.TH / name
         folder.mkdir(parents=True)
         (folder / 'fixture.txt').write_text('source fixture', encoding='utf-8')

@@ -6,8 +6,8 @@ from backend.app.main import create_app
 
 
 @pytest.fixture
-def client(tmp_path):
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "regions.db")))) as client:
+def client(postgres_url):
+    with TestClient(create_app(Settings(database_url=postgres_url))) as client:
         yield client
 
 

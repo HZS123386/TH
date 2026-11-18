@@ -37,7 +37,7 @@ def writer_stub(monkeypatch):
     return calls
 
 
-def test_relationship_report_uses_separate_observed_roles_without_requiring_birth_time_or_forecast(tmp_path, monkeypatch, transport):
+def test_relationship_report_uses_separate_observed_roles_without_requiring_birth_time_or_forecast(postgres_url, monkeypatch, transport):
     calls = []
     context = {
         "status": "single",
@@ -92,7 +92,7 @@ def test_relationship_report_uses_separate_observed_roles_without_requiring_birt
         return self.validate(rendered, bundle)
 
     monkeypatch.setattr(LifeWriter, "write", write)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         async def forbidden_forecast(*args, **kwargs):
             pytest.fail("The relationship report must accept an absent forecast.")
         monkeypatch.setattr(client.app.state.life_reports.adapters["astrology"], "forecast", forbidden_forecast)
@@ -125,9 +125,9 @@ def test_relationship_report_uses_separate_observed_roles_without_requiring_birt
         assert len(sections["next_steps"]) == 3
 
 
-def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_before_payment(tmp_path, monkeypatch, transport):
+def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_before_payment(postgres_url, monkeypatch, transport):
     calls = writer_stub(monkeypatch)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         adapter = client.app.state.life_reports.adapters["astrology"]
         snapshots = []
         async def forecast(*args):
@@ -200,42 +200,42 @@ def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_
         assert full["progress"] == {"completed": 6, "total": 6} and full["generation_progress"]["percent"] == 100
         assert len(snapshots) == 1 and len(transport[0]) == 1
         with client.app.state.store.connect() as db:
-            chapter_snapshot = db.execute("SELECT chapters FROM life_reports WHERE id=?", (free["id"],)).fetchone()["chapters"]
+            chapter_snapshot = db.execute("SELECT chapters FROM life_reports WHERE id=%s", (free["id"],)).fetchone()["chapters"]
             previous_chapters = json.loads(chapter_snapshot)
             previous_love = previous_chapters["personal"]["story"]["themes"]["love"]
             for field in PERSONAL_LOVE_FIELDS:
                 del previous_love[field]
-            db.execute("UPDATE life_reports SET chapters=? WHERE id=?", (json.dumps(previous_chapters), free["id"]))
+            db.execute("UPDATE life_reports SET chapters=%s WHERE id=%s", (json.dumps(previous_chapters), free["id"]))
         previous = client.get(path, headers=HEADERS).json()
         assert previous["personal"]["themes"]["love"]["text"] == previous_love["text"]
         with client.app.state.store.connect() as db:
             previous_chapters["personal"]["story"].pop("themes")
-            db.execute("UPDATE life_reports SET chapters=? WHERE id=?", (json.dumps(previous_chapters), free["id"]))
+            db.execute("UPDATE life_reports SET chapters=%s WHERE id=%s", (json.dumps(previous_chapters), free["id"]))
         previous = client.get(path, headers=HEADERS).json()
         assert previous["full_state"] == "ready" and previous["personal"]["themes"] is None
         assert [item["key"] for item in previous["catalog"]] == ["talent", "node-1", "node-2", "node-3"]
         assert previous["progress"] == {"completed": 4, "total": 4}
         with client.app.state.store.connect() as db:
-            db.execute("UPDATE life_reports SET chapters=? WHERE id=?", (chapter_snapshot, free["id"]))
+            db.execute("UPDATE life_reports SET chapters=%s WHERE id=%s", (chapter_snapshot, free["id"]))
         with client.app.state.store.connect() as db:
-            original = db.execute("SELECT chart FROM life_reports WHERE id=?", (free["id"],)).fetchone()["chart"]
-            db.execute("UPDATE life_reports SET unlocked=0 WHERE id=?", (free["id"],))
+            original = db.execute("SELECT chart FROM life_reports WHERE id=%s", (free["id"],)).fetchone()["chart"]
+            db.execute("UPDATE life_reports SET unlocked=0 WHERE id=%s", (free["id"],))
         locked = client.get(path, headers=HEADERS).json()
         assert locked["personal"]["talent"] is None and locked["personal"]["themes"] is None and locked["personal"]["nodes"] == []
         assert locked["outlook"] == {"state": "ready"}
         with client.app.state.store.connect() as db:
-            assert db.execute("SELECT chart FROM life_reports WHERE id=?", (free["id"],)).fetchone()["chart"] == original
-            saved_preview = json.loads(db.execute("SELECT preview FROM life_reports WHERE id=?", (free["id"],)).fetchone()["preview"])
+            assert db.execute("SELECT chart FROM life_reports WHERE id=%s", (free["id"],)).fetchone()["chart"] == original
+            saved_preview = json.loads(db.execute("SELECT preview FROM life_reports WHERE id=%s", (free["id"],)).fetchone()["preview"])
             saved_preview["story"].pop("traits")
             saved_preview["story"].pop("opportunity_action")
-            db.execute("UPDATE life_reports SET preview=? WHERE id=?", (json.dumps(saved_preview, ensure_ascii=False), free["id"]))
+            db.execute("UPDATE life_reports SET preview=%s WHERE id=%s", (json.dumps(saved_preview, ensure_ascii=False), free["id"]))
         saved = client.get(path, headers=HEADERS).json()["personal"]
         assert saved["free_lines"] == free["personal"]["free_lines"]
         assert saved["traits"] == [] and saved["opportunity_action"] == ""
         with client.app.state.store.connect() as db:
             saved_preview["story"].pop("relationship")
             saved_preview["version"] = "western-personal-7"
-            db.execute("UPDATE life_reports SET preview=? WHERE id=?", (json.dumps(saved_preview, ensure_ascii=False), free["id"]))
+            db.execute("UPDATE life_reports SET preview=%s WHERE id=%s", (json.dumps(saved_preview, ensure_ascii=False), free["id"]))
         assert client.get(path, headers=HEADERS).json()["personal"]["relationship"] is None
         assert len(calls) == 2  # Opening a saved older report must not spend another generation call.
 
@@ -244,9 +244,9 @@ def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_
     ("time_unknown", False, 0, "time_unknown", 422),
     ("ready", True, 2, "insufficient_periods", 409),
 ])
-def test_free_personal_report_can_be_read_but_payment_is_blocked_without_three_actual_months(tmp_path, monkeypatch, transport, state, known, periods, reason, status):
+def test_free_personal_report_can_be_read_but_payment_is_blocked_without_three_actual_months(postgres_url, monkeypatch, transport, state, known, periods, reason, status):
     calls = writer_stub(monkeypatch)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         async def forecast(*args):
             return frozen_forecast(state, periods=periods)
         monkeypatch.setattr(client.app.state.life_reports.adapters["astrology"], "forecast", forecast)
@@ -262,7 +262,7 @@ def test_free_personal_report_can_be_read_but_payment_is_blocked_without_three_a
         assert client.get(path, headers=HEADERS).json()["personal"]["availability"] == {"full_report": False, "reason": reason}
         assert report["personal"]["nodes"] == [] and len(calls) == 1
         with client.app.state.store.connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) AS total FROM life_card_payments").fetchone()["total"] == 0
 
 
 def test_personal_month_selection_uses_real_distinct_months_and_keeps_free_input_private():
@@ -279,9 +279,9 @@ def test_personal_month_selection_uses_real_distinct_months_and_keeps_free_input
 
 
 @pytest.mark.parametrize("state,periods", [("unavailable", 0), ("ready", 0)])
-def test_failed_or_empty_paid_forecast_keeps_free_report_and_retries_at_checkout(tmp_path, monkeypatch, transport, state, periods):
+def test_failed_or_empty_paid_forecast_keeps_free_report_and_retries_at_checkout(postgres_url, monkeypatch, transport, state, periods):
     calls = writer_stub(monkeypatch)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         mode, attempts = {"state": state, "periods": periods}, []
         async def forecast(profile, owner, network, *, refresh=False):
             attempts.append(refresh)
@@ -299,7 +299,7 @@ def test_failed_or_empty_paid_forecast_keeps_free_report_and_retries_at_checkout
         assert failed["full_state"] == "not_started" and failed["access"] == "preview"
         assert attempts == [False] and len(calls) == 1
         with client.app.state.store.connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) AS total FROM life_card_payments").fetchone()["total"] == 0
         mode.update(state="ready", periods=3)
         assert client.post(path + "/payment", json={}, headers=HEADERS).status_code == 200
         recovered = client.post("/api/life-reports", json=body, headers=HEADERS).json()
@@ -307,11 +307,11 @@ def test_failed_or_empty_paid_forecast_keeps_free_report_and_retries_at_checkout
         assert recovered["preview_state"] == "ready" and len(recovered["personal"]["free_lines"]) == 3
         assert attempts == [False, True] and len(calls) == 1
         with client.app.state.store.connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 1
+            assert db.execute("SELECT COUNT(*) AS total FROM life_card_payments").fetchone()["total"] == 1
 
 
-def test_personal_forecast_refresh_clears_only_its_own_memory_cache_and_failure(tmp_path, monkeypatch):
-    adapter = RoxyAstrology(settings(tmp_path), Storage(str(tmp_path / "refresh.db")))
+def test_personal_forecast_refresh_clears_only_its_own_memory_cache_and_failure(postgres_url, monkeypatch):
+    adapter = RoxyAstrology(settings(postgres_url), Storage(postgres_url))
     profile = LifeInput.model_validate({"profile": PROFILE, "year": 2026}).profile
     start = datetime.now(timezone.utc).date()
     body = {"birthData": {"date": PROFILE["birth_date"], "time": PROFILE["birth_time"] + ":00", "timezone": PROFILE["timezone"]},

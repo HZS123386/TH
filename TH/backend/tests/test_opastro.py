@@ -26,8 +26,8 @@ def values():
     return {period: thai.fortune(DATE_ONLY, period, NOW) for period in ("today", "week", "month")}
 
 
-def configured(tmp_path, **kwargs):
-    return Settings(database_path=str(tmp_path / "reports.db"), providers={"qwen": ProviderConfig("private-test-key", "https://example.test/v1", "qwen3.7-plus")}, **kwargs)
+def configured(postgres_url, **kwargs):
+    return Settings(database_url=postgres_url, providers={"qwen": ProviderConfig("private-test-key", "https://example.test/v1", "qwen3.7-plus")}, **kwargs)
 
 
 def sample_story(value, language="en"):
@@ -162,9 +162,9 @@ def test_each_language_rejects_model_written_positions_even_with_valid_evidence(
         validate_story(json.dumps(story), values["today"], language)
 
 
-def test_cache_identity_is_account_birth_language_period_model_and_rules_scoped(tmp_path, values):
-    settings = configured(tmp_path)
-    reports = FortuneReports(Storage(settings.database_path), settings, asyncio.Semaphore(1))
+def test_cache_identity_is_account_birth_language_period_model_and_rules_scoped(postgres_url, values):
+    settings = configured(postgres_url)
+    reports = FortuneReports(Storage(settings.database_url), settings, asyncio.Semaphore(1))
     base = reports.key(values["today"], DATE_ONLY, "account:a")
     assert base != reports.key(values["today"], DATE_ONLY, "account:b")
     assert base != reports.key(values["today"], {**DATE_ONLY, "language": "th"}, "account:a")
@@ -177,9 +177,9 @@ def test_cache_identity_is_account_birth_language_period_model_and_rules_scoped(
     assert expiry.isoformat().startswith("2026-11-06T00:00:00")
 
 
-def test_atomic_lease_deduplicates_parallel_calls_and_failed_calls_cool_down(tmp_path):
-    settings = configured(tmp_path)
-    store = Storage(settings.database_path)
+def test_atomic_lease_deduplicates_parallel_calls_and_failed_calls_cool_down(postgres_url):
+    settings = configured(postgres_url)
+    store = Storage(settings.database_url)
     reports = FortuneReports(store, settings, asyncio.Semaphore(1))
     expiry = datetime.now().timestamp() + 3600
     with ThreadPoolExecutor(max_workers=8) as pool:
@@ -192,12 +192,12 @@ def test_atomic_lease_deduplicates_parallel_calls_and_failed_calls_cool_down(tmp
     reports.finish("same", lease)
     assert reports.claim("same", "account:a", "network:a", expiry)[0] == "cooldown"
     with store.connect() as db:
-        assert db.execute("SELECT COUNT(*) FROM fortune_usage WHERE scope='account:a'").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM fortune_usage WHERE scope='account:a'").fetchone()["count"] == 1
 
 
-def test_cache_expiry_account_limit_and_shared_network_limit_are_enforced(tmp_path, monkeypatch):
-    settings = configured(tmp_path, fortune_per_day=1, fortune_network_per_day=2)
-    reports = FortuneReports(Storage(settings.database_path), settings, asyncio.Semaphore(1))
+def test_cache_expiry_account_limit_and_shared_network_limit_are_enforced(postgres_url, monkeypatch):
+    settings = configured(postgres_url, fortune_per_day=1, fortune_network_per_day=2)
+    reports = FortuneReports(Storage(settings.database_url), settings, asyncio.Semaphore(1))
     monkeypatch.setattr("backend.app.fortune_reports.time.time", lambda: 10000)
     state, lease, _ = reports.claim("a", "account:a", "network:shared", 10010)
     assert state == "claimed"
@@ -214,9 +214,9 @@ def test_cache_expiry_account_limit_and_shared_network_limit_are_enforced(tmp_pa
     assert reports.cached("a") is None
 
 
-def test_guest_owner_limit_is_identified_as_shared_network_not_personal_usage(tmp_path, monkeypatch):
-    settings = configured(tmp_path, fortune_per_day=1, fortune_network_per_day=1000)
-    reports = FortuneReports(Storage(settings.database_path), settings, asyncio.Semaphore(1))
+def test_guest_owner_limit_is_identified_as_shared_network_not_personal_usage(postgres_url, monkeypatch):
+    settings = configured(postgres_url, fortune_per_day=1, fortune_network_per_day=1000)
+    reports = FortuneReports(Storage(settings.database_url), settings, asyncio.Semaphore(1))
     monkeypatch.setattr("backend.app.fortune_reports.time.time", lambda: 10000)
     assert reports.claim("first-visitor", "guest:network:shared", "network:shared", 20000)[0] == "claimed"
     state, _, retry = reports.claim("new-visitor", "guest:network:shared", "network:shared", 20000)
@@ -224,8 +224,8 @@ def test_guest_owner_limit_is_identified_as_shared_network_not_personal_usage(tm
     assert retry == {"limit_scope": "network", "retry_after": 86400}
 
 
-def test_model_api_protocol_cache_reuse_and_no_profile_or_history_leak(tmp_path, monkeypatch):
-    settings = configured(tmp_path)
+def test_model_api_protocol_cache_reuse_and_no_profile_or_history_leak(postgres_url, monkeypatch):
+    settings = configured(postgres_url)
     value = thai.fortune(DATE_ONLY, "today")
     calls = []
 
@@ -259,12 +259,12 @@ def test_model_api_protocol_cache_reuse_and_no_profile_or_history_leak(tmp_path,
         invalid = client.post("/api/fortune/narrative", headers={"Authorization": "Bearer invalid"}, json=request)
         assert invalid.status_code == 401 and len(calls) == 1
         with client.app.state.store.connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM profiles").fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) FROM profiles").fetchone()["count"] == 0
         assert "private-test-key" not in written.text
 
 
-def test_chat_reuses_only_the_same_account_cached_report_and_native_factors(tmp_path):
-    settings = configured(tmp_path)
+def test_chat_reuses_only_the_same_account_cached_report_and_native_factors(postgres_url):
+    settings = configured(postgres_url)
     with TestClient(create_app(settings)) as client:
         first, second = login(client), login(client)
         for headers in (first, second):
@@ -295,10 +295,10 @@ def test_chat_reuses_only_the_same_account_cached_report_and_native_factors(tmp_
 
 
 @pytest.mark.parametrize("failure", ["status", "truncated", "malformed", "timeout"])
-def test_paid_failure_keeps_reading_available_without_repeated_billing(tmp_path, monkeypatch, values, failure):
+def test_paid_failure_keeps_reading_available_without_repeated_billing(postgres_url, monkeypatch, values, failure):
     monkeypatch.setattr("backend.app.fortune_reports.time.time", lambda: NOW.timestamp())
-    settings = configured(tmp_path)
-    reports = FortuneReports(Storage(settings.database_path), settings, asyncio.Semaphore(1))
+    settings = configured(postgres_url)
+    reports = FortuneReports(Storage(settings.database_url), settings, asyncio.Semaphore(1))
     calls = []
 
     def handler(request):

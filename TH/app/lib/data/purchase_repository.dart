@@ -1,267 +1,311 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 
 import '../core/network/api_client.dart';
 import '../core/storage/session_store.dart';
 
-class OrderIntent {
-  const OrderIntent(this.id, this.productId, this.accountRef, this.reportId);
-  final String id, productId, accountRef, reportId;
-  factory OrderIntent.fromJson(Map<String, dynamic> row, String reportId) {
-    if (row['order_id'] is! String ||
-        row['store_product_id'] is! String ||
-        row['app_account_ref'] is! String) {
-      throw const ApiFailure('invalid_order');
+class PurchaseIntent {
+  const PurchaseIntent(this.id, this.productId, this.accountRef);
+
+  final String id, productId, accountRef;
+
+  factory PurchaseIntent.fromJson(Map<String, dynamic> value) {
+    final id = value['order_id'];
+    final product = value['store_product_id'];
+    final account = value['app_account_ref'];
+    if (id is! String ||
+        id.isEmpty ||
+        product is! String ||
+        product.isEmpty ||
+        account is! String ||
+        !RegExp(
+          r'^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$',
+          caseSensitive: false,
+        ).hasMatch(account)) {
+      throw const FormatException('invalid_purchase_order');
     }
-    // StoreKit 2 appAccountToken is a UUID owned and supplied by the backend.
-    if (!RegExp(r'^[a-fA-F0-9]{8}(-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$')
-        .hasMatch(row['app_account_ref'] as String)) {
-      throw const ApiFailure('invalid_account_reference');
-    }
-    return OrderIntent(
-      row['order_id'] as String,
-      row['store_product_id'] as String,
-      row['app_account_ref'] as String,
-      reportId,
-    );
+    return PurchaseIntent(id, product, account);
   }
+
   Map<String, dynamic> toJson() => {
     'order_id': id,
     'store_product_id': productId,
     'app_account_ref': accountRef,
-    'report_id': reportId,
   };
 }
 
-/// Store callbacks trigger server verification; they never grant local access.
 class PurchaseRepository extends ChangeNotifier {
   PurchaseRepository(this.api, this.drafts, {InAppPurchase? store})
-    : _store = store ?? InAppPurchase.instance;
+    : _injectedStore = store;
+
   final ApiClient api;
   final LocalDraftStore drafts;
-  final InAppPurchase _store;
+  final InAppPurchase? _injectedStore;
+  String get storeName =>
+      defaultTargetPlatform == TargetPlatform.android ? 'google_play' : 'apple';
+  String get _draft => storeName == 'apple'
+      ? 'pending-apple-order'
+      : 'pending-google-play-order';
+
+  InAppPurchase? _store;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
+  PurchaseDetails? _pending;
+  int _generation = 0;
   String _owner = 'guest';
-  OrderIntent? intent;
+  bool _enabled = false, _working = false, _awaitingStore = false;
+
+  PurchaseIntent? intent;
   ProductDetails? product;
-  bool busy = false, enabled = false;
   String? errorCode;
   Future<void> Function()? onVerified;
-  bool get nativeAvailable =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
-  int _generation = 0;
-  final _verifying = <String>{}, _verified = <String>{};
-  PurchaseDetails? _pendingVerification;
-  bool get needsVerification => _pendingVerification != null;
-  Future<void> retryVerification() async {
-    final pending = _pendingVerification;
-    if (pending != null) await _handle([pending]);
-  }
 
-  Future<void> configure(String owner, bool backendEnabled) async {
-    if (_owner == owner && enabled == backendEnabled) return;
-    ++_generation;
-    _pendingVerification = null;
-    _verifying.clear();
-    _verified.clear();
+  bool get nativeAvailable => _store != null;
+  bool get needsVerification => _pending != null;
+  bool get busy => _working || _awaitingStore;
+
+  Future<void> configure(String owner, bool enabled) async {
+    if (_owner == owner && _enabled == enabled) return;
+    final generation = ++_generation;
     _owner = owner;
-    enabled = backendEnabled;
+    _enabled = enabled;
+    _store = null;
+    _pending = null;
     intent = null;
     product = null;
-    busy = false;
     errorCode = null;
-    final saved = drafts.read(owner, 'pending-apple-order');
-    if (saved != null) {
-      try {
-        intent = OrderIntent.fromJson(saved, saved['report_id'] as String);
-      } catch (_) {
-        /* Invalid local draft grants nothing. */
-      }
+    _working = _awaitingStore = false;
+    final subscription = _subscription;
+    _subscription = null;
+    notifyListeners();
+    await subscription?.cancel();
+    if (generation != _generation ||
+        !enabled ||
+        owner == 'guest' ||
+        kIsWeb ||
+        ![
+          TargetPlatform.iOS,
+          TargetPlatform.android,
+        ].contains(defaultTargetPlatform)) {
+      return;
     }
-    if (nativeAvailable && enabled) {
-      _subscription ??= _store.purchaseStream.listen(
-        (events) {
-          _handle(events);
-        },
-        onError: (_) {
-          errorCode = 'purchase_failed';
+
+    try {
+      final store = _injectedStore ?? InAppPurchase.instance;
+      if (!await store.isAvailable() || generation != _generation) return;
+      final cached = drafts.read(owner, _draft);
+      if (cached != null) {
+        try {
+          intent = PurchaseIntent.fromJson(cached);
+        } on FormatException {
+          await drafts.remove(owner, _draft);
+        }
+      }
+      if (generation != _generation) return;
+      _store = store;
+      _subscription = store.purchaseStream.listen(
+        (events) => unawaited(_receive(events, generation)),
+        onError: (Object _) {
+          if (generation != _generation) return;
+          _awaitingStore = false;
+          errorCode = 'purchase_unavailable';
           notifyListeners();
         },
       );
+      notifyListeners();
+    } catch (_) {
+      if (generation == _generation) {
+        _store = null;
+        errorCode = 'purchase_unavailable';
+        notifyListeners();
+      }
     }
-    notifyListeners();
   }
 
-  Future<void> prepare(String reportId, String requestKey) async {
-    if (!nativeAvailable || !enabled || _owner == 'guest') {
-      throw const ApiFailure('native_purchase_required');
+  Future<void> prepare(String reportId, String key) async {
+    final store = _store;
+    if (store == null || busy || needsVerification) {
+      throw const ApiFailure('purchase_unavailable');
     }
-    if (busy) return;
     final generation = _generation;
-    busy = true;
+    final owner = _owner;
+    _working = true;
+    product = null;
+    errorCode = null;
     notifyListeners();
     try {
-      if (!await _store.isAvailable()) {
-        throw const ApiFailure('store_unavailable');
-      }
-      final order = OrderIntent.fromJson(
+      final order = PurchaseIntent.fromJson(
         await api.request(
           'POST',
           '/api/orders',
-          requestKey: requestKey,
+          requestKey: key,
           body: {
             'report_id': reportId,
-            'store': 'apple',
-            'catalog_sku': 'natal_report',
+            'store': storeName,
+            'catalog_sku': 'western_natal',
           },
         ),
-        reportId,
       );
       if (generation != _generation) return;
-      await drafts.write(_owner, 'pending-apple-order', order.toJson());
-      intent = order;
-      final response = await _store.queryProductDetails({order.productId});
+      final catalog = await store.queryProductDetails({order.productId});
       if (generation != _generation) return;
-      if (response.error != null ||
-          response.productDetails.length != 1 ||
-          response.productDetails.single.id != order.productId) {
-        throw const ApiFailure('product_unavailable');
-      }
-      product = response.productDetails.single;
+      final sku = catalog.productDetails
+          .where((item) => item.id == order.productId)
+          .firstOrNull;
+      if (sku == null) throw const ApiFailure('purchase_unavailable');
+      await drafts.write(owner, _draft, order.toJson());
+      if (generation != _generation) return;
+      intent = order;
+      product = sku;
     } finally {
       if (generation == _generation) {
-        busy = false;
+        _working = false;
         notifyListeners();
       }
     }
   }
 
   Future<void> buy() async {
-    if (busy ||
-        needsVerification ||
-        !enabled ||
-        !nativeAvailable ||
-        product == null ||
-        intent == null ||
-        _owner == 'guest') {
+    final store = _store, sku = product, order = intent;
+    if (store == null ||
+        sku == null ||
+        order == null ||
+        busy ||
+        needsVerification) {
       return;
     }
-    busy = true;
+    final generation = _generation;
+    _awaitingStore = true;
     errorCode = null;
     notifyListeners();
     try {
-      final started = await _store.buyNonConsumable(
-        purchaseParam: Sk2PurchaseParam(
-          productDetails: product!,
-          applicationUserName: intent!.accountRef,
-        ),
+      final requested = await store.buyNonConsumable(
+        purchaseParam: storeName == 'apple'
+            ? Sk2PurchaseParam(
+                productDetails: sku,
+                applicationUserName: order.accountRef,
+              )
+            : GooglePlayPurchaseParam(
+                productDetails: sku,
+                applicationUserName: order.accountRef,
+              ),
       );
-      if (!started) {
-        busy = false;
-        errorCode = 'purchase_failed';
-        notifyListeners();
-      }
+      if (!requested) throw const ApiFailure('purchase_unavailable');
     } catch (_) {
-      busy = false;
-      errorCode = 'purchase_failed';
-      notifyListeners();
+      if (generation == _generation) {
+        _awaitingStore = false;
+        errorCode = 'purchase_unavailable';
+        notifyListeners();
+      }
     }
   }
 
-  Future<void> restore() async {
-    if (!nativeAvailable || !enabled || _owner == 'guest') {
-      throw const ApiFailure('native_purchase_required');
-    }
-    await _store.restorePurchases(applicationUserName: intent?.accountRef);
-    await onVerified?.call();
-  }
-
-  Future<void> _handle(List<PurchaseDetails> events) async {
-    for (final purchase in events) {
-      if (purchase.status == PurchaseStatus.pending) {
-        busy = true;
+  Future<void> _receive(List<PurchaseDetails> events, int generation) async {
+    for (final event in events) {
+      if (generation != _generation || intent == null) return;
+      final order = intent!;
+      if (event.productID != order.productId) continue;
+      if (event.status == PurchaseStatus.pending) continue;
+      if (event.status == PurchaseStatus.canceled ||
+          event.status == PurchaseStatus.error) {
+        _awaitingStore = false;
+        errorCode = event.status == PurchaseStatus.error
+            ? 'purchase_unavailable'
+            : null;
         notifyListeners();
         continue;
       }
-      if ([
-        PurchaseStatus.error,
-        PurchaseStatus.canceled,
-      ].contains(purchase.status)) {
-        busy = false;
-        errorCode = purchase.status == PurchaseStatus.canceled
-            ? 'purchase_canceled'
-            : 'purchase_failed';
-        notifyListeners();
-        continue;
-      }
-      final order = intent, owner = _owner, generation = _generation;
-      if (order == null ||
-          owner == 'guest' ||
-          purchase.productID != order.productId ||
-          purchase is! SK2PurchaseDetails ||
-          purchase.appAccountToken?.toLowerCase() !=
-              order.accountRef.toLowerCase() ||
-          purchase.verificationData.serverVerificationData.split('.').length !=
-              3) {
+      final matchingAccount = storeName == 'apple'
+          ? event is SK2PurchaseDetails &&
+                event.appAccountToken?.toLowerCase() ==
+                    order.accountRef.toLowerCase()
+          : event is GooglePlayPurchaseDetails &&
+                event.billingClientPurchase.obfuscatedAccountId ==
+                    order.accountRef;
+      if (!matchingAccount ||
+          event.purchaseID == null ||
+          event.verificationData.serverVerificationData.isEmpty) {
+        _awaitingStore = false;
         errorCode = 'purchase_verification_required';
         notifyListeners();
         continue;
       }
-      final transactionKey = '$owner:${purchase.purchaseID}';
-      if (_verified.contains(transactionKey) ||
-          !_verifying.add(transactionKey)) {
-        continue;
+      if (_working) continue;
+      _awaitingStore = false;
+      _pending = event;
+      await retryVerification();
+    }
+  }
+
+  Future<void> retryVerification() async {
+    final store = _store, event = _pending, order = intent;
+    if (store == null || event == null || order == null || _working) return;
+    final generation = _generation, owner = _owner;
+    _working = true;
+    errorCode = null;
+    notifyListeners();
+    var verified = false;
+    try {
+      final key = sha256.convert(
+        utf8.encode('${order.id}:${event.purchaseID}'),
+      );
+      final result = await api.request(
+        'POST',
+        '/api/orders/${Uri.encodeComponent(order.id)}/verify',
+        requestKey: key.toString(),
+        body: event is GooglePlayPurchaseDetails
+            ? {
+                'store': 'google_play',
+                'product_id': event.productID,
+                'purchase_token': event.verificationData.serverVerificationData,
+              }
+            : {
+                'signed_transaction':
+                    event.verificationData.serverVerificationData,
+              },
+      );
+      if (generation != _generation) return;
+      if (result['state'] != 'paid') {
+        errorCode = 'purchase_verifying';
+        return;
       }
-      _pendingVerification = purchase;
-      try {
-        final response = await api.request(
-          'POST',
-          '/api/orders/${Uri.encodeComponent(order.id)}/verify',
-          requestKey:
-              'apple-${order.id}-${purchase.purchaseID ?? base64Url.encode(utf8.encode(order.id))}',
-          body: {
-            'signed_transaction':
-                purchase.verificationData.serverVerificationData,
-          },
-        );
-        if (generation != _generation) return;
-        if (response['state'] != 'paid') {
-          errorCode = 'purchase_verifying';
-          busy = false;
-          notifyListeners();
-          continue;
-        }
-        if (purchase.pendingCompletePurchase) {
-          await _store.completePurchase(purchase);
-        }
-        if (generation != _generation) return;
-        await drafts.remove(owner, 'pending-apple-order');
-        _verified.add(transactionKey);
-        _pendingVerification = null;
-        await onVerified?.call();
-        busy = false;
-        errorCode = null;
+      if (event.pendingCompletePurchase) await store.completePurchase(event);
+      if (generation != _generation) return;
+      await drafts.remove(owner, _draft);
+      if (generation != _generation) return;
+      _pending = null;
+      intent = null;
+      product = null;
+      errorCode = null;
+      verified = true;
+    } catch (_) {
+      if (generation == _generation) {
+        errorCode = 'purchase_verification_required';
+      }
+    } finally {
+      if (generation == _generation) {
+        _working = false;
         notifyListeners();
-      } catch (_) {
-        if (generation == _generation) {
-          busy = false;
-          errorCode = 'purchase_verification_required';
-          notifyListeners();
-        }
-      } finally {
-        _verifying.remove(transactionKey);
       }
     }
+    if (verified && generation == _generation) await onVerified?.call();
+  }
+
+  Future<void> restore() async {
+    final store = _store;
+    if (store == null) throw const ApiFailure('restore_unavailable');
+    await store.restorePurchases(applicationUserName: intent?.accountRef);
   }
 
   @override
   void dispose() {
     ++_generation;
-    _subscription?.cancel();
+    unawaited(_subscription?.cancel());
     super.dispose();
   }
 }

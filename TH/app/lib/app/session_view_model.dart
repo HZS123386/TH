@@ -26,6 +26,43 @@ class SessionViewModel extends ChangeNotifier {
   bool loading = true, offline = false;
   String _owner = 'guest';
   String get owner => auth.owner;
+  static const companionNotice = 'companion-2026-11-15-v1';
+  bool get companionConsent {
+    final saved = drafts.read(owner, 'ai-consent');
+    return auth.hasSession &&
+        saved?['version'] == companionNotice &&
+        saved?['provider'] == capabilities.companionProvider &&
+        saved?['recipients'] == capabilities.companionRecipientLabel;
+  }
+
+  Future<void> allowCompanion(
+    String expectedOwner,
+    String provider, {
+    String? recipients,
+  }) async {
+    if (owner != expectedOwner ||
+        !auth.hasSession ||
+        provider != capabilities.companionProvider ||
+        (recipients != null &&
+            recipients != capabilities.companionRecipientLabel)) {
+      throw const ApiFailure('session_changed');
+    }
+    await drafts.write(expectedOwner, 'ai-consent', {
+      'version': companionNotice,
+      'provider': provider,
+      'recipients': capabilities.companionRecipientLabel,
+      'accepted_at': DateTime.now().toUtc().toIso8601String(),
+      'language': locale.languageCode,
+    });
+    if (owner != expectedOwner) throw const ApiFailure('session_changed');
+    notifyListeners();
+  }
+
+  Future<void> revokeCompanion() async {
+    await drafts.remove(owner, 'ai-consent');
+    notifyListeners();
+  }
+
   String? get displayName {
     final username = auth.account?['username'];
     if (username is String && username.trim().isNotEmpty) return username;
@@ -36,9 +73,12 @@ class SessionViewModel extends ChangeNotifier {
   String get scope =>
       jsonEncode([owner, locale.languageCode, profile?.toJson()]);
   Future<void> initialize() async {
+    loading = true;
+    offline = false;
+    notifyListeners();
     try {
       capabilities = await configuration.load();
-      await auth.restore();
+      if (!auth.hasSession) await auth.restore();
     } catch (_) {
       offline = true;
     }

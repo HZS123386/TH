@@ -45,6 +45,45 @@ class ReportReference {
       );
 }
 
+class H5ReportReference {
+  const H5ReportReference(
+    this.id,
+    this.createdAt,
+    this.birthDate,
+    this.full,
+    this.fullState,
+  );
+
+  final String id, birthDate;
+  final DateTime? createdAt;
+  final bool full;
+  final String? fullState;
+
+  factory H5ReportReference.fromJson(Map<String, dynamic> value) {
+    final id = value['id'];
+    if (id is! String || id.isEmpty) {
+      throw const FormatException('invalid_report_reference');
+    }
+    final input = value['input'];
+    final profile = input is Map ? input['profile'] : null;
+    final fullState = value['full_state'];
+    return H5ReportReference(
+      id,
+      DateTime.tryParse('${value['created_at']}')?.toLocal(),
+      profile is Map ? '${profile['birth_date'] ?? ''}' : '',
+      value['access'] == 'full',
+      fullState is String ? fullState : null,
+    );
+  }
+}
+
+class H5HistoryPage {
+  const H5HistoryPage(this.items, this.nextCursor);
+
+  final List<H5ReportReference> items;
+  final Map<String, String>? nextCursor;
+}
+
 class ReportsRepository {
   ReportsRepository(this.api, this.drafts);
   final ApiClient api;
@@ -136,5 +175,31 @@ class ReportsRepository {
               ReportReference.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList(growable: false);
+  }
+  Future<H5HistoryPage> listH5([Map<String, String>? cursor]) async {
+    final value = await api.get(
+      Uri(path: '/api/app/h5-reports', queryParameters: cursor).toString(),
+    );
+    final items = value['items'], next = value['next_cursor'];
+    if (items is! List) throw const FormatException('invalid_h5_history');
+    return H5HistoryPage(
+      [
+        for (final item in items.whereType<Map<String, dynamic>>())
+          H5ReportReference.fromJson(item),
+      ],
+      next is Map && next['created'] is num && next['id'] is String
+          ? {'before_created': '${next['created']}', 'before_id': next['id']}
+          : null,
+    );
+  }
+
+  Future<Map<String, dynamic>> readH5(String id) async {
+    final value = await api.get(
+      '/api/app/h5-reports/${Uri.encodeComponent(id)}',
+    );
+    if (value['id'] != id) {
+      throw const FormatException('invalid_report_reference');
+    }
+    return value;
   }
 }

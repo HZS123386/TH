@@ -18,8 +18,8 @@ from backend.tests.test_western_app import BIRTH, chart, story
 
 
 @pytest.fixture
-def pipeline(tmp_path, monkeypatch):
-    settings = Settings(database_path=str(tmp_path / "app.db"), roxy_enabled=True, roxy_api_key="test-roxy",
+def pipeline(postgres_url, monkeypatch):
+    settings = Settings(database_url=postgres_url, roxy_enabled=True, roxy_api_key="test-roxy",
                         western_review_enabled=True, western_review_fallback_provider="deepseek",
                         providers={name: ProviderConfig("test-" + name, "https://" + name + ".example/v1", name + "-model")
                                    for name in ("qwen", "kimi", "deepseek")})
@@ -93,7 +93,7 @@ def pipeline(tmp_path, monkeypatch):
     return app, state
 
 
-def create_reading(client, *, birth=BIRTH):
+def create_reading(client, *, birth=BIRTH, wait=True):
     token = client.post("/api/auth/guest").json()["token"]
     headers = {"Authorization": "Bearer " + token}
     profile = client.put("/api/profile", headers=headers, json=birth).json()
@@ -105,6 +105,8 @@ def create_reading(client, *, birth=BIRTH):
     created = client.post("/api/western/reports", headers=headers, json=body)
     assert created.status_code == 202, created.text
     identifier = created.json()["report_id"]
+    if not wait:
+        return identifier, headers, body, None
     for _ in range(20):
         report = client.get("/api/western/reports/" + identifier, headers=headers).json()
         if report.get("preview_state") != "running":
@@ -120,8 +122,8 @@ def test_only_final_approved_reading_is_published_and_private_audit_is_retained(
         assert [item[0] for item in state["calls"]] == ["source_review", "write", "final_review"]
         assert "_audit" not in json.dumps(report) and "checked_ids" not in json.dumps(report)
         with app.state.store.connect() as db:
-            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()[0])
-            usage = db.execute("SELECT * FROM report_model_usage WHERE report_id=? ORDER BY id", (identifier,)).fetchall()
+            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()["payload"])
+            usage = db.execute("SELECT * FROM report_model_usage WHERE report_id=%s ORDER BY id", (identifier,)).fetchall()
         assert len(payload["_audit"]["reviews"]) == 2
         assert len(usage) == 3 and {row["stage"] for row in usage} == {"source_review", "reading", "final_review"}
         assert all(row["phase"] == "western_app" and row["validated"] for row in usage)
@@ -272,7 +274,7 @@ def test_date_only_skips_a_redundant_model_call_but_still_reviews_every_public_f
             if reject else ["write", "final_review"])
         assert len(state["calls"][-1][2]["review_targets"]) == 25
         with app.state.store.connect() as db:
-            value = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()[0])
+            value = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()["payload"])
         assert value["_audit"]["reviews"][0]["provider"] == "program"
         assert value["_audit"]["reviews"][-1]["provider"] == "kimi"
         assert "_audit" not in report and "checked_ids" not in json.dumps(report)
@@ -288,8 +290,8 @@ def test_writer_recovers_from_short_advice_or_a_transient_timeout_with_bounded_a
         assert report["preview_state"] == ("ready" if ready else "failed")
         assert state["finals"] == (1 if ready else 0)
         with app.state.store.connect() as db:
-            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()[0])
-            usage = db.execute("SELECT validated FROM report_model_usage WHERE report_id=? AND provider='qwen' ORDER BY id", (identifier,)).fetchall()
+            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()["payload"])
+            usage = db.execute("SELECT validated FROM report_model_usage WHERE report_id=%s AND provider='qwen' ORDER BY id", (identifier,)).fetchall()
         assert len(usage) == 2 and not usage[0]["validated"]
         if ready:
             assert usage[1]["validated"] and payload["_audit"]["reviews"][-1]["result"]["approved"]
@@ -314,7 +316,7 @@ def test_review_timeout_retries_are_bounded_and_never_publish_an_unaudited_repor
             assert len(state["calls"]) == 2 and state["writes"] == 0
             assert report["summary"] == "" and report["preview"] == [] and report["sections"] == []
             with app.state.store.connect() as db:
-                audit = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()[0])["_audit"]
+                audit = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()["payload"])["_audit"]
             assert audit["reviews"][-1]["failure_code"] == "model_timeout"
 
 
@@ -329,7 +331,7 @@ def test_overloaded_provider_has_a_safe_retry_reason_without_leaking_its_error_b
         assert len(state["calls"]) == 2 and state["writes"] == 0
         assert "private upstream" not in json.dumps(report)
         with app.state.store.connect() as db:
-            audit = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()[0])["_audit"]
+            audit = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()["payload"])["_audit"]
         assert audit["reviews"][-1]["failure_code"] == "model_overloaded"
 
 
@@ -345,7 +347,7 @@ def test_rejected_content_is_never_published_or_sent_to_fallback(pipeline, mode,
         assert [item[0] for item in state["calls"]] == expected
         assert not any(host == "deepseek.example" for _, host, _ in state["calls"])
         with app.state.store.connect() as db:
-            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()[0])
+            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()["payload"])
         assert set(payload) == {"_audit", "_progress"} and payload["_audit"]["failure"]
         assert report["generation_progress"]["percent"] < 100
         assert report["generation_progress"]["stage"] == "failed"
@@ -367,14 +369,14 @@ def test_live_content_progress_is_saved_without_publishing_a_draft_and_reaches_1
         draft = story(bundle)
         report_progress_context.get()(json.dumps({"summary": draft["summary"], "sections": draft["sections"][:1]}))
         started.set()
-        await asyncio.to_thread(release.wait, 5)
+        assert await asyncio.to_thread(release.wait, 15)
         return {"state": "ready", "story": draft}
 
     monkeypatch.setattr(app.state.western_app.writer, "generate", generate)
     with TestClient(app) as client:
         try:
-            identifier, headers, _, _ = create_reading(client)
-            assert started.wait(2)
+            identifier, headers, _, _ = create_reading(client, wait=False)
+            assert started.wait(10)
             partial = client.get("/api/western/reports/" + identifier, headers=headers).json()
             progress = partial["generation_progress"]
             assert partial["preview_state"] == "running" and 20 < progress["percent"] < 76
@@ -415,7 +417,7 @@ def test_explicit_fallback_handles_service_outage_and_keeps_audit(pipeline):
         identifier, _, _, report = create_reading(client)
         assert report["preview_state"] == "ready"
         with app.state.store.connect() as db:
-            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()[0])
+            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()["payload"])
         assert any(row["provider"] == "deepseek" and row["result"]["approved"] for row in payload["_audit"]["reviews"])
 
 
@@ -471,10 +473,10 @@ def test_changing_review_model_invalidates_generation_cache_but_preserves_approv
         old = client.get("/api/western/reports/" + identifier, headers=headers).json()
         assert old["preview_state"] == "ready" and old["preview"]
         with app.state.store.connect() as db:
-            row = db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()
-            tampered = json.loads(row[0])
+            row = db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()
+            tampered = json.loads(row["payload"])
             tampered["summary"] += " An unsupported addition."
-            db.execute("UPDATE western_reports SET payload=? WHERE id=?", (json.dumps(tampered), identifier))
+            db.execute("UPDATE western_reports SET payload=%s WHERE id=%s", (json.dumps(tampered), identifier))
         assert client.get("/api/western/reports/" + identifier, headers=headers).json()["preview_state"] == "failed"
         service.reviewers = [WesternReviewer(service.store, service.settings, service.writer.slots, "qwen")]
         assert not service.enabled
@@ -501,7 +503,7 @@ def test_kimi_stream_receipt_counts_choice_level_usage(pipeline):
         identifier, _, _, report = create_reading(client)
         assert report["preview_state"] == "ready"
         with app.state.store.connect() as db:
-            usage = db.execute("SELECT * FROM report_model_usage WHERE report_id=? AND provider='kimi'", (identifier,)).fetchall()
+            usage = db.execute("SELECT * FROM report_model_usage WHERE report_id=%s AND provider='kimi'", (identifier,)).fetchall()
         assert len(usage) == 2
         assert all(row["prompt_tokens"] == 100 and row["completion_tokens"] == 20 and row["usage_received"] for row in usage)
 
@@ -608,8 +610,8 @@ def test_explicit_retry_after_final_rejection_creates_a_fresh_draft_and_reviews_
         assert new_calls[0][2]["regeneration"]["previous_issues"]
         owner = app.state.store.authenticate(headers["Authorization"][7:])
         with app.state.store.connect() as db:
-            charged = db.execute("SELECT COUNT(*) FROM bazi_report_usage WHERE scope=?",
-                                 ("account:" + app.state.store.hash(owner),)).fetchone()[0]
+            charged = db.execute("SELECT COUNT(*) AS total FROM bazi_report_usage WHERE scope=%s",
+                                 ("account:" + app.state.store.hash(owner),)).fetchone()["total"]
         assert charged == 2
 
 
@@ -622,5 +624,5 @@ def test_a_second_flagged_sentence_repair_is_reaudited_within_the_bounded_attemp
         assert state["finals"] == 3
         assert [stage for stage, _, _ in state["calls"]].count("sentence_repair") == 2
         with app.state.store.connect() as db:
-            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=?", (identifier,)).fetchone()[0])
+            payload = json.loads(db.execute("SELECT payload FROM western_reports WHERE id=%s", (identifier,)).fetchone()["payload"])
         assert [edit["round"] for edit in payload["_audit"]["sentence_edits"]] == [1, 2]
