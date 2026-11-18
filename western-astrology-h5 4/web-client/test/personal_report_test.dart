@@ -27,7 +27,7 @@ void main() {
     expect(report.nodes, isEmpty);
   });
   testWidgets(
-    'landing restores six themes while preserving the original board artwork',
+    'landing presents six relationship sections in the existing theme boards',
     (tester) async {
       tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
@@ -56,7 +56,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump();
       final board = find.byType(ThemeBoards);
-      for (final label in ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议']) {
+      for (final key in relationshipKeys) {
+        final label = controller.copy.t('relationship', 'sections.$key');
+        expect(label, isNotEmpty);
         expect(
           find.descendant(of: board, matching: find.text(label)),
           findsOneWidget,
@@ -67,7 +69,9 @@ void main() {
         expect(
           find.descendant(
             of: board,
-            matching: find.text(controller.copy.t('jy', 'personal.$key')),
+            matching: find.text(
+              controller.copy.t('jy', 'report.westernSections.$key'),
+            ),
           ),
           findsNothing,
         );

@@ -344,9 +344,15 @@ class _JYButtonState extends State<JYButton>
 }
 
 class ThemeBoards extends StatelessWidget {
-  const ThemeBoards({required this.copy, this.showHeading = true, super.key});
+  const ThemeBoards({
+    required this.copy,
+    this.showHeading = true,
+    this.relationship = false,
+    super.key,
+  });
   final Copy copy;
   final bool showHeading;
+  final bool relationship;
   @override
   Widget build(BuildContext context) => Stack(
     clipBehavior: Clip.none,
@@ -422,7 +428,13 @@ class ThemeBoards extends StatelessWidget {
     ],
   );
   Widget _board(String key, Rect crop, bool reverse) {
-    final themes = objects(object(copy.data['jyThemes'])[key]);
+    final titles = relationship
+        ? (reverse ? relationshipKeys.skip(3) : relationshipKeys.take(3)).map(
+            (key) => copy.t('relationship', 'sections.$key'),
+          )
+        : objects(
+            object(copy.data['jyThemes'])[key],
+          ).map((item) => text(item[copy.language]));
     final art = Expanded(
       child: ClipPath(
         clipper: _Corners(),
@@ -462,7 +474,7 @@ class ThemeBoards extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final item in themes)
+          for (final title in titles)
             Container(
               width: double.infinity,
               margin: const EdgeInsets.symmetric(vertical: 2.5),
@@ -494,7 +506,7 @@ class ThemeBoards extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  text(item[copy.language]),
+                  title,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 12,

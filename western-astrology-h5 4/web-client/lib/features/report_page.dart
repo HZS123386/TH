@@ -647,10 +647,12 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  c.t(
-                    'jy',
-                    'personal.${['keywords', 'traits', 'opportunity'][entry.$1]}',
-                  ),
+                  entry.$1 == 2 && report.relationshipReport
+                      ? c.t('relationship', 'observe')
+                      : c.t(
+                          'jy',
+                          'personal.${['keywords', 'traits', 'opportunity'][entry.$1]}',
+                        ),
                   style: const TextStyle(
                     color: gold,
                     fontSize: 13,
@@ -1086,10 +1088,14 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    c.t(
-                      'jy',
-                      r.personalReport ? 'personal.title' : 'report.title',
-                    ),
+                    r.relationshipReport
+                        ? text(r.json['title'])
+                        : c.t(
+                            'jy',
+                            r.personalReport
+                                ? 'personal.title'
+                                : 'report.title',
+                          ),
                     style: const TextStyle(
                       color: Color(0xFFFFEAC5),
                       fontSize: 23,
@@ -1106,6 +1112,8 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       style: const TextStyle(color: lavender, fontSize: 12),
                     ),
                   ],
+                  if (r.relationshipReport)
+                    ..._relationshipSections(r, r.catalog.take(1)),
                   const SizedBox(height: 18),
                   if (r.western) ...[
                     ExpansionTile(
@@ -1143,7 +1151,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (r.personalReport && !r.sixPersonalThemes)
+                        if (r.personalReport &&
+                            !r.sixPersonalThemes &&
+                            !r.relationshipReport)
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -1158,6 +1168,15 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                         else
                           ReportBadges(
                             copy: c,
+                            themes: r.relationshipReport
+                                ? [
+                                    for (final item in r.catalog)
+                                      {
+                                        'key': item['key'],
+                                        c.language: item['title'],
+                                      },
+                                  ]
+                                : null,
                             locked: false,
                             western: r.western,
                             onTap: (key) => _navigate('report-$key'),
@@ -1165,7 +1184,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                  if (r.personalReport) ..._personalSections(r, c),
+                  if (r.relationshipReport)
+                    ..._relationshipSections(r, r.catalog.skip(1))
+                  else if (r.personalReport)
+                    ..._personalSections(r, c),
                   if (!r.western)
                     _sectionTitle(
                       'overall',
@@ -1249,6 +1271,24 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       );
     },
   );
+  List<Widget> _relationshipSections(
+    LifeReport report,
+    Iterable<Json> sections,
+  ) => [
+    for (final section in sections) ...[
+      _sectionTitle(text(section['key']), text(section['title'])),
+      for (final paragraph
+          in (report.relationshipSections[section['key']] as List? ?? []))
+        Padding(
+          padding: const EdgeInsets.only(bottom: 9),
+          child: Text(
+            text(paragraph),
+            style: const TextStyle(fontSize: 14, height: 1.8),
+          ),
+        ),
+    ],
+  ];
+
   List<Widget> _personalSections(LifeReport report, Copy c) => [
     _sectionTitle(
       report.sixPersonalThemes ? 'natal' : 'talent',

@@ -11,7 +11,7 @@ import pytest
 from backend.app.astrology import RoxyAstrology
 from backend.app.bazi_reports import InvalidBaziReport, report_usage_context
 from backend.app.config import ProviderConfig
-from backend.app.life_report_content import LifeWriter, personal_writing_progress, writing_progress
+from backend.app.life_report_content import PERSONAL_LOVE_FIELDS, LifeWriter, personal_writing_progress, writing_progress
 from backend.app.life_reports import LifeInput
 from backend.app.storage import Storage
 from backend.tests.test_roxy_astrology import GOLDEN, PROFILE, settings
@@ -63,12 +63,17 @@ def personal_draft(bundle):
             {"title": "回应需要", "text": "面对需要帮助的人，先问清最在意的问题，再用对方容易理解的方式回应，保留彼此选择的空间。"},
             {"title": "连接资源", "text": "当不同的人各有需要时，先整理哪些条件能够衔接，再确认双方是否愿意继续交流，避免替人答应未确定的安排。"},
             {"title": "传递信息", "text": "把复杂信息讲清楚时，先抓住一个重点，再用贴近日常的例子说明，让对方更容易理解并形成自己的判断。"},
-        ]}, "themes": {key: {"text": text, "evidence_ids": theme_ids[key]}
-            for key, text in {
-                "wealth": "对资源的安全感更容易来自清楚的使用边界，而不只是拥有多少。面对一项支出时，留意它是满足长期需要，还是为了缓解当下的不安；共同承担费用前，把各自能接受的范围说清楚。",
-                "love": "聊到见面安排时，试着问‘我们先定一个都方便的时间，好吗？’若对方愿意一起确认，临时有事也主动另约，关系就有继续磨合的空间。若几次商量都只得到模糊答复，先把时间留给自己的安排，等对方提出具体时间再回应。",
-                "risk": "当多个要求同时增加时，容易把完成速度当成衡量自己的唯一标准。若开始反复检查已经确认过的细节、却迟迟不愿交出结果，这就是负担过重的信号；先划清责任范围，比不断加码更能恢复稳定。",
-            }.items()}, "nodes": [
+        ]}, "themes": {
+            "wealth": {"text": "对资源的安全感更容易来自清楚的使用边界，而不只是拥有多少。面对一项支出时，留意它是满足长期需要，还是为了缓解当下的不安；共同承担费用前，把各自能接受的范围说清楚。",
+                       "evidence_ids": theme_ids["wealth"]},
+            "love": {"text": "聊到见面时，你既想把期待说清楚，也会体谅对方一时答不上来。听到体贴的话，容易先相信安排会落定，于是提前空出自己的时间，却没有确认彼此是否都愿意为这次见面作出安排。",
+                     "question": "“你愿意一起定下次见面的时间吗？”",
+                     "continue_when": "对方能提出具体时段，计划有变也主动另约，说明彼此愿意商量和调整，可以再约一次看能否兑现。",
+                     "slow_down_when": "说清期待后，若几次都由你催问，对方仍把决定往后推，就照常安排自己的行程，等有明确提议再决定要不要见。",
+                     "evidence_ids": theme_ids["love"]},
+            "risk": {"text": "当多个要求同时增加时，容易把完成速度当成衡量自己的唯一标准。若开始反复检查已经确认过的细节、却迟迟不愿交出结果，这就是负担过重的信号；先划清责任范围，比不断加码更能恢复稳定。",
+                     "evidence_ids": theme_ids["risk"]},
+        }, "nodes": [
             {"month": rule["month"], **copy,
              "evidence_ids": [rule["transit_id"], rule["supporting_natal_ids"][0]]}
             for rule, copy in zip(bundle["citation_rules"]["months"], node_copy)]}
@@ -190,6 +195,8 @@ def test_personal_paid_template_schema_and_exact_month_citations(tmp_path, provi
     assert "translations" not in schema["properties"]
     assert "themes" in schema["required"]
     assert set(schema["$defs"]["PersonalThemes"]["required"]) == {"wealth", "love", "risk"}
+    assert set(schema["$defs"]["PersonalLove"]["required"]) == {"text", "evidence_ids", *PERSONAL_LOVE_FIELDS}
+    assert schema["$defs"]["PersonalLove"]["properties"]["evidence_ids"]["items"]["enum"] == bundle["citation_rules"]["themes"]["love"]
     assert schema["$defs"]["PersonalNode"]["properties"]["month"]["enum"] == ["2026-11", "2026-12", "2027-01"]
     assert 0 < writing_progress(json.dumps(value, ensure_ascii=False), "personal_full") < 100
     prompt = writer.prompt(bundle)
@@ -210,19 +217,25 @@ def test_personal_paid_natural_bounds_match_validator_and_provider_schema(tmp_pa
     writer = personal_writer(tmp_path, "openai")
     bundle = personal_fixture_bundle(full=True, language=language)
     value = personal_draft(bundle)
-    bounds = ({"talent": (50, 160), "direction": (25, 75), "topic": (50, 140), "theme": (4, 14), "benefit": (35, 110), "caution": (10, 35), "action": (12, 45)} if language == "zh" else
-              {"talent": (150, 500), "direction": (75, 230), "topic": (150, 440), "theme": (4, 55), "benefit": (105, 340), "caution": (30, 110), "action": (36, 140)})
+    bounds = ({"talent": (50, 160), "direction": (25, 75), "topic": (50, 140), "theme": (4, 14),
+               "question": (8, 42), "continue_when": (20, 70), "slow_down_when": (20, 80),
+               "benefit": (35, 110), "caution": (10, 35), "action": (12, 45)} if language == "zh" else
+              {"talent": (150, 500), "direction": (75, 230), "topic": (150, 440), "theme": (4, 55),
+               "question": (20, 155), "continue_when": (60, 240), "slow_down_when": (60, 260),
+               "benefit": (105, 340), "caution": (30, 110), "action": (36, 140)})
     if language == "en":
         for part, title in zip(value["talent"]["directions"], ("Useful service", "Resource links", "Clear information")):
             part["title"] = title
     fields = [(value["talent"], "text", "talent")]
     fields += [(part, "text", "direction") for part in value["talent"]["directions"]]
     fields += [(part, "text", "topic") for part in value["themes"].values()]
+    fields += [(value["themes"]["love"], field, field) for field in PERSONAL_LOVE_FIELDS]
     fields += [(part, field, field) for part in value["nodes"] for field in ("theme", "benefit", "caution", "action")]
-    alphabet = "稳清明宽真静细亮柔暖实简恰诚顺敏和安定善勤" if language == "zh" else "abcdefghijklmnopqrstuvwxyz"
+    alphabet = "稳清明宽真静细亮柔暖实简恰诚顺敏和安定善勤谦信" if language == "zh" else "abcdefghijklmnopqrstuvwxyz"
     def sample(index, field, length):
         prefix = ("写下" if language == "zh" else "Write ") if field == "action" else ""
-        return prefix + alphabet[index] * (length - len(prefix))
+        suffix = "?" if field == "question" else ""
+        return prefix + alphabet[index] * (length - len(prefix) - (len(suffix) if language != "zh" else 0)) + suffix
     for endpoint in (0, 1):
         for index, (part, field, key) in enumerate(fields):
             part[field] = sample(index, key, bounds[key][endpoint])
@@ -235,9 +248,13 @@ def test_personal_paid_natural_bounds_match_validator_and_provider_schema(tmp_pa
                 writer.validate(json.dumps(value, ensure_ascii=False), bundle)
         part[field] = original
     definitions = writer.response_format(bundle)["json_schema"]["schema"]["$defs"]
-    for name, key in (("PersonalTalent", "talent"), ("PersonalDirection", "direction"), ("PersonalTopic", "topic")):
+    for name, key in (("PersonalTalent", "talent"), ("PersonalDirection", "direction"),
+                      ("PersonalTopic", "topic"), ("PersonalLove", "topic")):
         schema = definitions[name]["properties"]["text"]
         assert (schema["minLength"], schema["maxLength"]) == (bounds[key][0], bounds[key][1] + (30 if language == "zh" else 0))
+    for key in PERSONAL_LOVE_FIELDS:
+        schema = definitions["PersonalLove"]["properties"][key]
+        assert (schema["minLength"], schema["maxLength"]) == (bounds[key][0], bounds[key][1] + (18 if language == "zh" else 0))
     for key in ("theme", "benefit", "caution", "action"):
         schema = definitions["PersonalNode"]["properties"][key]
         assert (schema["minLength"], schema["maxLength"]) == (bounds[key][0], bounds[key][1] + (20 if language == "zh" else 0))
@@ -256,6 +273,15 @@ def test_personal_full_requires_each_promised_subject_and_its_own_evidence(tmp_p
     wrong["themes"][key]["evidence_ids"] = [bundle["citation_rules"]["months"][0]["transit_id"], "P_sun"]
     with pytest.raises(InvalidBaziReport, match=f"themes.{key}"):
         writer.validate(json.dumps(wrong, ensure_ascii=False), bundle)
+
+
+@pytest.mark.parametrize("field", PERSONAL_LOVE_FIELDS)
+def test_personal_full_requires_each_relationship_answer(field):
+    bundle = personal_fixture_bundle(full=True)
+    value = personal_draft(bundle)
+    del value["themes"]["love"][field]
+    with pytest.raises(InvalidBaziReport, match=rf"personal schema.*themes\.love\.{field}"):
+        LifeWriter.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
 @pytest.mark.parametrize("paraphrase", [False, True])

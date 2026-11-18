@@ -21,7 +21,13 @@ from . import thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, FORECAST_VERSION, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
 from .bazi_reports import report_progress_context, report_usage_context
 from .life_card_payments import CARD_AMOUNT, SIMULATED_AMOUNT, SIMULATED_MERCHANT, SUNLANDS_AMOUNT, LifeCardPayments
-from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, PERSONAL_WRITING_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, WESTERN_WRITING_VERSION, LifeWriter, career_report_content, personal_writing_progress, preview_writing_progress, writing_progress
+from .life_report_content import (
+    CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION,
+    PERSONAL_LOVE_FIELDS, PERSONAL_WRITING_VERSION, QUESTIONS, RELATIONSHIP_COPY, RELATIONSHIP_KEYS,
+    RELATIONSHIP_WRITING_VERSION, TITLES, TRAIT_HOUSES, VERSION, WESTERN_WRITING_VERSION,
+    LifeWriter, career_report_content, personal_writing_progress,
+    preview_writing_progress, writing_progress,
+)
 from .schemas import Input, ProfileInput, ThaiReadingInput
 from .report_languages import REGIONAL_LANGUAGES
 from .thai_readings import HOUSES, copy_for, grounding
@@ -44,7 +50,11 @@ PERSONAL_ACTION_TITLES = {"zh": "行动建议", "th": "คำแนะนำท�
 
 
 def personal_chart(chart):
-    return western(chart) and chart.get("presentation") == "western-personal"
+    return western(chart) and chart.get("presentation") in ("western-personal", "western-relationship")
+
+
+def relationship_chart(chart):
+    return chart.get("presentation") == "western-relationship"
 
 
 class ReportLeaseLost(Exception):
@@ -67,6 +77,13 @@ class LifeProfile(ProfileInput):
     language: Literal["zh", "th", "en", "vi", "my", "km", "lo", "ms", "id"] = "zh"
 
 
+class RelationshipInput(Input):
+    status: Literal["unspecified", "single", "dating", "partnered", "separated", "other"] = "unspecified"
+    roles: str | None = Field(default=None, min_length=1, max_length=120, pattern=r"^[^\x00-\x1f\x7f]+$")
+    event: str | None = Field(default=None, min_length=1, max_length=900, pattern=r"^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+$")
+    source: Literal["unspecified", "direct", "told", "reported", "guess"] = "unspecified"
+
+
 class LifeInput(Input):
     profile: LifeProfile
     year: int = Field(ge=1901, le=2100)
@@ -74,6 +91,7 @@ class LifeInput(Input):
     career: CareerInput | None = None
     career_question: CareerInput | None = None
     user_question: str | None = Field(default=None, min_length=1, max_length=120, pattern=r"^[^\x00-\x1f\x7f]+$")
+    relationship: RelationshipInput | None = None
 
     @model_validator(mode="after")
     def supported_input(self):
@@ -82,7 +100,7 @@ class LifeInput(Input):
             raise ValueError("language_invalid")
         if sum(value is not None for value in (self.career, self.career_question, self.user_question)) > 1:
             raise ValueError("career_input_conflict")
-        if self.career and self.report_kind == "fortune":
+        if (self.career and self.report_kind == "fortune") or (self.relationship and (self.career or self.career_question)):
             raise ValueError("career_input_conflict")
         career = self.career_question or self.career
         if career and career.start.year != self.year:
@@ -290,6 +308,8 @@ class LifeReports:
         return result
 
     def personal_availability(self, chart):
+        if relationship_chart(chart):
+            return {"full_report": True, "reason": "ready"}
         reason = ("time_unknown" if not chart.get("time_known") else
                   "not_started" if "forecast" not in chart else
                   "unavailable" if chart.get("forecast", {}).get("state") != "ready" else
@@ -306,7 +326,7 @@ class LifeReports:
 
     async def prepare_personal_full(self, row, owner, network, *, lease=None):
         chart = json.loads(row["chart"])
-        if not personal_chart(chart):
+        if not personal_chart(chart) or relationship_chart(chart):
             return row
         if not chart.get("time_known"):
             self.require_personal_full(row)
@@ -337,11 +357,16 @@ class LifeReports:
             snapshot.pop("career_question")
         if body.user_question is None:
             snapshot.pop("user_question")
+        if body.relationship is None:
+            snapshot.pop("relationship")
         if body.career and body.career.focus is None:
             snapshot["career"].pop("focus")
         use_roxy = self.settings.life_astrology_provider == "roxy" and not body.career
+        if body.relationship and not use_roxy:
+            raise HTTPException(503, "life_astrology_unavailable")
         # New writing settings create a fresh report; saved report IDs retain their original content.
-        version = f"{WESTERN_VERSION}:{PERSONAL_WRITING_VERSION}" if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
+        writing = RELATIONSHIP_WRITING_VERSION if body.relationship else PERSONAL_WRITING_VERSION
+        version = f"{WESTERN_VERSION}:{writing}" if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
         identity = [version, snapshot]
         if use_roxy:
             identity.append(["forecast", FORECAST_VERSION, datetime.now(timezone.utc).date().isoformat()])
@@ -370,7 +395,7 @@ class LifeReports:
             if chart["status"] != "ready":
                 raise HTTPException(422, "thai_reading_details_required")
             if use_roxy:
-                chart["presentation"] = "western-personal"
+                chart["presentation"] = "western-relationship" if body.relationship else "western-personal"
             if not profile["birth_time"] and not use_roxy:
                 chart["time_known"] = False
                 chart["calculation_input"]["time_precision"] = "estimated-noon"
@@ -444,10 +469,14 @@ class LifeReports:
             bundle = self.adapters["astrology"].personal_bundle(body, chart)
             if body.user_question:
                 bundle["user_question"] = body.user_question
+            if relationship_chart(chart):
+                bundle["relationship_context"] = body.relationship.model_dump(mode="json")
+                bundle["relationship_aspect_label"] = ""
             generated = await self.preview_writer_for(body.profile.language).generate(bundle, owner, network)
             values = {"preview_state": generated["state"], "lease": "", "lease_until": 0}
             if generated["state"] == "ready" and generated.get("story"):
-                values["preview"] = encoded({"presentation": "western-personal", "version": PERSONAL_WRITING_VERSION,
+                values["preview"] = encoded({"presentation": chart["presentation"],
+                                             "version": RELATIONSHIP_WRITING_VERSION if relationship_chart(chart) else PERSONAL_WRITING_VERSION,
                                              "story": generated["story"], "evidence": bundle["evidence"],
                                              "relationship_aspect_label": bundle["relationship_aspect_label"]})
             elif generated["state"] == "ready":
@@ -516,7 +545,7 @@ class LifeReports:
             db.execute("UPDATE life_reports SET generation_progress=? WHERE id=? AND lease=?", (encoded(marks), report_id, lease))
 
     async def write_part(self, report_id, lease, bundle, owner, network):
-        key = "personal_full" if bundle["stage"] == "personal_full" else "plan" if bundle["stage"] == "plan" else bundle["reading"]
+        key = "personal_full" if bundle["stage"] in ("personal_full", "relationship_full") else "plan" if bundle["stage"] == "plan" else bundle["reading"]
         token = report_progress_context.set(lambda raw: self.record_progress(report_id, lease, {key: writing_progress(raw, bundle["stage"], compact=bundle.get("format") == WESTERN_VERSION)}))
         try:
             result = await self.parts_writer.generate(bundle, owner, network)
@@ -533,6 +562,30 @@ class LifeReports:
             return result
         finally:
             report_progress_context.reset(token)
+
+    @staticmethod
+    def relationship_sections(story, evidence, context, language):
+        copy = RELATIONSHIP_COPY[language]
+        source = copy["sources"][context["source"]]
+        who = [paragraph for person in story["people"] for paragraph in (
+            f"{person['role']} · {person['explanation']}", f"{source} · “{person['event_excerpt']}”",
+        )]
+        if not who:
+            portrait = story.get("portrait")
+            who = [portrait["text"] if portrait else story["uncertainty"]]
+        patterns = []
+        for pattern in story["patterns"]:
+            identifier = pattern["evidence_id"]
+            fact = explain(identifier, evidence[identifier], language)
+            patterns.extend([f"{fact['title']} · {fact['detail']}", pattern["symbolism"], pattern["behavior"]])
+        return {
+            "who": who,
+            "impact": [story["impact"]],
+            "pattern": patterns,
+            "assessment": [story["assessment"]],
+            "decision": [story["continue_when"], story["reconsider_when"]],
+            "next_steps": [story["verify"], story["question"], story["observe"]],
+        }
 
     def chart_view(self, chart, time_known, language="zh"):
         """Reuse this report's calculated positions for JY's native chart view."""
@@ -563,6 +616,7 @@ class LifeReports:
         chart = json.loads(row["chart"])
         is_western = western(chart)
         is_personal = personal_chart(chart)
+        is_relationship = relationship_chart(chart)
         records = json.loads(row["chapters"])
         preview = json.loads(row["preview"]) if row["preview"] else None
         title = (REGIONAL_LANGUAGES[language]["report_title" if fortune else "life_title"] if language in REGIONAL_LANGUAGES else ({"zh": "运程解析", "th": "วิเคราะห์ดวงชะตา", "en": "Personal reading", "vi": "Luận giải cá nhân"} if fortune else
@@ -605,11 +659,21 @@ class LifeReports:
             six_themes = not saved_personal or "themes" in saved_personal
             chapter_keys = (*WESTERN_CHAPTERS, "plan") if six_themes else ("talent", "node-1", "node-2", "node-3")
             titles = (*WESTERN_TITLES[language], PERSONAL_ACTION_TITLES[language]) if six_themes else PERSONAL_CATALOG[language]
+            if is_relationship:
+                copy = RELATIONSHIP_COPY[language]
+                chapter_keys = RELATIONSHIP_KEYS
+                titles = [copy["sections"][key] for key in chapter_keys]
+                if row["unlocked"] and saved_personal.get("portrait"):
+                    titles[0] = copy["portrait"]
+                if body["relationship"]["status"] == "single":
+                    titles[chapter_keys.index("decision")] = copy["singleDecision"]
+                title = copy["title"]
             questions = [[] for _ in chapter_keys]
             ready = row["full_state"] == "ready" and "personal" in records
             completed = len(chapter_keys) if ready else 0
             sections = [{"key": key, "percent": 100 if ready else min(99, marks.get("personal_full", 0))} for key in chapter_keys]
-            version = preview.get("version", PERSONAL_WRITING_VERSION) if preview else PERSONAL_WRITING_VERSION
+            writing = RELATIONSHIP_WRITING_VERSION if is_relationship else PERSONAL_WRITING_VERSION
+            version = preview.get("version", writing) if preview else writing
         percent = int(sum(section["percent"] for section in sections) / len(sections))
         percent = min(percent, 100 if row["full_state"] == "ready" else 99)
         simulation = self.can_simulate_payment(career)
@@ -648,6 +712,7 @@ class LifeReports:
         if is_personal:
             signs = self.adapters["astrology"].personal_signs(chart, language)
             record = records.get("personal") if row["unlocked"] else None
+            story = record["story"] if record else {}
             relationship = None
             if preview and (love := preview["story"].get("relationship")):
                 relationship = {"text": love["text"] + preview.get("relationship_aspect_label", ""),
@@ -660,13 +725,17 @@ class LifeReports:
                 "opportunity_action": preview["story"].get("opportunity_action", "") if preview else "",
                 "sun_sign": signs["sun"]["label"], "ascendant_sign": signs["ascendant"]["label"] if signs["ascendant"] else None,
                 "availability": self.personal_availability(chart),
-                "talent": record["story"]["talent"] if record else None,
-                "themes": {key: {"text": item["text"],
+                "talent": story.get("talent"),
+                "themes": {key: {"text": "\n\n".join([item["text"], *(item[field] for field in PERSONAL_LOVE_FIELDS if field in item)]),
                     "evidence": [explain(identifier, record["evidence"][identifier], language) for identifier in item["evidence_ids"]]}
-                    for key, item in record["story"]["themes"].items()} if record and "themes" in record["story"] else None,
+                    for key, item in story["themes"].items()} if "themes" in story else None,
                 "nodes": [{**{key: item[key] for key in ("month", "theme", "benefit", "caution", "action")},
                            "evidence": [explain(key, record["evidence"][key], language) for key in item["evidence_ids"]]}
-                          for item in record["story"]["nodes"]] if record else []}
+                          for item in story.get("nodes", [])]}
+            if is_relationship:
+                result["personal"]["relationship_sections"] = (
+                    self.relationship_sections(story, record["evidence"], body["relationship"], language)
+                    if record and ready else None)
             return result
         if career:
             result["reference_period"] = {"start": career["start"], "end": (date.fromisoformat(career["start"]) + timedelta(days=29)).isoformat()}
@@ -826,19 +895,29 @@ class LifeReports:
                 return
             chart, preview_record = json.loads(row["chart"]), json.loads(row["preview"])
             if personal_chart(chart):
-                row = await self.prepare_personal_full(row, owner, network, lease=lease)
-                chart = json.loads(row["chart"])
-                bundle = self.adapters["astrology"].personal_bundle(body, chart, full=True)
                 free_story = preview_record["story"]
-                bundle["previous_points"] = [*free_story["free_lines"],
-                    *(item["text"] for item in free_story.get("traits", [])), free_story.get("opportunity_action", "")]
-                if relationship := free_story.get("relationship"):
-                    allowed = bundle["citation_rules"]["themes"]["love"]
-                    aspect = next((key for key in relationship.get("evidence_ids", ())
-                                   if key in allowed and bundle["evidence"][key]["type"] == "aspect"), None)
-                    bundle["relationship_preview"] = {"text": relationship["text"], "action": relationship["action"],
-                                                      "natal_aspect_id": aspect}
-                bundle["free_lines"] = free_story["free_lines"]
+                if relationship_chart(chart):
+                    bundle = self.adapters["astrology"].bundle(body, chart, "love")
+                    natal_ids = [key for key in bundle["topic_evidence"] if bundle["evidence"][key]["type"] != "transit"]
+                    bundle.update(stage="relationship_full", reading="relationship-full",
+                                  relationship_context=body.relationship.model_dump(mode="json"),
+                                  evidence={key: bundle["evidence"][key] for key in natal_ids},
+                                  citation_rules={"topic_ids": natal_ids})
+                    if body.user_question:
+                        bundle["user_question"] = body.user_question
+                else:
+                    row = await self.prepare_personal_full(row, owner, network, lease=lease)
+                    chart = json.loads(row["chart"])
+                    bundle = self.adapters["astrology"].personal_bundle(body, chart, full=True)
+                    bundle["previous_points"] = [*free_story["free_lines"],
+                        *(item["text"] for item in free_story.get("traits", [])), free_story.get("opportunity_action", "")]
+                    if relationship := free_story.get("relationship"):
+                        allowed = bundle["citation_rules"]["themes"]["love"]
+                        aspect = next((key for key in relationship.get("evidence_ids", ())
+                                       if key in allowed and bundle["evidence"][key]["type"] == "aspect"), None)
+                        bundle["relationship_preview"] = {"text": relationship["text"], "action": relationship["action"],
+                                                          "natal_aspect_id": aspect}
+                    bundle["free_lines"] = free_story["free_lines"]
                 generated = await self.write_part(report_id, lease, bundle, owner, network)
                 values = {"full_state": generated["state"], "lease": "", "lease_until": 0}
                 if generated["state"] == "ready" and generated.get("story"):

@@ -24,10 +24,18 @@ class LandingPage extends StatefulWidget {
 class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   static const _stages = ['unspecified', 'considering', 'searching', 'offer'];
   String _date = '', _time = '', _error = '';
-  bool _unknown = false, _custom = false, _restored = false;
+  bool _unknown = false,
+      _custom = false,
+      _restored = false,
+      _restoringCareer = false;
   Place? _place;
   String? _question;
   final _questionText = TextEditingController();
+  final _rolesText = TextEditingController();
+  final _eventText = TextEditingController();
+  String _relationshipStatus = 'unspecified',
+      _relationshipSource = 'unspecified';
+  bool get _relationshipMode => widget.topic != 'career' && !_restoringCareer;
   late final _questionPages = PageController(
     initialPage: _stages.indexOf(_question ?? '').clamp(0, _stages.length - 1),
   );
@@ -48,8 +56,16 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         _place = h5.landingPlace;
         _questionText.text = text(input['user_question']);
         _custom = _questionText.text.isNotEmpty;
+        final relationship = object(input['relationship']);
+        if (relationship.isNotEmpty) {
+          _relationshipStatus = text(relationship['status']);
+          _relationshipSource = text(relationship['source']);
+          _rolesText.text = text(relationship['roles']);
+          _eventText.text = text(relationship['event']);
+        }
         final stage = text(object(input['career_question'])['stage']);
         _question = _stages.contains(stage) ? stage : null;
+        _restoringCareer = _question != null;
       }
     }
     unawaited(h5.recordVisit());
@@ -59,6 +75,8 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   void dispose() {
     _request?.cancel();
     _questionText.dispose();
+    _rolesText.dispose();
+    _eventText.dispose();
     _questionPages.dispose();
     super.dispose();
   }
@@ -120,15 +138,98 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         'latitude': samePlace ? previous['latitude'] : null,
         'longitude': samePlace ? previous['longitude'] : null,
       },
-      'year': _question != null && !_custom
+      'year': !_relationshipMode && _question != null && !_custom
           ? int.parse(start.substring(0, 4))
           : DateTime.now().year,
-      if (_question != null && !_custom)
+      if (!_relationshipMode && _question != null && !_custom)
         'career_question': {'stage': _question, 'start': start},
-      if (_custom && _questionText.text.trim().isNotEmpty)
+      if ((_relationshipMode || _custom) &&
+          _questionText.text.trim().isNotEmpty)
         'user_question': _questionText.text.trim(),
+      if (_relationshipMode)
+        'relationship': {
+          'status': _relationshipStatus,
+          'source': _relationshipSource,
+          if (_rolesText.text.trim().isNotEmpty)
+            'roles': _rolesText.text.trim(),
+          if (_eventText.text.trim().isNotEmpty)
+            'event': _eventText.text.trim(),
+        },
     };
   }
+
+  Widget _relationshipChoice(
+    Copy copy,
+    String label,
+    String choices,
+    String selected,
+    ValueChanged<String> change,
+  ) {
+    final options = object(copy.value('relationship', choices));
+    return DropdownButtonFormField<String>(
+      key: ValueKey('relationship-$label'),
+      initialValue: selected,
+      isExpanded: true,
+      style: const TextStyle(color: cream, fontSize: 13),
+      decoration: InputDecoration(labelText: copy.t('relationship', label)),
+      items: [
+        for (final option in options.entries)
+          DropdownMenuItem(value: option.key, child: Text(text(option.value))),
+      ],
+      onChanged: (value) {
+        if (value != null) setState(() => change(value));
+      },
+    );
+  }
+
+  List<Widget> _relationshipFields(Copy copy) => [
+    _relationshipChoice(copy, 'status', 'statuses', _relationshipStatus, (
+      value,
+    ) {
+      _relationshipStatus = value;
+    }),
+    const SizedBox(height: 12),
+    TextField(
+      key: const ValueKey('custom-question'),
+      controller: _questionText,
+      maxLength: 120,
+      inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
+      decoration: InputDecoration(
+        labelText: copy.t('relationship', 'question'),
+        counterText: '',
+      ),
+    ),
+    const SizedBox(height: 12),
+    TextField(
+      key: const ValueKey('relationship-roles'),
+      controller: _rolesText,
+      maxLength: 120,
+      inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
+      decoration: InputDecoration(
+        labelText: copy.t('relationship', 'roles'),
+        counterText: '',
+      ),
+    ),
+    const SizedBox(height: 12),
+    TextField(
+      key: const ValueKey('relationship-event'),
+      controller: _eventText,
+      maxLength: 900,
+      minLines: 2,
+      maxLines: 4,
+      decoration: InputDecoration(
+        labelText: copy.t('relationship', 'event'),
+        hintText: copy.t('relationship', 'eventHint'),
+        counterText: '',
+      ),
+    ),
+    const SizedBox(height: 12),
+    _relationshipChoice(copy, 'source', 'sources', _relationshipSource, (
+      value,
+    ) {
+      _relationshipSource = value;
+    }),
+  ];
 
   Future<void> _generate(H5Controller h5) async {
     if (_generation != null) return;
@@ -495,147 +596,154 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       onSelected: (place) => setState(() => _place = place),
                     ),
                     const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c.t('jy', 'questionTitle'),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              height: 1.67,
-                              color: gold,
-                              fontWeight: FontWeight.w700,
+                    if (_relationshipMode)
+                      ..._relationshipFields(c)
+                    else ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              c.t('jy', 'questionTitle'),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                height: 1.67,
+                                color: gold,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                          Text(
-                            c.t('jy', 'questionHint'),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              height: 1.45,
-                              color: lavender,
+                            Text(
+                              c.t('jy', 'questionHint'),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                height: 1.45,
+                                color: lavender,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _custom
-                              ? TextField(
-                                  key: const ValueKey('custom-question'),
-                                  controller: _questionText,
-                                  maxLength: 120,
-                                  style: const TextStyle(fontSize: 12),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.deny(
-                                      RegExp(r'[\x00-\x1f\x7f]'),
-                                      replacementString: ' ',
-                                    ),
-                                  ],
-                                  decoration: InputDecoration(
-                                    hintText: c.t('jy', 'questionTitle'),
-                                    counterText: '',
-                                  ),
-                                )
-                              : SizedBox(
-                                  height: 44,
-                                  child: PageView.builder(
-                                    controller: _questionPages,
-                                    scrollDirection: Axis.vertical,
-                                    itemCount: 4,
-                                    itemBuilder: (context, index) => InkWell(
-                                      key: ValueKey('question-$index'),
-                                      onTap: () => setState(
-                                        () => _question =
-                                            _question == _stages[index]
-                                            ? null
-                                            : _stages[index],
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _custom
+                                ? TextField(
+                                    key: const ValueKey('custom-question'),
+                                    controller: _questionText,
+                                    maxLength: 120,
+                                    style: const TextStyle(fontSize: 12),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.deny(
+                                        RegExp(r'[\x00-\x1f\x7f]'),
+                                        replacementString: ' ',
                                       ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: c.t('jy', 'questionTitle'),
+                                      counterText: '',
+                                    ),
+                                  )
+                                : SizedBox(
+                                    height: 44,
+                                    child: PageView.builder(
+                                      controller: _questionPages,
+                                      scrollDirection: Axis.vertical,
+                                      itemCount: 4,
+                                      itemBuilder: (context, index) => InkWell(
+                                        key: ValueKey('question-$index'),
+                                        onTap: () => setState(
+                                          () => _question =
+                                              _question == _stages[index]
+                                              ? null
+                                              : _stages[index],
                                         ),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              '${prompts[index][0]}',
-                                              style: const TextStyle(
-                                                fontSize: 10,
-                                                color: gold,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                '${prompts[index][1]}',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  height: 1.4,
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      _question ==
-                                                          _stages[index]
-                                                      ? gold
-                                                      : cream,
-                                                ),
-                                              ),
-                                            ),
-                                            if (_question == _stages[index])
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                          child: Row(
+                                            children: [
                                               Text(
-                                                c.t('jy', 'selected'),
+                                                '${prompts[index][0]}',
                                                 style: const TextStyle(
-                                                  fontSize: 9,
+                                                  fontSize: 10,
                                                   color: gold,
                                                 ),
                                               ),
-                                          ],
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  '${prompts[index][1]}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    height: 1.4,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        _question ==
+                                                            _stages[index]
+                                                        ? gold
+                                                        : cream,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (_question == _stages[index])
+                                                Text(
+                                                  c.t('jy', 'selected'),
+                                                  style: const TextStyle(
+                                                    fontSize: 9,
+                                                    color: gold,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (_custom)
-                          TextButton(
-                            onPressed: () => setState(() {
-                              _custom = false;
-                              _question = null;
-                              _questionText.clear();
-                            }),
-                            child: Text(
-                              c.t('jy', 'browseQuestions'),
-                              style: const TextStyle(fontSize: 10, color: gold),
-                            ),
-                          )
-                        else
-                          SizedBox(
-                            width: 84,
-                            height: 46,
-                            child: TextField(
-                              readOnly: true,
-                              key: const ValueKey('write-question'),
-                              onTap: () => setState(() {
-                                _custom = true;
+                          ),
+                          const SizedBox(width: 8),
+                          if (_custom)
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _custom = false;
                                 _question = null;
+                                _questionText.clear();
                               }),
-                              textAlign: TextAlign.center,
-                              decoration: InputDecoration(
-                                hintText: c.t('jy', 'writeQuestion'),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 12,
+                              child: Text(
+                                c.t('jy', 'browseQuestions'),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: gold,
+                                ),
+                              ),
+                            )
+                          else
+                            SizedBox(
+                              width: 84,
+                              height: 46,
+                              child: TextField(
+                                readOnly: true,
+                                key: const ValueKey('write-question'),
+                                onTap: () => setState(() {
+                                  _custom = true;
+                                  _question = null;
+                                }),
+                                textAlign: TextAlign.center,
+                                decoration: InputDecoration(
+                                  hintText: c.t('jy', 'writeQuestion'),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 12,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                     errorMessage(_error),
                     const SizedBox(height: 21),
                     JYButton(
@@ -648,7 +756,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                           : () => _generate(h5),
                     ),
                     const SizedBox(height: 19),
-                    ThemeBoards(copy: c),
+                    ThemeBoards(copy: c, relationship: _relationshipMode),
                   ],
                 ),
               ),

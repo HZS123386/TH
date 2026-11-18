@@ -116,10 +116,12 @@ export function reportContent(report: LifeReport): ReportSection[] {
     return [
       { key: "basics", title: labels.sections[0][1], description: "", paid: false, ready: true, summaries: [], groups: [] },
       { key: "summary", title: personal.freeTitle, description: "", paid: false, ready: report.personal?.free_lines.length === 3, summaries: [], groups: [] },
-      ...(six ? personalTopicKeys : legacyPersonalTopicKeys).map((key, index): ReportSection => ({
+      ...(report.input.relationship ? report.catalog.map((item): ReportSection => ({
+        key: item.key, title: item.title, description: "", paid: true, ready: full, summaries: [], groups: [],
+      })) : (six ? personalTopicKeys : legacyPersonalTopicKeys).map((key, index): ReportSection => ({
         key, title: six ? names[key as keyof typeof names] : full && index > 0 && report.personal?.nodes[index - 1] ? `${report.personal.nodes[index - 1].month} · ${report.personal.nodes[index - 1].theme}` : personal[key as keyof typeof personal],
         description: "", paid: true, ready: full, summaries: [], groups: [],
-      })),
+      }))),
     ];
   }
   const extra = language !== "zh" && language !== "th" ? additionalLocales[language].reportContent : undefined;

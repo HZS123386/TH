@@ -15,6 +15,7 @@ export default {life:lifeCopy,career:careerCopy,western:westernCopy,generation:g
 const copy = (await import(pathToFileURL(extracted).href + '?v=' + Date.now())).default;
 copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checkout.json'),'utf8'));
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));
+copy.relationship = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','relationship-report.json'),'utf8'));
 const jy = JSON.parse(await readFile(path.join(root,'src','content','jy.json'),'utf8'));
 copy.jy = jy.jy;
 // Use key for identity: id is the supported Indonesian language code.

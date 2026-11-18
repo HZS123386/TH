@@ -249,11 +249,11 @@
       "home": "FATE 首页",
       "title": "FATE — 运程解析",
       "welcome": {
-        "first": "该断该续？",
-        "returning": "该断该续？",
-        "firstNote": "你俩感情卡，先别怪彼此，命盘里藏着搅局的人",
-        "returningNote": "你俩感情卡，先别怪彼此，命盘里藏着搅局的人",
-        "start": "点击揪出搅局的人",
+        "first": "谁在影响你的感情？",
+        "returning": "谁在影响你的感情？",
+        "firstNote": "从你经历的事看清人物和行为，再结合命盘理解自己的反应。",
+        "returningNote": "从你经历的事看清人物和行为，再结合命盘理解自己的反应。",
+        "start": "开始解读",
         "guideName": "阿赞雅达",
         "guideTitle": "情缘法宗师",
         "swipe": "上滑进入"

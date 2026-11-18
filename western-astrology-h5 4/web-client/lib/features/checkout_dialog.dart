@@ -73,12 +73,15 @@ class _ReportCheckoutState extends State<ReportCheckout> {
   @override
   Widget build(BuildContext context) {
     final c = widget.h5.copy;
+    final relationship = widget.report.relationshipReport;
     final hasRelationshipPreview = widget.report.relationshipPreview.isNotEmpty;
     final about = widget.report.sixPersonalThemes && hasRelationshipPreview
         ? 'checkout.relationshipAbout'
         : 'checkout.about';
     final relationshipUnlock = widget.report.canPay && hasRelationshipPreview
-        ? c.t('jy', 'personal.relationshipUnlock')
+        ? (relationship
+              ? c.t('relationship', 'unlock')
+              : c.t('jy', 'personal.relationshipUnlock'))
         : '';
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -118,7 +121,9 @@ class _ReportCheckoutState extends State<ReportCheckout> {
               ),
               const SizedBox(height: 4),
               Text(
-                c.t('jy', 'checkout.title'),
+                relationship
+                    ? text(widget.report.json['title'])
+                    : c.t('jy', 'checkout.title'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 26,
@@ -159,22 +164,29 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 12,
-                      runSpacing: 6,
-                      children: [
-                        for (final detail in c.list('jy', 'checkout.details'))
-                          Text(
-                            detail,
-                            style: const TextStyle(color: gold, fontSize: 12),
-                          ),
-                      ],
-                    ),
+                    if (!relationship)
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 6,
+                        children: [
+                          for (final detail in c.list('jy', 'checkout.details'))
+                            Text(
+                              detail,
+                              style: const TextStyle(color: gold, fontSize: 12),
+                            ),
+                        ],
+                      ),
                     const SizedBox(height: 12),
                     ReportBadges(
                       key: const ValueKey('checkout-theme-badges'),
                       copy: c,
+                      themes: relationship
+                          ? [
+                              for (final item in widget.report.catalog)
+                                {'key': item['key'], c.language: item['title']},
+                            ]
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     const Divider(height: 1, color: Color(0x40E4BC78)),
@@ -252,7 +264,10 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final line in c.list('jy', '${about}Title'))
+                    for (final line
+                        in relationship
+                            ? [c.t('relationship', 'sections.who')]
+                            : c.list('jy', '${about}Title'))
                       Text(
                         line,
                         textAlign: TextAlign.center,
@@ -277,7 +292,9 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                         ),
                       ),
                       child: Text(
-                        c.t('jy', about),
+                        relationship
+                            ? c.t('relationship', 'checkout')
+                            : c.t('jy', about),
                         style: const TextStyle(
                           color: Color(0xFF44283E),
                           fontSize: 14,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { inputFor, reportFixture } from "../../tests/fixtures/lifeReport";
-import { hasLifePreview, isLifeReport, lifeLabels, personalTopicKeys, legacyPersonalTopicKeys, previewGenerationProgress, reportGenerationProgress, type LifeReport } from "./lifeReport";
+import { hasLifePreview, isLifeReport, lifeLabels, personalTopicKeys, legacyPersonalTopicKeys, relationshipTopicKeys, previewGenerationProgress, reportGenerationProgress, type LifeReport } from "./lifeReport";
 import { reportContent } from "./reportContent";
 import { reportHtml } from "./reading";
 import { languages } from "./locales";
@@ -26,6 +26,28 @@ function personalFixture(language: typeof languages[number] = "zh", full = false
 }
 
 describe("personal Western report contract and export", () => {
+  it("keeps the original preview layout before the complete relationship chapters and gates all six sections", () => {
+    const report = personalFixture("zh", true);
+    report.title = "爱情人物影响解读报告";
+    report.input.relationship = {status: "single", source: "unspecified"};
+    report.version = "western-relationship-1";
+    report.catalog = relationshipTopicKeys.map(key => ({key, title: key, houses: [], questions: [], ready: true}));
+    report.personal!.talent = null;
+    report.personal!.themes = null;
+    report.personal!.nodes = [];
+    report.personal!.relationship_sections = Object.fromEntries(
+      relationshipTopicKeys.map(key => [key, ['RELATIONSHIP_PRIVATE_' + key]]),
+    ) as NonNullable<NonNullable<LifeReport["personal"]>["relationship_sections"]>;
+    expect(isLifeReport(report)).toBe(true);
+    const complete = reportHtml(report, lifeLabels(report));
+    expect(complete).toContain("<h1>爱情人物影响解读报告</h1>");
+    expect(complete).toContain("<h2>who</h2><p>RELATIONSHIP_PRIVATE_who</p>");
+    expect(complete.indexOf("FREE_RELATIONSHIP_TEXT")).toBeLessThan(complete.indexOf("RELATIONSHIP_PRIVATE_who"));
+    expect(complete.indexOf("RELATIONSHIP_PRIVATE_who")).toBeLessThan(complete.indexOf("RELATIONSHIP_PRIVATE_impact"));
+    expect(complete).toContain("RELATIONSHIP_PRIVATE_next_steps");
+    report.access = "preview";
+    expect(reportHtml(report, lifeLabels(report))).not.toContain("RELATIONSHIP_PRIVATE_");
+  });
   it("accepts free content while paid calculations are deferred", () => {
     const report = personalFixture();
     report.outlook = { state: 'not_started' };
@@ -81,6 +103,19 @@ describe("personal Western report contract and export", () => {
       expect(free).not.toContain(report.input.profile.birth_date);
     });
   }
+  it("renders each relationship answer as a separate paragraph only in the full export", () => {
+    const report = personalFixture('zh', true);
+    report.personal!.themes!.love.text = [
+      '听到体贴的话时，你可能会提前空出见面的时间。',
+      '“你愿意一起定下次见面的时间吗？”',
+      '有变动也主动另约，可以再约一次看看。',
+      '反复迟迟未确认，就照常安排自己的行程。',
+    ].join('\n\n');
+    const paragraphs = report.personal!.themes!.love.text.split('\n\n').map(answer => '<p>' + answer + '</p>').join('');
+    expect(reportHtml(report, lifeLabels(report))).toContain('<h2>感情姻缘</h2>' + paragraphs);
+    report.access = "preview";
+    expect(reportHtml(report, lifeLabels(report))).not.toContain(paragraphs);
+  });
   it("preserves saved three-line previews and escapes new free details in exports", () => {
     const report = personalFixture();
     report.personal!.traits![0].title = 'Clear <expression>';

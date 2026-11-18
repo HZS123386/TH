@@ -6,11 +6,19 @@ import informationCopy from "../content/jy.json";
 export type CareerStage = "unspecified" | "considering" | "searching" | "offer";
 export type CareerFocus = "decision" | "stay" | "move" | "next";
 type CareerQuestion = { stage: CareerStage; start: string; focus?: CareerFocus | null };
-export type LifeInput = Omit<ReadingInput, "reading"> & { report_kind?: "life" | "fortune"; career?: CareerQuestion; career_question?: CareerQuestion; user_question?: string };
+type RelationshipContext = {
+  status: "unspecified" | "single" | "dating" | "partnered" | "separated" | "other";
+  source: "unspecified" | "direct" | "told" | "reported" | "guess";
+  roles?: string | null;
+  event?: string | null;
+};
+export type LifeInput = Omit<ReadingInput, "reading"> & { report_kind?: "life" | "fortune"; career?: CareerQuestion; career_question?: CareerQuestion; user_question?: string; relationship?: RelationshipContext };
 export const westernTopicKeys = ["natal", "career", "wealth", "love", "risk"] as const;
 export const personalTopicKeys = [...westernTopicKeys, "plan"] as const;
 export const legacyPersonalTopicKeys = ["talent", "node-1", "node-2", "node-3"] as const;
-export type ReportTopic = Reading | FortuneTopicKey | typeof westernTopicKeys[number] | typeof personalTopicKeys[number] | typeof legacyPersonalTopicKeys[number];
+export const relationshipTopicKeys = ["who", "impact", "pattern", "assessment", "decision", "next_steps"] as const;
+type RelationshipTopic = typeof relationshipTopicKeys[number];
+export type ReportTopic = Reading | FortuneTopicKey | typeof personalTopicKeys[number] | typeof legacyPersonalTopicKeys[number] | RelationshipTopic;
 export type LifeState = "not_started" | "pending" | "generating" | "ready" | "limited" | "unavailable" | "unconfigured";
 export type Feedback = "close" | "partly" | "different";
 export interface LifeEvidence { id: string; title: string; detail: string }
@@ -26,6 +34,7 @@ export interface PersonalReading {
   availability: { full_report: boolean; reason: "not_started" | "ready" | "time_unknown" | "unavailable" | "insufficient_periods" };
   talent: PersonalTalent | null; nodes: PersonalNode[];
   themes?: Record<"wealth" | "love" | "risk", PersonalTopic> | null;
+  relationship_sections?: Record<RelationshipTopic, string[]> | null;
 }
 export interface LifePoint extends ReadingItem { evidence: LifeEvidence[]; window?: LifeWindow }
 export interface LifeChapter {
@@ -209,7 +218,10 @@ export function lifeLabels(report: LifeReport): LifeLabels {
       ? informationCopy.jy[language].chart.western
       : additionalCopy("jy")[language].chart.western;
   }
-  if (report.format === "western-personal") labels.title = language === "zh" || language === "th" ? informationCopy.jy[language].personal.title : additionalCopy("jy")[language].personal.title;
+  if (report.format === "western-personal") {
+    labels.title = report.input.relationship ? report.title
+      : language === "zh" || language === "th" ? informationCopy.jy[language].personal.title : additionalCopy("jy")[language].personal.title;
+  }
   const question = report.input.career_question;
   if (question) {
     const situation = careerCopy[language].situations[question.stage];
@@ -253,7 +265,9 @@ export async function lifeApi<T>(path: string, language: Language, signal: Abort
 export function lifeSignature(input: LifeInput): string {
   const p = input.profile;
   const question = input.career_question;
-  return JSON.stringify([p.birth_date, p.birth_time, p.birthplace, p.timezone, p.language, p.country_code, p.location_id, p.latitude, p.longitude, input.year, input.career?.stage, input.career?.start, input.career?.focus, question?.stage, question?.start, question?.focus, input.user_question, input.report_kind]);
+  const context = input.relationship;
+  return JSON.stringify([p.birth_date, p.birth_time, p.birthplace, p.timezone, p.language, p.country_code, p.location_id, p.latitude, p.longitude, input.year, input.career?.stage, input.career?.start, input.career?.focus, question?.stage, question?.start, question?.focus, input.user_question,
+    ...(context ? [[context.status, context.source, context.roles ?? null, context.event ?? null]] : []), input.report_kind]);
 }
 const fullProgressKeys = ["work", "money", "relationships", "annual", "plan"];
 const fortuneProgressKeys = [...fortuneTopicKeys, "plan"];
@@ -276,8 +290,9 @@ export function isLifeReport(value: unknown): value is LifeReport {
   const nonempty = (value: unknown): value is string => typeof value === "string" && !!value.trim();
   if (personal) {
     const p = report.personal;
+    const relationshipReport = !!report.input?.relationship;
     const relationship = p?.relationship;
-    const requiresRelationship = Number(report.version?.match(/^western-personal-(\d+)$/)?.[1] || 0) >= 8;
+    const requiresRelationship = relationshipReport || Number(report.version?.match(/^western-personal-(\d+)$/)?.[1] || 0) >= 8;
     if (relationship != null || requiresRelationship && report.preview_state === 'ready') {
       if (!relationship || !nonempty(relationship.text) || !nonempty(relationship.action) || !Array.isArray(relationship.evidence) ||
           relationship.evidence.length !== 2 || new Set(relationship.evidence.map(fact => fact?.id)).size !== 2 ||
@@ -291,7 +306,11 @@ export function isLifeReport(value: unknown): value is LifeReport {
       p.opportunity_action !== undefined && typeof p.opportunity_action !== "string")) return false;
     if (report.preview_state === "ready" && (!hasLifePreview(report) || typeof p?.sun_sign !== "string" || !p.sun_sign.trim() || p.ascendant_sign !== null && typeof p.ascendant_sign !== "string")) return false;
     if (!report.input?.profile?.birth_time && p?.ascendant_sign != null) return false;
-    if (report.access === "full" && report.full_state === "ready") {
+    if (report.access === "full" && report.full_state === "ready" && relationshipReport) {
+      const sections = p?.relationship_sections;
+      if (!sections || Object.keys(sections).length !== relationshipTopicKeys.length ||
+          relationshipTopicKeys.some(key => !Array.isArray(sections[key]) || !sections[key].length || !sections[key].every(nonempty))) return false;
+    } else if (report.access === "full" && report.full_state === "ready") {
       if (personalKeys.length === personalTopicKeys.length) {
         const themes = p?.themes;
         if (!themes || Object.keys(themes).length !== 3 || (["wealth", "love", "risk"] as const).some(key => {
@@ -317,7 +336,8 @@ export function isLifeReport(value: unknown): value is LifeReport {
     && (!report.preview_generation_progress || isContentProgress(report.preview_generation_progress, previewProgressKeys));
 }
 
-export function personalProgressKeys(report: Pick<LifeReport, "catalog">): readonly string[] {
+export function personalProgressKeys(report: Pick<LifeReport, "catalog" | "input">): readonly string[] {
+  if (report.input?.relationship) return relationshipTopicKeys;
   return report.catalog?.length === personalTopicKeys.length ? personalTopicKeys : legacyPersonalTopicKeys;
 }
 

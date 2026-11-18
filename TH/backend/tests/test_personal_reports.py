@@ -10,7 +10,7 @@ import pytest
 
 from backend.app.astrology import RoxyAstrology
 from backend.app.bazi_reports import InvalidBaziReport
-from backend.app.life_report_content import LifeWriter
+from backend.app.life_report_content import PERSONAL_LOVE_FIELDS, LifeWriter
 from backend.app.life_reports import LifeInput
 from backend.app.main import create_app
 from backend.app.storage import Storage
@@ -35,6 +35,94 @@ def writer_stub(monkeypatch):
         return self.validate(json.dumps(personal_draft(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
     return calls
+
+
+def test_relationship_report_uses_separate_observed_roles_without_requiring_birth_time_or_forecast(tmp_path, monkeypatch, transport):
+    calls = []
+    context = {
+        "status": "single",
+        "roles": "前任、朋友",
+        "event": "前任两次取消约定又主动另约。朋友建议我给自己留出时间。",
+        "source": "direct",
+    }
+
+    async def write(self, bundle, *args):
+        calls.append(deepcopy(bundle))
+        if bundle["stage"] == "personal_preview":
+            return self.validate(json.dumps(personal_draft(bundle), ensure_ascii=False), bundle)
+        value = {
+            "language": "zh", "reading": "relationship-full",
+            "people": [
+                {"role": "前任", "event_excerpt": "两次取消约定又主动另约", "explanation": "前任的改约让你需要重新考虑要为接触留出多少时间。"},
+                {"role": "朋友", "event_excerpt": "建议我给自己留出时间", "explanation": "朋友的建议提醒你把自己的日程也放进这次选择里。"},
+            ],
+            "portrait": None,
+            "impact": "一次次调整相处安排会占用你的空闲时间，也容易让是否继续来往的决定迟迟定不下来。",
+            "patterns": [{
+                "evidence_id": bundle["citation_rules"]["topic_ids"][0],
+                "symbolism": "这项配置传统上与在交流中寻找亲切感有关。",
+                "behavior": "可以观察听到解释后，你是否立刻重新腾出时间。",
+            }],
+            "assessment": "主动另约显示还有协商空间，反复取消也有实际成本，尤其是你为未定的行程留出了大段时间。",
+            "continue_when": "选择新对象时，留意表达意愿后愿意一起安排时间的人。",
+            "reconsider_when": "如果一听到热络解释就接受长期的不确定，可以把守约和主动协调加进选择标准。",
+            "verify": "先确认第二次更改后双方有无落实新的约定。",
+            "question": "“我们能选一个都方便并且能落实的时间吗？”",
+            "observe": "看看下一次发生变动时，对方会不会提前提出替代安排。",
+        }
+        rendered = json.dumps(value, ensure_ascii=False)
+        for source in ("reported", "guess"):
+            uncertain = {**bundle, "relationship_context": {**context, "source": source}}
+            with pytest.raises(InvalidBaziReport, match="empty people list"):
+                self.validate(rendered, uncertain)
+        portrait = deepcopy(value)
+        portrait["people"] = []
+        portrait["portrait"] = {
+            "evidence_id": value["patterns"][0]["evidence_id"],
+            "text": "有一种相处风格值得留意。对方会耐心听你把话说完，你也因此愿意聊得更深。可以看看从聊天转到实际安排时，你是否依然觉得自在。",
+        }
+        assert self.validate(json.dumps(portrait, ensure_ascii=False), uncertain)["portrait"] == portrait["portrait"]
+        portrait["portrait"]["evidence_id"] = "fictional-factor"
+        with pytest.raises(InvalidBaziReport, match="portrait.*cited patterns"):
+            self.validate(json.dumps(portrait, ensure_ascii=False), uncertain)
+        invented = deepcopy(value)
+        invented["people"][0]["role"] = "对方家人"
+        with pytest.raises(InvalidBaziReport, match="exact behavior excerpts"):
+            self.validate(json.dumps(invented, ensure_ascii=False), bundle)
+        return self.validate(rendered, bundle)
+
+    monkeypatch.setattr(LifeWriter, "write", write)
+    with TestClient(create_app(settings(tmp_path))) as client:
+        async def forbidden_forecast(*args, **kwargs):
+            pytest.fail("The relationship report must accept an absent forecast.")
+        monkeypatch.setattr(client.app.state.life_reports.adapters["astrology"], "forecast", forbidden_forecast)
+        request = {"profile": {**PROFILE, "birth_time": None}, "year": 2026, "relationship": context}
+        response = client.post("/api/life-reports", json=request, headers=HEADERS)
+        assert response.status_code == 200, response.text
+        free = response.json()
+        assert free["personal"]["ascendant_sign"] is None
+        assert free["personal"]["relationship_sections"] is None
+        assert free["personal"]["availability"]["full_report"]
+        assert [bundle["stage"] for bundle in calls] == ["personal_preview"]
+        path = "/api/life-reports/" + free["id"]
+        assert client.post(path + "/unlock", headers=HEADERS).status_code == 402
+        order = client.post(path + "/payment", json={}, headers=HEADERS)
+        assert order.status_code == 200, order.text
+        assert client.post(path + "/payment/simulate", json={"reference": order.json()["reference"]}, headers=HEADERS).json()["paid"]
+
+        async def finish():
+            await asyncio.gather(*client.app.state.life_reports.tasks.values())
+        client.portal.call(finish)
+        full = client.get(path, headers=HEADERS).json()
+        assert full["full_state"] == "ready", full
+        assert [bundle["stage"] for bundle in calls] == ["personal_preview", "relationship_full"]
+        assert calls[1]["relationship_context"] == context
+        assert all(fact["type"] != "transit" for fact in calls[1]["evidence"].values())
+        assert [item["key"] for item in full["catalog"]] == ["who", "impact", "pattern", "assessment", "decision", "next_steps"]
+        assert "选择" in full["catalog"][4]["title"]
+        sections = full["personal"]["relationship_sections"]
+        assert [paragraph.split(" · ")[0] for paragraph in sections["who"]] == ["前任", "亲身经历", "朋友", "亲身经历"]
+        assert len(sections["next_steps"]) == 3
 
 
 def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_before_payment(tmp_path, monkeypatch, transport):
@@ -100,6 +188,10 @@ def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_
                                                       "action": relation["action"], "natal_aspect_id": aspect_id}
         assert any(fact["id"] == aspect_id for fact in full["personal"]["themes"]["love"]["evidence"])
         unrelated = personal_draft(calls[-1])
+        love = unrelated["themes"]["love"]
+        assert full["personal"]["themes"]["love"]["text"].split("\n\n") == [love[field] for field in ("text", *PERSONAL_LOVE_FIELDS)]
+        assert all(love[field] not in waiting["personal"]["relationship"]["text"] for field in PERSONAL_LOVE_FIELDS)
+        assert waiting["personal"]["themes"] is None
         unrelated["themes"]["love"]["evidence_ids"] = [key for key in calls[-1]["citation_rules"]["themes"]["love"] if key != aspect_id][:2]
         with pytest.raises(InvalidBaziReport, match="build on the free relationship aspect"):
             LifeWriter.validate(json.dumps(unrelated, ensure_ascii=False), calls[-1])
@@ -110,6 +202,13 @@ def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_
         with client.app.state.store.connect() as db:
             chapter_snapshot = db.execute("SELECT chapters FROM life_reports WHERE id=?", (free["id"],)).fetchone()["chapters"]
             previous_chapters = json.loads(chapter_snapshot)
+            previous_love = previous_chapters["personal"]["story"]["themes"]["love"]
+            for field in PERSONAL_LOVE_FIELDS:
+                del previous_love[field]
+            db.execute("UPDATE life_reports SET chapters=? WHERE id=?", (json.dumps(previous_chapters), free["id"]))
+        previous = client.get(path, headers=HEADERS).json()
+        assert previous["personal"]["themes"]["love"]["text"] == previous_love["text"]
+        with client.app.state.store.connect() as db:
             previous_chapters["personal"]["story"].pop("themes")
             db.execute("UPDATE life_reports SET chapters=? WHERE id=?", (json.dumps(previous_chapters), free["id"]))
         previous = client.get(path, headers=HEADERS).json()

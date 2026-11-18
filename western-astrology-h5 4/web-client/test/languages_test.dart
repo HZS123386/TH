@@ -37,19 +37,28 @@ void main() {
         H5App(controller: h5, initialLocation: '/?topic=love&startup=1'),
       );
       await tester.pumpAndSettle();
-      final write = find.byKey(const ValueKey('write-question'));
-      await tester.ensureVisible(write);
-      await tester.tap(write);
-      await tester.pumpAndSettle();
+      final questionField = find.byKey(const ValueKey('custom-question'));
+      await tester.ensureVisible(questionField);
       const question = 'How can I communicate more clearly?';
-      await tester.enterText(
-        find.byKey(const ValueKey('custom-question')),
-        question,
-      );
+      await tester.enterText(questionField, question);
+      final eventField = find.byKey(const ValueKey('relationship-event'));
+      await tester.ensureVisible(eventField);
+      const event = 'We agreed to talk after work and both followed through.';
+      await tester.enterText(eventField, event);
       await tester.pumpAndSettle();
       expect(h5Languages.map((option) => option.$1).toSet(), hasLength(9));
       expect(h5Languages.map((option) => option.$2).toSet(), hasLength(9));
-      for (final language in ['en', 'vi', 'my', 'km', 'lo', 'ms', 'id', 'zh', 'th']) {
+      for (final language in [
+        'en',
+        'vi',
+        'my',
+        'km',
+        'lo',
+        'ms',
+        'id',
+        'zh',
+        'th',
+      ]) {
         await tester.ensureVisible(find.byKey(const ValueKey('language-menu')));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('language-menu')));
@@ -72,6 +81,7 @@ void main() {
               .text,
           question,
         );
+        expect(tester.widget<TextField>(eventField).controller!.text, event);
         final uri = GoRouter.of(
           tester.element(find.byType(LandingPage)),
         ).routeInformationProvider.value.uri;

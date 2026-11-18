@@ -188,7 +188,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('该断该续？'), findsOneWidget);
+      expect(find.text('谁在影响你的感情？'), findsOneWidget);
       expect(find.byType(LandingPage), findsNothing);
       await tester.tap(find.byKey(const ValueKey('welcome-start')));
       await tester.pump();

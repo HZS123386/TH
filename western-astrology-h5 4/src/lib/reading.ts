@@ -236,6 +236,7 @@ export async function api<T>(
 export function reportHtml(result: LifeReport, c: LifeLabels): string {
   const language = result.input.profile.language;
   const personalCopy = result.format === "western-personal" ? (language === "zh" || language === "th" ? informationCopy.jy[language].personal : additionalLocales[language].jy.personal) : undefined;
+  const relationshipMode = !!personalCopy && !!result.input.relationship;
   const sections = reportContent(result);
   const advice = sections.find(section => section.key === "advice");
   const full = result.access === "full" && result.full_state === "ready";
@@ -274,11 +275,29 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
         ? personal!.traits!.map(trait => '<div class="personal-trait"><h4>' + escape(trait.title) + '</h4><p>' + escape(trait.text) + '</p></div>').join('')
         : '<p class="personal-free-line">' + escape(line) + '</p>';
       const action = index === 2 && personal?.opportunity_action ? '<p class="personal-opportunity-action">' + escape(personal.opportunity_action) + '</p>' : '';
-      return '<article class="personal-free-zone personal-free-' + key + '"><h3>' + escape(personalCopy[key]) + '</h3>' + content + action + '</article>';
+      const heading = relationshipMode && index === 2
+        ? result.catalog.find(section => section.key === 'next_steps')?.title ?? personalCopy[key]
+        : personalCopy[key];
+      return '<article class="personal-free-zone personal-free-' + key + '"><h3>' + escape(heading) + '</h3>' + content + action + '</article>';
     }).join('') + '</section>';
   }
   let personalBody = '';
-  if (full && personalCopy && result.personal?.talent) {
+  if (full && relationshipMode && result.personal?.relationship_sections) {
+    const answers = result.personal.relationship_sections;
+    const paragraphs = (lines: string[]) => lines.map(line => '<p>' + escape(line) + '</p>').join('');
+    personalBody = result.catalog.map(({key, title}) => {
+      const lines = answers[key as keyof typeof answers] ?? [];
+      let content = paragraphs(lines);
+      if (key === 'pattern') {
+        // Keep each actual factor with its interpretation and checkable behavior in the PDF.
+        content = '';
+        for (let index = 0; index < lines.length; index += 3) {
+          content += '<article><h4>' + escape(lines[index]) + '</h4>' + paragraphs(lines.slice(index + 1, index + 3)) + '</article>';
+        }
+      }
+      return '<section><h2>' + escape(title) + '</h2>' + content + '</section>';
+    }).join('');
+  } else if (full && personalCopy && result.personal?.talent) {
     const names = language === 'zh' || language === 'th' ? informationCopy.jy[language].report.westernSections : additionalLocales[language].jy.report.westernSections;
     const themes = result.personal.themes;
     const directions = result.personal.talent.directions.map(direction => '<article><h4>' + escape(direction.title) + '</h4><p>' + escape(direction.text) + '</p></article>').join('');
@@ -288,7 +307,8 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
     personalBody = themes
       ? '<section><h2>' + escape(names.natal) + '</h2><p>' + escape(result.personal.talent.text) + '</p></section>'
         + '<section><h2>' + escape(names.career) + '</h2>' + directions + '</section>'
-        + (['wealth', 'love', 'risk'] as const).map(key => '<section><h2>' + escape(names[key]) + '</h2><p>' + escape(themes[key].text) + '</p>'
+        + (['wealth', 'love', 'risk'] as const).map(key => '<section><h2>' + escape(names[key]) + '</h2>'
+          + themes[key].text.split('\n\n').map(paragraph => '<p>' + escape(paragraph) + '</p>').join('')
           + evidence({ ...themes[key], period: null }) + '</section>').join('')
         + '<section><h2>' + escape(names.plan) + '</h2>' + nodes + '</section>'
       : '<section><h2>' + escape(personalCopy.talent) + '</h2><p>' + escape(result.personal.talent.text) + '</p>' + directions + '</section>' + nodes;
@@ -296,6 +316,6 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
   const catalog = personalCopy ? '' : '<section><h2>' + escape(c.catalog) + '</h2>' + sections.filter(section => full || !section.paid).map(section => '<h3>' + escape(section.title) + '</h3><p>' + escape(section.description) + '</p>').join('') + '</section>';
   const chapters = full ? sections.filter(section => section.paid && section.groups.length).map(section => '<section><h2>' + escape(section.title) + '</h2>' + section.summaries.map(summary => window(summary) + '<p class="takeaway">' + escape(summary.text) + '</p>' + evidence(summary)).join('') + section.groups.map(group => '<h3>' + escape(group.title) + '</h3>' + group.entries.map(entry => point(entry.point)).join('')).join('') + '</section>').join('') : '';
   const plan = full && result.plan && advice ? '<section><h2>' + escape(advice.title) + '</h2><p>' + escape(advice.description) + '</p>' + result.plan.phases.map((phase,index) => '<h3>' + escape(c.priority) + ' ' + (index + 1) + '</h3><h4>' + escape(phase.title) + '</h4><p>' + escape(phase.text) + '</p>' + phase.actions.map(action => '<h4>' + escape(action.title) + '</h4>' + window(action) + list(action.steps || [],true)).join('')).join('') + '</section>' : '';
-  const header = personalCopy ? '<header><p class="label">FATE</p><h1>' + escape(personalCopy.title) + '</h1></header>' : '<header><p class="label">FATE</p><h1>' + escape(c.title) + '</h1><p>' + escape(c.subtitle) + '</p><h2>' + escape(sections[0].title) + '</h2><p>' + escape(c.name) + ': ' + escape(result.input.profile.display_name || c.defaultName) + '</p><p>' + escape(result.input.profile.birth_date) + ' · ' + escape(result.input.profile.birth_time || c.timeUnknown) + '<br>' + escape(result.input.profile.birthplace) + ' · ' + escape(result.input.profile.timezone) + '</p>' + (!result.input.profile.birth_time ? '<p>' + escape(ui[language].timeNote) + '</p>' : '') + '<p class="label">' + (result.format === 'western-compact' ? '' : escape(c.methodValue) + '<br>') + escape(c.timeRange) + ': ' + escape(reportReference(result, c)) + '<br>' + escape(result.id.toUpperCase()) + '</p></header>';
+  const header = personalCopy ? '<header><p class="label">FATE</p><h1>' + escape(relationshipMode ? c.title : personalCopy.title) + '</h1></header>' : '<header><p class="label">FATE</p><h1>' + escape(c.title) + '</h1><p>' + escape(c.subtitle) + '</p><h2>' + escape(sections[0].title) + '</h2><p>' + escape(c.name) + ': ' + escape(result.input.profile.display_name || c.defaultName) + '</p><p>' + escape(result.input.profile.birth_date) + ' · ' + escape(result.input.profile.birth_time || c.timeUnknown) + '<br>' + escape(result.input.profile.birthplace) + ' · ' + escape(result.input.profile.timezone) + '</p>' + (!result.input.profile.birth_time ? '<p>' + escape(ui[language].timeNote) + '</p>' : '') + '<p class="label">' + (result.format === 'western-compact' ? '' : escape(c.methodValue) + '<br>') + escape(c.timeRange) + ': ' + escape(reportReference(result, c)) + '<br>' + escape(result.id.toUpperCase()) + '</p></header>';
   return '<!doctype html><html lang="' + language + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(c.title) + '</title><style>html{background:#130c24;color-scheme:dark}*{box-sizing:border-box}body{max-width:820px;margin:0 auto;padding:40px 28px;background:radial-gradient(ellipse at 0 0,#352044,transparent 55%),#130c24;color:#fff5df;font:15px/1.95 "Noto Sans SC","Noto Sans Thai",system-ui,sans-serif}h1,h2,h3,h4,h5{break-after:avoid}h1{font-size:36px;font-weight:500}h2{font-size:25px;color:#e4bc78}h3{font-size:19px;color:#e4bc78}h4{font-size:17px;margin:0 0 12px}h5{font-size:14px;color:#e4bc78;margin-bottom:6px}p,li{overflow-wrap:anywhere;color:#d5c8e3}p{margin:12px 0}.label{font-size:12px;color:#e4bc78}.takeaway{font-size:20px;color:#fff5df}section{border-top:1px solid #e4bc7850;margin-top:34px;padding-top:18px}.personal-free-keywords{background:linear-gradient(135deg,#422650,#251733);border-color:#d5ae7080}.personal-signs{font-size:26px;font-weight:700;line-height:1.4;color:#fff5df;margin:10px 0}.personal-signs span{display:inline-block;margin-right:6px}.personal-keywords{display:flex;flex-wrap:wrap;gap:8px}.personal-keywords span{padding:2px 12px;border:1px solid #d5ae70;border-radius:30px;color:#e4bc78;font-size:13px}.personal-trait{padding:12px 0}.personal-trait+.personal-trait{border-top:1px solid #d5ae7044}.personal-trait h4{margin:0;font-size:16px}.personal-trait p{margin:3px 0 0;font-size:14px;line-height:1.6}.personal-free-opportunity .personal-free-line{font-size:20px;font-weight:600;color:#fff5df}.personal-free-zone h3{margin:0 0 8px;font-size:14px}.personal-free-zone{margin:16px 0}.personal-free-opportunity{background:linear-gradient(135deg,#463344,#2b1c35);border-color:#d5ae7080}article{margin:26px 0;padding:18px;background:#21162f;border:1px solid #e4bc7830;border-radius:12px;break-inside:avoid}details{font-size:12px;background:#160f24;border:1px solid #e4bc7830;border-radius:8px;padding:12px;margin-top:16px;color:#b4a8c6}summary{color:#e4bc78;cursor:pointer}li{padding-left:4px;margin:10px 0}header{border:1px solid #e4bc7860;border-radius:16px;padding:24px;background:#241535}footer{margin-top:36px;font-size:11px;color:#b4a8c6}@page{size:A4;margin:16mm}@media print{html,body{background:#130c24!important;color:#fff5df;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:0;max-width:none;font-size:11pt}details{display:block}details>*{display:block}article{break-inside:auto}section{break-before:auto}}</style></head><body>' + header + preview + personalBody + catalog + chapters + plan + (personalCopy ? '' : '<footer>' + escape(c.sourceVersion) + ' · ' + escape(result.method.version) + ' / ' + escape(result.version) + '</footer>') + '</body></html>';
 }
