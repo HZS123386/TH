@@ -6,6 +6,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as pause } from 'node:timers/promises';
+import { python as backendPython } from '../../TH/scripts/python.mjs';
 
 export const projectRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export const flutterRoot=path.join(projectRoot,'web-client');
@@ -24,14 +25,14 @@ async function moveBuild(source,target){
     }
   }
 }
-export async function buildLanding({release=false}={}){
+export async function buildLanding({release=false,noPub=false}={}){
   await import('./prepare-flutter.mjs');
   const temporary=path.resolve(projectRoot,'tmp'),destination=path.resolve(projectRoot,'site');
   await mkdir(temporary,{recursive:true});
   const generated=await mkdtemp(path.join(temporary,'flutter-site-'));
   const previous=path.join(temporary,`site-previous-${Date.now()}`);
   if(!generated.startsWith(temporary+path.sep)||!previous.startsWith(temporary+path.sep)||destination!==path.join(projectRoot,'site'))throw Error('Unexpected build directory');
-  await flutter(['build','web','--release','--wasm','--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
+  await flutter(['build','web','--release','--wasm',...(noPub?['--no-pub']:[]),'--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
   const bootstrap=await readFile(path.join(generated,'flutter_bootstrap.js'),'utf8');
   const engineRevision=/"engineRevision":"([a-f0-9]{40})"/.exec(bootstrap)?.[1];
   if(!engineRevision)throw Error('Missing Flutter engine revision');
@@ -70,7 +71,8 @@ export async function buildLanding({release=false}={}){
     if(brotli.length<original.length)await writeFile(file+'.br',brotli);
   }
   if(release)await new Promise((resolve,reject)=>{
-    const python=process.env.FATE_PYTHON_BIN||(process.platform==='win32'?'python':'python3');
+    const defaultPython=process.platform==='win32'?'python':'python3';
+    const python=process.env.FATE_PYTHON_BIN||(existsSync(backendPython)?backendPython:defaultPython);
     const child=spawn(python,[path.join(projectRoot,'scripts','precompress.py'),generated],{cwd:projectRoot,stdio:'inherit',windowsHide:true});
     child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(`Release compression exited with ${code}`)));
   });

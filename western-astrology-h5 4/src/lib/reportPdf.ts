@@ -83,6 +83,10 @@ function edition(report: LifeReport, labels: LifeLabels): string {
 }
 
 function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
+  if (report.format === "western-personal") return [
+    { text: "FATE", color: palette.paleGold, characterSpacing: 2.2, fontSize: 9, margin: [0, 0, 0, 10] },
+    { text: textRuns(labels.title), fontSize: 26, color: "#FFF5DF", lineHeight: 1.15, margin: [0, 0, 0, report.input.profile.language === "my" ? 104 : 54] },
+  ];
   const profile = report.input.profile;
   const language = profile.language;
   const version = edition(report, labels);
@@ -103,7 +107,7 @@ function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
       ],
       [{ colSpan: 2, stack: [
         { text: [...textRuns(`${labels.name}  `), ...textRuns(profile.display_name || labels.defaultName, true)], fontSize: 9.5, color: palette.ink, margin: [0, 0, 0, 6] },
-        { text: textRuns(`${labels.method}  ${labels.methodValue}`), fontSize: 9.5, color: palette.ink },
+        ...(report.format === "western-compact" ? [] : [{ text: textRuns(`${labels.method}  ${labels.methodValue}`), fontSize: 9.5, color: palette.ink }]),
         { text: textRuns(`${labels.timeRange}  ${reportReference(report, labels)}`), fontSize: 9, color: palette.muted, margin: [0, 6, 0, 0] },
       ] }, {}],
     ] }, fillColor: "#FFFFFF", layout: { hLineWidth: () => .5, vLineWidth: (index) => index === 1 ? 0 : .5,
@@ -118,21 +122,28 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
   const document = new DOMParser().parseFromString(reportHtml(report, labels), "text/html");
   const full = report.access === "full" && report.full_state === "ready";
   const sections = reportContent(report);
-  const compact = report.format === "western-compact";
+  const personal = report.format === "western-personal";
+  const compact = personal || report.format === "western-compact";
   const paidTitles = new Set(sections.filter(section => section.paid).map(section => section.title));
   let evidenceNoteShown = false;
   function blocks(element: Element, evidence = false): Content[] {
     const tag = element.tagName;
     const children = (): Content[] => {
       const nodes = Array.from(element.children);
+      const personalNode = personal && element.classList.contains("personal-node");
       if (tag === "ARTICLE") return nodes.flatMap(child => blocks(child, evidence));
       const content: Content[] = [];
       for (let index = 0; index < nodes.length; index++) {
         if (!/^H[1-5]$/.test(nodes[index].tagName)) { content.push(...blocks(nodes[index], evidence)); continue; }
         let end = index;
-        while (end < nodes.length && /^H[1-5]$/.test(nodes[end].tagName)) end++;
+        while (end < nodes.length && /^H[1-5]$/.test(nodes[end].tagName) && (!personalNode || end === index)) end++;
         const headings = nodes.slice(index, end).flatMap(node => blocks(node, evidence));
         const next = nodes[end];
+        if (personalNode && nodes[index].tagName === "H4" && next?.tagName === "P") {
+          content.push({ text: [...inline(nodes[index], true), ...textRuns(report.input.profile.language === "zh" ? "：" : ": "), ...inline(next)], fontSize: 10.5, lineHeight: 1.35, margin: [0, 6, 0, 0] });
+          index = end;
+          continue;
+        }
         if (next?.tagName === "P") {
           content.push({ stack: [...headings, ...blocks(next, evidence)], unbreakable: true });
           index = end;
@@ -165,30 +176,33 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
         const index = sections.findIndex(section => section.title === element.textContent);
         return [{ stack: [
           { columns: [
-            { text: index > 0 ? String(index).padStart(2, "0") : "", width: 34, color: palette.gold, fontSize: 17 },
-            { text: inline(element), fontSize: 19, color: palette.night },
+            { text: index > 0 ? String(index).padStart(2, "0") : "", width: personal ? 28 : 34, color: palette.gold, fontSize: personal ? 14 : 17 },
+            { text: inline(element), fontSize: personal ? 16 : 19, color: palette.night },
           ], columnGap: 8 },
-          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 491, y2: 0, lineWidth: .5, lineColor: palette.line }], margin: [0, 9, 0, 12] },
-        ], margin: [0, 17, 0, 0], headlineLevel: 1 }];
+          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 491, y2: 0, lineWidth: .5, lineColor: palette.line }], margin: personal ? [0, 5, 0, 7] : [0, 9, 0, 12] },
+        ], margin: [0, personal ? 9 : 17, 0, 0], headlineLevel: 1 }];
       }
       if (level === 4 && element.parentElement?.tagName === "ARTICLE") {
         const articles = Array.from(element.closest("section")?.querySelectorAll("article") || []);
         const index = articles.indexOf(element.parentElement) + 1;
         return [{ text: [
-          { text: `${String(index).padStart(2, "0")}   `, color: palette.gold, fontSize: 15 },
+          { text: `${String(index).padStart(2, "0")}   `, color: palette.gold, fontSize: personal ? 11 : 15 },
           ...inline(element),
-        ], fontSize: 13.5, color: palette.purple, margin: [0, 12, 0, 3], headlineLevel: 1 }];
+        ], fontSize: personal ? 11.5 : 13.5, color: palette.purple, margin: personal ? [0, 6, 0, 2] : [0, 12, 0, 3], headlineLevel: 1 }];
       }
-      return [{ text: inline(element), fontSize: [0, 27, 19, 13.5, 12, 10][level], color: level < 4 ? palette.purple : palette.ink, margin: [0, level < 3 ? 16 : 12, 0, 0], headlineLevel: 1 }];
+      return [{ text: inline(element), fontSize: (personal ? [0, 26, 16, 12, 11, 10] : [0, 27, 19, 13.5, 12, 10])[level], color: level < 4 ? palette.purple : palette.ink, margin: [0, personal ? 4 : level < 3 ? 16 : 12, 0, 0], headlineLevel: 1 }];
     }
     if (tag === "P" || tag === "SUMMARY") {
       const label = element.classList.contains("label") || tag === "SUMMARY";
+      if (personal && element.classList.contains("personal-signs")) return [{ text: inline(element), fontSize: 17, bold: true, color: palette.purple, margin: [0, 3, 0, 5] }];
+      if (personal && element.classList.contains("personal-keywords")) return [{ text: inline(element), fontSize: 10, color: palette.gold, margin: [0, 2, 0, 4] }];
       if (element.classList.contains("takeaway")) return [panel([{ text: inline(element), fontSize: 12, color: palette.purple, lineHeight: 1.45 }])];
-      return [{ text: inline(element), fontSize: evidence ? 8.5 : label ? 9 : 10.5, color: evidence ? palette.muted : label ? palette.gold : palette.ink, margin: [0, evidence ? 5 : 9, 0, 0], lineHeight: 1.5 }];
+      return [{ text: inline(element), fontSize: evidence ? 8.5 : label ? 9 : 10.5, color: evidence ? palette.muted : label ? palette.gold : palette.ink, margin: [0, personal ? 4 : evidence ? 5 : 9, 0, 0], lineHeight: personal ? 1.35 : 1.5 }];
     }
     if (tag === "UL" || tag === "OL") {
       const items = Array.from(element.children).map(item => ({ text: inline(item), margin: [0, 6, 0, 0] as [number, number, number, number] }));
-      return [tag === "OL" ? { ol: items, margin: [14, 8, 0, 0] } : { ul: items, margin: [14, 8, 0, 0] }];
+      const keepSteps = items.length <= 6 && (element.textContent?.length || 0) <= 900;
+      return [tag === "OL" ? { ol: items, unbreakable: keepSteps, margin: [14, 8, 0, 0] } : { ul: items, margin: [14, 8, 0, 0] }];
     }
     if (tag === "SECTION") {
       const title = element.querySelector(":scope > h2")?.textContent || "";
@@ -203,12 +217,12 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
               { text: textRuns(section.description), fontSize: 9, color: palette.muted, margin: [0, 4, 0, 0] },
             ] },
           ], columnGap: 8, margin: [0, 0, 0, 14] })),
-        ], pageBreak: "before" }];
+        ] }];
       }
       // Short Western sections flow together so a brief chapter tail cannot occupy a whole page.
       const firstPaid = sections.find(section => section.paid)?.title;
-      const pageBreak = full && (compact ? title === firstPaid : paidTitles.has(title) || title === labels.catalog) ? "before" as const : undefined;
-      return [{ stack: children(), pageBreak, margin: [0, 4, 0, 0] }];
+      const pageBreak = !personal && full && (compact ? title === firstPaid : paidTitles.has(title) || title === labels.catalog) ? "before" as const : undefined;
+      return [{ stack: children(), pageBreak, margin: [0, personal ? 0 : 4, 0, 0] }];
     }
     if (tag === "DETAILS") {
       const facts = Array.from(element.children).filter(child => child.textContent !== labels.evidenceHint);
@@ -224,7 +238,11 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
     if (tag === "HEADER") return reportHeader(report, labels);
     if (tag === "ARTICLE") {
       const content = children();
-      if (content.length <= 3) return [{ stack: content, unbreakable: true, margin: [0, 6, 0, 0] }];
+      if (personal && element.classList.contains("personal-node")) return [{ stack: content, unbreakable: true, margin: [0, 3, 0, 0] }];
+      if (personal && element.classList.contains("personal-free-zone")) {
+        return [{ stack: [panel(content, element.classList.contains("personal-free-opportunity") ? "#F8EBD2" : palette.lavender, palette.gold, true)], unbreakable: true }];
+      }
+      if (content.length <= 3) return [{ stack: content, unbreakable: true, margin: [0, personal ? 3 : 6, 0, 0] }];
       return [{ stack: [
         { stack: content.slice(0, 2), unbreakable: true },
         ...content.slice(2, -2),
@@ -235,11 +253,11 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
     return children();
   }
   return {
-    pageSize: "A4", pageMargins: [52, 62, 52, 62],
+    pageSize: "A4", pageMargins: personal ? [52, 52, 52, 48] : [52, 62, 52, 62],
     info: { title: labels.title, author: "FATE", subject: full ? labels.fullVersion : labels.previewVersion, keywords: `${report.method.version} / ${report.version}` },
     defaultStyle: { font: "NotoChinese", fontSize: 10.5, color: palette.ink, lineHeight: 1.5 },
     // Stacked Myanmar marks require a taller title band to retain subtitle contrast.
-    background: (page, size) => ({ svg: pageArtwork(size.width, size.height, page === 1, report.input.profile.language === "my" ? 250 : 194), width: size.width, height: size.height }),
+    background: (page, size) => ({ svg: pageArtwork(size.width, size.height, page === 1, personal ? report.input.profile.language === "my" ? 206 : 156 : report.input.profile.language === "my" ? 250 : 194), width: size.width, height: size.height }),
     header: page => page === 1 ? [] : ({ columns: [
       { text: "FATE", characterSpacing: 1.5, color: palette.gold },
       { text: textRuns(`${labels.title} · ${edition(report, labels)}`), alignment: "right", color: palette.muted },
@@ -248,7 +266,7 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
     footer: (page, count) => ({ columns: [
       { text: textRuns(`FATE  /  ${report.id.slice(0, 12).toUpperCase()}`) },
       { text: `${page} / ${count}`, alignment: "right" },
-    ], fontSize: 7.5, color: palette.muted, margin: [52, 32, 52, 0] }),
+    ], fontSize: 7.5, color: palette.muted, margin: [52, personal ? 20 : 32, 52, 0] }),
   };
 }
 

@@ -5,7 +5,7 @@
 ## 运行入口
 
 - APP 主工程：`app/lib/main.dart` → `app/lib/app/fate_app.dart`。
-- 默认开发命令：根目录 `pnpm dev`，启动现有 FastAPI 和 Flutter APP 预览。
+- 默认开发命令：仓库根目录执行 `pnpm dev`，启动 FastAPI、Flutter APP 和 H5；已有构建时使用 `pnpm dev:ready`。
 - 单独启动：`pnpm dev:app`，默认端口 5174；需要已有 FastAPI 8000 服务。
 - 原 React 比对预览：`pnpm dev:react-preview`，端口 5175。它作为迁移保留项，不承担原生内购。
 - 现有 React 构建和 Vitest 命令保留，供依赖核查与旧功能对照。

@@ -47,13 +47,19 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _model.addListener(_changed);
-    unawaited(_model.load());
+    final generated = widget.h5.takeGeneratedPreview(widget.id);
+    if (generated != null) {
+      // From the form, this report was already fetched, validated, and prepared for display.
+      _model.accept(generated);
+    } else {
+      unawaited(_model.load());
+    }
   }
 
   void _changed() {
     final r = _model.report;
     if (r == null) return;
-    if (!_reported && r.preview.isNotEmpty) {
+    if (!_reported && r.hasPreview) {
       _reported = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -296,6 +302,162 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     ),
   );
 
+  Json _mergePreviewParts(List<Json> parts, Copy c) {
+    final paragraphs = parts
+        .map(
+          (part) => text(part['text']).trim().replaceAll(RegExp(r'\s+'), ' '),
+        )
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    final seen = <String>{};
+    final evidence = <Json>[];
+    for (final part in parts) {
+      for (final item in objects(part['evidence'])) {
+        final id = text(item['id']);
+        final key = id.isNotEmpty
+            ? 'id:$id'
+            : jsonEncode([item['title'], item['detail']]);
+        if (seen.add(key)) evidence.add(item);
+      }
+    }
+    return {
+      'text': paragraphs.join(c.language == 'zh' ? '' : ' '),
+      'evidence': evidence,
+    };
+  }
+
+  List<Widget> _westernPreview(LifeReport report, Copy c) {
+    final preview = report.preview;
+    final colon = c.language == 'zh' ? '：' : ': ';
+    Json point(String key) => object(preview[key]);
+    bool present(String key) => text(point(key)['text']).trim().isNotEmpty;
+    Json note(String value) => {'text': value};
+    final identity = _mergePreviewParts([
+      point('summary'),
+      ...objects(preview['traits']),
+    ], c);
+    final environment = _mergePreviewParts([
+      if (present('environment')) point('environment'),
+      for (final key in ['favorable', 'unfavorable'])
+        if (present(key))
+          {
+            ...point(key),
+            'text':
+                '${c.t('jy', 'report.questions.$key')}$colon${point(key)['text']}',
+          },
+      if ([
+        'environment',
+        'favorable',
+        'unfavorable',
+      ].any((key) => !present(key)))
+        note(c.t('jy', 'report.previewParagraphs.legacyEnvironment')),
+    ], c);
+    final recent = point('recent');
+    final state = text(object(report.json['outlook'])['state']);
+    final window = object(recent['window']);
+    final timeUnknown =
+        text(report.profile['birth_time']).isEmpty ||
+        report.estimated ||
+        state == 'time_unknown';
+    final hasWindow =
+        !timeUnknown &&
+        state != 'unavailable' &&
+        present('recent') &&
+        [
+          'start',
+          'end',
+          'event_date',
+          'timezone',
+        ].every((key) => text(window[key]).trim().isNotEmpty);
+    final timing = _mergePreviewParts([
+      if (hasWindow)
+        {
+          ...recent,
+          'text':
+              '${preview['sample_topic'] == 'career' ? '${c.t('jy', 'report.questions.freePeriod')}$colon' : ''}${recent['text']}',
+        }
+      else
+        note(
+          c.t(
+            'jy',
+            timeUnknown
+                ? 'report.questions.timeUnknown'
+                : state == 'ready'
+                ? 'report.questions.empty'
+                : state == 'unavailable'
+                ? 'report.questions.unavailable'
+                : 'report.previewParagraphs.legacyRecent',
+          ),
+        ),
+      if (hasWindow && present('response'))
+        {
+          ...point('response'),
+          'text':
+              '${c.t('jy', 'report.questions.freeResponse')}$colon${point('response')['text']}',
+        },
+      if (hasWindow) note(c.t('jy', 'report.questions.timingNote')),
+    ], c);
+    if (hasWindow) timing['window'] = recent['window'];
+    return [
+      for (final entry in [
+        ('identity', identity),
+        ('environment', environment),
+        ('recent', timing),
+      ])
+        if (entry.$1 == 'recent' && !hasWindow)
+          Padding(
+            key: const ValueKey('preview-timing-unavailable'),
+            padding: const EdgeInsets.only(top: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  text(entry.$2['text']),
+                  style: const TextStyle(
+                    color: lavender,
+                    fontSize: 12,
+                    height: 1.7,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: _backHome,
+                  child: Text(c.t('generation', 'back')),
+                ),
+              ],
+            ),
+          )
+        else
+          Padding(
+            padding: EdgeInsets.only(top: entry.$1 == 'identity' ? 0 : 14),
+            child: JYCard(
+              key: ValueKey('preview-paragraph-${entry.$1}'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    c.t('jy', 'report.previewParagraphs.${entry.$1}'),
+                    style: const TextStyle(
+                      color: gold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _window(entry.$2, c),
+                  Text(
+                    text(entry.$2['text']),
+                    key: ValueKey('preview-paragraph-${entry.$1}-text'),
+                    style: const TextStyle(fontSize: 14, height: 1.8),
+                  ),
+                  _evidence(entry.$2['evidence'], c),
+                ],
+              ),
+            ),
+          ),
+    ];
+  }
+
   Widget _window(Json point, Copy c) {
     final window = object(point['window']);
     if (window.isEmpty) return const SizedBox.shrink();
@@ -317,135 +479,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _questionHeading(String key, int number, Copy c) => Padding(
-    padding: EdgeInsets.only(top: number == 1 ? 0 : 26, bottom: 12),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 25,
-          height: 25,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: gold.withValues(alpha: .12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$number',
-            style: const TextStyle(
-              color: gold,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            c.t('jy', 'report.questions.$key'),
-            style: const TextStyle(
-              color: cream,
-              fontSize: 17,
-              height: 1.4,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  List<Widget> _fourQuestions(LifeReport report, Copy c) {
-    final preview = report.preview;
-    Widget answer(String key) => object(preview[key]).isEmpty
-        ? Text(
-            c.t('jy', 'report.questions.legacy'),
-            style: const TextStyle(color: lavender, fontSize: 12, height: 1.7),
-          )
-        : _summary(object(preview[key]), c);
-    final state = text(object(report.json['outlook'])['state']);
-    return [
-      _questionHeading('who', 1, c),
-      _summary(object(preview['summary']), c),
-      ExpansionTile(
-        key: const ValueKey('identity-details'),
-        tilePadding: EdgeInsets.zero,
-        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-        title: Text(
-          c.t('jy', 'report.questions.identityDetails'),
-          style: const TextStyle(color: gold, fontSize: 13),
-        ),
-        children: [
-          for (final trait in objects(preview['traits'])) _point(trait, c),
-        ],
-      ),
-      if (preview['career_answer'] != null)
-        _summary(object(preview['career_answer']), c),
-      _questionHeading('environment', 2, c),
-      answer('environment'),
-      _questionHeading('influence', 3, c),
-      for (final key in ['favorable', 'unfavorable']) ...[
-        Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 8),
-          child: Text(
-            c.t('jy', 'report.questions.$key'),
-            style: const TextStyle(
-              color: gold,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        answer(key),
-      ],
-      if (object(preview['response']).isNotEmpty) ...[
-        Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 8),
-          child: Text(
-            c.t('jy', 'report.questions.freeResponse'),
-            style: const TextStyle(
-              color: gold,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        answer('response'),
-      ],
-      _questionHeading('timing', 4, c),
-      if (preview['sample_topic'] == 'career' &&
-          object(preview['recent']).isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            c.t('jy', 'report.questions.freePeriod'),
-            style: const TextStyle(color: gold, fontSize: 13),
-          ),
-        ),
-      if (object(preview['recent']).isNotEmpty)
-        answer('recent')
-      else
-        Text(
-          c.t(
-            'jy',
-            'report.questions.${report.estimated
-                ? 'timeUnknown'
-                : state == 'ready'
-                ? 'empty'
-                : state == 'unavailable'
-                ? 'unavailable'
-                : 'legacy'}',
-          ),
-          style: const TextStyle(color: lavender, fontSize: 12, height: 1.7),
-        ),
-      const SizedBox(height: 12),
-      Text(
-        c.t('jy', 'report.questions.timingNote'),
-        style: const TextStyle(color: lavender, fontSize: 11, height: 1.6),
-      ),
-    ];
-  }
-
   Widget _freePreview(LifeReport report, Copy c) => JYCard(
     key: const ValueKey('free-report-content'),
     padding: const EdgeInsets.all(20),
@@ -457,22 +490,98 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       children: [
         if (!report.full) ...[
           Text(
-            c.t('jy', 'report.freeTitle'),
+            c.t(
+              'jy',
+              report.personalReport ? 'personal.freeTitle' : 'report.freeTitle',
+            ),
             style: const TextStyle(
               color: gold,
               fontSize: 23,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            c.t('jy', 'report.freeHint'),
-            style: const TextStyle(color: lavender, fontSize: 12, height: 1.65),
-          ),
-          const SizedBox(height: 20),
+          if (!report.personalReport) ...[
+            const SizedBox(height: 8),
+            Text(
+              c.t('jy', 'report.freeHint'),
+              style: const TextStyle(
+                color: lavender,
+                fontSize: 12,
+                height: 1.65,
+              ),
+            ),
+            const SizedBox(height: 20),
+          ] else
+            const SizedBox(height: 16),
         ],
-        if (report.western)
-          ..._fourQuestions(report, c)
+        if (report.personalReport && report.relationshipPreview.isNotEmpty) ...[
+          JYCard(
+            key: const ValueKey('free-relationship-preview'),
+            radius: 14,
+            borderColor: const Color(0xFFB878A4),
+            colors: const [Color(0xFF3D2445), Color(0xFF24182F)],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.favorite_border,
+                      color: Color(0xFFF3BDDB),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        c.t('jy', 'personal.relationshipTitle'),
+                        style: const TextStyle(
+                          color: Color(0xFFFFD6EC),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  text(report.relationshipPreview['text']),
+                  key: const ValueKey('free-relationship-text'),
+                  style: const TextStyle(
+                    color: cream,
+                    fontSize: 14,
+                    height: 1.8,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  c.t('jy', 'personal.relationshipAction'),
+                  style: const TextStyle(
+                    color: gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  text(report.relationshipPreview['action']),
+                  key: const ValueKey('free-relationship-action'),
+                  style: const TextStyle(
+                    color: cream,
+                    fontSize: 14,
+                    height: 1.8,
+                  ),
+                ),
+                _evidence(report.relationshipPreview['evidence'], c),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
+        if (report.personalReport)
+          ..._personalPreview(report, c)
+        else if (report.western)
+          ..._westernPreview(report, c)
         else ...[
           Text(
             text(report.input['user_question']).isNotEmpty
@@ -510,6 +619,195 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       ],
     ),
   );
+  List<Widget> _personalPreview(LifeReport report, Copy c) {
+    final traits = report.freeTraits;
+    final structured = traits.length == 3;
+    final separator = report.language == 'zh' ? '' : ' ';
+    final signs = [
+      if (text(report.personal['sun_sign']).isNotEmpty)
+        '${c.t('reading', 'planets.sun')}$separator${report.personal['sun_sign']}',
+      if (text(report.personal['ascendant_sign']).isNotEmpty)
+        '${c.t('reading', 'planets.ascendant')}$separator${report.personal['ascendant_sign']}',
+    ];
+    return [
+      for (final entry in report.freeLines.indexed)
+        Padding(
+          padding: EdgeInsets.only(bottom: entry.$1 == 2 ? 0 : 16),
+          child: JYCard(
+            key: ValueKey('personal-free-zone-${entry.$1}'),
+            padding: const EdgeInsets.all(16),
+            radius: 14,
+            borderColor: const Color(0x99D5AE70),
+            colors: entry.$1 == 0
+                ? const [Color(0xFF422650), Color(0xFF251733)]
+                : entry.$1 == 2
+                ? const [Color(0xFF463344), Color(0xFF2B1C35)]
+                : const [Color(0xFF241930), Color(0xFF21162E)],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  c.t(
+                    'jy',
+                    'personal.${['keywords', 'traits', 'opportunity'][entry.$1]}',
+                  ),
+                  style: const TextStyle(
+                    color: gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (structured && entry.$1 == 0) ...[
+                  Wrap(
+                    key: const ValueKey('personal-signs'),
+                    spacing: 8,
+                    runSpacing: 3,
+                    children: [
+                      for (final sign in signs.indexed)
+                        Text(
+                          '${sign.$1 == 0 ? '' : '+ '}${sign.$2}',
+                          style: const TextStyle(
+                            color: cream,
+                            fontSize: 22,
+                            height: 1.4,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      for (final trait in traits.take(2))
+                        Container(
+                          key: ValueKey(
+                            'personal-keyword-${text(trait['title'])}',
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xBBD5AE70)),
+                            borderRadius: BorderRadius.circular(30),
+                            color: const Color(0x22E4BC78),
+                          ),
+                          child: Text(
+                            text(trait['title']),
+                            style: const TextStyle(
+                              color: gold,
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // The sign overview is already expressed by the title and trait rows.
+                  Text(
+                    report.freeLines[1],
+                    key: const ValueKey('personal-free-summary'),
+                    style: const TextStyle(
+                      color: lavender,
+                      fontSize: 14,
+                      height: 1.65,
+                    ),
+                  ),
+                ] else if (structured && entry.$1 == 1)
+                  for (final trait in traits.indexed) ...[
+                    if (trait.$1 > 0)
+                      const Divider(height: 22, color: Color(0x44D5AE70)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 38,
+                          margin: const EdgeInsets.only(right: 12, top: 3),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              right: BorderSide(color: Color(0x55D5AE70)),
+                            ),
+                          ),
+                          child: Icon(
+                            [
+                              Icons.wb_sunny_outlined,
+                              Icons.auto_awesome_outlined,
+                              Icons.hub_outlined,
+                            ][trait.$1],
+                            color: gold,
+                            size: 24,
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                text(trait.$2['title']),
+                                key: ValueKey(
+                                  'personal-trait-title-${trait.$1}',
+                                ),
+                                style: const TextStyle(
+                                  color: cream,
+                                  fontSize: 15,
+                                  height: 1.4,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                text(trait.$2['text']),
+                                key: ValueKey(
+                                  'personal-trait-text-${trait.$1}',
+                                ),
+                                style: const TextStyle(
+                                  color: lavender,
+                                  fontSize: 13,
+                                  height: 1.6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ]
+                else
+                  Text(
+                    entry.$2,
+                    key: ValueKey('personal-free-line-${entry.$1}'),
+                    style: TextStyle(
+                      color: cream,
+                      fontSize: entry.$1 == 2 ? 17 : 15,
+                      height: 1.65,
+                      fontWeight: entry.$1 == 1
+                          ? FontWeight.w400
+                          : FontWeight.w600,
+                    ),
+                  ),
+                if (entry.$1 == 2 && report.opportunityAction.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    report.opportunityAction,
+                    key: const ValueKey('personal-opportunity-action'),
+                    style: const TextStyle(
+                      color: lavender,
+                      fontSize: 13,
+                      height: 1.65,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+    ];
+  }
+
   Widget _point(Json point, Copy c, {String? anchor}) => Padding(
     key: anchor == null ? null : _key(anchor),
     padding: const EdgeInsets.only(top: 20),
@@ -683,7 +981,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
         );
       }
-      if (!r.full && r.preview.isNotEmpty) {
+      if (!r.full &&
+          r.hasPreview &&
+          (!r.personalReport || r.json['preview_state'] == 'ready')) {
         return ReportCheckout(
           h5: widget.h5,
           report: r,
@@ -695,7 +995,8 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           onPay: r.canPay ? _pay : null,
         );
       }
-      if (r.preview.isEmpty) {
+      if (!r.hasPreview ||
+          r.personalReport && r.json['preview_state'] != 'ready') {
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -719,7 +1020,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
         );
       }
-      final groups = r.western
+      final groups = r.personalReport
+          ? <(String, List<String>)>[]
+          : r.western
           ? [
               ('natal', ['natal']),
               ('career', ['career']),
@@ -783,7 +1086,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    c.t('jy', 'report.title'),
+                    c.t(
+                      'jy',
+                      r.personalReport ? 'personal.title' : 'report.title',
+                    ),
                     style: const TextStyle(
                       color: Color(0xFFFFEAC5),
                       fontSize: 23,
@@ -791,15 +1097,15 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${r.profile['birthplace']} · ${r.estimated
-                        ? c.t('jy', 'chart.dateOnly')
-                        : r.western
-                        ? c.t('jy', 'chart.western')
-                        : c.t('jy', 'chart.exact')}',
-                    style: const TextStyle(color: lavender, fontSize: 12),
-                  ),
+                  if (!r.personalReport) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      r.western
+                          ? text(r.profile['birthplace'])
+                          : '${r.profile['birthplace']} · ${r.estimated ? c.t('jy', 'chart.dateOnly') : c.t('jy', 'chart.exact')}',
+                      style: const TextStyle(color: lavender, fontSize: 12),
+                    ),
+                  ],
                   const SizedBox(height: 18),
                   if (r.western) ...[
                     ExpansionTile(
@@ -837,15 +1143,29 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ReportBadges(
-                          copy: c,
-                          locked: false,
-                          western: r.western,
-                          onTap: (key) => _navigate('report-$key'),
-                        ),
+                        if (r.personalReport && !r.sixPersonalThemes)
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final key in r.progressKeys)
+                                ActionChip(
+                                  label: Text(c.t('jy', 'personal.$key')),
+                                  onPressed: () => _navigate('report-$key'),
+                                ),
+                            ],
+                          )
+                        else
+                          ReportBadges(
+                            copy: c,
+                            locked: false,
+                            western: r.western,
+                            onTap: (key) => _navigate('report-$key'),
+                          ),
                       ],
                     ),
                   ),
+                  if (r.personalReport) ..._personalSections(r, c),
                   if (!r.western)
                     _sectionTitle(
                       'overall',
@@ -929,6 +1249,88 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       );
     },
   );
+  List<Widget> _personalSections(LifeReport report, Copy c) => [
+    _sectionTitle(
+      report.sixPersonalThemes ? 'natal' : 'talent',
+      c.t(
+        'jy',
+        report.sixPersonalThemes
+            ? 'report.westernSections.natal'
+            : 'personal.talent',
+      ),
+    ),
+    if (report.talent.isNotEmpty) ...[
+      Text(
+        text(report.talent['text']),
+        style: const TextStyle(fontSize: 14, height: 1.8),
+      ),
+      if (report.sixPersonalThemes)
+        _sectionTitle('career', c.t('jy', 'report.westernSections.career')),
+      for (final direction in objects(report.talent['directions']))
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                text(direction['title']),
+                style: const TextStyle(
+                  color: gold,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                text(direction['text']),
+                style: const TextStyle(fontSize: 14, height: 1.8),
+              ),
+            ],
+          ),
+        ),
+    ],
+    if (report.sixPersonalThemes) ...[
+      for (final key in ['wealth', 'love', 'risk']) ...[
+        _sectionTitle(key, c.t('jy', 'report.westernSections.$key')),
+        Text(
+          text(object(report.personalThemes[key])['text']),
+          style: const TextStyle(fontSize: 14, height: 1.8),
+        ),
+        _evidence(object(report.personalThemes[key])['evidence'], c),
+      ],
+      _sectionTitle('plan', c.t('jy', 'report.westernSections.plan')),
+    ],
+    for (final node in report.nodes.indexed) ...[
+      _sectionTitle(
+        'node-${node.$1 + 1}',
+        '${node.$2['month']} · ${node.$2['theme']}',
+      ),
+      for (final field in ['benefit', 'caution', 'action'])
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                c.t('jy', 'personal.$field'),
+                style: const TextStyle(
+                  color: gold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                text(node.$2[field]),
+                style: const TextStyle(fontSize: 14, height: 1.8),
+              ),
+            ],
+          ),
+        ),
+      _evidence(node.$2['evidence'], c),
+    ],
+  ];
+
   Widget _sectionTitle(String key, String title) => Container(
     key: _key('report-$key'),
     margin: const EdgeInsets.only(top: 20),

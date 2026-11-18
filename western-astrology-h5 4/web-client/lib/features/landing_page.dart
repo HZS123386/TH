@@ -152,6 +152,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     final input = _input(h5);
     final state = GenerationState();
     _generation = state;
+    h5.warmReportFont();
     Future<void> run() async {
       _request?.cancel();
       final token = CancelToken();
@@ -183,6 +184,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       PageRouteBuilder<void>(
         opaque: true,
         transitionDuration: const Duration(milliseconds: 260),
+        reverseTransitionDuration: const Duration(milliseconds: 120),
         pageBuilder: (context, animation, secondaryAnimation) => GenerationDialog(
           h5: h5,
           state: state,
@@ -194,6 +196,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
           },
           onRetry: () => unawaited(run()),
           onComplete: (report) {
+            h5.stageGeneratedPreview(report);
             Navigator.of(context, rootNavigator: true).pop();
             context.go(
               '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}&checkout=1',

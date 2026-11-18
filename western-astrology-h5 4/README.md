@@ -52,7 +52,7 @@ PDF 沿用项目的紫金视觉：首部为深紫星盘与星芒，内页为米�
 
 `GET /api/thai-locations?country=CN&level=province` 返回对应国家的完整省府目录；`level=locality&province=geonames:...&query=...&offset=0` 按省府浏览或检索市区，每页 100 条；`level=detail&query=geonames:...` 按地点 ID 恢复历史报告的省府信息。原有 `level=auto` 自由文本识别与 `level=city` 城市目录保留供其他页面使用。`POST /api/life-reports` 提交出生资料和年份，只生成或复用免费试读；使用 `?wait=false` 立即返回已建立的报告编号和当前快照，随后通过读取接口查询免费内容的 `preview_generation_progress`；不传该参数时等待免费试读完成再返回；`GET /api/life-reports` 读取本设备报告列表；`GET /api/life-reports/{id}` 读取快照与进度；`POST /api/life-reports/{id}/unlock` 解锁并启动完整内容生成，或继续中断的生成；`POST /api/life-reports/{id}/feedback` 保存试读反馈。上述报告接口使用浏览器随机生成并保存在本机的 `X-Report-Key` 区分设备，不修改个人档案。清除浏览器存储会失去本设备报告列表的访问凭据。
 
-地点、坐标及检索别名改编自 [GeoNames](https://www.geonames.org/)（CC BY 4.0）。TH 后端通过 `scripts/build-birth-locations.py` 将 CN、TH、HK、MO、TW 地名包构建为 `data/birth-locations.sqlite3` 离线索引，港澳台归入对应省级选项。当前中国目录 940,791 条、泰国目录 95,619 条，包含现存城镇／聚居地点和行政区，不含历史废弃地点；包括泰国 928 个区县记录。名称及行政沿革以下载时的 GeoNames 数据为准，缺少译名时显示来源名称。省府名称与代表点在 `backend/content/birth-regions.json`。新环境或升级旧索引时，先在 `D:/desktop/TH` 执行 `pnpm setup:locations`，无需在线地理编码服务或 API 密钥；地点查询和排盘解析共用此索引。
+地点、坐标及检索别名改编自 [GeoNames](https://www.geonames.org/)（CC BY 4.0）。TH 后端通过 `scripts/build-birth-locations.py` 将 CN、TH、HK、MO、TW 地名包构建为 `data/birth-locations.sqlite3` 离线索引，港澳台归入对应省级选项。当前中国目录 940,791 条、泰国目录 95,619 条，包含现存城镇／聚居地点和行政区，不含历史废弃地点；包括泰国 928 个区县记录。名称及行政沿革以下载时的 GeoNames 数据为准，缺少译名时显示来源名称。省府名称与代表点在 `backend/content/birth-regions.json`。新环境或升级旧索引时，在仓库根目录执行 `pnpm --dir TH setup:locations`，无需在线地理编码服务或 API 密钥；地点查询和排盘解析共用此索引。
 
 TH 后端的 `life_reports.py` 按配置调用现有排盘服务，线上新报告使用 Roxy 西洋排盘，同时保留历史泰式报告读取能力；`life_report_content.py` 为预览、章节和行动清单提供结构与证据校验，并复用现有模型传输、缓存和纠正流程。生成额度按一次试读或一次完整生成计数，内部章节不会重复占用报告次数。提供商密钥仅保留在 TH 后端。旧 `/api/thai-reading` 保留供 TH 项目的原有单主题页面使用。
 
@@ -85,7 +85,7 @@ pnpm build
 
 TH 后端默认在构建完成后挂载同级本目录的 `site/` 到 `http://127.0.0.1:8000/thai-landing/`，与报告接口同源。部署到其他位置时可通过后端环境变量 `THAI_LANDING_DIR` 指定构建目录。构建目录在后端启动时检测，应先构建后启动。
 
-Flutter 页面使用本地 Noto Sans Thai。中文首屏先加载同源的 348 KB 精简字体，后续地点和报告文字按需补充常用或完整字库，字体外观不变；泰文首页不下载中文字库。符号字体也按界面所需精简。字体准备好后再显示对应的数据内容，PDF 继续使用独立的完整字体。字体授权在 `web-client/assets/fonts/`，生成方式见 `scripts/fonts/README.md`。
+Flutter 页面使用本地 Noto Sans Thai。欢迎页加载时低优先级预加载中文界面和缅甸语、高棉语、老挝语的字体，当前语言所需字体为高优先级。中文常用和完整字库按地点和报告实际文字加载。符号字体也按界面所需精简。字体准备好后再显示对应的数据内容，PDF 继续使用独立的完整字体。字体授权在 `web-client/assets/fonts/`，生成方式见 `scripts/fonts/README.md`。
 
 JY 原版报告视频约 3.02 MB，只在生成页下载。生成开始即在屏幕下半部分显示星球转盘，轻微叠放在进度卡片上，静音内联循环播放；切换解读阶段或刷新真实进度时，视频持续转动。报告完成后停止循环，当前一轮播完再显示结果。播放失败使用海报并继续等待实际生成结果，减少动态效果时保持静态；动画不会提前完成报告。已有完整报告按 JY 六组目录展示，PDF 和 HTML 仍导出已获权限的完整内容。
 

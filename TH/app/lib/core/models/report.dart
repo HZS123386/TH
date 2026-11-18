@@ -1,3 +1,58 @@
+import 'calculation.dart';
+
+class ReportGenerationProgress {
+  const ReportGenerationProgress({
+    this.percent = 0,
+    this.stage = 'preparing',
+    this.completedTopics = const [],
+  });
+  static const topics = [
+    'personality',
+    'career',
+    'money',
+    'relationships',
+    'watch',
+    'actions',
+  ];
+  final int percent;
+  final String stage;
+  final List<String> completedTopics;
+  factory ReportGenerationProgress.fromJson(
+    dynamic value, {
+    required bool ready,
+  }) {
+    if (ready) {
+      return const ReportGenerationProgress(
+        percent: 100,
+        stage: 'complete',
+        completedTopics: topics,
+      );
+    }
+    if (value is! Map) return const ReportGenerationProgress();
+    final raw = value['percent'];
+    final percent = raw is num && raw.isFinite ? raw.toInt().clamp(0, 99) : 0;
+    final stage = value['stage'];
+    final completed = value['completed_topics'];
+    return ReportGenerationProgress(
+      percent: percent,
+      stage:
+          [
+            'preparing',
+            'checking_data',
+            'writing',
+            'reviewing',
+            'refining',
+            'failed',
+          ].contains(stage)
+          ? stage as String
+          : 'preparing',
+      completedTopics: List.unmodifiable(
+        topics.where((key) => completed is List && completed.contains(key)),
+      ),
+    );
+  }
+}
+
 class ReportSection {
   const ReportSection(this.key, this.title, this.paragraphs);
   final String key, title;
@@ -33,10 +88,18 @@ class ReportSnapshot {
     required this.preview,
     required this.sections,
     this.developmentPreview = false,
+    this.calculation,
+    this.number,
+    this.failureReason,
+    this.progress = const ReportGenerationProgress(),
   });
   final String id, resultId, locale, summary, previewState, fullState;
   final bool full;
   final bool developmentPreview;
+  final CalculationSnapshot? calculation;
+  final String? number;
+  final String? failureReason;
+  final ReportGenerationProgress progress;
   bool get failed => previewState == 'failed' || fullState == 'failed';
   final List<ReportSection> preview, sections;
   bool get generating =>
@@ -57,6 +120,18 @@ class ReportSnapshot {
       throw const FormatException('invalid_report');
     }
     final full = json['access'] == 'full';
+    final rawCalculation = json['calculation'];
+    if (rawCalculation != null && rawCalculation is! Map) {
+      throw const FormatException('invalid_report_chart');
+    }
+    final calculation = rawCalculation == null
+        ? null
+        : CalculationSnapshot.fromJson(
+            Map<String, dynamic>.from(rawCalculation as Map),
+          );
+    if (calculation != null && calculation.id != resultId) {
+      throw const FormatException('report_chart_mismatch');
+    }
     if (!full && (json['sections'] as List).isNotEmpty) {
       throw const FormatException('paid_body_in_preview');
     }
@@ -72,6 +147,9 @@ class ReportSnapshot {
       );
     }
 
+    final previewState = json['preview_state'] as String? ?? 'ready';
+    final fullState =
+        json['full_state'] as String? ?? (full ? 'ready' : 'locked');
     return ReportSnapshot(
       id: json['report_id'] as String,
       resultId: resultId,
@@ -79,8 +157,17 @@ class ReportSnapshot {
       summary: json['summary'] as String? ?? '',
       full: full,
       developmentPreview: json['access_reason'] == 'development_preview',
-      previewState: json['preview_state'] as String? ?? 'ready',
-      fullState: json['full_state'] as String? ?? (full ? 'ready' : 'locked'),
+      calculation: calculation,
+      number: json['report_number'] as String?,
+      failureReason: json['failure_reason'] as String?,
+      previewState: previewState,
+      fullState: fullState,
+      progress: ReportGenerationProgress.fromJson(
+        json['generation_progress'],
+        ready:
+            previewState == 'ready' &&
+            !['running', 'queued', 'failed'].contains(fullState),
+      ),
       preview: sections(json['preview']),
       sections: sections(json['sections']),
     );

@@ -5,6 +5,7 @@ import '../app/controller.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
 import '../ui/theme.dart';
+import 'birth_date_dialog.dart';
 
 Future<void> showHistory(BuildContext context, H5Controller h5) => showDialog(
   context: context,
@@ -55,6 +56,9 @@ class _HistoryDialogState extends State<HistoryDialog> {
       '/report.html?id=${Uri.encodeComponent(text(item['id']))}&lang=$language${item['access'] == 'full' ? '' : '&checkout=1'}',
     );
   }
+
+  String _birthDate(Json item) =>
+      text(object(object(item['input'])['profile'])['birth_date']);
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +148,17 @@ class _HistoryDialogState extends State<HistoryDialog> {
                                       ),
                                       style: const TextStyle(fontSize: 12),
                                     ),
+                                    if (_birthDate(item).isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${c.t('jy', 'date')} · ${birthDateLabel(_birthDate(item), c.language)}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: gold,
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ],
                                     const SizedBox(height: 3),
                                     Text(
                                       _date(text(item['created_at'])),

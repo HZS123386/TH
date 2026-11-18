@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fate_app/app/dependencies.dart';
 import 'package:fate_app/app/fate_app.dart';
+import 'package:fate_app/core/models/birth_profile.dart';
 import 'package:fate_app/core/network/api_client.dart';
 import 'package:fate_app/core/storage/session_store.dart';
 import 'package:fate_app/l10n/generated/app_localizations_en.dart';
@@ -95,7 +98,14 @@ void main() {
         await decoded.future.timeout(const Duration(seconds: 5));
         await tester.pumpAndSettle();
         expect(tester.binding.sendFramesToEngine, isTrue);
-        expect(tester.widget<RawImage>(find.byType(RawImage)).image, isNotNull);
+        final hero = find.byWidgetPredicate(
+          (widget) => widget is Image && widget.image == homeHeroImage,
+        );
+        final heroFrame = find.descendant(
+          of: hero,
+          matching: find.byType(RawImage),
+        );
+        expect(tester.widget<RawImage>(heroFrame).image, isNotNull);
         expect(tester.takeException(), isNull);
         stream.removeListener(listener);
         await tester.pumpWidget(const SizedBox.shrink());
@@ -106,7 +116,7 @@ void main() {
     }
   });
   testWidgets(
-    'Western-only navigation opens an explicit example and expands only that example',
+    'home hides upcoming tools while horoscope, saved tool routes, and chart work',
     (tester) async {
       tester.view.physicalSize = const Size(430, 932);
       tester.view.devicePixelRatio = 1;
@@ -118,6 +128,54 @@ void main() {
         'https://api.example.test',
         client: MockClient((request) async {
           requests.add(request.url.path);
+          if (request.url.path == '/api/thai-calendar/today') {
+            return http.Response(
+              jsonEncode({
+                'date': '2026-11-09',
+                'buddhist_year': 2569,
+                'lunar': {
+                  'phase': 'waning',
+                  'day': 14,
+                  'month': 11,
+                  'second_eighth_month': false,
+                },
+                'day_kind': 'mixed',
+                'auspicious_hours': [
+                  {'start': '08:24', 'end': '10:48'},
+                  {'start': '15:36', 'end': '18:00'},
+                ],
+                'refresh_after_seconds': 3600,
+              }),
+              200,
+            );
+          }
+          if (request.url.path == '/api/daily-horoscope/today') {
+            return http.Response(
+              jsonEncode({
+                'date': '2026-11-09',
+                'signs': [
+                  for (var sign = 0; sign < 12; sign++)
+                    {
+                      'sign': sign,
+                      'scores': {
+                        'love': 80 + sign,
+                        'work': 67,
+                        'money': 73,
+                        'health': 76,
+                      },
+                      'highlight': {
+                        'topic': 'love',
+                        'tone': 'supportive',
+                        'planet': 'venus',
+                        'house': sign + 1,
+                      },
+                    },
+                ],
+                'refresh_after_seconds': 3600,
+              }),
+              200,
+            );
+          }
           return http.Response(
             jsonEncode({
               'modules': [
@@ -142,9 +200,107 @@ void main() {
       );
       await d.session.initialize();
       await tester.pumpAndSettle();
-      expect(find.byType(NavigationDestination), findsNWidgets(4));
-      expect(find.text('Tarot'), findsNothing);
-      await tester.tap(find.byType(NavigationDestination).at(1));
+      expect(
+        find.byKey(const ValueKey('app-bottom-navigation')),
+        findsOneWidget,
+      );
+      final s = AppLocalizationsEn();
+      final router = GoRouter.of(tester.element(find.byType(HomePage)));
+      expect(find.text(s.tarot), findsNothing);
+      expect(find.text(s.luckyNumbers), findsNothing);
+      expect(find.text(s.thaiCalendarWaning(14)), findsOneWidget);
+      expect(find.text(s.thaiCalendarMixed), findsOneWidget);
+      expect(find.textContaining('08:24–10:48'), findsOneWidget);
+      expect(find.text(s.dailyHoroscopeTitle), findsOneWidget);
+      expect(find.text(s.dailyHoroscopeToday(s.zAries)), findsNothing);
+      expect(requests, isNot(contains('/api/daily-horoscope/today')));
+      final horoscope = find.text(s.dailyHoroscopeChooseSign);
+      await tester.ensureVisible(horoscope);
+      await tester.tap(horoscope);
+      await tester.pumpAndSettle();
+      expect(find.text(s.dailyHoroscopeTitle), findsOneWidget);
+      expect(find.byKey(const ValueKey('app-bottom-navigation')), findsNothing);
+      expect(find.text('80'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('daily-zodiac-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('81'), findsOneWidget);
+      expect(find.textContaining('Venus transits house 2.'), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text(s.dailyHoroscopeToday(s.zTaurus)), findsOneWidget);
+      expect(find.text('81'), findsOneWidget);
+      expect(
+        (await SharedPreferences.getInstance()).getInt('fate.daily_zodiac'),
+        1,
+      );
+
+      await d.session.saveProfile(
+        const BirthProfile(
+          date: '1995-02-03',
+          timezone: 'Asia/Bangkok',
+          place: 'Bangkok',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(s.dailyHoroscopeToday(s.zAquarius)), findsOneWidget);
+      expect(find.text('90'), findsOneWidget);
+      final more = find.widgetWithText(TextButton, s.dailyHoroscopeMore);
+      await tester.ensureVisible(more);
+      await tester.tap(more);
+      await tester.pumpAndSettle();
+      expect(find.text('90'), findsOneWidget);
+      final aquarius = find.byKey(const ValueKey('daily-zodiac-10'));
+      final pisces = find.byKey(const ValueKey('daily-zodiac-11'));
+      await tester.tap(pisces);
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.tap(aquarius);
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.tap(pisces);
+      await tester.pumpAndSettle();
+      expect(find.text('91'), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text(s.dailyHoroscopeToday(s.zAquarius)), findsOneWidget);
+      await d.session.clearBirth();
+      await tester.pumpAndSettle();
+      expect(find.text(s.dailyHoroscopeToday(s.zTaurus)), findsOneWidget);
+
+      router.go('/fortune/tarot');
+      await tester.pumpAndSettle();
+      expect(find.text(s.tarotDrawHint), findsOneWidget);
+      final tarotLabels = {for (var i = 1; i <= 30; i++) s.tarotChooseCard(i)};
+      for (var drawn = 0; drawn < 3; drawn++) {
+        final visibleCard = find
+            .byWidgetPredicate(
+              (widget) =>
+                  widget is Semantics &&
+                  tarotLabels.contains(widget.properties.label),
+            )
+            .hitTestable()
+            .last;
+        await tester.tap(visibleCard);
+        await tester.pumpAndSettle();
+        expect(find.text(s.tarotProgress(drawn + 1, 3)), findsOneWidget);
+      }
+      expect(find.text(s.tarotResult), findsOneWidget);
+      final drawAgain = find.widgetWithText(TextButton, s.tarotDrawAgain);
+      await tester.ensureVisible(drawAgain);
+      await tester.tap(drawAgain);
+      await tester.pumpAndSettle();
+      expect(find.text(s.tarotDrawHint), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text(s.tarot), findsNothing);
+      expect(find.text(s.luckyNumbers), findsNothing);
+      router.go('/fortune/lucky-numbers');
+      await tester.pumpAndSettle();
+      expect(find.text(s.todayLuckyNumber), findsOneWidget);
+      final today = DateTime.now();
+      final number = (today.year + today.month + today.day - 1) % 9 + 1;
+      expect(find.text('$number'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('app-nav/chart')));
       await tester.pumpAndSettle();
       expect(find.text(AppLocalizationsEn().birthIntro), findsOneWidget);
       expect(find.text(AppLocalizationsEn().birthStorage), findsOneWidget);
@@ -156,10 +312,16 @@ void main() {
         find.textContaining('not calculated from your birth details'),
         findsOneWidget,
       );
-      final read = find.widgetWithText(FilledButton, 'Read this chart');
+      final read = find.widgetWithText(
+        FilledButton,
+        AppLocalizationsEn().chartRead,
+      );
       await tester.ensureVisible(read);
       await tester.tap(read);
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('reading-chart')), findsOneWidget);
+      expect(find.byKey(const ValueKey('reading-back')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app-bottom-navigation')), findsNothing);
       final unlock = find.byKey(const ValueKey('unlock-report'));
       expect(unlock, findsOneWidget);
       await tester.tap(unlock);
@@ -177,7 +339,93 @@ void main() {
       expect(find.byKey(const ValueKey('unlock-report')), findsNothing);
       expect(d.reports.report, isNull);
       expect(d.purchaseRepository.intent, isNull);
-      expect(requests, equals(['/api/config']));
+      expect(
+        requests,
+        containsAll([
+          '/api/config',
+          '/api/thai-calendar/today',
+          '/api/daily-horoscope/today',
+        ]),
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('app-bottom-navigation')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('standalone-chart-reading')),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const ValueKey('app-nav/profile')));
+      await tester.pumpAndSettle();
+      final history = find.byKey(const ValueKey('profile-reading-history'));
+      await tester.ensureVisible(history);
+      await tester.tap(history);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('standalone-chart-reading')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('app-bottom-navigation')), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      d.dispose();
+    },
+  );
+  testWidgets(
+    'account language row opens a dialog and saves the selected language',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
+      final preferences = await SharedPreferences.getInstance();
+      final d = AppDependencies(
+        preferences,
+        client: ApiClient(
+          'https://api.example.test',
+          client: MockClient((_) async => http.Response('{"modules":[]}', 200)),
+        ),
+        secureStore: MemorySessionStore(),
+      );
+      await tester.pumpWidget(
+        DependencyScope(
+          dependencies: d,
+          child: FateApp(dependencies: d),
+        ),
+      );
+      await d.session.initialize();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('app-nav/profile')));
+      await tester.pumpAndSettle();
+      final language = find.byKey(const ValueKey('profile-language'));
+      await tester.ensureVisible(language);
+      await tester.tap(language);
+      await tester.pumpAndSettle();
+      expect(find.byType(SimpleDialog), findsOneWidget);
+      for (final code in ['th', 'en', 'zh', 'vi']) {
+        expect(find.byKey(ValueKey('language-option-$code')), findsOneWidget);
+      }
+      await tester.tap(find.byKey(const ValueKey('language-option-zh')));
+      await tester.pumpAndSettle();
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(d.session.locale.languageCode, 'zh');
+      expect(preferences.getString('fate.locale'), 'zh');
+      await tester.tap(language);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('language-option-zh')),
+          matching: find.byIcon(Icons.check),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(TextButton, '取消'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(d.session.locale.languageCode, 'zh');
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       d.dispose();
     },

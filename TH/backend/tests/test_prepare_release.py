@@ -21,7 +21,7 @@ def release(tmp_path):
         (folder / 'fixture.txt').write_text('source fixture', encoding='utf-8')
     (module.TH / 'package.json').write_text('{}', encoding='utf-8')
     (module.ROOT / 'deploy').mkdir(parents=True)
-    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain'):
+    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain', 'Caddyfile.fatehoro'):
         (module.ROOT / 'deploy' / name).write_text('deployment fixture', encoding='utf-8')
     (module.ROOT / 'site').mkdir()
     (module.ROOT / 'site/index.html').write_text('compiled landing', encoding='utf-8')
@@ -68,6 +68,8 @@ def test_runtime_carries_live_payment_and_configured_report_writers(release):
         env.write('FORTUNE_PROVIDER=openai\nFORTUNE_FALLBACK_PROVIDER=qwen\n'
                   'OPENAI_API_KEY=test-openai-secret\nOPENAI_BASE_URL=https://example.test/v1\n'
                   'OPENAI_MODEL=test-writer\nOPENAI_REASONING_EFFORT=low\n'
+                  'LIFE_PREVIEW_OPENAI_MODEL=test-preview\nLIFE_PREVIEW_OPENAI_REASONING_EFFORT=none\n'
+                  'LIFE_PREVIEW_OPENAI_LANGUAGES=zh,th\n'
                   'WESTERN_REVIEW_ENABLED=true\nWESTERN_REVIEW_PROVIDER=kimi\n'
                   'KIMI_API_KEY=test-kimi-secret\nKIMI_MODEL=test-review\n'
                   'SUNLANDS_ORDER_ONLY=true\nSUNLANDS_BASE_URL=https://api-prod.sunlands.com\n'
@@ -77,6 +79,8 @@ def test_runtime_carries_live_payment_and_configured_report_writers(release):
     runtime = (latest / 'runtime.env').read_text()
     for setting in ('FORTUNE_PROVIDER=openai', 'FORTUNE_FALLBACK_PROVIDER=qwen',
                     'OPENAI_API_KEY=test-openai-secret', 'OPENAI_REASONING_EFFORT=low',
+                    'LIFE_PREVIEW_OPENAI_MODEL=test-preview', 'LIFE_PREVIEW_OPENAI_REASONING_EFFORT=none',
+                    'LIFE_PREVIEW_OPENAI_LANGUAGES=zh,th',
                     'WESTERN_REVIEW_ENABLED=true', 'KIMI_API_KEY=test-kimi-secret',
                     'SUNLANDS_ORDER_ONLY=true', 'SUNLANDS_APP_SECRET=test-payment-secret'):
         assert setting in runtime

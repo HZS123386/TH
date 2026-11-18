@@ -20,7 +20,9 @@ describe("complete, distinct landing languages", () => {
   for (const [code, copy] of Object.entries(additionalLocales)) {
     const language = code as Language;
     it(`covers the existing landing page and exports a gated Western report in ${language}`, () => {
-      expect(paths(copy.jy)).toEqual(expect.arrayContaining(paths(original.jy.zh)));
+      // The welcome portrait signature is optional and currently supplied in Chinese only.
+      const required = paths(original.jy.zh).filter(path => path !== ".welcome.guideName" && path !== ".welcome.guideTitle");
+      expect(paths(copy.jy)).toEqual(expect.arrayContaining(required));
       expect(paths(copy)).toEqual(paths(english));
       expect(JSON.stringify(copy)).not.toMatch(/[\u3400-\u9fff\u0e00-\u0e7f]/u);
       const report = reportFixture({ ...inputFor(language), report_kind: "fortune" }, true);
@@ -37,6 +39,7 @@ describe("complete, distinct landing languages", () => {
       expect(lifeLabels(report).methodValue).toBe(copy.jy.chart.western);
       expect(reportContent(report).filter(section => section.paid)).toHaveLength(6);
       const html = reportHtml(report, lifeLabels(report));
+      expect(html).not.toContain(copy.jy.chart.western);
       expect(html).toContain(copy.jy.report.westernSections.plan);
       expect(html).toContain(secret);
       expect(html).not.toContain("Suriyayatra");

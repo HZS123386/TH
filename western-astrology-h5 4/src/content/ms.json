@@ -24,8 +24,9 @@
       "swipe": "Leret ke atas untuk bermula"
     },
     "persona": "Ahli astrologi AI peribadi anda",
+      "personal": {"relationshipUnlock": "Buka laporan penuh untuk panduan hubungan peribadi", "relationshipTitle": "Halangan dalam hubungan", "relationshipAction": "Satu langkah untuk dicuba", "title": "Bacaan astrologi Barat peribadi anda", "freeTitle": "Bacaan percuma", "freeHint": "Kenali personaliti semula jadi dan cara anda mengekspresikan diri.", "paidHint": "Bakat peribadi dan tiga bulan penting", "talent": "Bakat peribadi", "node-1": "Peluang pertama", "node-2": "Peluang kedua", "node-3": "Peluang ketiga", "benefit": "Faktor membantu", "caution": "Peringatan ringan", "action": "Langkah kecil", "timeUnknown": "Tambahkan waktu lahir yang tepat untuk membaca bacaan peribadi penuh.", "unavailable": "Maklumat bulanan belum lengkap, jadi bacaan penuh belum tersedia.", "nodesTitle": "Tiga bulan penting", "keywords": "Kata kunci carta anda", "traits": "Ciri peribadi", "opportunity": "Peluang terdekat"},
     "formTitle": "Kenali corak diri melalui carta kelahiran",
-    "formCaption": "Baca ciri diri percuma, kemudian terokai enam tema",
+    "formCaption": "Mulakan dengan bacaan percuma, kemudian terokai bakat anda dan tiga bulan tertentu.",
     "topicLabel": "Kandungan bacaan anda",
     "date": "Tarikh lahir",
     "calendar": "Kalendar Masihi",
@@ -154,6 +155,8 @@
       "appTestingTitle": "Aplikasi sedang diuji",
       "appTestingMessage": "Aplikasi masih dalam ujian dan belum boleh dimuat turun. Terima kasih atas minat anda. Nantikan pelancaran rasmi!",
       "appTestingClose": "Faham",
+      "relationshipAboutTitle": ["Hubungan terasa buntu, wajar diteruskan?", "Sudah sepenuh hati, tetapi usaha terasa berat sebelah?"],
+      "relationshipAbout": "Laporan penuh menghuraikan petanda dalam bacaan percuma anda. Anda mendapat satu soalan untuk dibincangkan dan petunjuk bila wajar mencari jalan bersama atau memperlahankan langkah.",
       "aboutTitle": [
         "Keliru apabila kerja dan cinta tidak seperti diharapkan?",
         "Hilang arah atau berasa lesu?"
@@ -165,7 +168,8 @@
     "report": {
       "title": "Laporan carta kelahiran anda",
       "freeTitle": "Bacaan percuma anda",
-      "freeHint": "Kenali personaliti, persekitaran, satu faktor membantu, satu perhatian dan tema terdekat. Buka tempoh, asas analisis dan tindakan praktikal.",
+      "freeHint": "Personaliti, pengaruh persekitaran dan arah perkembangan terdekat.",
+        "previewParagraphs": {"identity": "Personaliti dan potensi", "environment": "Persekitaran dan pengaruh", "recent": "Perkara untuk diberi perhatian kini", "legacyEnvironment": "Laporan tersimpan ini belum mempunyai maklumat lengkap tentang persekitaran dan pengaruh. Jana laporan baharu untuk membacanya.", "legacyRecent": "Laporan tersimpan ini tidak mengandungi maklumat tempoh terdekat. Jana laporan baharu untuk membacanya."},
       "contents": "Kandungan laporan",
       "sections": {
         "overall": "Gambaran kehidupan",
@@ -190,7 +194,7 @@
       },
       "housesUnavailable": "Waktu lahir tepat diperlukan untuk memaparkan rumah tema ini",
       "readingUnavailable": "Tiada bacaan bagi kedudukan yang disahkan untuk tema ini"
-    , "questions": {"who": "Siapakah saya?", "environment": "Persekitaran apa yang mungkin sesuai?", "influence": "Bagaimanakah ia boleh mempengaruhi saya?", "timing": "Bilakah perlu memberi perhatian?", "identityDetails": "Lihat personaliti, kekuatan dan batasan", "favorable": "Faktor yang membantu", "unfavorable": "Corak yang perlu diperhatikan", "window": "Tempoh pemerhatian", "eventDate": "Tarikh yang dikira", "timeUnknown": "Masa kelahiran tepat diperlukan untuk tempoh peribadi. Tambahkannya dan jana laporan baharu.", "unavailable": "Data masa belum tersedia semasa laporan ini dibuat, jadi trend mengikut masa tidak diandaikan.", "empty": "Tiada titik masa peribadi untuk dipaparkan dalam sampel percuma ini. Ini tidak bermakna kehidupan tidak akan berubah.", "legacy": "Laporan lama ini belum mengandungi bahagian ini. Jana laporan baharu untuk empat soalan.", "timingNote": "Gunakan tempoh ini untuk memerhatikan tema dan merancang perbualan, bukan jaminan peristiwa. Tarikh menggunakan UTC.", "freeResponse": "Satu tip kerjaya percuma", "freePeriod": "Satu tempoh kerjaya untuk diperhatikan"}},
+    , "questions": {"who": "Siapakah saya?", "environment": "Persekitaran apa yang mungkin sesuai?", "influence": "Bagaimanakah ia boleh mempengaruhi saya?", "timing": "Bilakah perlu memberi perhatian?", "identityDetails": "Lihat personaliti, kekuatan dan batasan", "favorable": "Faktor yang membantu", "unfavorable": "Corak yang perlu diperhatikan", "window": "Tempoh pemerhatian", "eventDate": "Tarikh yang dikira", "timeUnknown": "Tanpa waktu lahir yang tepat, tempoh peribadi belum dapat ditentukan.", "unavailable": "Data masa belum tersedia semasa laporan ini dibuat, jadi trend mengikut masa tidak diandaikan.", "empty": "Tiada titik masa peribadi untuk dipaparkan dalam sampel percuma ini. Ini tidak bermakna kehidupan tidak akan berubah.", "legacy": "Laporan lama ini belum mengandungi bahagian ini. Jana laporan baharu untuk empat soalan.", "timingNote": "Tempoh ini hanya panduan, bukan jaminan sesuatu akan berlaku.", "freeResponse": "Cadangan semasa", "freePeriod": "Arah kerjaya"}},
     "chart": {
       "title": "Carta kelahiran anda",
       "exact": "Suriyayatra Thai · Rumah tanda penuh",

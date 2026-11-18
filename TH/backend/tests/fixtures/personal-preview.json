@@ -1,0 +1,82 @@
+{
+  "en": {
+    "relationship": {"text": "It hurts to open up and find that you are doing most of the giving. Feeling heard can make it tempting to invest before you see how the other person follows through.", "action": "Notice someone who listens warmly yet repeatedly avoids making a plan."},
+    "free_lines": ["Clear expression meets sensitivity to the mood around you.", "You connect people's needs with practical help and build trust through useful support.", "An exchange may soon give an important person a chance to notice your contribution."],
+    "traits": [
+      {"title": "Takes initiative", "text": "When a group hesitates, you tend to suggest a starting point that others can join."},
+      {"title": "Listens closely", "text": "A change in tone often draws your attention to concerns that have not been fully explained."},
+      {"title": "Finds common ground", "text": "Different views prompt you to look for the shared aim behind the disagreement."}
+    ],
+    "opportunity_action": "Prepare one clear example of your strengths to share in a relevant conversation."
+  },
+  "th": {
+    "relationship": {"text": "การเปิดใจแล้วพบว่าคุณเป็นฝ่ายทุ่มเทอยู่คนเดียวอาจทำให้เจ็บ เมื่อรู้สึกว่าอีกฝ่ายเข้าใจ คุณอาจรีบให้ความไว้ใจก่อนเห็นว่าเขาเอาใจใส่ด้วยการกระทำจริงเพียงใด", "action": "สังเกตคนที่รับฟังอย่างเข้าใจ แต่เลี่ยงการนัดหมายชัดเจนอยู่เรื่อย ๆ"},
+    "free_lines": ["กล้าแสดงออกพร้อมรับรู้บรรยากาศและความรู้สึกของคนรอบตัว", "คุณเชื่อมความต้องการของผู้คนกับความช่วยเหลือที่ใช้ได้จริงและค่อยสร้างความไว้ใจ", "การพูดคุยช่วงนี้อาจเปิดโอกาสให้คนสำคัญมองเห็นสิ่งที่คุณทำได้ดี"],
+    "traits": [
+      {"title": "กล้าเริ่มต้น", "text": "เมื่อกลุ่มยังลังเล คุณมักเสนอจุดเริ่มต้นที่ทุกคนร่วมทำได้"},
+      {"title": "ฟังอย่างใส่ใจ", "text": "น้ำเสียงที่เปลี่ยนไปทำให้คุณสังเกตความกังวลที่อีกฝ่ายยังพูดไม่หมด"},
+      {"title": "หาจุดร่วม", "text": "แม้มีความเห็นต่าง คุณมักมองหาเป้าหมายที่ทั้งสองฝ่ายให้ความสำคัญ"}
+    ],
+    "opportunity_action": "เตรียมตัวอย่างจุดแข็งหนึ่งเรื่องไว้เล่าในการสนทนาที่เหมาะสม"
+  },
+  "vi": {
+    "relationship": {"text": "Mở lòng mà thấy mình là người cho đi nhiều hơn dễ khiến bạn chạnh lòng. Khi được lắng nghe, bạn có thể đặt niềm tin trước khi biết người kia có làm điều họ nói hay không.", "action": "Để ý người biết lắng nghe nhưng luôn né việc hẹn gặp cụ thể."},
+    "free_lines": ["Bạn thể hiện rõ suy nghĩ và nhạy cảm với bầu không khí xung quanh.", "Bạn gắn nhu cầu của mọi người với sự hỗ trợ thiết thực để xây dựng lòng tin.", "Một cuộc trao đổi sắp tới có thể giúp người quan trọng chú ý đến đóng góp của bạn."],
+    "traits": [
+      {"title": "Chủ động", "text": "Khi nhóm còn do dự, bạn thường nêu một điểm khởi đầu để mọi người cùng tham gia."},
+      {"title": "Lắng nghe kỹ", "text": "Thay đổi trong giọng nói giúp bạn nhận ra điều người đối diện vẫn còn băn khoăn."},
+      {"title": "Tìm điểm chung", "text": "Trước ý kiến khác nhau, bạn thường tìm mục tiêu mà cả hai phía cùng coi trọng."}
+    ],
+    "opportunity_action": "Chuẩn bị một ví dụ rõ về điểm mạnh để chia sẻ trong cuộc trò chuyện phù hợp."
+  },
+  "my": {
+    "relationship": {"text": "ရင်ဖွင့်ပြီး ကိုယ်တစ်ယောက်တည်း ပိုအားထုတ်နေရတာက နာကျင်စေနိုင်ပါတယ်။ ကိုယ့်ခံစားချက်ကို နားလည်ပေးတဲ့စကား ကြားရတဲ့အခါ သူ့လုပ်ရပ်နဲ့ ပြသတာကို မမြင်ရသေးခင် ယုံကြည်မိတတ်ပါတယ်။", "action": "နားထောင်ပေးပေမယ့် တွေ့ဖို့ အစီအစဉ်ကို ထပ်ခါထပ်ခါ ရှောင်သူကို သတိထားပါ။"},
+    "free_lines": ["အမြင်ကို ရှင်းလင်းစွာပြောပြီး ပတ်ဝန်းကျင်၏ခံစားချက်ကိုလည်း သတိထားသည်။", "လူများ၏လိုအပ်ချက်ကို လက်တွေ့အကူအညီနှင့် ဆက်စပ်ပေးရင်း ယုံကြည်မှုတည်ဆောက်သည်။", "မကြာမီ ဆွေးနွေးမှုတစ်ခုတွင် အရေးပါသူက သင့်အားသာချက်ကို သတိပြုမိနိုင်သည်။"],
+    "traits": [
+      {"title": "အစပြုတတ်ခြင်း", "text": "အဖွဲ့က တွေဝေနေချိန်တွင် အတူတကွလုပ်နိုင်သည့် အစတစ်ခုကို သင်အကြံပြုတတ်သည်။"},
+      {"title": "ဂရုတစိုက်နားထောင်ခြင်း", "text": "အသံနေအသံထားပြောင်းလဲလျှင် မပြောရသေးသည့် စိုးရိမ်မှုကို သင်သတိထားမိတတ်သည်။"},
+      {"title": "တူညီချက်ရှာခြင်း", "text": "အမြင်မတူချိန်တွင် နှစ်ဖက်လုံးတန်ဖိုးထားသည့် ရည်ရွယ်ချက်ကို ရှာဖွေတတ်သည်။"}
+    ],
+    "opportunity_action": "သင့်စွမ်းရည်ကိုဖော်ပြသည့် ဥပမာတစ်ခုကို သင့်တော်သည့်စကားဝိုင်းအတွက် ပြင်ဆင်ပါ။"
+  },
+  "km": {
+    "relationship": {"text": "ពេលអ្នកបើកចិត្តហើយមានអារម្មណ៍ថាខ្លួនឯងប្រឹងតែម្នាក់ឯង វាអាចឈឺចិត្ត។ ពេលគេស្តាប់ដោយយល់ចិត្ត អ្នកអាចទុកចិត្តលឿន មុនពេលដឹងថាគេបង្ហាញការយកចិត្តទុកដាក់តាមទង្វើឬអត់។", "action": "សង្កេតអ្នកដែលស្តាប់ដោយយល់ចិត្ត ប៉ុន្តែគេចពីការណាត់ជួបច្បាស់លាស់ជាញឹកញាប់។"},
+    "free_lines": ["អ្នកបង្ហាញគំនិតច្បាស់ ហើយយកចិត្តទុកដាក់អារម្មណ៍មនុស្សជុំវិញ។", "អ្នកភ្ជាប់តម្រូវការមនុស្សជាមួយជំនួយជាក់ស្តែង ដើម្បីកសាងទំនុកចិត្តក្នុងការទាក់ទង។", "ការសន្ទនាឆាប់ៗអាចផ្តល់ឱកាសឱ្យមនុស្សសំខាន់មើលឃើញចំណុចខ្លាំងរបស់អ្នក។"],
+    "traits": [
+      {"title": "ចេះផ្តើម", "text": "ពេលក្រុមស្ទាក់ស្ទើរ អ្នកតែងស្នើជំហានដំបូងដែលគ្រប់គ្នាអាចចូលរួមបាន។"},
+      {"title": "ស្តាប់ដោយយកចិត្តទុកដាក់", "text": "សំឡេងដែលប្រែប្រួលធ្វើឱ្យអ្នកកត់សម្គាល់កង្វល់ដែលភាគីម្ខាងទៀតមិនទាន់ពន្យល់។"},
+      {"title": "រកចំណុចរួម", "text": "ពេលមានមតិខុសគ្នា អ្នកតែងរកគោលដៅដែលភាគីទាំងពីរឱ្យតម្លៃដូចគ្នា។"}
+    ],
+    "opportunity_action": "រៀបចំឧទាហរណ៍ច្បាស់មួយអំពីសមត្ថភាព ដើម្បីចែករំលែកក្នុងការសន្ទនាសមរម្យ។"
+  },
+  "lo": {
+    "relationship": {"text": "ເມື່ອເປີດໃຈແລ້ວພົບວ່າຕົນເອງເປັນຝ່າຍທຸ່ມເທຢູ່ຄົນດຽວ ມັນອາດເຮັດໃຫ້ເຈັບໃຈ. ເມື່ອມີຄົນຮັບຟັງຢ່າງເຂົ້າໃຈ ເຈົ້າອາດໄວ້ໃຈກ່ອນຈະເຫັນວ່າການກະທຳກົງກັບຄຳເວົ້າບໍ່.", "action": "ສັງເກດຄົນທີ່ຟັງຢ່າງເຂົ້າໃຈ ແຕ່ມັກຫຼີກລ່ຽງການນັດພົບທີ່ຊັດເຈນ."},
+    "free_lines": ["ທ່ານສື່ຄວາມຄິດໄດ້ຊັດ ແລະໃສ່ໃຈອາລົມຂອງຄົນອ້ອມຂ້າງ.", "ທ່ານເຊື່ອມຄວາມຕ້ອງການກັບການຊ່ວຍທີ່ໃຊ້ໄດ້ຈິງ ເພື່ອສ້າງຄວາມໄວ້ໃຈ.", "ການສົນທະນາໃນໄລຍະນີ້ອາດໃຫ້ໂອກາດຄົນສຳຄັນເຫັນຈຸດເດັ່ນຂອງທ່ານ."],
+    "traits": [
+      {"title": "ກ້າເລີ່ມ", "text": "ເມື່ອກຸ່ມຍັງລັງເລ ທ່ານມັກສະເໜີຈຸດເລີ່ມທີ່ທຸກຄົນຮ່ວມໄດ້."},
+      {"title": "ຟັງຢ່າງໃສ່ໃຈ", "text": "ນ້ຳສຽງທີ່ປ່ຽນໄປຊ່ວຍໃຫ້ທ່ານສັງເກດຄວາມກັງວົນທີ່ຍັງບໍ່ໄດ້ເວົ້າ."},
+      {"title": "ຫາຈຸດຮ່ວມ", "text": "ເມື່ອຄິດຕ່າງກັນ ທ່ານມັກຫາເປົ້າໝາຍທີ່ທັງສອງຝ່າຍໃຫ້ຄຸນຄ່າ."}
+    ],
+    "opportunity_action": "ກຽມຕົວຢ່າງຈຸດເດັ່ນໜຶ່ງເລື່ອງ ເພື່ອແບ່ງປັນໃນການສົນທະນາທີ່ເໝາະສົມ."
+  },
+  "ms": {
+    "relationship": {"text": "Membuka hati terasa pedih apabila anda seorang yang banyak memberi. Apabila seseorang mendengar dengan penuh perhatian, anda mungkin percaya sebelum melihat tindakannya.", "action": "Perhatikan orang yang memahami perasaan anda tetapi selalu mengelak menetapkan janji temu."},
+    "free_lines": ["Anda jelas menyatakan fikiran dan peka terhadap suasana di sekeliling.", "Anda menghubungkan keperluan orang dengan bantuan nyata untuk membina kepercayaan.", "Perbualan terdekat mungkin memberi peluang orang penting melihat sumbangan anda."],
+    "traits": [
+      {"title": "Berani memulakan", "text": "Ketika kumpulan masih ragu, anda sering mencadangkan titik mula yang dapat disertai bersama."},
+      {"title": "Mendengar dengan teliti", "text": "Perubahan nada suara menarik perhatian anda kepada kebimbangan yang belum diterangkan."},
+      {"title": "Mencari persamaan", "text": "Pandangan berbeza mendorong anda mencari tujuan yang dihargai oleh kedua-dua pihak."}
+    ],
+    "opportunity_action": "Sediakan satu contoh kekuatan anda untuk dikongsi dalam perbualan yang sesuai."
+  },
+  "id": {
+    "relationship": {"text": "Membuka hati terasa menyakitkan ketika hanya kamu yang banyak berusaha. Saat merasa didengarkan, kamu bisa memberi kepercayaan sebelum tahu apakah ucapannya diikuti tindakan.", "action": "Amati orang yang mendengarkan dengan hangat tetapi selalu menghindari rencana bertemu."},
+    "free_lines": ["Anda mengungkapkan pikiran dengan jelas dan peka terhadap suasana sekitar.", "Anda menghubungkan kebutuhan orang dengan bantuan nyata untuk membangun kepercayaan.", "Percakapan mendatang bisa memberi peluang orang penting melihat kontribusi Anda."],
+    "traits": [
+      {"title": "Berani memulai", "text": "Saat kelompok masih ragu, Anda sering mengusulkan langkah awal yang bisa diikuti bersama."},
+      {"title": "Mendengar dengan saksama", "text": "Perubahan nada suara membuat Anda memperhatikan kekhawatiran yang belum selesai dijelaskan."},
+      {"title": "Menemukan kesamaan", "text": "Pandangan berbeda mendorong Anda mencari tujuan yang dianggap penting oleh kedua pihak."}
+    ],
+    "opportunity_action": "Siapkan satu contoh kekuatan Anda untuk dibagikan dalam percakapan yang sesuai."
+  }
+}

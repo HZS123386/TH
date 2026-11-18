@@ -84,15 +84,6 @@ ThemeData fateTheme() {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
-    navigationBarTheme: const NavigationBarThemeData(
-      backgroundColor: panelColor,
-      indicatorColor: Color(0xFF382346),
-      height: 76,
-      labelTextStyle: WidgetStatePropertyAll(
-        TextStyle(fontSize: 11, color: inkColor),
-      ),
-      iconTheme: WidgetStatePropertyAll(IconThemeData(color: goldColor)),
-    ),
     dividerTheme: const DividerThemeData(
       color: lineColor,
       space: 36,

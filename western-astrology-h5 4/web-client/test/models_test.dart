@@ -3,6 +3,103 @@ import 'package:fate_h5/core/models.dart';
 import 'support.dart';
 
 void main() {
+  test(
+    'personal reports use six paid blocks and scrub injected private content from free exports',
+    () {
+      final data = personalFixture(full: true);
+      final full = LifeReport.parse(data);
+      expect(full.personalReport, isTrue);
+      expect(full.ready, isTrue);
+      expect(full.percent(false), 100);
+      expect(full.progressKeys, personalKeys);
+      data['access'] = 'preview';
+      final preview = LifeReport.parse(data);
+      expect(preview.hasPreview, isTrue);
+      expect(preview.relationshipPreview['text'], isNotEmpty);
+      expect(preview.talent, isEmpty);
+      expect(preview.personalThemes, isEmpty);
+      expect(preview.nodes, isEmpty);
+      final personal = object(preview.exportPayload()['personal']);
+      expect(personal['talent'], isNull);
+      expect(personal['themes'], isNull);
+      expect(object(personal['relationship'])['action'], isNotEmpty);
+      expect(personal['nodes'], isEmpty);
+      expect(personal['free_lines'], hasLength(3));
+    },
+  );
+  test(
+    'new free reports require love content and older reports stay readable',
+    () {
+      final data = personalFixture();
+      final personal = object(data['personal'])..remove('relationship');
+      data['personal'] = personal;
+      expect(() => LifeReport.parse(data), throwsFormatException);
+      data['version'] = 'western-personal-7';
+      final saved = LifeReport.parse(data);
+      expect(saved.hasPreview, isTrue);
+      expect(saved.relationshipPreview, isEmpty);
+      data['version'] = 'western-personal-8';
+      data['personal'] = {
+        ...personal,
+        'relationship': {
+          'text': 'Incomplete relationship paragraph',
+          'action': 'Ask a question',
+          'evidence': <Json>[],
+        },
+      };
+      expect(() => LifeReport.parse(data), throwsFormatException);
+    },
+  );
+  test(
+    'six-topic reports require money, relationships and risk while older reports remain readable',
+    () {
+      for (final key in ['wealth', 'love', 'risk']) {
+        final data = personalFixture(full: true);
+        final personal = object(data['personal']);
+        final themes = object(personal['themes'])..remove(key);
+        data['personal'] = {...personal, 'themes': themes};
+        expect(() => LifeReport.parse(data), throwsFormatException);
+      }
+      final legacy = personalFixture(full: true);
+      legacy['catalog'] = [
+        for (final key in legacyPersonalKeys)
+          {
+            'key': key,
+            'title': key,
+            'questions': <String>[],
+            'houses': <int>[],
+            'ready': true,
+          },
+      ];
+      legacy['progress'] = {'completed': 4, 'total': 4};
+      legacy['personal'] = {...object(legacy['personal'])}..remove('themes');
+      final report = LifeReport.parse(legacy);
+      expect(report.ready, isTrue);
+      expect(report.sixPersonalThemes, isFalse);
+      expect(report.progressKeys, legacyPersonalKeys);
+    },
+  );
+  test(
+    'personal unavailable periods cannot create payment and unknown ascendant stays absent',
+    () {
+      final data = personalFixture();
+      final p = object(data['personal']);
+      p['availability'] = {
+        'full_report': false,
+        'reason': 'insufficient_periods',
+      };
+      data['personal'] = p;
+      expect(LifeReport.parse(data).canPay, isFalse);
+      final input = object(data['input']);
+      input['profile'] = {...object(input['profile']), 'birth_time': null};
+      data['input'] = input;
+      data['chart'] = null;
+      expect(() => LifeReport.parse(data), throwsFormatException);
+      p['ascendant_sign'] = null;
+      data['personal'] = p;
+      expect(LifeReport.parse(data).hasPreview, isTrue);
+    },
+  );
   for (final language in ['zh', 'th']) {
     test(
       '$language accepts six Western sections and keeps preview access gated',

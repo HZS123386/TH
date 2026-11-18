@@ -1,4 +1,5 @@
 import type { LifeLabels, LifePoint, LifeReport, LifeSummary, ReportTopic } from "./lifeReport";
+import { personalTopicKeys, legacyPersonalTopicKeys } from "./lifeReport";
 import { fortuneTopics, fortuneTopicTitle, type FortuneTopicKey } from "./fortuneTopics";
 import originalJyCopy from "../content/jy.json";
 import { additionalCopy, additionalLocales } from "./locales";
@@ -48,10 +49,79 @@ const copy = {
   },
 } as const;
 
+export interface PreviewParagraph extends LifeSummary {
+  key: "identity" | "environment" | "recent";
+  title: string;
+}
+
+// Preserve complete stored prose while combining repeated sources within each paragraph.
+function combinePreview(parts: (LifeSummary | undefined)[], language: string): LifeSummary {
+  const available = parts.filter((part): part is LifeSummary => !!part);
+  const paragraphs = new Set(available.map(part => part.text.trim().replace(/\s+/gu, " ")).filter(Boolean));
+  const evidence = new Map<string, LifeSummary["evidence"][number]>();
+  for (const part of available) {
+    for (const fact of part.evidence) {
+      const key = fact.id ? `id:${fact.id}` : JSON.stringify([fact.title, fact.detail]);
+      if (!evidence.has(key)) evidence.set(key, fact);
+    }
+  }
+  return { text: [...paragraphs].join(language === "zh" ? "" : " "), evidence: [...evidence.values()], period: null };
+}
+
+export function previewIdentity(report: LifeReport): LifeSummary | undefined {
+  const preview = report.preview;
+  return preview ? combinePreview([preview.summary, ...preview.traits], report.input.profile.language) : undefined;
+}
+
+export function previewParagraphs(report: LifeReport): PreviewParagraph[] {
+  const preview = report.preview;
+  if (!preview) return [];
+  const language = report.input.profile.language;
+  const labels = jyCopy.jy[language].report.previewParagraphs;
+  const questions = jyCopy.jy[language].report.questions;
+  const colon = language === "zh" ? "：" : ": ";
+  const present = (value: LifeSummary | undefined) => !!value?.text?.trim();
+  const note = (text: string): LifeSummary => ({ text, evidence: [], period: null });
+  const label = (value: LifeSummary | undefined, title: string) => value && present(value) ? { ...value, text: title + colon + value.text } : undefined;
+  const environmentParts = [present(preview.environment) ? preview.environment : undefined, label(preview.favorable, questions.favorable), label(preview.unfavorable, questions.unfavorable)];
+  if ([preview.environment, preview.favorable, preview.unfavorable].some(part => !present(part))) environmentParts.push(note(labels.legacyEnvironment));
+  const timeUnknown = !report.input.profile.birth_time || report.time_accuracy?.mode === "estimated" || report.outlook?.state === "time_unknown";
+  const recent = timeUnknown || report.outlook?.state === "unavailable" ? undefined : preview.recent;
+  const verifiedWindow = present(recent) && recent?.window && [recent.window.start, recent.window.end, recent.window.event_date, recent.window.timezone].every(value => typeof value === "string" && value.trim())
+    ? recent.window : undefined;
+  const recentParts: (LifeSummary | undefined)[] = [];
+  if (verifiedWindow && recent) {
+    recentParts.push(preview.sample_topic === "career" ? label(recent, questions.freePeriod) : recent);
+  } else {
+    recentParts.push(note(timeUnknown ? questions.timeUnknown : report.outlook?.state === "unavailable" ? questions.unavailable : report.outlook?.state === "ready" ? questions.empty : labels.legacyRecent));
+  }
+  if (verifiedWindow && present(preview.response)) recentParts.push(label(preview.response, questions.freeResponse));
+  if (verifiedWindow) recentParts.push(note(questions.timingNote));
+  return [
+    { ...previewIdentity(report)!, key: "identity", title: labels.identity },
+    { ...combinePreview(environmentParts, language), key: "environment", title: labels.environment },
+    { ...combinePreview(recentParts, language), key: "recent", title: labels.recent, ...(verifiedWindow ? { window: verifiedWindow } : {}) },
+  ];
+}
+
 // One outline is shared by the screen, saved HTML and PDF. Paid data is gated here too.
 export function reportContent(report: LifeReport): ReportSection[] {
   const language = report.input.profile.language;
   const labels = copy[language];
+  if (report.format === "western-personal") {
+    const personal = jyCopy.jy[language].personal;
+    const names = jyCopy.jy[language].report.westernSections;
+    const six = report.catalog.length === personalTopicKeys.length;
+    const full = report.access === "full" && report.full_state === "ready";
+    return [
+      { key: "basics", title: labels.sections[0][1], description: "", paid: false, ready: true, summaries: [], groups: [] },
+      { key: "summary", title: personal.freeTitle, description: "", paid: false, ready: report.personal?.free_lines.length === 3, summaries: [], groups: [] },
+      ...(six ? personalTopicKeys : legacyPersonalTopicKeys).map((key, index): ReportSection => ({
+        key, title: six ? names[key as keyof typeof names] : full && index > 0 && report.personal?.nodes[index - 1] ? `${report.personal.nodes[index - 1].month} · ${report.personal.nodes[index - 1].theme}` : personal[key as keyof typeof personal],
+        description: "", paid: true, ready: full, summaries: [], groups: [],
+      })),
+    ];
+  }
   const extra = language !== "zh" && language !== "th" ? additionalLocales[language].reportContent : undefined;
   const chapters = new Map((report.access === "full" ? report.chapters : []).map(chapter => [chapter.key, chapter]));
   if (report.input.career) {
@@ -78,11 +148,11 @@ export function reportContent(report: LifeReport): ReportSection[] {
     ];
   };
   if (report.format === "western-compact") {
-    const questions = jyCopy.jy[language].report.questions;
+    const paragraphLabels = jyCopy.jy[language].report.previewParagraphs;
     const free: ReportSection[] = [
       { key: "basics", title: labels.sections[0][1], description: labels.sections[0][2], paid: false, ready: true, summaries: [], groups: [] },
-      ...([['summary',questions.who],['environment',questions.environment],['influence',questions.influence],['recent',questions.timing]] as const).map(([key,title]) => ({
-        key, title, description: '', paid: false, ready: !!report.preview, summaries: [], groups: [],
+      ...([['summary', paragraphLabels.identity], ['environment', paragraphLabels.environment], ['recent', paragraphLabels.recent]] as const).map(([key, title]) => ({
+        key, title, description: "", paid: false, ready: !!report.preview, summaries: [], groups: [],
       })),
     ];
     const names = jyCopy.jy[language].report.westernSections;
@@ -134,7 +204,7 @@ export function reportContent(report: LifeReport): ReportSection[] {
 }
 
 export function reportReference(report: LifeReport, labels: LifeLabels): string {
-  if (report.format === "western-compact") {
+  if (report.format === "western-compact" || report.format === "western-personal") {
     const language = report.input.profile.language;
     return language === "zh" ? "本命特征与行动参考" : language === "th" ? "พื้นดวงและแนวทางลงมือทำ" : additionalLocales[language].reportContent.natalReference;
   }

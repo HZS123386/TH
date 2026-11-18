@@ -50,36 +50,54 @@ const fateBootLabels={
   "ms":{"engine": "Membuka langit anda", "app": "Membuka langit anda", "slow": "Rangkaian perlahan. Sila tunggu", "retry": "Sambungan terputus. Memuatkan semula", "failed": "Halaman tidak dapat dimuatkan. Semak sambungan dan cuba lagi"},
   "id":{"engine": "Membuka langit Anda", "app": "Membuka langit Anda", "slow": "Jaringan lambat. Silakan tunggu", "retry": "Koneksi terputus. Memuat ulang", "failed": "Halaman belum dapat dimuat. Periksa koneksi dan coba lagi"}
 }[document.documentElement.lang];
-let fateBootFinished=false,fateBootFailed=false,fateBootRecovery;
+let fateBootFinished=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
 const fateBootRetryKey='fate-startup-recovery-at';
-const fateBootSlow=setTimeout(()=>{if(!fateBootFinished){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
+// Consume a queued retry even if navigation stalled, then latch the path preference before its TTL expires.
+const fateBootRetry=(()=>{
+  try{
+    const previous=JSON.parse(sessionStorage.getItem(fateBootRetryKey)||'null');
+    const age=Date.now()-previous?.at;
+    if(previous?.path!==location.pathname||(!previous.pending&&!(age>=0&&age<120000)))return null;
+    if(previous.pending){try{sessionStorage.setItem(fateBootRetryKey,JSON.stringify({at:Date.now(),path:location.pathname,pending:false,compatibility:previous.compatibility===true}));}catch{}}
+    return previous;
+  }catch{return null;}
+})();
+const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateBootFinished){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
+// A truncated HTML stream may render the overlay without ever reaching the inline bootstrap.
+const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail();},20000);
+const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBoot.fail(),90000);
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
-  stage(stage){const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
+  compatibility:fateBootRetry?.compatibility===true,
+  stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
   fail(){
-    if(fateBootFinished||fateBootFailed)return;
-    fateBootFailed=true;clearTimeout(fateBootSlow);
+    if(fateHttpsUpgrading||fateBootFinished||fateBootFailed)return;
+    fateBootFailed=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);
     // A failed ES-module import stays rejected for this document; retry it once in a fresh document.
     let recover=false;
-    try{
-      const previous=Number(sessionStorage.getItem(fateBootRetryKey)||0);
-      if(Date.now()-previous>120000){sessionStorage.setItem(fateBootRetryKey,String(Date.now()));recover=true;}
-    }catch{}
+    if(!fateBootRetry){try{
+      // App assets can fail after the engine is ready; those retries retain the normal renderer.
+      const marker=JSON.stringify({at:Date.now(),path:location.pathname,pending:true,compatibility:fateBootPhase!=='app'});
+      sessionStorage.setItem(fateBootRetryKey,marker);
+      recover=sessionStorage.getItem(fateBootRetryKey)===marker;
+    }catch{}}
     if(recover){this.stage('retry');fateBootRecovery=setTimeout(()=>location.reload(),700);return;}
     this.stage('failed');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;
   },
   ready(){
     if(fateBootFinished)return;
-    fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootRecovery);
+    fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);clearTimeout(fateBootRecovery);
     try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
     document.getElementById('fate-startup')?.remove();performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));
   }
 };
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
 window.addEventListener('error',event=>{
-  if(event.target?.tagName==='SCRIPT'&&/\/main\.dart\.js(?:\?|$)/.test(event.target.src))window.fateBoot.fail();
+  if(event.error||event.message||(event.target?.tagName==='SCRIPT'&&/\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src)))window.fateBoot.fail();
 },true);
-document.addEventListener('DOMContentLoaded',()=>document.getElementById('fate-startup-retry')?.addEventListener('click',()=>location.reload()),{once:true});
+window.addEventListener('unhandledrejection',()=>window.fateBoot.fail());
+// The HTML response can stall after rendering the button but before DOMContentLoaded.
+document.addEventListener('click',event=>{if(event.target?.closest?.('#fate-startup-retry'))location.reload();});
 window.fateH5 = {
   today(zone) {
     const parts=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());

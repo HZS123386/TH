@@ -73,6 +73,13 @@ class _ReportCheckoutState extends State<ReportCheckout> {
   @override
   Widget build(BuildContext context) {
     final c = widget.h5.copy;
+    final hasRelationshipPreview = widget.report.relationshipPreview.isNotEmpty;
+    final about = widget.report.sixPersonalThemes && hasRelationshipPreview
+        ? 'checkout.relationshipAbout'
+        : 'checkout.about';
+    final relationshipUnlock = widget.report.canPay && hasRelationshipPreview
+        ? c.t('jy', 'personal.relationshipUnlock')
+        : '';
     return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: RadialGradient(
@@ -165,7 +172,10 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    ThemeBoards(copy: c, showHeading: false),
+                    ReportBadges(
+                      key: const ValueKey('checkout-theme-badges'),
+                      copy: c,
+                    ),
                     const SizedBox(height: 16),
                     const Divider(height: 1, color: Color(0x40E4BC78)),
                     const SizedBox(height: 10),
@@ -196,7 +206,9 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                     const SizedBox(height: 8),
                     JYButton(
                       key: const ValueKey('jy-payment-preview'),
-                      label: c.t('jy', 'checkout.pay'),
+                      label: relationshipUnlock.isEmpty
+                          ? c.t('jy', 'checkout.pay')
+                          : relationshipUnlock,
                       icon: 'lock',
                       onPressed: widget.busy ? null : widget.onPay,
                       dimDisabled: false,
@@ -240,7 +252,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final line in c.list('jy', 'checkout.aboutTitle'))
+                    for (final line in c.list('jy', '${about}Title'))
                       Text(
                         line,
                         textAlign: TextAlign.center,
@@ -265,7 +277,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                         ),
                       ),
                       child: Text(
-                        c.t('jy', 'checkout.about'),
+                        c.t('jy', about),
                         style: const TextStyle(
                           color: Color(0xFF44283E),
                           fontSize: 14,

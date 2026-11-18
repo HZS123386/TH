@@ -51,15 +51,17 @@ def main():
     parser.add_argument('ip_routes', type=Path)
     parser.add_argument('previous_ip_routes', type=Path, nargs='?')
     parser.add_argument('--domain-routes', type=Path)
+    parser.add_argument('--site-routes', type=Path, help='Dedicated fatehoro.top site block')
     parser.add_argument('--release')
     args = parser.parse_args()
-    if args.domain_routes and not re.fullmatch(r'v\d{4}\.\d{2}\.\d{2}\.[1-9]\d*', args.release or ''):
+    domain_update = bool(args.domain_routes or args.site_routes)
+    if domain_update and not re.fullmatch(r'v\d{4}\.\d{2}\.\d{2}\.[1-9]\d*', args.release or ''):
         parser.error('Domain configuration updates require a new vYYYY.MM.DD.N release')
     block = args.ip_routes.read_bytes()
     assert b'http://129.226.126.212 {' in block
     # The gateway is reloaded in place; existing containers are never recreated.
     before_id = run('docker', 'inspect', WEB, '--format', '{{.Id}}').strip()
-    backup = (Path('/opt/ipplay/shared/config-releases') / args.release if args.domain_routes else
+    backup = (Path('/opt/ipplay/shared/config-releases') / args.release if domain_update else
               ROOT / 'shared' / 'backups' / datetime.datetime.now().strftime('ingress-%Y%m%d-%H%M%S'))
     backup.mkdir(parents=True, mode=0o700, exist_ok=False)
     run('docker', 'cp', f'{WEB}:/etc/caddy/Caddyfile', str(backup / 'Caddyfile.container'))
@@ -99,6 +101,15 @@ def main():
         combined = global_options + original_live_sites.rstrip() + b'\n\n' + block + b'\n'
     if args.domain_routes:
         combined = add_domain_routes(combined, args.domain_routes.read_bytes())
+    if args.site_routes:
+        site = args.site_routes.read_bytes().replace(b'\r\n', b'\n').strip()
+        if (not site.startswith(b'# BEGIN FATE dedicated domain\n')
+                or not site.endswith(b'# END FATE dedicated domain')
+                or b'\nfatehoro.top {' not in site or b'\nwww.fatehoro.top {' not in site):
+            raise RuntimeError('Expected the dedicated FATE domain site template')
+        if b'fatehoro.top' in original_live:
+            raise RuntimeError('Dedicated domain already exists; inspect its configuration before changing it')
+        combined = combined.rstrip() + b'\n\n' + site + b'\n'
     text = original_compose.decode()
     newline = '\r\n' if '\r\n' in text else '\n'
     start = text.index('\n  web:')
@@ -119,7 +130,7 @@ def main():
     releases_file = SOURCE.with_name('releases.json')
     receipt = Path('/opt/ipplay/shared/releases') / f'{args.release}.json'
     release_history = None
-    if args.domain_routes:
+    if domain_update:
         if receipt.exists():
             raise RuntimeError('Configuration release receipt already exists')
         release_history = json.loads(releases_file.read_text())
@@ -132,7 +143,9 @@ def main():
     temporary = '/tmp/Caddyfile.astro-candidate'
     run('docker', 'cp', str(candidate), f'{WEB}:{temporary}')
     run('docker', 'exec', WEB, 'caddy', 'validate', '--config', temporary, '--adapter', 'caddyfile')
-    result = {'published': 'https://ipplay.top/thai-landing/' if args.domain_routes else 'https://129.226.126.212/',
+    published = ('https://fatehoro.top/' if args.site_routes else
+                 'https://ipplay.top/thai-landing/' if args.domain_routes else 'https://129.226.126.212/')
+    result = {'published': published,
               'existing_domain_ok': True, 'gateway_container_unchanged': True, 'backup': str(backup)}
     try:
         SHARED.write_bytes(combined)
@@ -148,12 +161,19 @@ def main():
             html = run('curl', '--fail', '--silent', '--show-error', '--max-time', '15', '--resolve',
                        'ipplay.top:443:127.0.0.1', 'https://ipplay.top/thai-landing/')
             assert '<base href="/thai-landing/">' in html, 'Landing domain did not reach Flutter'
+        if args.site_routes:
+            # Certificate issuance may take a moment after the DNS records are saved.
+            html = run('curl', '--fail', '--silent', '--show-error', '--max-time', '10',
+                       '--retry', '8', '--retry-delay', '3', '--retry-all-errors', '--retry-max-time', '45',
+                       '--resolve', 'fatehoro.top:443:127.0.0.1', 'https://fatehoro.top/thai-landing/')
+            assert '<base href="/thai-landing/">' in html, 'Dedicated domain did not reach Flutter'
         assert before_id == run('docker', 'inspect', WEB, '--format', '{{.Id}}').strip()
-        if args.domain_routes:
+        if domain_update:
             result.update(version=args.release, date=args.release[1:11].replace('.', '-'),
                           recordType='configuration-update', status='deployed',
                           deployedAt=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                          scope='fate-landing-domain-routes-only', productionBase=SOURCE.parents[2].name,
+                          scope='fate-dedicated-domain-only' if args.site_routes else 'fate-landing-domain-routes-only',
+                          productionBase=SOURCE.parents[2].name,
                           applicationImagesUnchanged=True, databaseMigration=False,
                           previousConfigSha256=hashlib.sha256(original_source).hexdigest(),
                           activeConfigSha256=hashlib.sha256(combined).hexdigest(),

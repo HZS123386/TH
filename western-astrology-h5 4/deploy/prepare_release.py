@@ -23,7 +23,7 @@ def copy_tree(source: Path, target: Path):
 def prepare(release: Path, version: str):
     context = release / 'context'
     context.mkdir(parents=True)
-    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain'):
+    for name in ('Dockerfile', 'compose.yaml', 'Caddyfile.ip', 'Caddyfile.domain', 'Caddyfile.fatehoro'):
         shutil.copy2(ROOT / 'deploy' / name, context / name)
     copy_tree(TH / 'backend', context / 'TH' / 'backend')
     copy_tree(TH / 'scripts', context / 'TH' / 'scripts')
@@ -60,6 +60,7 @@ def prepare(release: Path, version: str):
     # Carry the configured writers and live checkout separately from the application archive.
     optional = [
         'FORTUNE_FALLBACK_PROVIDER', 'WESTERN_REPORT_PROVIDER', 'WESTERN_REPORT_MODEL',
+        'LIFE_PREVIEW_OPENAI_MODEL', 'LIFE_PREVIEW_OPENAI_REASONING_EFFORT', 'LIFE_PREVIEW_OPENAI_LANGUAGES',
         'WESTERN_REVIEW_ENABLED', 'WESTERN_REVIEW_PROVIDER', 'WESTERN_REVIEW_MODEL',
         'WESTERN_REVIEW_FALLBACK_PROVIDER', 'WESTERN_REVIEW_FALLBACK_MODEL',
         'SUNLANDS_ORDER_ONLY', 'SUNLANDS_BASE_URL', 'SUNLANDS_APP_KEY', 'SUNLANDS_APP_SECRET',

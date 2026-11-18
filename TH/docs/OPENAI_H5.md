@@ -1,0 +1,58 @@
+# H5：Roxy 排盘与 OpenAI 报告写作
+
+本地接入于 2026-11-13 配置，2026-11-16 按用户要求切换为 `gpt-6.1-sol`，并添加 Qwen 服务故障兜底；未部署服务器。旧凭证的账户停用问题已通过更换密钥解决。新凭证模型列表认证正常，但 2026-11-16 对主模型的一次无出生资料生成测试仍返回 HTTP 429、`credit_balance_exhausted`、`insufficient_quota`，说明所属组织的 API 预付额度已耗尽。此类服务错误现在可按已配置的规则切换至 Qwen，不能据此声称 OpenAI 主模型已生成成功。
+
+## 原有调用链
+
+`/api/life-reports` → `LifeReports` → `RoxyAstrology` → `LifeWriter` → OpenAI Chat Completions。
+
+- Roxy 计算西洋热带黄道、Placidus 宫位及相位，返回结构化依据和可用的原始释义。
+- 应用按各主题挑选依据，限制未知出生时间的解读范围，保留引用和内容校验。
+- OpenAI 将上述资料整理为原有报告结构，不自行重排盘、不混入八字或泰式规则，不根据本命盘编造年度预测。
+- 先生成免费摘要与三个个人特点；解锁后生成本命、事业、财运、感情、风险提醒五章，再生成行动建议，共六块。
+- APP 的 `WESTERN_REPORT_PROVIDER` 与 H5 不同，本次未修改其本地设置。H5 使用 `FORTUNE_PROVIDER`。
+
+## 本地配置
+
+密钥只在被 Git 忽略的 `TH/.env` 中，禁止复制进文档、前端、测试或提交记录。
+
+```dotenv
+FORTUNE_PROVIDER=openai
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-6.1-sol
+OPENAI_REASONING_EFFORT=low
+FORTUNE_FALLBACK_PROVIDER=qwen
+LIFE_ASTROLOGY_PROVIDER=roxy
+```
+
+可通过 `LIFE_PREVIEW_OPENAI_MODEL=gpt-6.1-terra` 和 `LIFE_PREVIEW_OPENAI_REASONING_EFFORT=none` 单独配置 Roxy 免费解读。预览复用 `OPENAI_API_KEY`，完整报告按 `OPENAI_MODEL` 与 `OPENAI_REASONING_EFFORT` 生成。用 `LIFE_PREVIEW_OPENAI_LANGUAGES` 指定采用预览模型的逗号分隔语言代码。留空表示覆盖所有语言。免费模型字段留空时，两种报告共用原配置。
+
+`ROXY_ENABLED`、Roxy 服务端密钥保持现有值。`OPENAI_PROXY_URL` 仅在本地配置了本机已有代理；这是客户端出站网络配置，不是新的 API 转发服务。后续部署不得直接复制本机回环代理地址，须按服务器实际网络条件设置或留空。
+
+模型接口依据 [OpenAI GPT-6.1 Sol 官方文档](https://developers.openai.com/api/docs/models/gpt-6.1-sol)：支持流式 Chat Completions、结构化输出和 low reasoning effort。Qwen 兜底复用服务端已有 `QWEN_*` 配置，当前本地模型为 `qwen3.7-plus`。这是故障切换，不是每份报告先后调用两个模型润色。
+
+## Qwen 兜底规则
+
+- 仅对 H5 的 OpenAI 写作服务启用。未配置主服务，或连接失败、超时、认证/额度/限流及其他 HTTP 接口错误时，按原阶段和同一份依据调用 Qwen。
+- 使用原有 `LifeWriter`、传输、结构及引用校验器，Qwen 从原始依据重新生成，不接收主模型的失败草稿作为结论。内容/引用校验失败、本地次数限制、正在生成和取消等待不会触发兜底来绕过原规则。
+- Roxy 排盘仍是必要前提；排盘失败不会转为模型自行推算。完整报告保持五章加行动建议六块内容。
+- 使用同一模型配置的试读与完整章节共享 60 秒主服务冷却时间。使用独立预览模型时，两个配置各自冷却，期满后再次尝试 OpenAI。OpenAI 单次读取超时为 60 秒，Qwen 保留 25 秒，整体阶段超时仍受原有上限控制。
+- 一次逻辑请求仅计入一次报告次数限额；真实失败调用及兜底调用的模型用量分别留痕。Qwen 也失败时保留已完成章节并返回未完成，不生成固定假报告或循环切换。
+
+## 结构与缓存
+
+OpenAI 请求使用 `max_completion_tokens`、严格 JSON Schema、流式输出和 `stream_options.include_usage`。预览、五章和行动建议都由原有模型校验器处理；用量记录沿用 `report_model_usage`，不会把密钥或内部推理展示给读者。
+
+新建报告的去重身份包含主写作和已配置兜底供应商的 API 基址、模型及推理设置，避免切换配置后直接返回旧报告。已有报告仍可按原 ID 查看；新配置不会删除、改写已有正文。底层写作缓存也区分推理设置，不因代理网络地址变更而重复生成。`report_model_usage` 记录各次实际使用的供应商和模型，不把 Qwen 兜底记作 OpenAI 成功。
+
+## 核对与后续验证
+
+- 已增加模拟 OpenAI 流式上游的完整 H5 测试，核对一次 Roxy 排盘、七次模型调用、全部六块内容、进度及用量记录。
+- 已配置 Qwen 兜底时，服务故障可以切换；未配置时仍维持失败行为。错误正文及密钥不返回前端。
+- 相关报告、供应商及 Roxy 测试共 113 项通过（84 项原有相关回归、29 项 Roxy/新适配用例）；仅有既有依赖弃用警告。代码审查未发现阻断问题。
+- 新增故障切换测试 18 项通过，总计 131 项相关回归；覆盖服务错误、正常主模型、不配置/失效的兜底、次数限制与缓存、取消、内容与引用拒绝、冷却及恢复。主模型读取超时与代理设置沿用各自实例，不修改全局供应商。
+- 2026-11-16 用合成出生资料完成一次真实本地流程：免费试读与完整报告均为 ready，五章加行动建议齐全，服务读取的内容进度为 100%。OpenAI 两次尝试均因额度耗尽失败，Qwen 七个阶段校验通过（期间三个阶段按原规则修正过内容）。实际供应商和修正调用均在模型用量表中记录；不能把此结果表述为 Sol 已生成成功。
+- 真实测试的 HTTP 建立及解锁已通过；测试脚本过快轮询曾触发本地请求限流，随后通过原有服务读取方法和用量表确认完成，没有为此重新生成或重算。辅助脚本已改为较慢轮询并响应 Retry-After。验证记录仅保存在忽略的 `output/openai-report/`。
+- 本地服务启动使用现有 `TH/scripts/dev.mjs --skip-build`。健康检查通过不代表主模型有可用 API 额度；应分别核对主模型、兜底和报告流程的实际验证结果。
+- 新凭证已通过无出生资料的模型列表认证。补充 API 额度后，用专门的合成测试资料生成一份免费及完整报告，检查语言、引用与耗时。
+- 公开隐私文本仍记录此前的 Qwen/阿里云数据流。本次不发布；在切换正式服务前，须按实际 OpenAI 项目处理方式同步九种语言的供应商、跨境和保存说明，不套用未经核实的地域或零保留承诺。
