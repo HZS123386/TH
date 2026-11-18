@@ -1,7 +1,9 @@
 """Synthetic model output exercises the real chart, transport and persistence."""
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import json
+import re
 import time
 
 from fastapi.testclient import TestClient
@@ -48,6 +50,32 @@ def story_for(bundle):
     return {**base, "summary": summary, "insights": insights, "watchpoints": watchpoints, "actions": actions}
 
 
+def thai_story_for(bundle):
+    body = "เมื่อสิ่งที่ต้องทำยังไม่ชัด คุณอาจอยากคุยให้เข้าใจตรงกันก่อนเริ่ม ลองถามว่าผลงานแบบไหนที่ต้องการ แล้วเลือกส่วนเล็กมาลองทำก่อน วิธีนี้ช่วยให้เตรียมตัวได้ แต่หากต้องเริ่มทดลองเร็ว อาจตกลงขอบเขตสั้น ๆ แล้วค่อยปรับจากสิ่งที่พบ หลังจากลองทำให้ทบทวนว่าวิธีไหนช่วยลดความสับสน และเก็บส่วนที่ได้ผลไว้ใช้ต่อไป"
+    topics = {"overview": "ชีวิต", "money": "การเงิน", "work": "การทำงาน", "love": "การพูดคุย", "family": "ครอบครัว",
+              "annual": "การเตรียมตัว", "life-preview": "นิสัย", "life-plan": "การลงมือ", "overall": "ภาพรวม",
+              "pattern": "จุดแข็ง", "marriage": "ชีวิตคู่", "wealth": "รายได้", "risk": "เรื่องที่ควรระวัง", "romance": "ความรัก"}
+    counter = 0
+
+    def translate(value, field=""):
+        nonlocal counter
+        if isinstance(value, dict):
+            if field == "summary":
+                return {**value, "text": "สื่อสารความต้องการให้ชัดก่อนเลือกสิ่งที่คุณทุ่มเท"}
+            return {key: translate(item, key) for key, item in value.items()}
+        if isinstance(value, list):
+            if field in ("evidence_ids", "action_ids"):
+                return value
+            return [translate(item, field) for item in value]
+        if isinstance(value, str) and field not in ("language", "reading", "key"):
+            counter += 1
+            prefix = topics[bundle["reading"]] + chr(0x0E01 + counter % 35)
+            return prefix + ("เลือกวิธีที่เหมาะกับคุณ" if field == "title" else body)
+        return value
+
+    return translate(story_for(bundle))
+
+
 @pytest.fixture
 def client(postgres_url, monkeypatch):
     calls = []
@@ -81,7 +109,14 @@ def preview(http):
 def finish(http, app):
     async def wait():
         app.state.life_report_gate.set()
-        await asyncio.gather(*list(app.state.life_reports.tasks.values()))
+        async with asyncio.timeout(20):
+            while True:
+                with app.state.store.connect() as db:
+                    active = db.execute("SELECT 1 FROM life_reports WHERE unlocked=1 AND preview IS NOT NULL "
+                                        "AND full_state IN ('queued','pending','generating') LIMIT 1").fetchone()
+                if not active:
+                    return
+                await asyncio.sleep(0.05)
     http.portal.call(wait)
 
 
@@ -714,6 +749,154 @@ def test_sunlands_callback_cannot_unlock_without_server_confirmation_and_is_idem
     assert http.post(endpoint, content="orderNumber=a&orderNumber=b", headers={"Content-Type": "application/x-www-form-urlencoded"}).status_code == 400
 
 
+def test_twelve_verified_reports_drain_and_resume_saved_chapters_after_restart(
+    postgres_url, monkeypatch, sunlands_phone_response, record_property,
+):
+    from collections import Counter
+    from urllib.parse import parse_qs
+    from backend.app import thai
+    from backend.app.bazi_reports import report_usage_context
+    from backend.app.life_card_payments import LifeCardPayments, SUNLANDS_CREATE_ORDER, SUNLANDS_QUERY_ORDER
+
+    settings = Settings(database_url=postgres_url, app_env="development", sunlands_order_only=True,
+                        sunlands_app_secret="offline-test-secret", sunlands_province_id="4",
+                        life_generation_concurrency=32, bazi_reports_per_minute=100, bazi_reports_per_day=100,
+                        providers={"qwen": ProviderConfig("offline", "https://model.example/v1", "test")})
+    network = "isolated-batch-network"
+    chart = thai.natal(PROFILE)
+    monkeypatch.setattr(thai, "natal", lambda profile: deepcopy(chart))
+    upstream_calls = Counter()
+
+    async def gateway(self, path, body, content_type):
+        upstream_calls[path] += 1
+        if path == SUNLANDS_CREATE_ORDER:
+            payload = json.loads(sunlands_phone_response)
+            record = payload["data"]
+            number = f"OFFLINE_BATCH_{upstream_calls[path]:02d}"
+            record["payDirectUrl"] = record["payDirectUrl"].replace(record["orderNumber"], number)
+            record["orderNumber"] = number
+            record["orderDetails"][0]["subSerialNo"] = number + "_1"
+        else:
+            assert path == SUNLANDS_QUERY_ORDER
+            number, = json.loads(parse_qs(body.decode())["orderSerialNos"][0])
+            payload = {"retCode": "0", "data": [{
+                "orderSerialNo": number, "stuId": "12345", "channelCode": settings.sunlands_app_key,
+                "currency": "THB", "orderType": "OVERSEAS_NORMAL", "orderStatus": "PAID",
+                "totalAmount": "30.00", "paidAmount": "30.00", "unpaidAmount": "0.00",
+                "orderDetails": [{"subOrderSerialNo": number + "_1", "subOrderStatus": "PAID",
+                                  "itemNo": settings.sunlands_item_no, "totalAmount": "30.00",
+                                  "payInfo": {"currency": "THB", "totalAmount": "30.00", "paidAmount": "30.00"}}],
+            }]}
+        return httpx.Response(200, json=payload, request=httpx.Request("POST", "https://payment.example" + path))
+
+    monkeypatch.setattr(LifeCardPayments, "_sunlands_post", gateway)
+
+    async def exercise():
+        hold = True
+        release_saved, blocked, saturated = asyncio.Event(), asyncio.Event(), asyncio.Event()
+        saving = None
+        active = maximum = 0
+        calls, active_by_report = Counter(), Counter()
+
+        async def write(self, bundle, **kwargs):
+            nonlocal active, maximum
+            story = thai_story_for(bundle) if bundle["language"] == "th" else story_for(bundle)
+            if bundle["stage"] == "preview":
+                return self.validate(json.dumps(story, ensure_ascii=False), bundle)
+            report_id, _ = report_usage_context.get()
+            key = (report_id, bundle["reading"])
+            calls[key] += 1
+            active += 1
+            active_by_report[report_id] += 1
+            maximum = max(maximum, active)
+            try:
+                assert active_by_report[report_id] <= 3 and active <= 32
+                if hold:
+                    if active == 30:
+                        saturated.set()
+                    await (release_saved if key == (saving, "work") else blocked).wait()
+                else:
+                    await asyncio.sleep(0.02)
+                return self.validate(json.dumps(story, ensure_ascii=False), bundle)
+            finally:
+                active -= 1
+                active_by_report[report_id] -= 1
+
+        monkeypatch.setattr(LifeWriter, "write", write)
+        app = create_app(settings)
+        service = app.state.life_reports
+        store = app.state.store
+
+        def snapshots():
+            with store.connect() as db:
+                return db.execute("SELECT id,owner,input,unlocked,full_state,chapters,plan "
+                                  "FROM life_reports ORDER BY created,id").fetchall()
+
+        async def until(predicate):
+            async with asyncio.timeout(40):
+                while not predicate(snapshots()):
+                    await asyncio.sleep(0.05)
+
+        # Arrange 12 valid previews and test cashiers, with all provider calls replaced.
+        async with app.router.lifespan_context(app):
+            previews = await asyncio.gather(*(
+                service.create(LifeInput(profile={**PROFILE, "language": "zh" if i < 6 else "th"}, year=2027),
+                               f"batch-owner-{i}", network)
+                for i in range(12)
+            ))
+            assert all(preview["preview_state"] == "ready" for preview in previews)
+            await asyncio.gather(*(service.card_payments.create_sunlands(
+                preview["id"], network, "800000000", "66") for preview in previews))
+
+        # Confirm with the worker offline, so no notification or browser can start the tasks.
+        started = time.perf_counter()
+        orders = [service.card_payments.order_for(preview["id"]) for preview in previews]
+        assert all(await asyncio.gather(*(service.card_payments.confirm_sunlands(order) for order in orders)))
+        settle_s = time.perf_counter() - started
+        paid = snapshots()
+        assert len(paid) == 12 and all(row["unlocked"] == 1 and row["full_state"] == "queued" for row in paid)
+        saving = paid[0]["id"]
+        assert await service.card_payments.confirm_sunlands(service.card_payments.order_for(saving))
+        assert upstream_calls[SUNLANDS_QUERY_ORDER] == 12
+
+        worker = create_app(settings)
+        async with worker.router.lifespan_context(worker):
+            await asyncio.wait_for(saturated.wait(), 25)
+            in_progress = Counter(row["full_state"] for row in snapshots())
+            assert in_progress == {"generating": 10, "queued": 2}
+            release_saved.set()
+            await until(lambda rows: "work" in json.loads(rows[0]["chapters"]))
+            saved_work = json.loads(snapshots()[0]["chapters"])["work"]
+
+        # Leave one in-progress lease for the new worker to reclaim after it expires.
+        assert snapshots()[0]["full_state"] == "pending"
+        with store.connect() as db:
+            db.execute("UPDATE life_reports SET full_state='generating',lease='interrupted-worker' WHERE id=%s", (saving,))
+        hold = False
+        worker = create_app(settings)
+        async with worker.router.lifespan_context(worker):
+            await until(lambda rows: all(row["full_state"] == "ready" for row in rows))
+        finished_s = time.perf_counter() - started
+        final = snapshots()
+        assert json.loads(final[0]["chapters"])["work"] == saved_work and calls[(saving, "work")] == 1
+        assert all(len(json.loads(row["chapters"])) == 5 and row["plan"] for row in final)
+        languages = Counter(json.loads(row["input"])["profile"]["language"] for row in final)
+        assert languages == {"zh": 6, "th": 6}
+        with store.connect() as db:
+            assert db.execute("SELECT COUNT(*) AS total FROM bazi_report_usage WHERE scope=%s",
+                              (network,)).fetchone()["total"] == 24
+            assert db.execute("SELECT COUNT(DISTINCT provider_order) AS total FROM life_card_payments").fetchone()["total"] == 12
+        return {"accepted": 12, "completed": len(final), "languages": dict(languages),
+                "initial_generating": in_progress["generating"], "initial_queued": in_progress["queued"],
+                "peak_model_calls": maximum, "settlement_s": round(settle_s, 3),
+                "completion_s_including_restart": round(finished_s, 3), "saved_chapter_reused": True,
+                "payment": "offline gateway fixture", "writer": "validated synthetic output"}
+
+    observed = asyncio.run(exercise())
+    record_property("full_queue_result", json.dumps(observed))
+    print(json.dumps(observed))
+
+
 @pytest.mark.parametrize("outcome", ("structured_error", "html_success", "html_error", "business_error", "channel_error"))
 def test_sunlands_failure_receipts_are_durable_and_redacted(client, monkeypatch, record_property, outcome):
     http, app, _, _ = client
@@ -1173,6 +1356,82 @@ def test_thai_chapter_prompt_keeps_the_summary_separate_from_long_paragraphs(cli
     assert "ALL SIX point text fields" in prompt
 
 
+@pytest.mark.parametrize("language", ("zh", "th"))
+def test_paid_chapter_keeps_its_field_repair_after_a_timeout(client, monkeypatch, language):
+    http, app, _, _ = client
+    writer = app.state.life_reports.parts_writer
+    writer.config.model = "qwen3.7-plus"
+    writer.generation_timeout = 2
+    real_client = httpx.AsyncClient
+    calls, repairs = [], []
+    expected = {}
+    fixture = thai_story_for if language == "th" else story_for
+    reading = "annual" if language == "zh" else "pattern"
+    path_parts = ["watchpoints", 0, "signals", 0] if language == "zh" else ["actions", 0, "text"]
+    field = ".".join(map(str, path_parts))
+
+    def parent(story):
+        for key in path_parts[:-1]:
+            story = story[key]
+        return story
+
+    async def write_preview(self, bundle, **kwargs):
+        return self.validate(json.dumps(fixture(bundle), ensure_ascii=False), bundle)
+
+    async def handler(request):
+        payload = json.loads(request.content)
+        bundle = json.loads(payload["messages"][1]["content"])
+        calls.append(bundle["reading"])
+        story = fixture(bundle)
+        if bundle["reading"] == reading:
+            key = path_parts[-1]
+            original = parent(story)[key]
+            bad_text = "只看余额" if language == "zh" else original + " Google Drive"
+            correction = bundle.get("correction")
+            if correction:
+                repairs.append(correction)
+                assert correction["fields"] == {field: path_parts}
+                assert parent(json.loads(correction["draft"]))[key] is None
+                issue = {"field": field, "rule": "language"}
+                if language == "zh":
+                    issue.update(rule="string_too_short", min_length=12, actual_length=4)
+                    requirements = correction["field_requirements"][field]
+                    assert requirements["minLength"] == 12 and "25至55个汉字" in requirements["description"]
+                assert correction["field_errors"] == [issue]
+                schema = payload["response_format"]["json_schema"]["schema"]
+                assert schema["required"] == [field] and schema["properties"][field]["type"] == "string"
+                if len(repairs) == 1:
+                    if language == "zh":
+                        await asyncio.Event().wait()
+                    raise httpx.ReadTimeout("synthetic read timeout", request=request)
+                story = {field: bad_text if len(repairs) <= 3 else original}
+            else:
+                expected.update(writer.validate(json.dumps(story, ensure_ascii=False), bundle))
+                parent(story)[key] = bad_text
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop",
+            "message": {"content": json.dumps(story, ensure_ascii=False)}}]})
+
+    monkeypatch.setattr(LifeWriter, "write", write_preview)
+    monkeypatch.setattr(writer, "write", BaziReports.write.__get__(writer))
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
+    report = http.post("/api/life-reports", json={"profile": {**PROFILE, "language": language}, "year": 2027,
+                       "report_kind": "fortune"}, headers=HEADERS).json()
+    assert report["preview_state"] == "ready"
+    path = f"/api/life-reports/{report['id']}"
+    http.post(path + "/unlock", json={}, headers=HEADERS).raise_for_status()
+    finish(http, app)
+    full = http.get(path, headers=HEADERS).json()
+    assert full["full_state"] == "ready" and len(full["chapters"]) == 7 and full["plan"]
+    assert len(repairs) == 4 and repairs[0] == repairs[1]
+    assert calls.count(reading) == 5 and len(calls) == 12
+    with app.state.store.connect() as db:
+        row = db.execute("SELECT chapters FROM life_reports WHERE id=%s", (report["id"],)).fetchone()
+        errors = {entry["error_code"] for entry in db.execute(
+            "SELECT error_code FROM report_model_usage WHERE report_id=%s AND reading=%s", (report["id"], reading))}
+    assert json.loads(row["chapters"])[reading]["story"] == expected
+    assert ("CancelledError" if language == "zh" else "ReadTimeout") in errors
+
+
 def test_long_paid_narrative_has_room_to_explain_and_remains_bounded(client):
     http, app, calls, _ = client
     result = preview(http)
@@ -1222,6 +1481,101 @@ def test_report_history_and_feedback_are_bound_to_this_device_key(client):
     assert http.get(f"/api/life-reports/{result['id']}", headers=HEADERS).json()["feedback"] == "partly"
     assert len(calls) == 1
     assert http.get("/api/life-reports", headers=HEADERS).json()["items"][0]["id"] == result["id"]
+
+
+@pytest.mark.parametrize("language", ["zh", "th"])
+def test_h5_app_login_syncs_existing_and_future_reports(client, monkeypatch, language):
+    http, app, _, _ = client
+    service = app.state.life_reports
+    monkeypatch.setattr(service, "development", True)
+
+    async def write(self, bundle, **kwargs):
+        story = thai_story_for(bundle) if bundle["language"] == "th" else story_for(bundle)
+        return self.validate(json.dumps(story, ensure_ascii=False), bundle)
+
+    monkeypatch.setattr(LifeWriter, "write", write)
+    source_headers = {**HEADERS, "Accept-Language": language}
+    other_headers = {**source_headers, "X-Report-Key": "other-browser-key-" + "z" * 32}
+
+    def create(headers, year):
+        response = http.post("/api/life-reports", headers=headers,
+                             json={"profile": {**PROFILE, "language": language}, "year": year})
+        assert response.status_code == 200 and response.json()["preview_state"] == "ready"
+        return response.json()
+
+    first, foreign = create(source_headers, 2027), create(other_headers, 2027)
+    source_path = f"/api/life-reports/{first['id']}"
+    code_path = source_path + "/app-login-code"
+    listing = "/api/app/h5-reports"
+    assert http.get(listing).status_code == 401
+    assert http.post(code_path, headers=other_headers).status_code == 404
+    with app.state.store.connect() as db:
+        # Give the remaining historical entries the same timestamp to exercise the tie breaker.
+        db.execute("""INSERT INTO life_reports(id, owner, fingerprint, input, chart, created, preview, preview_state)
+                      SELECT 'history-' || n, owner, 'fixture-' || n, input, chart, created, preview, preview_state
+                      FROM life_reports, generate_series(1,30) AS n WHERE id=%s""", (first["id"],))
+
+    def issue():
+        response = http.post(code_path, headers=source_headers)
+        assert response.status_code == 200 and response.headers["Cache-Control"] == "no-store"
+        assert response.json()["expires_in"] == 600
+        code = response.json()["code"]
+        assert re.fullmatch(r"(?=.*[A-Z])(?=.*[2-9])[A-Z2-9]{6}", code)
+        return code
+
+    def redeem(code):
+        return http.post("/api/auth/h5-code", json={"code": code}, headers={"Accept-Language": language})
+
+    superseded, code = issue(), issue()
+    assert redeem(superseded).status_code == 401
+    with ThreadPoolExecutor(max_workers=2) as callers:
+        responses = list(callers.map(redeem, (code, code.lower())))
+    assert sorted(result.status_code for result in responses) == [200, 401]
+    session = next(result.json() for result in responses if result.status_code == 200)
+    assert redeem(issue()).json()["user_id"] == session["user_id"]
+    headers = {"Authorization": f"Bearer {session['token']}"}
+    account = http.get("/api/auth/me", headers=headers).json()
+    assert session["account"] == account == {"user_id": session["user_id"], "username": None, "kind": "h5"}
+    assert http.get(f"{listing}/{foreign['id']}", headers=headers).status_code == 404
+    first_page = http.get(listing, headers=headers).json()
+    cursor = first_page["next_cursor"]
+    last_page = http.get(listing, headers=headers, params={"before_created": cursor["created"], "before_id": cursor["id"]}).json()
+    assert len(first_page["items"]) == 30 and last_page["next_cursor"] is None
+    assert {r["id"] for r in first_page["items"] + last_page["items"]} == {first["id"], *(f"history-{n}" for n in range(1,31))}
+
+    detail_path = f"{listing}/{first['id']}"
+    free = http.get(detail_path, headers=headers).json()
+    assert free["access"] == "preview" and free["preview"] and free["chapters"] == [] and free["plan"] is None
+    order = http.post(source_path + "/payment", headers=source_headers).json()
+    assert http.post(source_path + "/payment/simulate", headers=source_headers,
+                     json={"reference": order["reference"]}).json() == {"paid": True}
+    finish(http, app)
+    paid = http.get(detail_path, headers=headers).json()
+    assert paid["access"] == "full" and paid["full_state"] == "ready" and paid["chapters"] and paid["plan"]
+    canonical = http.get(source_path, headers=source_headers).json()
+    assert paid["chapters"] == canonical["chapters"] and paid["plan"] == canonical["plan"]
+
+    later = create(source_headers, 2028)
+    assert http.get(listing, headers=headers).json()["items"][0]["id"] == later["id"]
+    assert http.get(f"{listing}/{later['id']}", headers=headers).json()["input"]["profile"]["language"] == language
+
+
+def test_h5_app_login_expiration_and_failed_attempt_budget(client):
+    http, app, _, _ = client
+    result = preview(http)
+    route = f"/api/life-reports/{result['id']}/app-login-code"
+    expired = http.post(route, headers=HEADERS).json()["code"]
+    with app.state.store.connect() as db:
+        db.execute("UPDATE h5_app_login_codes SET expires=0")
+    redeem = "/api/auth/h5-code"
+    assert http.post(redeem, json={"code": expired}).status_code == 401
+    valid = http.post(route, headers=HEADERS).json()["code"]
+    for _ in range(7):
+        assert http.post(redeem, json={"code": "AAAAAA"}).status_code == 401
+    response = http.post(redeem, json={"code": valid})
+    assert response.status_code == 429 and response.json()["code"] == "too_many_requests"
+    with app.state.store.connect() as db:
+        assert db.execute("SELECT COUNT(*) AS count FROM h5_app_login_codes WHERE active").fetchone()["count"] == 1
 
 
 @pytest.mark.parametrize("birth_time", ["09:30", None])
@@ -1450,27 +1804,39 @@ def test_provider_usage_is_scoped_to_preview_full_and_repairs_without_charging_c
         payload = json.loads(request.content)
         assert payload["stream_options"] == {"include_usage": True}
         bundle = json.loads(payload["messages"][1]["content"])
+        repair_fields = bundle.get("correction", {}).get("fields", {})
         if model == "qwen3.7-plus":
             assert payload["response_format"]["type"] == "json_schema"
             schema = payload["response_format"]["json_schema"]["schema"]
-            assert schema["properties"]["language"]["const"] == bundle["language"]
-            assert schema["properties"]["reading"]["const"] == bundle["reading"]
+            if repair_fields:
+                assert set(schema["properties"]) == set(schema["required"]) == {"traits.0"}
+            else:
+                assert schema["properties"]["language"]["const"] == bundle["language"]
+                assert schema["properties"]["reading"]["const"] == bundle["reading"]
             assert "translations" not in schema["properties"] and not schema["additionalProperties"]
             if bundle["stage"] == "chapter":
                 assert {"example", "response"} <= set(schema["$defs"]["Insight"]["required"])
                 ids = schema["$defs"]["Insight"]["properties"]["evidence_ids"]
                 assert ids["minItems"] == ids["maxItems"] == 2
                 assert set(ids["items"]["enum"]) == set(bundle["evidence"])
+                assert [item["enum"] for item in ids["prefixItems"]] == [
+                    bundle["citation_rules"]["topic_ids"], bundle["citation_rules"]["supporting_natal_ids"],
+                ]
+                assert schema["$defs"]["WatchPoint"]["properties"]["signals"]["items"]["minLength"] == 12
             elif bundle["stage"] == "plan":
                 assert set(schema["$defs"]["Phase"]["properties"]["action_ids"]["items"]["enum"]) == set(bundle["source_actions"])
         else:
             assert payload["response_format"] == {"type": "json_object"}
-        schemas = [line for line in payload["messages"][0]["content"].splitlines() if line.startswith("stage=")]
+        instructions = bundle.get("writing_rules", payload["messages"][0]["content"])
+        schemas = [line for line in instructions.splitlines() if line.startswith("stage=")]
         assert len(schemas) == 1 and schemas[0].startswith(f"stage={bundle['stage']}:")
         model_calls.append(bundle["stage"])
         story = story_for(bundle)
         if len(model_calls) == 1:
             story["traits"][0]["evidence_ids"] = ["H99", "P_sun"]
+        if repair_fields:
+            assert repair_fields == {"traits.0": ["traits", 0]}
+            story = {"traits.0": story["traits"][0]}
         packets = [
             {"choices": [{"delta": {"content": json.dumps(story, ensure_ascii=False)}, "finish_reason": "stop"}]},
             {"choices": [], "id": f"synthetic-usage-{len(model_calls)}",
@@ -1499,6 +1865,202 @@ def test_provider_usage_is_scoped_to_preview_full_and_repairs_without_charging_c
     assert len(model_calls) == 8
 
 
+@pytest.mark.parametrize("language,bad_repair", [("zh", "evidence"), ("th", "extra_field")])
+def test_preview_repairs_only_the_rejected_paragraph_and_revalidates_the_merge(client, monkeypatch, language, bad_repair):
+    http, app, _, _ = client
+    app.state.life_reports.writer.config.model = "qwen3.7-plus"
+    real_client = httpx.AsyncClient
+    attempts, expected = [], {}
+
+    def handler(request):
+        payload = json.loads(request.content)
+        bundle = json.loads(payload["messages"][1]["content"])
+        story = story_for(bundle)
+        if language == "th":
+            story["summary"]["text"] = "ลองเริ่มจากสิ่งที่สำคัญกับคุณ แล้วคุยให้เข้าใจตรงกันก่อนเลือกวิธีลงมือที่ทำได้จริง"
+            titles = ["เริ่มอย่างเข้าใจ", "เลือกอย่างมีจังหวะ", "พูดคุยอย่างชัดเจน"]
+            text = "เมื่อสิ่งที่ต้องทำยังไม่ชัด คุณอาจอยากคุยให้เข้าใจตรงกันก่อนเริ่ม ลองถามว่าผลงานแบบไหนที่ต้องการ แล้วเลือกส่วนเล็กมาลองทำก่อน วิธีนี้ช่วยให้เตรียมตัวได้ แต่หากต้องเริ่มทดลองเร็ว อาจตกลงขอบเขตสั้น ๆ แล้วค่อยปรับจากสิ่งที่พบ หลังจากลองทำให้ทบทวนว่าวิธีไหนช่วยลดความสับสน และเก็บส่วนที่ได้ผลไว้ใช้ต่อไป"
+            for index, trait in enumerate(story["traits"]):
+                trait.update(title=titles[index], text=titles[index] + " " + text)
+        expected.update(LifeWriter.validate(json.dumps(story, ensure_ascii=False), bundle))
+        correction = bundle.get("correction")
+        attempts.append(correction)
+        if not correction:
+            story["traits"][0]["text"] = ("先把事情说清楚再决定。" if language == "zh" else "ค่อย ๆ ดูสิ่งที่ทำได้ ") * 3
+        else:
+            assert correction["fields"] == {"traits.0": ["traits", 0]}
+            schema = payload["response_format"]["json_schema"]["schema"]
+            assert set(schema["properties"]) == set(schema["required"]) == {"traits.0"}
+            assert not schema["additionalProperties"]
+            draft = json.loads(correction["draft"])
+            assert draft["summary"] == expected["summary"]
+            assert draft["traits"][1:] == expected["traits"][1:]
+            story = {"traits.0": story["traits"][0]}
+            if len(attempts) == 2:
+                if bad_repair == "evidence":
+                    story["traits.0"]["evidence_ids"] = ["H99", "P_sun"]
+                else:
+                    story["summary"] = expected["summary"]
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(story, ensure_ascii=False)}}]})
+
+    monkeypatch.setattr(LifeWriter, "write", BaziReports.write)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
+    response = http.post("/api/life-reports", json={"profile": {**PROFILE, "language": language}, "year": 2027}, headers={**HEADERS, "Accept-Language": language})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["preview_state"] == "ready" and len(attempts) == 3
+    assert result["access"] == "preview" and result["chapters"] == []
+    with app.state.store.connect() as db:
+        saved = db.execute("SELECT preview FROM life_reports WHERE id=%s", (result["id"],)).fetchone()
+        usage = db.execute("SELECT validated FROM report_model_usage ORDER BY id").fetchall()
+    assert json.loads(saved["preview"])["story"] == expected
+    assert [row["validated"] for row in usage] == [0, 0, 1]
+
+
+def test_preview_schema_errors_identify_a_paragraph_but_root_errors_require_a_full_retry(client):
+    http, _, calls, _ = client
+    preview(http)
+    bundle = calls[0]
+    story = story_for(bundle)
+    story["traits"][1]["title"] = []
+    with pytest.raises(InvalidBaziReport) as failure:
+        LifeWriter.validate(json.dumps(story, ensure_ascii=False), bundle)
+    assert failure.value.repair_fields == {"traits.1": ["traits", 1]}
+    story["unexpected"] = True
+    with pytest.raises(InvalidBaziReport) as failure:
+        LifeWriter.validate(json.dumps(story, ensure_ascii=False), bundle)
+    assert failure.value.repair_fields == {}
+
+
+def test_hundred_previews_queue_before_calculation_and_finish_with_32_workers(postgres_url, monkeypatch):
+    from collections import Counter
+    from backend.app import thai
+    chart = thai.natal({**PROFILE, "birth_time": "09:30"})
+    monkeypatch.setattr(thai, "natal", lambda profile: deepcopy(chart))
+    settings = Settings(database_url=postgres_url, app_env="production", life_generation_concurrency=32,
+                        life_requests_per_minute=120, bazi_reports_per_minute=0, bazi_reports_per_day=0,
+                        providers={"qwen": ProviderConfig("test-key", "https://model.example/v1", "test")})
+    app = create_app(settings)
+    service = app.state.life_reports
+    async def exercise():
+        active = peak = 0
+        languages = Counter()
+        release, saturated = asyncio.Event(), asyncio.Event()
+        async def write(self, bundle, **kwargs):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            languages[bundle["language"]] += 1
+            if active == 32:
+                saturated.set()
+            try:
+                await release.wait()
+                return story_for(bundle)
+            finally:
+                active -= 1
+        monkeypatch.setattr(LifeWriter, "write", write)
+        await service.calculation_slots.acquire()
+        await service.calculation_slots.acquire()
+        try:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as http:
+                async def submit(index):
+                    language = "zh" if index % 2 == 0 else "th"
+                    headers = {"X-Report-Key": f"queue32-synthetic-owner-{index:032d}", "Accept-Language": language}
+                    response = await http.post("/api/life-reports?wait=false", headers=headers,
+                                               json={"profile": {**PROFILE, "language": language}, "year": 2027})
+                    assert response.status_code == 200, response.text
+                    return response.json(), headers
+                accepted = await asyncio.gather(*(submit(index) for index in range(100)))
+                assert len({row["id"] for row, _ in accepted}) == 100
+                assert all(row["chart"] is None and row["preview_state"] in ("queued", "generating") for row, _ in accepted)
+                assert not languages
+                service.calculation_slots.release()
+                service.calculation_slots.release()
+                await asyncio.wait_for(saturated.wait(), 30)
+                assert peak == 32
+                release.set()
+                async with asyncio.timeout(40):
+                    while True:
+                        with app.state.store.connect() as db:
+                            ready = db.execute("SELECT COUNT(*) AS total FROM life_reports WHERE preview_state='ready'").fetchone()["total"]
+                        if ready == 100:
+                            break
+                        await asyncio.sleep(0.1)
+                assert languages == {"zh": 50, "th": 50} and peak == 32
+                row, headers = accepted[0]
+                result = (await http.get(f"/api/life-reports/{row['id']}", headers=headers)).json()
+                assert result["preview_state"] == "ready" and result["access"] == "preview"
+                assert result["full_state"] == "not_started" and not result["chapters"]
+                foreign = await http.get(f"/api/life-reports/{row['id']}", headers=accepted[1][1])
+                assert foreign.status_code == 404
+        finally:
+            release.set()
+            await service.close()
+    asyncio.run(exercise())
+
+
+def test_preview_queue_recovers_queued_and_expired_jobs_without_resubmission(client):
+    from backend.app.life_reports import LifeReports
+    http, app, calls, _ = client
+    original = app.state.life_reports
+    body = LifeInput(profile=PROFILE, year=2027)
+    async def exercise():
+        rows = [await original.create(body, f"restart-owner-{i}", "restart-network", wait=False) for i in range(2)]
+        await original.close()
+        original.update(rows[0]["id"], preview_state="generating", lease="crashed-worker", lease_until=time.time() - 1)
+        recovered = LifeReports(app.state.store, original.settings, asyncio.Semaphore(4), asyncio.Semaphore(2))
+        try:
+            recovered.start()
+            async with asyncio.timeout(15):
+                while any(recovered.get(row["id"], f"restart-owner-{i}")["preview_state"] != "ready" for i, row in enumerate(rows)):
+                    await asyncio.sleep(0.05)
+            duplicate = await recovered.create(body, "restart-owner-0", "restart-network", wait=False)
+            assert duplicate["id"] == rows[0]["id"] and duplicate["preview_state"] == "ready"
+            assert len(calls) == 2
+            with app.state.store.connect() as db:
+                db.execute("UPDATE life_reports SET preview=NULL,preview_state='generating',preview_network='',"
+                           "lease='old-worker',lease_until=%s WHERE id=%s", (time.time() - 1, rows[0]["id"]))
+            retried = await asyncio.wait_for(recovered.create(body, "restart-owner-0", "restart-network"), 8)
+            assert retried["id"] == rows[0]["id"] and retried["preview_state"] == "ready"
+        finally:
+            await recovered.close()
+    http.portal.call(exercise)
+
+
+def test_model_slot_wait_does_not_consume_generation_timeout(client, monkeypatch):
+    http, app, calls, _ = client
+    preview(http)
+    writer = app.state.life_reports.writer
+    monkeypatch.setattr(writer, "generation_timeout", 0.04)
+    async def exercise():
+        for _ in range(4):
+            await writer.slots.acquire()
+        task = asyncio.create_task(writer.generate(calls[0], "waiting-owner", "waiting-network"))
+        try:
+            await asyncio.sleep(0.09)
+            assert not task.done()
+        finally:
+            for _ in range(4):
+                writer.slots.release()
+        assert (await task)["state"] == "ready"
+    http.portal.call(exercise)
+
+
+def test_preview_retries_transient_throttle_with_bounded_attempts(client, monkeypatch):
+    http, _, _, _ = client
+    attempts = []
+    async def write(self, bundle, **kwargs):
+        attempts.append(bundle["reading"])
+        if len(attempts) == 1:
+            error = InvalidBaziReport("upstream_status_429")
+            error.retry_after = 0.01
+            raise error
+        return self.validate(json.dumps(story_for(bundle), ensure_ascii=False), bundle)
+    monkeypatch.setattr(LifeWriter, "write", write)
+    assert preview(http)["preview_state"] == "ready"
+    assert len(attempts) == 2
+
+
 def test_concurrent_identical_previews_share_one_preview_without_starting_paid_work(client):
     http, app, calls, _ = client
     app.state.life_reports.writer.settings.bazi_reports_per_minute = 6
@@ -1516,28 +2078,9 @@ def test_concurrent_identical_previews_share_one_preview_without_starting_paid_w
 
 def test_thai_preview_chapters_and_plan_use_the_same_validated_pipeline(client, monkeypatch):
     http, app, calls, _ = client
-    body = "เมื่อสิ่งที่ต้องทำยังไม่ชัด คุณอาจอยากคุยให้เข้าใจตรงกันก่อนเริ่ม ลองถามว่าผลงานแบบไหนที่ต้องการ แล้วเลือกส่วนเล็กมาลองทำก่อน วิธีนี้ช่วยให้เตรียมตัวได้ แต่หากต้องเริ่มทดลองเร็ว อาจตกลงขอบเขตสั้น ๆ แล้วค่อยปรับจากสิ่งที่พบ หลังจากลองทำให้ทบทวนว่าวิธีไหนช่วยลดความสับสน และเก็บส่วนที่ได้ผลไว้ใช้ต่อไป"
-    topics = {"overview": "ชีวิต", "money": "การเงิน", "work": "การทำงาน", "love": "การพูดคุย", "family": "ครอบครัว", "annual": "การเตรียมตัว", "life-preview": "นิสัย", "life-plan": "การลงมือ"}
     async def write(self, bundle, **kwargs):
         calls.append(deepcopy(bundle))
-        story = story_for(bundle)
-        counter = 0
-        def translate(value, field=""):
-            nonlocal counter
-            if isinstance(value, dict):
-                if field == "summary":
-                    return {**value, "text": "สื่อสารความต้องการให้ชัดก่อนเลือกสิ่งที่คุณทุ่มเท"}
-                return {key: translate(item, key) for key, item in value.items()}
-            if isinstance(value, list):
-                if field in ("evidence_ids", "action_ids"):
-                    return value
-                return [translate(item, field) for item in value]
-            if isinstance(value, str) and field not in ("language", "reading", "key"):
-                counter += 1
-                prefix = topics[bundle["reading"]] + chr(0x0E01 + counter % 35)
-                return prefix + ("เลือกวิธีที่เหมาะกับคุณ" if field == "title" else body)
-            return value
-        return self.validate(json.dumps(translate(story), ensure_ascii=False), bundle)
+        return self.validate(json.dumps(thai_story_for(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
     response = http.post("/api/life-reports", json={"profile": {**PROFILE, "language": "th"}, "year": 2027}, headers=HEADERS)
     result = response.json()
@@ -1612,7 +2155,7 @@ def test_streamed_fields_update_live_progress_before_any_chapter_is_complete(cli
     assert result["full_state"] == "not_started" and result["generation_progress"]["percent"] == 0
     assert not waiting
     unlocked = http.post(f"/api/life-reports/{result['id']}/unlock", json={}, headers=HEADERS).json()
-    assert unlocked["full_state"] == "generating"
+    assert unlocked["full_state"] in ("queued", "generating")
 
     async def observe():
         app.state.life_report_gate.set()
@@ -1695,6 +2238,46 @@ def test_async_free_report_returns_early_and_streams_progress_without_paid_work(
     done = http.get(f"/api/life-reports/{result['id']}", headers=HEADERS).json()
     assert done["preview_state"] == "ready" and done["preview_generation_progress"]["percent"] == 100
     assert done["full_state"] == "not_started" and not app.state.life_reports.tasks
+    assert len(calls) == 1
+
+
+def test_two_second_long_preview_polling_respects_the_real_limiter_and_recovers(client, monkeypatch):
+    from types import SimpleNamespace
+    from backend.app import main as api_main
+
+    http, app, calls, _ = client
+    result = preview(http)
+    service = app.state.life_reports
+    with service.store.connect() as db:
+        saved = db.execute("SELECT preview FROM life_reports WHERE id=%s", (result["id"],)).fetchone()["preview"]
+    service.update(result["id"], preview=None, preview_state="generating", lease="slow-test-preview", lease_until=time.time() + 300)
+    clock = [time.monotonic()]
+    # Advance only the middleware clock, leaving asyncio and the report lease clock intact.
+    monkeypatch.setattr(api_main, "time", SimpleNamespace(monotonic=lambda: clock[0], time=time.time))
+    path = f"/api/life-reports/{result['id']}"
+    for _ in range(36):
+        clock[0] += 2
+        response = http.get(path, headers=HEADERS)
+        assert response.status_code == 200, response.text
+        assert response.json()["preview_state"] == "generating"
+        clock[0] += 0.05  # A request completes before the frontend starts its next two-second wait.
+    service.update(result["id"], preview=saved, preview_state="ready", lease="", lease_until=0)
+    clock[0] += 2
+    done = http.get(path, headers=HEADERS)
+    assert done.status_code == 200 and done.json()["preview_state"] == "ready"
+    assert done.json()["full_state"] == "not_started" and len(calls) == 1
+
+    for _ in range(31):
+        limited = http.get(path, headers=HEADERS)
+        if limited.status_code == 429:
+            break
+        assert limited.status_code == 200
+    assert limited.status_code == 429
+    wait = int(limited.headers["Retry-After"])
+    assert 1 <= wait <= 60
+    clock[0] += wait + 0.05
+    resumed = http.get(path, headers=HEADERS)
+    assert resumed.status_code == 200 and resumed.json()["preview_state"] == "ready"
     assert len(calls) == 1
 
 

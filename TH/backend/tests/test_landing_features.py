@@ -91,6 +91,89 @@ def test_visitor_number_keeps_first_region_and_beijing_date(client, monkeypatch)
     assert rows[1]["visitor_number"] == "TH-20261116-0002"
 
 
+def test_visit_activity_is_owned_and_keeps_newest_observation(client):
+    http, app, _, _ = client
+    body = {"id": str(uuid4()), "source": "facebook", "activity": {
+        "page": "payment", "action": "open_cashier", "state": "hidden", "sequence": 20,
+    }}
+    url = "/api/landing/visits"
+    assert http.post(url, json=body, headers=HEADERS).status_code == 200
+    with app.state.store.connect() as db:
+        initial = dict(db.execute("SELECT * FROM landing_visits WHERE id=%s", (body["id"],)).fetchone())
+    assert initial["last_page"] == "payment" and initial["last_action"] == "open_cashier"
+    assert initial["last_state"] == "hidden" and initial["last_activity_at"] >= initial["visited_at"]
+    assert initial["submitted_at"] is None and initial["seen_at"] is None
+    assert http.post(url, json=body, headers=OTHER).status_code == 404
+    older = {**body, "source": "changed", "activity": {**body["activity"], "page": "birth_form", "sequence": 19}}
+    assert http.post(url, json=older, headers=HEADERS).status_code == 200
+    assert http.post(url, json=body, headers=HEADERS).status_code == 200
+    assert http.post(url, json={"id": body["id"]}, headers=HEADERS).status_code == 200
+    with app.state.store.connect() as db:
+        assert dict(db.execute("SELECT * FROM landing_visits WHERE id=%s", (body["id"],)).fetchone()) == initial
+    returned = {**body, "activity": {**body["activity"], "state": "visible", "sequence": 21}}
+    assert http.post(url, json=returned, headers=HEADERS).status_code == 200
+    with app.state.store.connect() as db:
+        row = db.execute("SELECT * FROM landing_visits WHERE id=%s", (body["id"],)).fetchone()
+        assert row["last_state"] == "visible" and row["last_activity_sequence"] == 21
+        assert row["last_page"] == "payment" and row["source"] == "facebook"
+
+
+def test_visit_activity_rejects_unbounded_or_personal_fields(client):
+    http, _, _, _ = client
+    activity = {"page": "birth_form", "action": "edit_form", "state": "visible", "sequence": 1}
+    for bad in [{"page": "/report.html?id=private"}, {"action": "phone:123456"}, {"state": "paid"},
+                {"sequence": True}, {"sequence": -1}, {"phone": "12345678"}]:
+        result = http.post("/api/landing/visits", json={"id": str(uuid4()), "activity": {**activity, **bad}}, headers=HEADERS)
+        assert result.status_code == 422
+
+
+def test_activity_batch_is_acknowledged_ordered_and_idempotent(client):
+    http, app, _, _ = client
+    page_id = str(uuid4())
+    initial = {"page": "birth_form", "action": "view", "state": "visible", "sequence": 1,
+               "page_view_id": page_id, "occurred_at": time.time(), "visible_ms": 0}
+    events = [initial, {**initial, "sequence": 2, "kind": "dwell", "visible_ms": 5000},
+              {**initial, "sequence": 3, "page_view_id": str(uuid4()), "page": "payment", "action": "open_payment", "visible_ms": 2000}]
+    body = {"id": str(uuid4()), "events": list(reversed(events))}
+    url = "/api/landing/visits"
+    assert http.post(url, json=body, headers=HEADERS).json()["accepted_sequences"] == [3, 2, 1]
+    assert http.post(url, json=body, headers=HEADERS).status_code == 200
+    assert http.post(url, json={**body, "events": [{**initial, "visible_ms": 999999}]}, headers=HEADERS).status_code == 200
+    assert http.post(url, json=body, headers=OTHER).status_code == 404
+    with app.state.store.connect() as db:
+        rows = db.execute("SELECT * FROM landing_visit_activity WHERE visit_id=%s ORDER BY sequence", (body["id"],)).fetchall()
+        assert len(rows) == 3 and rows[0]["visible_ms"] == 0
+        last = db.execute("SELECT last_page,last_activity_sequence FROM landing_visits WHERE id=%s", (body["id"],)).fetchone()
+        assert dict(last) == {"last_page": "payment", "last_activity_sequence": 3}
+    detail = app.state.h5_admin.visit_detail(body["id"], 1)
+    assert detail["visit"]["visible_ms"] == 7000
+    assert detail["total"] == 2 and [row["sequence"] for row in detail["events"]] == [1, 3]
+    for bad in [{"events": [initial] * 21}, {"events": [{**initial, "visible_ms": -1}]},
+                {"events": [{**initial, "failure_code": "phone:123456"}]}]:
+        assert http.post(url, json={"id": body["id"], **bad}, headers=HEADERS).status_code == 422
+    with app.state.store.connect() as db:
+        db.execute("UPDATE landing_visits SET visited_at=%s WHERE id=%s", (time.time() - 31 * 86400, body["id"]))
+    visit(http)
+    with app.state.store.connect() as db:
+        assert db.execute("SELECT COUNT(*) count FROM landing_visit_activity").fetchone()["count"] == 0
+
+
+def test_visit_limit_handles_the_31st_update_and_does_not_pool_visitors(client):
+    http, app, _, _ = client
+    visit_id = str(uuid4())
+    for sequence in range(1, 121):
+        body = {"id": visit_id, "activity": {"page": "payment", "action": "open_payment", "state": "visible", "sequence": sequence}}
+        assert http.post("/api/landing/visits", json=body, headers=HEADERS).status_code == 200
+    response = http.post("/api/landing/visits", json=body, headers={**HEADERS, "X-Visit-Id": visit_id})
+    assert response.status_code == 429 and int(response.headers["Retry-After"]) > 0
+    assert http.post("/api/landing/visits", json={"id": str(uuid4())}, headers=OTHER).status_code == 200
+    with app.state.store.connect() as db:
+        row = db.execute("SELECT last_page,last_activity_sequence FROM landing_visits WHERE id=%s", (visit_id,)).fetchone()
+        assert row["last_page"] == "payment" and row["last_activity_sequence"] == 120
+        failure = db.execute("SELECT owner,visit_id FROM h5_request_failures WHERE http_status=429").fetchone()
+        assert failure["owner"] == landing_features.owner_for(HEADERS["X-Report-Key"]) and failure["visit_id"] == visit_id
+
+
 def test_new_report_saves_first_entry_and_reuse_preserves_attribution(client):
     http, app, _, _ = client
     first = {"id": str(uuid4()), "source": "facebook", "campaign": "fortune_th_nov", "region": "TH"}
@@ -109,10 +192,19 @@ def test_new_report_saves_first_entry_and_reuse_preserves_attribution(client):
         assert (row["landing_source"], row["landing_campaign"], row["landing_region"]) == ("facebook", "fortune_th_nov", "TH")
         assert "landing_visit" not in json.loads(row["input"])
         assert db.execute("SELECT region_code FROM landing_visits WHERE id=%s", (later["id"],)).fetchone()["region_code"] == "VN"
+        visit_row = db.execute("SELECT submitted_at,seen_at FROM landing_visits WHERE id=%s", (later["id"],)).fetchone()
+        assert visit_row["submitted_at"] is not None and visit_row["seen_at"] is None
+        assert db.execute("SELECT report_id FROM landing_visit_reports WHERE visit_id=%s", (later["id"],)).fetchone()["report_id"] == report_id
 
-    reused = http.post("/api/life-reports", json=body, headers=HEADERS)
+    return_visit = {**later, "id": str(uuid4())}
+    reused = http.post("/api/life-reports", json={**body, "landing_visit": return_visit}, headers=HEADERS)
     assert reused.status_code == 200 and reused.json()["id"] == report_id
     assert app.state.life_reports.row(report_id, landing_features.owner_for(HEADERS["X-Report-Key"]))["landing_source"] == "facebook"
+    assert event(http, later["id"], report_id, "submitted").json()["recorded"] is True
+    with app.state.store.connect() as db:
+        assert db.execute("SELECT submitted_at FROM landing_visits WHERE id=%s", (later["id"],)).fetchone()["submitted_at"] == visit_row["submitted_at"]
+        links = db.execute("SELECT visit_id FROM landing_visit_reports WHERE report_id=%s", (report_id,)).fetchall()
+        assert {row["visit_id"] for row in links} == {later["id"], return_visit["id"]}
 
 
 def test_historical_report_and_unowned_visit_do_not_gain_attribution(client):

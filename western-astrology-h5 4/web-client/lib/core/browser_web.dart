@@ -14,8 +14,16 @@ external JSPromise<JSString> _export(JSString payload, JSString format);
 external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
+@JS('fateH5.welcomeAge')
+external JSNumber _welcomeAge();
+@JS('fateH5.trackActivity')
+external void _activity(JSString payload, JSString key, JSString endpoint);
+@JS('fateH5.trackFailure')
+external void _failure(JSString path, JSString code, JSString method);
 @JS('fateBoot.fail')
 external void _startupFailed();
+@JS('fateBoot.connectWelcome')
+external void _connectWelcome(JSFunction enter);
 @JS('navigator.globalPrivacyControl')
 external JSBoolean? get _privacyControl;
 @JS('navigator.doNotTrack')
@@ -26,6 +34,11 @@ class WebBrowserPort implements BrowserPort {
   Json? _visitContext;
 
   void startupFailed() => _startupFailed();
+  void connectWelcome(void Function() enter) => _connectWelcome(enter.toJS);
+
+  @override
+  Duration get welcomeAge =>
+      Duration(microseconds: (_welcomeAge().toDartDouble * 1000).round());
 
   @override
   void openPage(String path) => web.window.open(
@@ -95,6 +108,31 @@ class WebBrowserPort implements BrowserPort {
       _payment(action.toJS, jsonEncode(fields).toJS);
   @override
   void pageReady(String page) => _ready(page.toJS);
+
+  @override
+  void trackActivity(String page, String action) {
+    try {
+      final visit = visitContext();
+      if (visit.isEmpty) return;
+      const base = String.fromEnvironment('FATE_API_BASE_URL');
+      _activity(
+        jsonEncode({...visit, 'activity': {'page': page, 'action': action}}).toJS,
+        ownerKey().toJS,
+        '$base/api/landing/visits'.toJS,
+      );
+    } catch (_) {
+      // Optional traffic recording must never interrupt a report or payment.
+    }
+  }
+
+  @override
+  void trackFailure(String path, String code, String method) {
+    try {
+      if (visitContext().isNotEmpty) _failure(path.toJS, code.toJS, method.toJS);
+    } catch (_) {
+      // Diagnostics must not change the original request result.
+    }
+  }
 
   @override
   String? readSetting(String key, {bool session = false}) {

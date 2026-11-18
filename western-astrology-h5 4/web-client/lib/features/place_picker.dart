@@ -18,27 +18,15 @@ class BirthplaceFields extends StatefulWidget {
 }
 
 class _BirthplaceFieldsState extends State<BirthplaceFields> {
-  final _countryText = TextEditingController(),
-      _provinceText = TextEditingController(),
-      _cityText = TextEditingController();
-  final _menus = {
-    for (final id in ['birth-country', 'birth-province', 'birth-city'])
-      id: OverlayPortalController(),
-  };
-  String _country = '',
-      _countryQuery = '',
-      _provinceQuery = '',
-      _cityQuery = '',
-      _open = '',
-      _language = '';
-  Place? _province, _city;
+  final _provinceText = TextEditingController();
+  final _menus = {'birth-province': OverlayPortalController()};
+  String _provinceQuery = '', _open = '', _language = '';
+  Place? _province;
   Copy get c => widget.h5.copy;
 
   @override
   void dispose() {
-    _countryText.dispose();
     _provinceText.dispose();
-    _cityText.dispose();
     super.dispose();
   }
 
@@ -47,26 +35,8 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     super.didUpdateWidget(oldWidget);
     if (_language != c.language) {
       _language = c.language;
-      if (_country.isNotEmpty) {
-        _countryText.text = c.t(
-          'jy',
-          _country == 'global'
-              ? 'globalCities'
-              : _country == 'CN'
-              ? 'china'
-              : 'thailand',
-        );
-      }
       if (_province != null) _provinceText.text = _province!.name(c.language);
-      if (_city != null) _cityText.text = _city!.name(c.language);
     }
-  }
-
-  void _clearCity() {
-    _city = null;
-    _cityQuery = '';
-    _cityText.clear();
-    widget.onSelected(null);
   }
 
   void _setOpen(String id) {
@@ -74,6 +44,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     _menus[_open]?.hide();
     _open = id;
     _menus[id]?.show();
+    if (id.isNotEmpty) widget.h5.trackActivity('birth_form', 'select_birthplace');
   }
 
   Widget _positionMenu(
@@ -115,31 +86,9 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     );
   }
 
-  void _setCountry(String country) {
-    setState(() {
-      _country = country;
-      _countryQuery = '';
-      _province = null;
-      _provinceQuery = '';
-      _provinceText.clear();
-      _clearCity();
-      _setOpen('');
-      _countryText.text = c.t(
-        'jy',
-        country == 'global'
-            ? 'globalCities'
-            : country == 'CN'
-            ? 'china'
-            : 'thailand',
-      );
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     _language = c.language;
-    final hasRegions = _country == 'TH' || _country == 'CN';
-    final canSearchCity = _country == 'global' || _province != null;
     Widget field(
       String id,
       String label,
@@ -147,9 +96,8 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       String hint,
       VoidCallback open,
       ValueChanged<String> edit,
-      Widget options, {
-      bool enabled = true,
-    }) {
+      Widget options,
+    ) {
       final portal = _menus[id]!;
       return Focus(
         onFocusChange: (focused) {
@@ -185,7 +133,6 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                     key: ValueKey(id),
                     groupId: portal,
                     controller: controller,
-                    enabled: enabled,
                     style: const TextStyle(fontSize: 13),
                     autocorrect: false,
                     maxLength: 80,
@@ -200,11 +147,8 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
                       ),
                       suffixIcon: IconButton(
                         tooltip: label,
-                        onPressed: enabled
-                            ? () => setState(
-                                () => _setOpen(_open == id ? '' : id),
-                              )
-                            : null,
+                        onPressed: () =>
+                            setState(() => _setOpen(_open == id ? '' : id)),
                         padding: EdgeInsets.zero,
                         icon: const Icon(
                           Icons.keyboard_arrow_down,
@@ -222,144 +166,32 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       );
     }
 
-    final countries = [
-      ('CN', c.t('jy', 'china'), 'china 中国 中國 จีน cn'),
-      ('TH', c.t('jy', 'thailand'), 'thailand 泰国 泰國 ไทย th'),
-      ('global', c.t('jy', 'globalCities'), 'world global 全球 ทั่วโลก'),
-    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         field(
-          'birth-country',
-          '⌖  ${c.t('jy', 'country')}',
-          _countryText,
-          c.t('jy', 'countryPrompt'),
-          () => setState(() => _setOpen('birth-country')),
-          (v) => setState(() {
-            _countryQuery = v;
-            _country = '';
+          'birth-province',
+          c.t('jy', 'region'),
+          _provinceText,
+          c.t('jy', 'thaiRegionPrompt'),
+          () => setState(() => _setOpen('birth-province')),
+          (value) => setState(() {
             _province = null;
-            _provinceQuery = '';
-            _provinceText.clear();
-            _clearCity();
-            _setOpen('birth-country');
+            _provinceQuery = value;
+            widget.onSelected(null);
+            _setOpen('birth-province');
           }),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF171027),
-              border: Border.all(color: const Color(0x40E4BC78)),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: SingleChildScrollView(
-              primary: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final item in countries)
-                    if ('${item.$2} ${item.$3}'.toLowerCase().contains(
-                      _countryQuery.toLowerCase().trim(),
-                    ))
-                      InkWell(
-                        onTap: () => _setCountry(item.$1),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 9,
-                          ),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              item.$2,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ),
-                      ),
-                ],
-              ),
-            ),
+          PlacePicker(
+            h5: widget.h5,
+            query: _provinceQuery,
+            onSelected: (value) => setState(() {
+              _province = value;
+              _provinceText.text = value.name(c.language);
+              _provinceQuery = '';
+              _setOpen('');
+              widget.onSelected(value);
+            }),
           ),
-        ),
-        const SizedBox(height: 9),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: field(
-                'birth-province',
-                c.t('jy', 'region'),
-                _provinceText,
-                c.t(
-                  'jy',
-                  !hasRegions
-                      ? 'countryFirst'
-                      : _country == 'TH'
-                      ? 'thaiRegionPrompt'
-                      : 'regionPrompt',
-                ),
-                () => setState(() => _setOpen('birth-province')),
-                (v) => setState(() {
-                  _province = null;
-                  _provinceQuery = v;
-                  _clearCity();
-                  _setOpen('birth-province');
-                }),
-                PlacePicker(
-                  key: ValueKey('province-$_country'),
-                  h5: widget.h5,
-                  country: _country,
-                  query: _provinceQuery,
-                  onSelected: (value) => setState(() {
-                    _province = value;
-                    _provinceText.text = value.name(c.language);
-                    _provinceQuery = '';
-                    _clearCity();
-                    _setOpen('');
-                  }),
-                ),
-                enabled: hasRegions,
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: field(
-                'birth-city',
-                c.t('jy', 'city'),
-                _cityText,
-                c.t(
-                  'jy',
-                  canSearchCity
-                      ? (_country == 'CN' ? 'cityExample' : 'citySearch')
-                      : _country.isEmpty
-                      ? 'countryFirst'
-                      : 'regionFirst',
-                ),
-                () => setState(() => _setOpen('birth-city')),
-                (v) => setState(() {
-                  _cityQuery = v;
-                  _city = null;
-                  widget.onSelected(null);
-                  _setOpen('birth-city');
-                }),
-                PlacePicker(
-                  key: ValueKey('city-$_country-${_province?.id}'),
-                  h5: widget.h5,
-                  country: _country == 'global' ? '' : _country,
-                  province: _province,
-                  query: _cityQuery,
-                  onSelected: (value) => setState(() {
-                    _city = value;
-                    _cityText.text = value.name(c.language);
-                    _cityQuery = '';
-                    _setOpen('');
-                    widget.onSelected(value);
-                  }),
-                ),
-                enabled: canSearchCity,
-              ),
-            ),
-          ],
         ),
         const SizedBox(height: 7),
         Text(
@@ -374,15 +206,11 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
 class PlacePicker extends StatefulWidget {
   const PlacePicker({
     required this.h5,
-    required this.country,
-    this.province,
     this.query = '',
     required this.onSelected,
     super.key,
   });
   final H5Controller h5;
-  final String country;
-  final Place? province;
   final String query;
   final ValueChanged<Place> onSelected;
   @override
@@ -391,86 +219,47 @@ class PlacePicker extends StatefulWidget {
 
 class _PlacePickerState extends State<PlacePicker> {
   CancelToken? _request;
-  Timer? _debounce;
   List<Place> _items = [];
   List<Place>? _provinces;
   bool _busy = true;
-  String _query = '', _error = '';
-  int _total = 0, _offset = 0;
+  String _error = '';
   Copy get c => widget.h5.copy;
   @override
   void initState() {
     super.initState();
-    _query = widget.query;
     unawaited(_load());
   }
 
   @override
   void didUpdateWidget(covariant PlacePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.query != widget.query) {
-      _query = widget.query;
-      _request?.cancel();
-      _debounce?.cancel();
-      _error = '';
-      _offset = 0;
-      if (widget.province == null &&
-          widget.country.isNotEmpty &&
-          _provinces != null) {
-        _items = _provinces!.where((p) => p.matches(_query)).toList();
-        _total = _items.length;
-        _busy = false;
-        return;
-      }
-      _items = [];
-      _total = 0;
-      _busy = true;
-      _debounce = Timer(const Duration(milliseconds: 180), () => _load());
+    if (oldWidget.query != widget.query && _provinces != null) {
+      _items = _provinces!
+          .where((place) => place.matches(widget.query))
+          .toList();
     }
   }
 
-  Future<void> _load({bool more = false}) async {
+  Future<void> _load() async {
     _request?.cancel();
     final token = CancelToken();
     _request = token;
     setState(() {
       _busy = true;
       _error = '';
-      if (!more) {
-        _offset = 0;
-        _items = [];
-      }
+      _items = [];
     });
     try {
-      List<Place> items;
-      int total;
-      if (widget.province == null && widget.country.isNotEmpty) {
-        _provinces ??= await widget.h5.repository.provinces(
-          widget.country,
-          token,
-        );
-        items = _provinces!.where((p) => p.matches(_query)).toList();
-        total = items.length;
-      } else {
-        final result = await widget.h5.repository.cities(
-          widget.country,
-          widget.province?.id ?? '',
-          _query,
-          _offset,
-          token,
-        );
-        items = objects(result['items']).map(Place.new).toList();
-        total = (result['total'] as num?)?.toInt() ?? items.length;
-      }
+      _provinces ??= await widget.h5.repository.provinces('TH', token);
       if (!mounted || token.cancelled) return;
       await widget.h5.prepareText(
-        items.map((place) => place.name(c.language)).join(),
+        _provinces!.map((place) => place.name(c.language)).join(),
       );
       if (!mounted || token.cancelled) return;
       setState(() {
-        _items = more ? [..._items, ...items] : items;
-        _offset = _items.length;
-        _total = total;
+        _items = _provinces!
+            .where((place) => place.matches(widget.query))
+            .toList();
         _busy = false;
       });
     } catch (error) {
@@ -486,7 +275,6 @@ class _PlacePickerState extends State<PlacePicker> {
   @override
   void dispose() {
     _request?.cancel();
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -511,26 +299,13 @@ class _PlacePickerState extends State<PlacePicker> {
               style: const TextStyle(fontSize: 11, color: lavender),
             ),
           ),
-        if (widget.province != null && _query.trim().isEmpty)
-          _option(widget.province!),
         for (final place in _items) _option(place),
-        if (!_busy &&
-            _items.isEmpty &&
-            _error.isEmpty &&
-            (widget.province == null || _query.trim().isNotEmpty))
+        if (!_busy && _items.isEmpty && _error.isEmpty)
           Padding(
             padding: const EdgeInsets.all(10),
             child: Text(
               c.t('ui', 'noCity'),
               style: const TextStyle(fontSize: 11, color: lavender),
-            ),
-          ),
-        if (_items.length < _total)
-          TextButton(
-            onPressed: _busy ? null : () => _load(more: true),
-            child: Text(
-              c.t('ui', 'morePlaces'),
-              style: const TextStyle(fontSize: 11),
             ),
           ),
         if (_error.isNotEmpty)
@@ -563,11 +338,6 @@ class _PlacePickerState extends State<PlacePicker> {
             place.name(c.language),
             style: const TextStyle(fontSize: 12, height: 1.4),
           ),
-          if (widget.province != null || widget.country.isEmpty)
-            Text(
-              place.english,
-              style: const TextStyle(fontSize: 10, color: lavender),
-            ),
         ],
       ),
     ),

@@ -27,6 +27,36 @@ class TestSessionStore implements SessionStore {
 }
 
 void main() {
+  test('H5 code saves the session when the account endpoint is down', () async {
+    final paths = <String>[];
+    final store = TestSessionStore();
+    final api = ApiClient(
+      'https://api.example.test',
+      client: MockClient((request) async {
+        paths.add(request.url.path);
+        if (request.url.path == '/api/auth/h5-code') {
+          expect(jsonDecode(request.body), {'code': 'A2B3C4'});
+          return http.Response(
+            '{"token":"web-session","user_id":"web-user",'
+            '"account":{"user_id":"web-user","kind":"h5","username":null}}',
+            200,
+          );
+        }
+        return http.Response('{}', 503);
+      }),
+    );
+    final auth = AuthRepository(api, store);
+    addTearDown(auth.dispose);
+
+    await auth.signInH5Code('a2b3c4');
+
+    expect(paths, ['/api/auth/h5-code']);
+    expect(auth.signedIn, isTrue);
+    expect(auth.hasH5Reports, isTrue);
+    expect(auth.owner, 'web-user');
+    expect(await store.read(), {'access_token': 'web-session'});
+  });
+
   test(
     'US city search selects the US catalog and keeps the returned timezone',
     () async {

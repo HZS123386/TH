@@ -1,4 +1,5 @@
 """Administrator boundaries and business metrics use isolated, synthetic records."""
+from datetime import datetime, timedelta, timezone
 import json
 import time
 from uuid import uuid4
@@ -8,6 +9,7 @@ import pytest
 
 from backend.app.accounts import password_hash
 from backend.app.config import Settings
+from backend.app.landing_features import owner_for
 from backend.app.main import create_app
 from backend.tests import test_life_reports as life_fixtures
 
@@ -83,13 +85,71 @@ def admin(postgres_url):
 
 def test_admin_data_requires_separate_login_and_static_page_has_no_business_data(admin):
     http, _ = admin
-    for path in ("/overview", "/sources", "/records/reports", "/reports/report-1"):
+    for path in ("/overview", "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
         assert http.get("/api/admin" + path).status_code == 401
     html = http.get("/admin/")
     assert html.status_code == 200 and "report-1" not in html.text
     assert html.headers["cache-control"] == "no-store"
     assert "frame-ancestors 'none'" in html.headers["content-security-policy"]
     assert http.get("/admin/config.py").status_code == 404
+
+
+def test_visit_records_expose_observed_page_and_leave_history_unknown(admin):
+    http, app = admin
+    now = time.time()
+    with app.state.store.connect() as db:
+        db.execute("UPDATE landing_visits SET last_page='payment',last_action='open_cashier',"
+                   "last_state='hidden',last_activity_at=%s,last_activity_sequence=10 WHERE id='later'", (now,))
+    login(http)
+    rows = {row["id"]: row for row in http.get("/api/admin/records/visits").json()["items"]}
+    assert rows["later"]["last_page"] == "payment" and rows["later"]["last_action"] == "open_cashier"
+    assert rows["later"]["last_state"] == "hidden" and rows["later"]["last_activity_at"] == now
+    assert rows["first"]["last_page"] is None and rows["first"]["last_activity_at"] is None
+    assert rows["later"]["status"] == "seen"
+    assert any(item["name"] == "最后页面与操作" for item in http.get("/api/admin/sources").json()["items"])
+
+
+def test_visit_detail_shows_form_progress_and_only_own_submitted_birth_fields(admin):
+    http, app = admin
+    visit_id, page_view_id = str(uuid4()), str(uuid4())
+    owner_key = "synthetic-form-visitor-with-a-valid-key"
+    headers = {"X-Report-Key": owner_key}
+    now = time.time()
+    events = [
+        {"sequence": seq, "page_view_id": page_view_id, "page": "birth_form", "action": action,
+         "state": state, "kind": kind, "occurred_at": now, "visible_ms": 0}
+        for seq, action, state, kind in (
+            (2, "form_progress_complete", "visible", "action"),
+            (3, "form_progress_complete", "pagehide", "state"),
+            (1, "form_progress_time", "visible", "action"),
+        )
+    ]
+    assert http.post("/api/landing/visits", headers=headers, json={"id": visit_id, "events": events}).status_code == 200
+    path = f"/api/admin/visits/{visit_id}"
+    assert http.get(path).status_code == 401
+    login(http)
+    before = http.get(path).json()
+    assert before["visit"]["form_progress"] == "form_progress_complete"
+    assert before["visit"]["last_state"] == "pagehide" and before["visit"]["submitted_at"] is None
+    assert before["submitted_profiles"] == []
+    assert http.get("/api/admin/visits/first").json()["visit"]["form_progress"] is None
+
+    profile = {**PROFILE, "birth_time": None, "birthplace": "Bangkok, TH"}
+    with app.state.store.connect() as db:
+        db.execute("INSERT INTO life_reports(id,owner,fingerprint,input,chart,created) VALUES(%s,%s,%s,%s,%s,%s)",
+                   ("form-report", owner_for(owner_key), "form-fingerprint", json.dumps({"profile": profile, "user_question": "private"}),
+                    "{}", now))
+        db.execute("INSERT INTO landing_visit_reports(visit_id,report_id) VALUES(%s,'report-1')", (visit_id,))
+    assert http.post(f"/api/landing/visits/{visit_id}/events", headers=headers,
+                     json={"report_id": "form-report", "event": "submitted"}).json()["recorded"] is True
+    detail = http.get(path)
+    assert detail.headers["cache-control"] == "no-store" and detail.json()["visit"]["submitted_at"] is not None
+    assert detail.json()["submitted_profiles"] == [{
+        "report_id": "form-report", "birth_date": profile["birth_date"], "birth_time": None,
+        "birth_time_unknown": True, "birthplace": "Bangkok, TH",
+    }]
+    row = next(row for row in http.get("/api/admin/records/visits").json()["items"] if row["id"] == visit_id)
+    assert row["form_progress"] == "form_progress_complete" and "submitted_profiles" not in row
 
 
 def test_login_cookie_csrf_logout_and_revocation(admin):
@@ -125,9 +185,10 @@ def test_metrics_separate_real_receipts_simulation_permissions_and_failed_attemp
     http, _ = admin
     login(http)
     data = http.get("/api/admin/overview?days=30").json()
-    assert data["metrics"] == {"visits": 3, "visitors": 1, "submitted": 3, "seen": 3, "reports": 7,
-                               "report_failures": 2, "unlocked": 5, "orders": 4, "paid": 1, "revenue": 3000,
-                               "order_issues": 1, "calls": 2, "failed_calls": 1, "missing_usage": 0, "tokens": 300}
+    metrics = {key: value for key, value in data["metrics"].items() if key != "next_day_return_visitors"}
+    assert metrics == {"visits": 3, "visitors": 1, "submitted": 3, "seen": 3, "reports": 7,
+                       "report_failures": 2, "unlocked": 5, "orders": 4, "paid": 1, "revenue": 3000,
+                       "order_issues": 1, "calls": 2, "failed_calls": 1, "missing_usage": 0, "tokens": 300}
     visits = http.get("/api/admin/records/visits?days=30").json()["items"]
     visitor_number = visits[0]["visitor_number"]
     matched = http.get("/api/admin/records/visits", params={"q": visitor_number}).json()
@@ -140,6 +201,45 @@ def test_metrics_separate_real_receipts_simulation_permissions_and_failed_attemp
     assert issues["total"] == 4
     assert next(row for row in issues["items"] if row["category"] == "model")["attribution"] == "tagged"
     assert next(row for row in issues["items"] if row["report_id"] == "report-6")["attribution"] == "unattributed"
+
+
+def test_next_day_returns_use_beijing_visit_days_and_count_each_browser_once(postgres_url):
+    app = create_app(Settings(database_url=postgres_url, app_env="production",
+                              admin_username="admin-test", admin_password_hash=HASH))
+    today = datetime.now(timezone(timedelta(hours=8))).replace(hour=0, minute=0, second=0, microsecond=0)
+    midnight = (today - timedelta(days=2)).timestamp()
+    visits = [
+        ("first", "browser-a", midnight - 1),
+        ("return", "browser-a", midnight + 1),
+        ("repeat", "browser-a", midnight + 60),
+        ("third-day", "browser-a", midnight + 86401),
+        ("restored-tab", "browser-b", midnight - 2),
+        ("gap-first", "browser-c", midnight - 3),
+        ("gap-later", "browser-c", midnight + 86402),
+        ("idle-tab", "browser-d", midnight - 4),
+        ("offline-first", "browser-e", midnight - 50),
+        ("offline-upload", "browser-e", midnight + 8),
+    ]
+    events = [
+        ("restored-tab", "state", "visible", "view", midnight, midnight + 86400),
+        ("idle-tab", "dwell", "visible", "view", midnight + 5, midnight + 5),
+        ("idle-tab", "state", "hidden", "view", midnight + 6, midnight + 6),
+        ("idle-tab", "state", "visible", "leave_page", midnight + 7, midnight + 7),
+        ("offline-upload", "action", "visible", "view", midnight - 10, midnight + 8),
+    ]
+    with app.state.store.connect() as db:
+        db.cursor().executemany("INSERT INTO landing_visits(id,owner,visited_at,source,campaign) VALUES(%s,%s,%s,'','')", visits)
+        db.cursor().executemany(
+            "INSERT INTO landing_visit_activity(visit_id,sequence,page_view_id,kind,state,action,occurred_at,received_at,page,visible_ms) "
+            "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,'birth_form',0)",
+            [(visit, sequence, uuid4(), *event) for sequence, (visit, *event) in enumerate(events, 1)],
+        )
+    with TestClient(app, base_url="https://testserver") as http:
+        login(http)
+        for days, count in ((0, 2), (3, 2), (2, 1), (1, 0)):
+            response = http.get("/api/admin/overview", params={"days": days})
+            assert response.status_code == 200, response.text
+            assert response.json()["metrics"]["next_day_return_visitors"] == count
 
 
 def test_visitor_lookup_and_active_report_links_cover_the_h5_chain(admin):
@@ -254,6 +354,8 @@ def test_check_uses_existing_order_and_original_confirmation_without_order_creat
 
 
 def test_admin_retry_reuses_real_preview_and_full_generation_pipeline(client):
+    import asyncio
+
     http, app, calls, mode = client
     app.state.h5_admin.settings.admin_username = "admin-test"
     app.state.h5_admin.settings.admin_password_hash = HASH
@@ -262,17 +364,28 @@ def test_admin_retry_reuses_real_preview_and_full_generation_pipeline(client):
     original = preview(http)
     identifier = original["id"]
     with app.state.store.connect() as db:
-        db.execute("UPDATE life_reports SET preview=NULL,preview_state='unavailable' WHERE id=%s", (identifier,))
-    assert action(http, headers, identifier, "retry_report").status_code == 200
+        db.execute("UPDATE life_reports SET preview=NULL,preview_state='generating',preview_network='',"
+                   "lease='legacy-worker',lease_until=%s WHERE id=%s", (time.time() - 1, identifier))
+    retried = action(http, headers, identifier, "retry_report")
+    assert retried.status_code == 200 and retried.json() == {"ok": True, "code": "queued"}
+
     async def wait_preview():
-        import asyncio
-        await asyncio.gather(*list(app.state.life_reports.preview_tasks.values()))
+        async with asyncio.timeout(8):
+            while True:
+                with app.state.store.connect() as db:
+                    row = db.execute("SELECT preview_state FROM life_reports WHERE id=%s", (identifier,)).fetchone()
+                if row["preview_state"] == "ready":
+                    return
+                await asyncio.sleep(0.05)
+
     http.portal.call(wait_preview)
     detail = http.get(f"/api/admin/reports/{identifier}").json()
     assert detail["report"]["preview_state"] == "ready" and detail["report"]["unlocked"] == 0
+    assert detail["audit"][0]["status"] == "succeeded" and detail["audit"][0]["code"] == "queued"
     with app.state.store.connect() as db:
         db.execute("UPDATE life_reports SET unlocked=1,full_state='unavailable' WHERE id=%s", (identifier,))
-    assert action(http, headers, identifier, "retry_report").status_code == 200
+    retried = action(http, headers, identifier, "retry_report")
+    assert retried.status_code == 200 and retried.json() == {"ok": True, "code": "queued"}
     finish(http, app)
     assert http.get(f"/api/admin/reports/{identifier}").json()["report"]["full_state"] == "ready"
     with app.state.store.connect() as db:
@@ -292,6 +405,43 @@ def test_request_failures_before_report_creation_are_categorized_without_private
     assert "PRIVATE-BODY" not in json.dumps(result) and "13000000000" not in json.dumps(result)
     with app.state.store.connect() as db:
         assert "DO-NOT-STORE" not in str(dict(db.execute("SELECT * FROM h5_request_failures").fetchone()))
+
+
+def test_failure_links_to_visitor_even_when_visit_upload_arrives_later(admin):
+    http, app = admin
+    visit_id = str(uuid4())
+    headers = {**life_fixtures.HEADERS, "X-Visit-Id": visit_id}
+    assert http.post("/api/life-reports", json={}, headers=headers).status_code == 422
+    assert http.post("/api/landing/visits", json={"id": visit_id, "source": "synthetic"}, headers=headers).status_code == 200
+    assert http.get("/api/thai-locations?level=invalid", headers=headers).status_code >= 400
+    login(http)
+    detail = http.get("/api/admin/visits/" + visit_id).json()
+    assert len(detail["failures"]) == 2
+    for failure in detail["failures"]:
+        assert failure["visitor_number"] == detail["visit"]["visitor_number"]
+        assert failure["visit_id"] == visit_id and failure["source"] == "synthetic"
+    foreign = {"X-Report-Key": "different-synthetic-visitor-" + "b" * 32, "X-Visit-Id": visit_id}
+    assert http.get("/api/life-reports/report-1", headers=foreign).status_code == 404
+    failures = http.get("/api/admin/records/issues?category=request").json()["items"]
+    assert failures[0]["visit_id"] is None and failures[0]["report_id"] is None
+    assert failures[0]["visitor_number"] is None
+    assert headers["X-Report-Key"] not in json.dumps(failures)
+
+
+def test_client_network_failure_is_linked_once_and_labeled_separately(admin):
+    http, _ = admin
+    visit_id = str(uuid4())
+    event = {"sequence": 1, "page_view_id": str(uuid4()), "page": "birth_form", "action": "request_failed",
+             "state": "visible", "occurred_at": time.time(), "visible_ms": 1200,
+             "failure_path": "/api/life-reports", "failure_code": "network", "failure_method": "POST"}
+    for _ in range(2):
+        assert http.post("/api/landing/visits", json={"id": visit_id, "events": [event]}, headers=life_fixtures.HEADERS).status_code == 200
+    login(http)
+    detail = http.get("/api/admin/visits/" + visit_id).json()
+    assert detail["total"] == 1 and detail["visit"]["visible_ms"] == 1200
+    assert len(detail["failures"]) == 1
+    assert detail["failures"][0]["code"] == "client_network" and detail["failures"][0]["http_status"] == 0
+    assert detail["failures"][0]["visitor_number"] == detail["visit"]["visitor_number"]
 
 
 def test_case_status_filter_preserves_business_failure_classification(admin):

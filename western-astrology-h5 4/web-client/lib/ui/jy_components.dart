@@ -580,15 +580,17 @@ class ReportBadges extends StatelessWidget {
           ]);
     return LayoutBuilder(
       builder: (context, box) {
-        final width = (box.maxWidth - 20) / 3;
+        const gap = 10.0;
+        final columns = box.maxWidth < 300 ? 2 : 3;
+        final width = (box.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
-          spacing: 10,
-          runSpacing: 10,
+          spacing: gap,
+          runSpacing: 14,
           children: [
             for (final item in items)
               SizedBox(
                 width: width,
-                child: Center(child: _badge(item, math.min(width, 106))),
+                child: _badge(item, math.min(width, 88)),
               ),
           ],
         );
@@ -611,87 +613,57 @@ class ReportBadges extends StatelessWidget {
       label: text(item[copy.language]),
       child: InkWell(
         onTap: onTap == null ? null : () => onTap!(id),
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: size,
-          height: size,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFE8BC7E)),
-            gradient: RadialGradient(
-              center: const Alignment(0, -.65),
-              radius: .85,
-              colors: colors,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0x66CBA76F)),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                ClipOval(
-                  child: SvgPicture.asset(
-                    'assets/images/badges/${id == 'warning' ? 'opportunities' : id}.svg',
-                    width: size,
-                    height: size,
-                  ),
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFE8BC7E)),
+                gradient: RadialGradient(
+                  center: const Alignment(0, -.65),
+                  radius: .85,
+                  colors: colors,
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        text(item['icon']),
-                        style: const TextStyle(
-                          color: Color(0xFFF6D096),
-                          fontSize: 18,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        text(item[copy.language]),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          height: 1.25,
-                          color: Color(0xFFFFF0D2),
-                          fontWeight: FontWeight.w700,
-                          shadows: [
-                            Shadow(
-                              color: Color(0xFF160C1E),
-                              blurRadius: 3,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (locked) ...[
-                        const SizedBox(height: 5),
-                        Container(
-                          padding: const EdgeInsets.all(1),
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFF593B73),
-                          ),
-                          child: const LandingIcon(
-                            'lock',
-                            size: 16,
-                            color: Color(0xFFFFE5A3),
-                          ),
-                        ),
-                      ],
-                    ],
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  ClipOval(
+                    child: SvgPicture.asset(
+                      'assets/images/badges/${id == 'warning' ? 'opportunities' : id}.svg',
+                      width: size,
+                      height: size,
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    text(item['icon']),
+                    style: const TextStyle(color: Color(0xFFF6D096), fontSize: 18),
+                  ),
+                  if (locked)
+                    const Positioned(
+                      bottom: 4,
+                      child: LandingIcon('lock', size: 16, color: Color(0xFFFFE5A3)),
+                    ),
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: 6),
+            Text(
+              text(item[copy.language]),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: Color(0xFFFFF0D2),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );

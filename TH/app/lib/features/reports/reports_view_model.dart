@@ -5,11 +5,24 @@ import '../../core/models/calculation.dart';
 import '../../core/models/report.dart';
 import '../../core/network/api_client.dart';
 import '../../data/reports_repository.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../chart/chart_view_model.dart';
+
+String h5ReportStatusLabel(AppLocalizations s, bool full, Object? fullState) {
+  if (!full) return s.free;
+  return switch (fullState) {
+    'ready' => s.fullReport,
+    'pending' || 'queued' => s.h5ReportQueued,
+    'generating' => s.h5ReportGenerating,
+    'limited' => s.h5ReportLimited,
+    _ => s.h5ReportIncomplete,
+  };
+}
 
 class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
   ReportsViewModel(this.repository, this.session) {
     _scope = session.scope;
+    _h5Owner = session.auth.hasH5Reports ? session.owner : null;
     session.addListener(_changed);
     WidgetsBinding.instance.addObserver(this);
   }
@@ -18,6 +31,13 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
   ReportSnapshot? report;
   ReportReference? reference;
   List<ReportReference> history = [];
+  List<H5ReportReference> h5History = [];
+  bool h5Loading = false, h5Failed = false;
+  String? _h5Owner;
+  Map<String, String>? _h5Cursor;
+  Object? _h5HistoryView;
+  int _h5Generation = 0;
+  bool get h5HasMore => _h5Cursor != null;
   bool loading = false;
   String? error;
   String _scope = '', _requestKey = newRequestKey();
@@ -45,6 +65,19 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _changed() {
+    final h5Owner = session.auth.hasH5Reports ? session.owner : null;
+    if (_h5Owner != h5Owner) {
+      _h5Owner = h5Owner;
+      ++_h5Generation;
+      h5History = [];
+      _h5Cursor = null;
+      h5Loading = h5Failed = false;
+      if (_h5HistoryView != null && _foreground && h5Owner != null) {
+        unawaited(loadH5History());
+      } else {
+        notifyListeners();
+      }
+    }
     if (_scope == session.scope) return;
     _scope = session.scope;
     ++_generation;
@@ -77,6 +110,7 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
     _foreground = state == AppLifecycleState.resumed;
     _poll?.cancel();
     if (_foreground && _active && reference != null) unawaited(refresh());
+    if (_foreground && _h5HistoryView != null) unawaited(loadH5History());
   }
 
   Future<void> generate(CalculationSnapshot result) async {
@@ -173,9 +207,40 @@ class ReportsViewModel extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  void setH5HistoryView(Object view, {required bool active}) {
+    if (active) {
+      _h5HistoryView = view;
+      unawaited(loadH5History());
+    } else if (_h5HistoryView == view) {
+      _h5HistoryView = null;
+    }
+  }
+
+  Future<void> loadH5History({bool more = false}) async {
+    if (_h5Owner == null || h5Loading || (more && _h5Cursor == null)) return;
+    final generation = _h5Generation;
+    h5Loading = true;
+    h5Failed = false;
+    notifyListeners();
+    try {
+      final page = await repository.listH5(more ? _h5Cursor : null);
+      if (generation != _h5Generation) return;
+      h5History = more ? [...h5History, ...page.items] : page.items;
+      _h5Cursor = page.nextCursor;
+    } catch (_) {
+      if (generation == _h5Generation) h5Failed = true;
+    } finally {
+      if (generation == _h5Generation) {
+        h5Loading = false;
+        notifyListeners();
+      }
+    }
+  }
+
   @override
   void dispose() {
     ++_generation;
+    ++_h5Generation;
     _poll?.cancel();
     session.removeListener(_changed);
     WidgetsBinding.instance.removeObserver(this);

@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import secrets
 import time
@@ -9,7 +10,7 @@ import psycopg
 from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 
-from .accounts import DUMMY_PASSWORD_HASH, password_hash, password_matches
+from .accounts import DUMMY_PASSWORD_HASH, H5_LOGIN_SECONDS, new_h5_login_code, password_hash, password_matches
 
 
 class Storage:
@@ -31,21 +32,97 @@ class Storage:
                 version = db.execute("SELECT version_num FROM alembic_version").fetchone()
         except psycopg.Error:
             raise RuntimeError("PostgreSQL is unavailable or the FATE schema has not been installed.") from None
-        if version is None or version["version_num"] != "20261116_report_attribution":
+        if version is None or version["version_num"] != "20261118_h5_app_login":
             raise RuntimeError("Apply the FATE PostgreSQL migrations before starting the backend.")
 
     def login(self, hours: int):
-        user_id, token = str(uuid4()), secrets.token_urlsafe(32)
+        user_id = str(uuid4())
         with self.connect() as db:
-            db.execute("DELETE FROM sessions WHERE expires < %s", (time.time(),))
             db.execute("INSERT INTO users VALUES (%s, %s)", (user_id, time.time()))
-            db.execute("INSERT INTO sessions VALUES (%s, %s, %s)", (self.hash(token), user_id, time.time() + hours * 3600))
+            return self._create_session(db, user_id, hours)
+
+    def _create_session(self, db, user_id: str, hours: int):
+        token, now = secrets.token_urlsafe(32), time.time()
+        db.execute("DELETE FROM sessions WHERE expires < %s", (now,))
+        db.execute("INSERT INTO sessions VALUES (%s, %s, %s)", (self.hash(token), user_id, now + hours * 3600))
         return {"token": token, "user_id": user_id}
 
     def account(self, user_id: str):
         with self.connect() as db:
-            row = db.execute("SELECT username FROM accounts WHERE user_id=%s", (user_id,)).fetchone()
-        return {"user_id": user_id, "username": row["username"] if row else None, "kind": "account" if row else "guest"}
+            return self._account(db, user_id)
+
+    @staticmethod
+    def _account(db, user_id: str):
+        row = db.execute("SELECT username FROM accounts WHERE user_id=%s", (user_id,)).fetchone()
+        linked = row is None and db.execute("SELECT 1 FROM h5_app_accounts WHERE user_id=%s", (user_id,)).fetchone()
+        return {"user_id": user_id, "username": row["username"] if row else None,
+                "kind": "account" if row else "h5" if linked else "guest"}
+
+    def h5_report_owner(self, user_id: str):
+        with self.connect() as db:
+            row = db.execute("SELECT owner FROM h5_app_accounts WHERE user_id=%s", (user_id,)).fetchone()
+        return row["owner"] if row else None
+
+    @staticmethod
+    def _h5_code_digest(key: str, code: str) -> str:
+        return hmac.digest(key.encode(), code.encode(), "sha256").hex()
+
+    def issue_h5_login_code(self, owner: str):
+        with self.connect() as db:
+            db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,20261118))", (owner,))
+            now = time.time()
+            key = db.execute("SELECT secret FROM h5_app_login_key WHERE id=1").fetchone()["secret"]
+            db.execute("DELETE FROM h5_app_login_codes WHERE expires<=%s", (now,))
+            for _ in range(6):
+                code = new_h5_login_code()
+                try:
+                    with db.transaction():
+                        db.execute("UPDATE h5_app_login_codes SET active=FALSE WHERE owner=%s AND active", (owner,))
+                        db.execute(
+                            "INSERT INTO h5_app_login_codes(owner,digest,expires) VALUES (%s,%s,%s)",
+                            (owner, self._h5_code_digest(key, code), now + H5_LOGIN_SECONDS),
+                        )
+                    return {"code": code, "expires_in": H5_LOGIN_SECONDS}
+                except psycopg.errors.UniqueViolation:
+                    continue
+        return None
+
+    def redeem_h5_login_code(self, code: str, network: str, hours: int):
+        with self.connect() as db:
+            # Keep the shared failure budget and one-time redemption atomic across API workers.
+            db.execute("SELECT pg_advisory_xact_lock(20261118, 6)")
+            now = time.time()
+            window = int(now // H5_LOGIN_SECONDS)
+            failures = {row["scope"]: row["attempts"] for row in db.execute(
+                "SELECT scope,attempts FROM h5_app_login_failures WHERE window_id=%s AND scope IN (%s,%s)",
+                (window, "global", network),
+            )}
+            if failures.get("global", 0) >= 120 or failures.get(network, 0) >= 8:
+                return "too_many_requests", None
+            key = db.execute("SELECT secret FROM h5_app_login_key WHERE id=1").fetchone()["secret"]
+            claim = db.execute(
+                """UPDATE h5_app_login_codes SET active=FALSE
+                   WHERE digest=%s AND active AND expires>%s RETURNING owner""",
+                (self._h5_code_digest(key, code), now),
+            ).fetchone()
+            if claim is None:
+                db.execute("DELETE FROM h5_app_login_failures WHERE window_id<%s", (window,))
+                db.execute(
+                    """INSERT INTO h5_app_login_failures(scope,window_id,attempts) VALUES (%s,%s,1),(%s,%s,1)
+                       ON CONFLICT(scope) DO UPDATE SET attempts=h5_app_login_failures.attempts+1""",
+                    ("global", window, network, window),
+                )
+                return "h5_login_code_invalid", None
+            owner = claim["owner"]
+            link = db.execute("SELECT user_id FROM h5_app_accounts WHERE owner=%s", (owner,)).fetchone()
+            if link:
+                user_id = link["user_id"]
+            else:
+                user_id = str(uuid4())
+                db.execute("INSERT INTO users VALUES (%s, %s)", (user_id, now))
+                db.execute("INSERT INTO h5_app_accounts VALUES (%s,%s)", (owner, user_id))
+            session = self._create_session(db, user_id, hours)
+            return None, {**session, "account": self._account(db, user_id)}
 
     def register(self, username: str, password: str, hours: int, existing_user: str | None = None):
         encoded = password_hash(password)

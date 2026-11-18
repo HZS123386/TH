@@ -7,6 +7,8 @@ const esc = (value) =>
     (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char],
   );
 const number = (value) => Number(value || 0).toLocaleString('zh-CN');
+const duration = (value) => value == null ? '未采集' : (Number(value) / 1000).toFixed(1) + ' 秒';
+const visitLink = (id) => id ? `<button class="button" data-visit="${esc(id)}">查看访问轨迹</button>` : '';
 const money = (value) =>
   (Number(value || 0) / 100).toLocaleString('zh-CN', {
     minimumFractionDigits: 2,
@@ -51,7 +53,7 @@ const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.reports}</svg>`;
 const views = {
   overview: ['数据总览', '从访问到报告交付，查看每一个关键环节。'],
-  visits: ['访问与来源', '按访问渠道、活动标签查看流量与提交情况。'],
+  visits: ['访问与来源', '查看每次访问的填写进度、前台停留和最后记录。'],
   reports: ['报告管理', '查看生成状态、解锁权限，追踪每一份报告。'],
   orders: ['订单与支付', '区分订单创建、到账核验和报告权益。'],
   calls: ['模型调用', '查看每次请求的模型、Token、耗时与校验结果。'],
@@ -59,10 +61,37 @@ const views = {
   audit: ['操作记录', '管理员的每次处理都有时间、原因和结果。'],
   sources: ['数据来源与口径', '知道数据从哪里来，也知道每个数字如何计算。'],
 };
+const visitPages = {
+  welcome: '欢迎页', birth_form: '资料填写页', consent: '数据使用确认', history: '历史报告列表',
+  privacy: '隐私说明页', support: '帮助与联系页', generating_preview: '免费报告生成中',
+  generating_full: '完整报告生成中', report_loading: '报告加载页', preview_report: '免费报告 / 解锁页',
+  full_report: '完整报告页', payment: '支付弹窗',
+};
+const formProgress = {
+  form_progress_empty: '尚无已确认的字段',
+  form_progress_date: '未填完 · 需填写有效出生日期',
+  form_progress_time: '未填完 · 还缺出生时间',
+  form_progress_place: '未填完 · 还缺出生府州',
+  form_progress_complete: '资料已填完',
+};
+const visitActions = {
+  ...formProgress,
+  view: '打开页面', enter_form: '进入资料填写', edit_form: '修改资料', invalid_form: '提交资料未通过校验',
+  select_birth_date: '打开出生日期选择', select_birth_time: '打开出生时间选择', select_birthplace: '打开出生府州选择',
+  consent_accept: '确认数据使用', consent_cancel: '取消数据使用确认', generate: '开始生成报告',
+  generation_failed: '报告生成失败', retry_generation: '重试生成', cancel_generation: '返回 / 取消生成',
+  report_ready: '报告内容已显示', report_failed: '报告加载失败', open_payment: '打开支付', close_payment: '关闭支付弹窗',
+  create_order: '提交建单', order_created: '订单已创建', order_failed: '读取 / 创建订单失败', invalid_phone: '手机号校验未通过',
+  open_cashier: '发起打开官方收银台', cashier_failed: '打开收银台失败', check_payment: '手动核对到账',
+  payment_result: '支付界面收到成功结果', close_history: '关闭历史报告',
+  leave_page: '离开当前页面', request_failed: '客户端请求失败',
+};
+const visitStates = { visible: '上报时在前台', hidden: '已切到后台，去向未知', pagehide: '已离开页面（关闭 / 刷新 / 跳转）' };
 const labels = {
   ready: '生成完成',
   failed: '失败',
   stalled: '生成中断',
+  queued: '已排队',
   generating: '生成中',
   preview: '预览就绪',
   pending: '待处理 / 未核验',
@@ -105,6 +134,8 @@ const labels = {
   payment_verified: '到账核验通过',
   payment_pending: '本次核验尚未付清',
   historical_unknown: '历史未记录具体原因',
+  client_network: '客户端网络失败或超时',
+  client_badResult: '客户端无法解析响应',
   lease_expired: '生成租约已过期',
   'preview:unavailable': '预览生成失败',
   'preview:unconfigured': '预览服务未配置',
@@ -167,7 +198,7 @@ const badge = (value) => {
     ? 'success'
     : ['failed', 'stalled', 'create_failed', 'check_failed', 'unavailable'].includes(value)
       ? 'danger'
-      : ['needs_review', 'pending', 'limited', 'unconfigured', 'running', 'investigating'].includes(
+      : ['needs_review', 'pending', 'queued', 'limited', 'unconfigured', 'running', 'investigating'].includes(
             value,
           )
         ? 'warning'
@@ -350,32 +381,24 @@ function renderOverview(reports) {
   const { metrics: m, channels, trend } = state.overview;
   const cards = [
     [
-      'visits',
-      '访问人数',
-      number(m.visitors),
-      `按匿名浏览器去重 · ${number(m.visits)} 次访问`,
-      'visits',
+      'visits', '访问人数', number(m.visitors), '人',
+      '范围内每个浏览器计一次', `访问次数 ${number(m.visits)} 次`, 'visits',
     ],
     [
-      'reports',
-      '创建报告',
-      number(m.reports),
-      `<strong>${number(m.unlocked)}</strong> 份已解锁`,
-      'reports',
+      'visits', '次日回访人数', m.next_day_return_visitors == null ? null : number(m.next_day_return_visitors), '人',
+      '连续两天有访问记录的浏览器', '按回访日期筛选，范围内去重',
     ],
     [
-      'orders',
-      '核验实收',
-      `<span class="unit">฿</span>${money(m.revenue)}`,
-      `<strong>${number(m.paid)}</strong> 笔正式到账订单`,
-      'orders',
+      'reports', '报告创建量', number(m.reports), '份',
+      '按报告创建日期统计', `已解锁 ${number(m.unlocked)} 份`, 'reports',
     ],
     [
-      'issues',
-      '当前异常报告',
-      number(m.report_failures),
-      `另有 <strong>${number(m.order_issues)}</strong> 笔订单待核查`,
-      'issues',
+      'orders', '核验实收', money(m.revenue), '泰铢',
+      '仅计正式渠道核验到账的订单', `已到账订单 ${number(m.paid)} 笔`, 'orders',
+    ],
+    [
+      'issues', '当前异常报告', number(m.report_failures), '份',
+      '范围内当前失败或中断的报告', `待核查订单 ${number(m.order_issues)} 笔`, 'issues',
     ],
   ];
   const max = Math.max(1, ...trend.map((row) => row.reports));
@@ -383,17 +406,26 @@ function renderOverview(reports) {
     ? `<div class="bar-chart" role="img" aria-label="最近 30 天报告创建量和当前异常报告数">${trend.map((row) => `<div class="chart-day" title="${esc(row.day)}：${row.reports} 份报告，${row.failed} 份当前异常"><div class="chart-bar" style="height:${(row.reports / max) * 92}%"></div><div class="chart-bar failed" style="height:${(row.failed / max) * 92}%"></div></div>`).join('')}</div><div class="chart-labels"><span>${esc(trend[0].day)}</span><span>${esc(trend.at(-1).day)}</span></div>`
     : empty('暂无趋势数据');
   $('#content').innerHTML =
-    `<div class="stats-grid">${cards.map(([symbol, title, value, foot, view]) => `<section class="stat-card"><div class="stat-top"><span>${title}</span><span class="stat-icon">${icon(symbol)}</span></div><div class="stat-value">${value}</div><div class="stat-foot">${foot}<a href="#${view}" aria-label="查看${title}明细">↗</a></div></section>`).join('')}</div>
+    `<section aria-labelledby="overview-metrics-title">
+      <div class="data-group-heading"><h2 id="overview-metrics-title">关键指标</h2><a href="#sources">统计口径 ↗</a></div>
+      <div class="stats-grid">${cards.map(([symbol, title, value, unit, description, foot, view]) => `
+        <section class="stat-card">
+          <div class="stat-top"><h3>${title}</h3><span class="stat-icon">${icon(symbol)}</span></div>
+          <div class="stat-value">${value ?? '—'}${value == null ? '' : `<span class="unit">${unit}</span>`}</div>
+          <p class="stat-hint">${description}</p>
+          <div class="stat-foot">${foot}${view ? `<a href="#${view}" aria-label="查看${title}明细">↗</a>` : ''}</div>
+        </section>`).join('')}</div>
+    </section>
     <div class="notice-strip"><span class="notice-icon">!</span><span>${m.report_failures + m.order_issues ? `有 ${number(m.report_failures)} 份报告异常、${number(m.order_issues)} 笔订单需要核查。` : '当前范围没有报告或订单异常。'} 历史模型失败尝试单独归类，已解锁数量不作为实收依据。</span><a href="#issues">查看异常 →</a></div>
     <div class="overview-grid"><section class="panel"><div class="panel-header"><div><h3>报告生成概况</h3><p class="muted">按创建日期统计 · 图表最多展示最近 30 天</p></div><div class="legend"><span>报告</span><span class="failed">当前异常</span></div></div><div class="panel-body">${chart}<div class="chart-caption"><span>数据来源：life_reports</span><a href="#reports">查看报告明细 ↗</a></div></div></section>
-    <section class="panel"><div class="panel-header"><div><h3>访问转化</h3><p class="muted">按访问次数统计同一批访问的提交与预览</p></div><a href="#visits">明细 ↗</a></div><div class="panel-body">${[
+    <section class="panel"><div class="panel-header"><div><h3>访问转化</h3><p class="muted">每一步都按访问次数计</p></div><a href="#visits">明细 ↗</a></div><div class="panel-body">${[
       ['访问 H5', m.visits],
       ['提交出生信息', m.submitted],
       ['查看免费预览', m.seen],
     ]
       .map(
-        ([name, value], index) =>
-          `<div class="funnel-row"><div class="funnel-label"><span class="step">0${index + 1}</span>${name}<strong>${number(value)}</strong></div><div class="track"><span style="width:${m.visits ? Math.min(100, (value / m.visits) * 100) : 0}%"></span></div></div>`,
+        ([name, value]) =>
+          `<div class="funnel-row"><div class="funnel-label">${name}<strong>${number(value)} 次</strong></div><div class="track"><span style="width:${m.visits ? Math.min(100, (value / m.visits) * 100) : 0}%"></span></div></div>`,
       )
       .join(
         '',
@@ -415,7 +447,7 @@ function renderOverview(reports) {
     <section class="panel table-panel"><div class="panel-header"><div><h3>最近创建的报告</h3><p class="muted">查看状态，进入详情追踪来源与处理记录</p></div><a href="#reports">全部报告 →</a></div>${reportTable(reports)}</section>`;
 }
 const notes = {
-  visits: '访客编号包含首次记录的地区、北京时间日期和序号。访问记录保留最近 30 天，同一浏览器 30 天未访问时编号会过期。',
+  visits: '每行是一次访问，保留最近 30 天。停留只累计页面在前台可见的时间。最后记录以服务器收到的上报为准。',
   reports: '按报告创建时间筛选。首次来源、活动和地区取创建时保存的值。',
   orders:
     '按订单创建时间筛选；缺少旧订单时间时使用报告创建时间。只有正式网关且服务端核验到账才计实收。',
@@ -423,36 +455,52 @@ const notes = {
   issues: '报告/订单按创建时间、模型尝试按调用时间筛选；“异常记录”与“异常报告数”是不同口径。',
   audit: '按管理员操作时间筛选；“已处理”仅表示内部跟进进度，不代表付款或生成成功。',
 };
+const recordUnits = {
+  visits: '次访问', reports: '份报告', orders: '笔订单', calls: '次调用', issues: '条异常记录', audit: '条操作记录',
+};
 function renderRecords(data) {
   const kind = state.view;
   const sources = [...data.source_options];
   const selectedSource = state.source === '__untagged' ? '' : state.source;
   if (state.source && !sources.includes(selectedSource)) sources.push(selectedSource);
   const headers = {
-    visits: ['访客编号', '来源 / 活动', '转化进度', '关联报告', '访问时间'],
+    visits: ['访客与访问时间', '本次访问来源', '填写与转化', '前台停留', '最后记录', '关联报告'],
     orders: ['订单 / 报告', '来源渠道', '金额', '环境', '支付状态', '创建时间'],
     calls: ['请求 / 报告', '阶段 / 内容', '模型', '校验', 'Token 输入 / 输出', '耗时', '调用时间'],
     issues: ['异常分类', '关联报告', '来源渠道', '状态 / 原因', '记录时间'],
     audit: ['操作 / 管理员', '关联报告', '结果', '处理原因', '操作时间'],
   };
   const renderRow = (row) => {
-    if (kind === 'visits')
-      return `<tr><td><span class="mono">${esc(row.visitor_number || '暂无编号')}</span></td><td>${sourceCell(row)}</td><td>${badge(row.status)}</td><td>${number(row.reports)}${JSON.parse(
-        row.report_ids || '[]',
-      )
-        .map((id) => reportLink({ report_id: id }))
-        .join('')}</td><td>${date(row.created)}</td></tr>`;
+    if (kind === 'visits') {
+      const progress = row.form_progress === 'form_progress_complete' && !row.submitted_at
+        ? '已填完 · 暂无提交记录'
+        : formProgress[row.form_progress];
+      const reports = JSON.parse(row.report_ids || '[]').map((id) => reportLink({ report_id: id })).join('');
+      return `<tr>
+        <td><div class="visit-record-id"><span class="mono">${esc(row.visitor_number || '暂无编号')}</span><small>访问时间 ${date(row.created)}</small>${visitLink(row.id)}</div>${row.dropped_events ? `<small>轨迹缺失 ${number(row.dropped_events)} 条</small>` : ''}</td>
+        <td>${sourceCell(row)}</td>
+        <td>${badge(row.status)}${progress ? `<small class="visit-form-status">${esc(progress)}</small>` : ''}</td>
+        <td>${duration(row.visible_ms)}</td>
+        <td class="visit-last-record">
+          <strong>${esc(visitPages[row.last_page] || '未采集')}</strong>
+          ${visitActions[row.last_action] ? `<small>操作 ${esc(visitActions[row.last_action])}</small>` : ''}
+          ${visitStates[row.last_state] ? `<small>${esc(visitStates[row.last_state])}</small>` : ''}
+          ${row.last_activity_at ? `<small>接收于 ${fullDate(row.last_activity_at)}</small>` : ''}
+        </td>
+        <td>${row.reports ? `${number(row.reports)} 份` : '未关联'}${reports}</td>
+      </tr>`;
+    }
     if (kind === 'orders')
       return `<tr><td><strong class="mono">${esc(row.id)}</strong>${reportLink(row)}${visitorId(row)}<small>${esc(row.order_number || '尚无平台单号')}</small></td><td>${sourceCell(row)}</td><td><strong>฿ ${money(row.amount)}</strong></td><td>${badge(row.environment)}</td><td>${badge(row.status)}</td><td>${date(row.created)}</td></tr>`;
     if (kind === 'calls')
       return `<tr><td><span class="mono" title="${esc(row.request_id)}">${esc(short(row.request_id) || '未返回请求号')}</span>${reportLink(row)}${visitorId(row)}</td><td>${esc(label(row.phase))}<small>${esc(row.reading)}</small></td><td>${esc(row.provider)}<small>${esc(row.model)}</small></td><td>${badge(row.status)}<small title="${esc(row.code)}">${esc(label(row.code))}</small></td><td>${row.usage_received ? number(row.prompt_tokens) + ' / ' + number(row.completion_tokens) : '未返回用量'}<small>缓存命中 ${number(row.cached_tokens)}</small></td><td>${row.duration_ms == null ? '历史未记录' : (row.duration_ms / 1000).toFixed(1) + ' 秒'}</td><td>${date(row.created)}</td></tr>`;
     if (kind === 'issues')
-      return `<tr><td><strong>${esc(label(row.category))}</strong><small>${row.category === 'model' ? '单次调用 · 报告可能已恢复' : row.category === 'request' ? 'HTTP ' + row.http_status + ' · ' + (row.duration_ms / 1000).toFixed(2) + ' 秒' : '当前业务状态'}</small></td><td>${reportLink(row)}${visitorId(row)}<small title="${esc(row.path)}">${esc(row.path || row.name || '匿名访客')}</small></td><td>${sourceCell(row)}</td><td>${badge(row.status)}<small title="${esc(row.code)}">${esc(errors[row.code] || label(row.code))}</small></td><td>${date(row.created)}<small>${row.case_status ? '跟进：' + esc(label(row.case_status)) : '暂无关联报告'}</small></td></tr>`;
+      return `<tr><td><strong>${esc(label(row.category))}</strong><small>${row.category === 'model' ? '单次调用 · 报告可能已恢复' : row.category === 'request' ? row.http_status === 0 ? '客户端异常 · 无 HTTP 响应确认' : 'HTTP ' + row.http_status + ' · ' + (row.duration_ms / 1000).toFixed(2) + ' 秒' : '当前业务状态'}</small></td><td>${reportLink(row)}${visitorId(row)}${visitLink(row.visit_id)}<small title="${esc(row.path)}">${esc(row.path || row.name || '匿名访客')}</small></td><td>${sourceCell(row)}</td><td>${badge(row.status)}<small title="${esc(row.code)}">${esc(errors[row.code] || label(row.code))}</small></td><td>${date(row.created)}<small>${row.case_status ? '跟进：' + esc(label(row.case_status)) : '暂无关联报告'}</small></td></tr>`;
     return `<tr><td><strong>${esc(label(row.action))}</strong><small>${esc(row.actor)}</small></td><td>${reportLink(row)}${visitorId(row)}</td><td>${badge(row.status)}<small>${esc(label(row.code))}</small></td><td title="${esc(row.note)}">${esc(row.note)}</td><td>${date(row.created)}</td></tr>`;
   };
   const pages = Math.max(1, Math.ceil(data.total / data.page_size));
   $('#content').innerHTML =
-    `<p class="data-note">${esc(notes[kind])} <a href="#sources">查看来源 ↗</a></p><section class="panel table-panel"><form id="filters" class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search-input" aria-label="搜索记录" placeholder="搜索访客编号、报告、订单号或关键词…" value="${esc(state.q)}" maxlength="100"></div><select id="status-filter" aria-label="状态筛选"><option value="">全部状态</option>${data.facets.map((row) => `<option value="${esc(row.status)}" ${row.status === state.status ? 'selected' : ''}>${esc(label(row.status))} (${row.count})</option>`).join('')}</select>${kind !== 'audit' ? `<select id="source-filter" aria-label="来源筛选"><option value="">全部来源</option>${sources.map((source) => `<option value="${esc(source || '__untagged')}" ${(source || '__untagged') === state.source ? 'selected' : ''}>${esc(source || '未标记 / 未归因')}</option>`).join('')}</select>` : ''}<button class="button" type="submit">查询</button><button class="button" id="clear-filters" type="button">重置</button><button id="export" type="button" class="button export">↓ 导出当前页</button></form><div class="summary-line"><span>符合条件 <strong>${number(data.total)}</strong> 条</span><span>分类 <strong>${views[kind][0]}</strong></span>${kind === 'issues' ? '<span>模型尝试与当前业务异常分别标注</span>' : ''}</div>${kind === 'reports' ? reportTable(data.items) : data.items.length ? table(headers[kind], data.items.map(renderRow)) : empty('没有符合条件的记录')}<div class="table-footer"><span>每页 ${data.page_size} 条 · 共 ${number(data.total)} 条</span><div class="pagination"><button id="previous-page" class="button" ${state.page <= 1 ? 'disabled' : ''}>上一页</button><span>${state.page} / ${pages}</span><button id="next-page" class="button" ${state.page >= pages ? 'disabled' : ''}>下一页</button></div></div></section>`;
+    `<p class="data-note">${esc(notes[kind])} <a href="#sources">查看来源 ↗</a></p><section class="panel table-panel${kind === 'visits' ? ' visit-records' : ''}"><form id="filters" class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search-input" aria-label="搜索记录" placeholder="搜索访客编号、报告、订单号或关键词…" value="${esc(state.q)}" maxlength="100"></div><select id="status-filter" aria-label="状态筛选"><option value="">全部状态</option>${data.facets.map((row) => `<option value="${esc(row.status)}" ${row.status === state.status ? 'selected' : ''}>${esc(label(row.status))} (${row.count})</option>`).join('')}</select>${kind !== 'audit' ? `<select id="source-filter" aria-label="来源筛选"><option value="">全部来源</option>${sources.map((source) => `<option value="${esc(source || '__untagged')}" ${(source || '__untagged') === state.source ? 'selected' : ''}>${esc(source || '未标记 / 未归因')}</option>`).join('')}</select>` : ''}<button class="button" type="submit">查询</button><button class="button" id="clear-filters" type="button">重置</button><button id="export" type="button" class="button export">↓ 导出当前页</button></form><div class="summary-line"><span>筛选结果 <strong>${number(data.total)}</strong> ${recordUnits[kind]}</span>${kind === 'issues' ? '<span>模型尝试与当前业务异常分别标注</span>' : ''}</div>${kind === 'reports' ? reportTable(data.items) : data.items.length ? table(headers[kind], data.items.map(renderRow)) : empty('没有符合条件的记录')}<div class="table-footer"><span>每页 ${data.page_size} 条</span><div class="pagination"><button id="previous-page" class="button" ${state.page <= 1 ? 'disabled' : ''}>上一页</button><span>${state.page} / ${pages}</span><button id="next-page" class="button" ${state.page >= pages ? 'disabled' : ''}>下一页</button></div></div></section>`;
   if (kind === 'issues')
     $('#status-filter').insertAdjacentHTML(
       'afterend',
@@ -514,6 +562,14 @@ function exportPage() {
     region_code: '首次访问地区标签',
     entry_region: '本次访问地区标签',
     first_visit_date: '首次访问日期（北京时间）',
+    last_page: '最后页面',
+    last_action: '最后操作',
+    last_activity_at: '最后记录时间(服务器接收Unix秒)',
+    last_state: '最后上报页面状态',
+    form_progress: '最近填写进度',
+    visible_ms: '累计前台可见停留(毫秒)',
+    dropped_events: '待发队列溢出条数',
+    visit_id: '关联访问编号',
     source: '来源渠道',
     campaign: '活动标签',
     status: '业务状态代码',
@@ -540,7 +596,10 @@ function exportPage() {
     '\ufeff' +
     [
       keys.map((key) => cell(columnNames[key] || key)).join(','),
-      ...items.map((row) => keys.map((key) => cell(row[key])).join(',')),
+      ...items.map((row) => keys.map((key) => {
+        const dictionary = { last_page: visitPages, last_action: visitActions, last_state: visitStates, form_progress: formProgress }[key];
+        return cell(dictionary ? dictionary[row[key]] || '未采集' : row[key]);
+      }).join(',')),
     ].join('\r\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
@@ -551,6 +610,56 @@ function exportPage() {
 }
 const field = (name, value, source) =>
   `<div><div class="field-label">${esc(name)}</div><div class="field-value">${esc(value)}<small>${esc(source)}</small></div></div>`;
+async function openVisit(id, page = 1) {
+  const request = Symbol();
+  state.detailRequest = request;
+  state.detail = null;
+  $('#detail-title').textContent = '访问轨迹';
+  $('#detail-content').innerHTML = '<div class="loading">正在读取轨迹…</div>';
+  if (!$('#detail-dialog').open) $('#detail-dialog').showModal();
+  try {
+    const data = await api('/visits/' + encodeURIComponent(id) + '?page=' + page);
+    if (state.detailRequest !== request || !state.session) return;
+    const v = data.visit, pages = Math.max(1, Math.ceil(data.total / data.page_size));
+    const hasLastRecord = v.last_page || v.last_action || v.last_state || v.last_activity_at;
+    const profiles = data.submitted_profiles || [];
+    $('#detail-title').textContent = (v.visitor_number || '暂无编号') + ' · 访问轨迹';
+    $('#detail-content').innerHTML = `<div class="visit-detail-meta"><span>访问编号 <code>${esc(v.id)}</code></span><span>北京时间</span></div>
+      <div class="visit-detail-summary">
+        <section class="detail-section"><h3>本次访问</h3><div class="detail-fields">
+          ${field('访问时间', fullDate(v.created), '')}
+          ${field('前台停留总时长', duration(v.visible_ms), '')}
+          ${field('填写进度', formProgress[v.form_progress] || '未采集', '')}
+          ${field('资料提交', v.submitted_at ? '已提交' : '暂无提交记录', v.submitted_at ? fullDate(v.submitted_at) : '')}
+        </div></section>
+        <section class="detail-section"><h3>最后记录</h3>${hasLastRecord ? `<div class="detail-fields">
+          ${field('最后页面', visitPages[v.last_page] || '未采集', '')}
+          ${field('最后操作', visitActions[v.last_action] || '未采集', '')}
+          ${field('当时页面状态', visitStates[v.last_state] || '未采集', '')}
+          ${field('服务器接收时间', v.last_activity_at ? fullDate(v.last_activity_at) : '未采集', '')}
+        </div>` : '<p class="visit-detail-note muted">这条访问没有采到最后的页面和操作。</p>'}</section>
+      </div>
+      ${v.dropped_events ? `<p class="error-banner">该访问有 ${number(v.dropped_events)} 条事件因浏览器待发队列溢出而未保留，轨迹不完整。</p>` : ''}
+      <section class="detail-section visit-data-section">
+        <header class="visit-section-heading"><h3>页面停留时间</h3><p>只累计页面在前台可见的时间。同一页面多次进入会合计。</p></header>
+        ${data.pages.length ? table(['页面', '进入次数', '前台停留时间'], data.pages.map(row => `<tr><td>${esc(visitPages[row.page] || row.page)}</td><td>${number(row.entries)} 次</td><td>${duration(row.visible_ms)}</td></tr>`), true) : '<p class="visit-detail-note muted">这条访问没有采到页面停留时间。</p>'}
+      </section>
+      <section class="detail-section"><h3>已提交的出生资料</h3>${profiles.length
+        ? table(['出生日期', '出生时间', '出生地点', '关联报告'], profiles.map(row =>
+            `<tr><td>${esc(row.birth_date || '未记录')}</td><td>${esc(row.birth_time || (row.birth_time_unknown ? '不清楚时间' : '未记录'))}</td><td>${esc(row.birthplace || '未记录')}</td><td>${reportLink(row)}</td></tr>`), true)
+        : `<p class="visit-detail-note muted">${v.submitted_at ? '提交已记录，暂无关联资料可查看。' : '暂无已提交的资料。'}</p>`}
+      ${v.reports > profiles.length && profiles.length ? `<p class="visit-detail-note muted">显示 ${number(profiles.length)} 份，按报告创建时间排序。</p>` : ''}
+      </section>
+      <section class="detail-section visit-data-section">
+        <header class="visit-section-heading"><h3>操作轨迹 · ${number(data.total)} 条记录</h3><p>操作时间来自浏览器，接收时间是服务器收到上报的时间。</p></header>
+        ${data.events.length ? table(['页面与操作', '当时页面状态', '本次进入累计停留', '操作与接收时间'], data.events.map(row => `<tr><td>${esc(visitPages[row.page] || row.page)}<small>${esc(visitActions[row.action] || row.action)}${row.kind === 'state' ? ' · 页面状态变化' : ''}</small></td><td>${esc(visitStates[row.state] || row.state)}</td><td>${duration(row.visible_ms)}</td><td>操作 ${fullDate(row.occurred_at)}<small>接收 ${fullDate(row.received_at)}</small></td></tr>`), true) : '<p class="visit-detail-note muted">这条访问没有采到操作轨迹。</p>'}
+        ${pages > 1 || page > 1 ? `<div class="pagination visit-detail-pagination"><button class="button" data-visit="${esc(id)}" data-visit-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}>上一页</button><span>${page} / ${pages}</span><button class="button" data-visit="${esc(id)}" data-visit-page="${page + 1}" ${page >= pages ? 'disabled' : ''}>下一页</button></div>` : ''}
+      </section>
+      <section class="detail-section"><h3>关联失败 · 最近 ${data.failures.length} 条</h3>${data.failures.length ? table(['接口', '原因', '记录时间'], data.failures.map(row => `<tr><td>${esc(row.path)}<small>${row.http_status === 0 ? '客户端异常' : 'HTTP ' + row.http_status}</small></td><td>${esc(errors[row.code] || label(row.code))}</td><td>${fullDate(row.created)}</td></tr>`), true) : '<p class="visit-detail-note muted">暂无已记录的关联失败，不代表从未发生错误。</p>'}</section>`;
+  } catch (error) {
+    if (state.detailRequest === request) $('#detail-content').innerHTML = `<div class="error-banner">${esc(error.message)}</div>`;
+  }
+}
 async function openDetail(id) {
   const request = Symbol();
   state.detailRequest = request;
@@ -572,7 +681,7 @@ function renderDetail(data) {
     order = data.payment[0];
   $('#detail-title').textContent = (r.name || '匿名访客') + ' · 报告详情';
   const canRetry =
-    r.status !== 'generating' &&
+    !['queued', 'generating'].includes(r.status) &&
     r.full_state !== 'ready' &&
     (r.preview_state !== 'ready' || r.unlocked);
   const calls = data.calls.map(
@@ -651,6 +760,8 @@ $('#days').addEventListener('change', () => {
 });
 window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
 document.addEventListener('click', (event) => {
+  const visit = event.target.closest('[data-visit]');
+  if (visit && !visit.disabled) openVisit(visit.dataset.visit, Number(visit.dataset.visitPage || 1));
   const report = event.target.closest('[data-report]');
   if (report) openDetail(report.dataset.report);
   const action = event.target.closest('[data-action]');
@@ -680,7 +791,9 @@ $('#action-form').addEventListener('submit', async (event) => {
       },
     });
     $('#action-dialog').close();
-    toast(label(result.code) + (state.action === 'retry_report' ? '，稍后刷新查看结果。' : ''));
+    toast(state.action === 'retry_report' && result.code === 'queued'
+      ? '已加入生成队列，稍后刷新查看进度。'
+      : label(result.code) + (state.action === 'retry_report' ? '，稍后刷新查看结果。' : ''));
     await openDetail(id);
     await loadView({ refresh: true });
   } catch (error) {

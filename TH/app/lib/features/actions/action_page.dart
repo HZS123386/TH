@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../app/dependencies.dart';
@@ -5,6 +8,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
 import '../chart/chart_view_model.dart' show newRequestKey;
 import 'action_ledger.dart';
+import 'action_offering.dart';
 
 const actionColor = Color(0xFFADBF9A);
 
@@ -19,6 +23,52 @@ class ActionPage extends StatefulWidget {
 
 class _ActionPageState extends State<ActionPage> {
   _Filter _filter = _Filter.all;
+  final _scroll = ScrollController();
+  final _completing = <String>{};
+
+  void _revealOffering() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients || _scroll.offset <= 0) return;
+      if (FateMotion.reduced(context)) {
+        _scroll.jumpTo(0);
+      } else {
+        unawaited(
+          _scroll.animateTo(
+            0,
+            duration: FateMotion.page,
+            curve: Curves.easeOutCubic,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<void> _complete(
+    AppDependencies d,
+    String owner,
+    ActionPlan plan,
+  ) async {
+    if (d.session.owner != owner || _completing.contains(plan.id)) return;
+    setState(() => _completing.add(plan.id));
+    try {
+      await d.actions.complete(owner, plan.id);
+    } catch (_) {
+      if (mounted) {
+        final s = AppLocalizations.of(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(s.error)));
+      }
+    } finally {
+      if (mounted) setState(() => _completing.remove(plan.id));
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,240 +92,266 @@ class _ActionPageState extends State<ActionPage> {
               },
             )
             .toList();
-        return ListView(
+        final dayNumber =
+            DateTime.utc(
+              today.year,
+              today.month,
+              today.day,
+            ).millisecondsSinceEpoch ~/
+            Duration.millisecondsPerDay;
+        final suggestionId = 'daily-$dayNumber';
+        final suggestions = [
+          s.careAction,
+          s.familyAction,
+          s.actionSuggestionThanks,
+          s.actionSuggestionCheckIn,
+          s.actionSuggestionShare,
+        ];
+        final suggested = Random(dayNumber).nextInt(suggestions.length);
+        final dailyPlan = plans
+            .where((plan) => plan.id == suggestionId)
+            .firstOrNull;
+        return CustomScrollView(
           key: const PageStorageKey('action-scroll'),
-          padding: const EdgeInsets.fromLTRB(20, 27, 20, 26),
-          children: [
-            FateEntrance(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(21),
-                  border: Border.all(color: const Color(0x60879B7A)),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [Color(0xFF2B342F), Color(0xFF20222B)],
+          controller: _scroll,
+          slivers: [
+            // Keep the offering mounted when an action is completed farther down the list.
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: FateEntrance(
+                  child: ActionOfferingCard(
+                    key: ValueKey(owner),
+                    energy: d.actions.energyFor(owner),
+                    onEnergyGained: _revealOffering,
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'YOUR ACTION, YOUR STRENGTH',
-                      style: TextStyle(
-                        color: actionColor,
-                        letterSpacing: 1.6,
-                        fontSize: 9,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      s.myActions,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleLarge?.copyWith(fontSize: 27),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      s.actionsIntro,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 15),
-            Row(
-              children: [
-                for (final (i, entry) in [
-                  (plans.length - completed, s.actionPending),
-                  (completed, s.actionDone),
-                  (ready, s.actionReady),
-                ].indexed) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  Expanded(
-                    child: FateCard(
-                      radius: 13,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 11,
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            '${entry.$1}',
-                            style: const TextStyle(
-                              fontSize: 22,
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              sliver: SliverList.list(
+                children: [
+                  FateCard(
+                    accent: actionColor,
+                    radius: 16,
+                    padding: const EdgeInsets.all(13),
+                    onTap: () => showActionEditor(
+                      context,
+                      plan: dailyPlan,
+                      initialId: suggestionId,
+                      initialTitle: suggestions[suggested],
+                      family: suggested == 1,
+                    ),
+                    child: Row(
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: actionColor.withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: Icon(
+                              Icons.eco_outlined,
                               color: actionColor,
-                              height: 1.38,
+                              size: 20,
                             ),
                           ),
-                          Text(
-                            entry.$2,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: mutedColor,
-                            ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.actionDailySuggestion,
+                                style: const TextStyle(
+                                  color: actionColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                dailyPlan?.title ?? suggestions[suggested],
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (dailyPlan == null)
+                                Text(
+                                  s.actionUseSuggestion,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          dailyPlan?.done == true
+                              ? Icons.check_circle_outline
+                              : dailyPlan == null
+                              ? Icons.add
+                              : Icons.chevron_right,
+                          color: actionColor,
+                          size: 21,
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 17),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: _PlanTile(
-                      Icons.eco_outlined,
-                      s.chooseSmallAction,
-                      s.chooseSmallActionNote,
-                      actionColor,
-                      () =>
-                          showActionEditor(context, initialTitle: s.careAction),
-                    ),
+                  const SizedBox(height: 9),
+                  OutlinedButton.icon(
+                    onPressed: () => showActionEditor(context),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(s.actionCustomPlan),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _PlanTile(
-                      Icons.favorite_outline,
-                      s.chooseFamilyAction,
-                      s.chooseFamilyActionNote,
-                      goldColor,
-                      () => showActionEditor(
-                        context,
-                        initialTitle: s.familyAction,
-                        family: true,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            FateCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'YOUR WEEKLY MOMENT',
-                    style: TextStyle(
-                      color: actionColor,
-                      letterSpacing: 1.6,
-                      fontSize: 9,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(s.weeklyMoment, style: const TextStyle(fontSize: 17)),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 20),
                   Text(
-                    s.weeklyMomentNote,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    s.actionLedger,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const Divider(height: 21),
-                  Row(
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 3,
                     children: [
-                      Expanded(
-                        child: Text(
-                          day == null
-                              ? s.myWeeklyDay
-                              : '${s.myWeeklyDay} · ${_weekday(context, day)}',
-                          style: const TextStyle(fontSize: 12),
+                      for (final (count, label) in [
+                        (plans.length - completed, s.actionPending),
+                        (completed, s.actionDone),
+                        (ready, s.actionReady),
+                      ])
+                        Text(
+                          '$count $label',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () => _chooseDay(context, d, owner, day),
-                        child: Text(
-                          s.arrangeDay,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: actionColor,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      for (final (filter, label) in [
+                        (_Filter.all, s.allItems),
+                        (_Filter.pending, s.actionTodo),
+                        (_Filter.ready, s.actionReviewAvailable),
+                        (_Filter.reviewed, s.actionReviewed),
+                      ])
+                        FilterChip(
+                          selected: _filter == filter,
+                          showCheckmark: false,
+                          label: Text(
+                            label,
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          onSelected: (_) => setState(() => _filter = filter),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (filtered.isEmpty)
+                    FateCard(
+                      radius: 16,
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        s.noActionPlan,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  for (final plan in filtered)
+                    Padding(
+                      key: ValueKey(plan.id),
+                      padding: const EdgeInsets.only(bottom: 9),
+                      child: FateCard(
+                        radius: 16,
+                        padding: EdgeInsets.zero,
+                        child: ListTile(
+                          leading: Icon(
+                            plan.done
+                                ? Icons.check_circle_outline
+                                : Icons.eco_outlined,
+                            color: actionColor,
+                          ),
+                          title: Text(plan.title),
+                          subtitle: Text(
+                            '${MaterialLocalizations.of(context).formatCompactDate(plan.date)} · ${plan.reviewed
+                                ? s.actionReviewed
+                                : plan.readyOn(today)
+                                ? s.actionReviewAvailable
+                                : plan.done
+                                ? s.actionCompleted
+                                : s.actionTodo}',
+                          ),
+                          trailing: plan.done
+                              ? const Icon(Icons.chevron_right)
+                              : FilledButton.tonal(
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(0, 42),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                  onPressed: _completing.contains(plan.id)
+                                      ? null
+                                      : () => _complete(d, owner, plan),
+                                  child: Text(s.actionCompleteNow),
+                                ),
+                          onTap: () => showActionEditor(context, plan: plan),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 14),
+                  FateCard(
+                    radius: 16,
+                    padding: const EdgeInsets.fromLTRB(15, 13, 15, 9),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.weeklyMoment,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          s.weeklyMomentNote,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const Divider(height: 18),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                day == null
+                                    ? s.myWeeklyDay
+                                    : '${s.myWeeklyDay} · ${_weekday(context, day)}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  _chooseDay(context, d, owner, day),
+                              child: Text(
+                                s.arrangeDay,
+                                style: const TextStyle(color: actionColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton.icon(
+                          onPressed: () => showActionEditor(
+                            context,
+                            initialTitle: s.familyAction,
+                            family: true,
+                          ),
+                          icon: const Icon(Icons.favorite_outline, size: 17),
+                          label: Text(s.chooseFamilyAction),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 11),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    s.actionLedger,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => showActionEditor(context),
-                  icon: const Icon(Icons.add, size: 16),
-                  label: Text(s.newPlan),
-                ),
-              ],
-            ),
-            Wrap(
-              spacing: 6,
-              children: [
-                for (final (filter, label) in [
-                  (_Filter.all, s.allItems),
-                  (_Filter.pending, s.actionTodo),
-                  (_Filter.ready, s.actionReviewAvailable),
-                  (_Filter.reviewed, s.actionReviewed),
-                ])
-                  FilterChip(
-                    selected: _filter == filter,
-                    showCheckmark: false,
-                    label: Text(label, style: const TextStyle(fontSize: 11)),
-                    onSelected: (_) => setState(() => _filter = filter),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (filtered.isEmpty)
-              FateCard(
-                child: Text(
-                  s.noActionPlan,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            for (final plan in filtered)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 9),
-                child: FateCard(
-                  padding: EdgeInsets.zero,
-                  child: ListTile(
-                    leading: Icon(
-                      plan.done
-                          ? Icons.check_circle_outline
-                          : Icons.eco_outlined,
-                      color: actionColor,
-                    ),
-                    title: Text(plan.title),
-                    subtitle: Text(
-                      '${MaterialLocalizations.of(context).formatCompactDate(plan.date)} · ${plan.reviewed
-                          ? s.actionReviewed
-                          : plan.readyOn(today)
-                          ? s.actionReviewAvailable
-                          : plan.done
-                          ? s.actionCompleted
-                          : s.actionTodo}',
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showActionEditor(context, plan: plan),
-                  ),
-                ),
-              ),
           ],
         );
       },
@@ -331,36 +407,11 @@ String _weekday(BuildContext context, int day) => DateFormat.EEEE(
   Localizations.localeOf(context).languageCode,
 ).format(DateTime(2024, 1, day));
 
-class _PlanTile extends StatelessWidget {
-  const _PlanTile(this.icon, this.title, this.note, this.color, this.open);
-  final IconData icon;
-  final String title, note;
-  final Color color;
-  final VoidCallback open;
-
-  @override
-  Widget build(BuildContext context) => FateCard(
-    accent: color,
-    onTap: open,
-    padding: const EdgeInsets.all(13),
-    radius: 16,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: color),
-        const SizedBox(height: 8),
-        Text(title, style: const TextStyle(fontSize: 13)),
-        const SizedBox(height: 4),
-        Text(note, style: const TextStyle(fontSize: 10, color: mutedColor)),
-      ],
-    ),
-  );
-}
-
 Future<void> showActionEditor(
   BuildContext context, {
   ActionPlan? plan,
   String? initialTitle,
+  String? initialId,
   bool family = false,
 }) {
   final d = DependencyScope.of(context);
@@ -377,6 +428,7 @@ Future<void> showActionEditor(
       owner: owner,
       plan: plan,
       initialTitle: initialTitle,
+      initialId: initialId,
       family: family,
     ),
   );
@@ -389,12 +441,13 @@ class _ActionEditor extends StatefulWidget {
     required this.family,
     this.plan,
     this.initialTitle,
+    this.initialId,
   });
   final AppDependencies dependencies;
   final String owner;
   final bool family;
   final ActionPlan? plan;
-  final String? initialTitle;
+  final String? initialTitle, initialId;
 
   @override
   State<_ActionEditor> createState() => _ActionEditorState();
@@ -402,6 +455,7 @@ class _ActionEditor extends StatefulWidget {
 
 class _ActionEditorState extends State<_ActionEditor> {
   final _form = GlobalKey<FormState>();
+  late final _id = widget.plan?.id ?? widget.initialId ?? newRequestKey();
   late final _title = TextEditingController(
     text: widget.plan?.title ?? widget.initialTitle,
   );
@@ -451,7 +505,7 @@ class _ActionEditorState extends State<_ActionEditor> {
       await widget.dependencies.actions.save(
         widget.owner,
         ActionPlan(
-          id: widget.plan?.id ?? newRequestKey(),
+          id: _id,
           title: _title.text.trim(),
           category: _category,
           beneficiary: _beneficiary,

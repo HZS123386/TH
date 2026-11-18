@@ -9,6 +9,72 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get h5CodeLogin => '使用网页登录码';
+
+  @override
+  String get h5CodeHelp => '输入 H5 报告页显示的 6 位字母数字码，同步该浏览器的报告。';
+
+  @override
+  String get h5CodeField => '网页登录码';
+
+  @override
+  String get h5CodeInvalid => '登录码无效、已用过或已过期，请回网页重新获取。';
+
+  @override
+  String get h5CodeRateLimited => '尝试次数过多，请稍后再试。';
+
+  @override
+  String get h5Account => '网页账号';
+
+  @override
+  String get h5Reports => '网页报告';
+
+  @override
+  String get h5ReportsEmpty => '这个浏览器还没有报告。';
+
+  @override
+  String get h5LoadMore => '加载更早的报告';
+
+  @override
+  String get h5Refresh => '刷新报告';
+
+  @override
+  String get h5ReportUnavailable => '暂时无法查看此报告，可刷新或回网页查看。';
+
+  @override
+  String get h5ReportQueued => '已解锁 · 排队中';
+
+  @override
+  String get h5ReportGenerating => '已解锁 · 生成中';
+
+  @override
+  String get h5ReportLimited => '已解锁 · 暂达生成上限';
+
+  @override
+  String get h5ReportIncomplete => '已解锁 · 报告尚未完成';
+
+  @override
+  String get h5ReportLimitedHelp => '已生成的章节仍可查看。请稍后回原网页继续生成。';
+
+  @override
+  String get h5Plan => '行动计划';
+
+  @override
+  String get h5Insight => '重点解读';
+
+  @override
+  String get h5Watchpoint => '需要留意';
+
+  @override
+  String get h5Example => '生活中的例子';
+
+  @override
+  String get h5Pitfall => '避免这样做';
+
+  @override
+  String get h5Check => '怎样检查效果';
+
+  @override
   String get actionTodo => '待行动';
 
   @override
@@ -283,9 +349,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get myActions => '我的行动力';
 
   @override
-  String get actionsIntro => '“术”帮你看见处境，“力”是你实际做过的善行与自我修持。我们替你记下来，也陪你回头看。';
-
-  @override
   String get actionPending => '件待行动';
 
   @override
@@ -295,16 +358,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get actionReady => '件可回看';
 
   @override
-  String get chooseSmallAction => '选一件小事';
-
-  @override
-  String get chooseSmallActionNote => '十分钟内，按自己意愿选择';
-
-  @override
   String get chooseFamilyAction => '为家人安排一个力日';
-
-  @override
-  String get chooseFamilyActionNote => '同一天，做几件力所能及的事';
 
   @override
   String get weeklyMoment => '留一个自己的「力日」';
@@ -320,6 +374,61 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get actionLedger => '我的行动账本';
+
+  @override
+  String get actionDailySuggestion => '今日建议';
+
+  @override
+  String get actionUseSuggestion => '加入待办';
+
+  @override
+  String get actionCustomPlan => '自己定一件事';
+
+  @override
+  String get actionCompleteNow => '完成';
+
+  @override
+  String get actionSuggestionThanks => '给帮过你的人发一条感谢消息';
+
+  @override
+  String get actionSuggestionCheckIn => '问候一位朋友';
+
+  @override
+  String get actionSuggestionShare => '给别人分享一个有用的小发现';
+
+  @override
+  String get offeringEnergy => '行动能量';
+
+  @override
+  String get offeringJasmine => '茉莉花环';
+
+  @override
+  String get offeringLotus => '供奉莲花';
+
+  @override
+  String get offeringMarigold => '万寿菊花环';
+
+  @override
+  String offeringCollected(int count) {
+    return '已集齐 $count 件';
+  }
+
+  @override
+  String offeringPerAction(int points) {
+    return '每完成一件事，获得 $points 点能量';
+  }
+
+  @override
+  String get offeringPresenting => '正在奉上供物…';
+
+  @override
+  String get offeringComplete => '供物已奉上';
+
+  @override
+  String get offeringBlessing => '愿功德护佑，好运相伴，所愿如意。';
+
+  @override
+  String get offeringNext => '下次完成事项时开始积攒下一件';
 
   @override
   String get newPlan => '新计划';

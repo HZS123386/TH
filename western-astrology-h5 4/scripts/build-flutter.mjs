@@ -42,6 +42,22 @@ export async function buildLanding({release=false}={}){
   const browserSource=await readFile(path.join(flutterRoot,'web','browser.js'),'utf8');
   const indexPath=path.join(generated,'index.html');
   let index=await readFile(indexPath,'utf8');
+  // Preload the small Dart module and let Flutter choose the compatible main binary.
+  const runtimeSlot='<!-- FATE_WASM_RUNTIME_PRELOAD -->';
+  if(!index.includes(runtimeSlot))throw Error('Missing Wasm runtime preload slot');
+  index=index.replace(runtimeSlot,'<link rel="modulepreload" href="main.dart.mjs" crossorigin fetchpriority="high">');
+  // The first paint and Flutter welcome use the same translated content.
+  const copy=JSON.parse(await readFile(path.join(flutterRoot,'assets','copy.json'),'utf8'));
+  const welcomeCopy=copy.jy;
+  const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  for(const key of ['name','role','headline','note','start','swipe']){
+    const slot=`<!-- FATE_WELCOME_${key.toUpperCase()} -->`;
+    if(!index.includes(slot))throw Error(`Missing welcome copy slot: ${key}`);
+    index=index.replace(slot,['zh','th'].map(lang=>`<span class="fate-startup-${lang}">${escapeHtml(welcomeCopy[lang].welcome[key])}</span>`).join(''));
+  }
+  const strokeSlot='<!-- FATE_WELCOME_STROKES -->';
+  if(!index.includes(strokeSlot))throw Error('Missing welcome stroke data slot');
+  index=index.replace(strokeSlot,JSON.stringify(copy.welcomeStrokes).replaceAll('<','\\u003c'));
   // Discover engine fonts during the HTML request instead of after the Wasm download.
   const fontManifest=JSON.parse(await readFile(path.join(generated,'assets','FontManifest.json'),'utf8'));
   const fontAssets=new Set(fontManifest.flatMap(family=>family.fonts.map(font=>font.asset)));
@@ -56,7 +72,7 @@ export async function buildLanding({release=false}={}){
   for (const page of ['report.html','privacy.html','support.html']) {
     await cp(path.join(generated,'index.html'),path.join(generated,page));
   }
-  for(const file of ['main.dart.wasm','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
+  for(const file of ['main.dart.wasm','main.dart.mjs','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
   const compressible=new Set(['.html','.js','.mjs','.css','.json','.svg','.wasm','.ttf','.otf']);
   for(const relative of await readdir(generated,{recursive:true})){
     if(!compressible.has(path.extname(relative)))continue;
@@ -64,8 +80,10 @@ export async function buildLanding({release=false}={}){
     if(!info.isFile()||info.size<1024)continue;
     const original=await readFile(file);
     await writeFile(file+'.gz',gzipSync(original,{level:9}));
-    // Compress during the build so serving Brotli never adds request-time CPU work.
-    const brotli=brotliCompressSync(original,{params:{[constants.BROTLI_PARAM_QUALITY]:release?11:6}});
+    // Use denser Brotli for large startup binaries even in the regular site build.
+    const startupBinary=relative==='main.dart.js'||path.extname(relative)==='.wasm';
+    const quality=release?11:(startupBinary?10:6);
+    const brotli=brotliCompressSync(original,{params:{[constants.BROTLI_PARAM_QUALITY]:quality}});
     if(!brotliDecompressSync(brotli).equals(original))throw Error(`Brotli verification failed: ${relative}`);
     if(brotli.length<original.length)await writeFile(file+'.br',brotli);
   }

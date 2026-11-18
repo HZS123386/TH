@@ -9,6 +9,77 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get h5CodeLogin => 'Sign in with a web code';
+
+  @override
+  String get h5CodeHelp =>
+      'Enter the six-character code shown on the H5 report screen to sync that browser’s reports.';
+
+  @override
+  String get h5CodeField => 'Web sign-in code';
+
+  @override
+  String get h5CodeInvalid =>
+      'This code is invalid, expired or already used. Get a new code on H5.';
+
+  @override
+  String get h5CodeRateLimited =>
+      'Too many attempts. Try again in a few minutes.';
+
+  @override
+  String get h5Account => 'Web account';
+
+  @override
+  String get h5Reports => 'Reports from H5';
+
+  @override
+  String get h5ReportsEmpty => 'This browser has no reports yet.';
+
+  @override
+  String get h5LoadMore => 'Load older reports';
+
+  @override
+  String get h5Refresh => 'Refresh reports';
+
+  @override
+  String get h5ReportUnavailable =>
+      'This report could not be loaded. Refresh or view it on H5.';
+
+  @override
+  String get h5ReportQueued => 'Unlocked · In queue';
+
+  @override
+  String get h5ReportGenerating => 'Unlocked · Generating';
+
+  @override
+  String get h5ReportLimited => 'Unlocked · Generation limit reached';
+
+  @override
+  String get h5ReportIncomplete => 'Unlocked · Report unfinished';
+
+  @override
+  String get h5ReportLimitedHelp =>
+      'Completed chapters are available. Return to the original web page to continue generating the report later.';
+
+  @override
+  String get h5Plan => 'Action plan';
+
+  @override
+  String get h5Insight => 'Insights';
+
+  @override
+  String get h5Watchpoint => 'What to watch for';
+
+  @override
+  String get h5Example => 'Everyday example';
+
+  @override
+  String get h5Pitfall => 'What to avoid';
+
+  @override
+  String get h5Check => 'How to check your progress';
+
+  @override
   String get actionTodo => 'To do';
 
   @override
@@ -292,10 +363,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myActions => 'My actions';
 
   @override
-  String get actionsIntro =>
-      'A reading helps you see where you stand. Record the small things you do and come back to reflect.';
-
-  @override
   String get actionPending => 'To do';
 
   @override
@@ -305,16 +372,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionReady => 'Ready to review';
 
   @override
-  String get chooseSmallAction => 'Choose a small action';
-
-  @override
-  String get chooseSmallActionNote => 'Ten minutes, at your own pace';
-
-  @override
   String get chooseFamilyAction => 'Plan a day for family';
-
-  @override
-  String get chooseFamilyActionNote => 'Do a few manageable things together';
 
   @override
   String get weeklyMoment => 'Set aside a day for action';
@@ -331,6 +389,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get actionLedger => 'My action journal';
+
+  @override
+  String get actionDailySuggestion => 'Today\'s suggestion';
+
+  @override
+  String get actionUseSuggestion => 'Add this';
+
+  @override
+  String get actionCustomPlan => 'Set my own action';
+
+  @override
+  String get actionCompleteNow => 'Mark done';
+
+  @override
+  String get actionSuggestionThanks =>
+      'Send a thank-you to someone who helped you';
+
+  @override
+  String get actionSuggestionCheckIn => 'Check in with a friend';
+
+  @override
+  String get actionSuggestionShare => 'Share something useful with someone';
+
+  @override
+  String get offeringEnergy => 'Action energy';
+
+  @override
+  String get offeringJasmine => 'Jasmine garland';
+
+  @override
+  String get offeringLotus => 'Lotus offering';
+
+  @override
+  String get offeringMarigold => 'Marigold garland';
+
+  @override
+  String offeringCollected(int count) {
+    return 'Collected $count';
+  }
+
+  @override
+  String offeringPerAction(int points) {
+    return 'Complete an action to add $points energy.';
+  }
+
+  @override
+  String get offeringPresenting => 'Presenting your offering…';
+
+  @override
+  String get offeringComplete => 'Offering presented';
+
+  @override
+  String get offeringBlessing =>
+      'May your good deeds lift you up. May good fortune stay with you, and may your hopes come true.';
+
+  @override
+  String get offeringNext => 'Your next action starts a new offering.';
 
   @override
   String get newPlan => 'New plan';

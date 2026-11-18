@@ -56,8 +56,7 @@ class ReportViewModel extends ChangeNotifier {
     _poll?.cancel();
     final r = report;
     if (!_active || r == null) return;
-    if (r.json['preview_state'] == 'generating' ||
-        r.full && r.json['full_state'] == 'generating') {
+    if (r.previewInProgress || r.fullInProgress) {
       _poll = Timer(const Duration(seconds: 3), () {
         if (h5.browser.visible) {
           unawaited(load(background: true));

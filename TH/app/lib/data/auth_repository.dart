@@ -25,6 +25,7 @@ class AuthRepository extends ChangeNotifier {
   String get owner => _account?['user_id'] as String? ?? 'guest';
   bool get hasSession => _account != null;
   bool get isGuest => _account?['kind'] == 'guest';
+  bool get hasH5Reports => _account?['kind'] == 'h5';
   bool get signedIn => hasSession && !isGuest;
   bool get canUseDevelopmentLogin =>
       kDebugMode ||
@@ -97,7 +98,34 @@ class AuthRepository extends ChangeNotifier {
     );
   });
 
-  Future<void> _signIn(Future<Map<String, dynamic>> Function() request) async {
+  Future<void> signInH5Code(String value) async {
+    final code = value.trim().toUpperCase();
+    if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code)) {
+      throw const ApiFailure('h5_login_code_invalid');
+    }
+    final generation = api.sessionVersion;
+    final session = await api.request(
+      'POST',
+      '/api/auth/h5-code',
+      authenticated: false,
+      body: {'code': code},
+    );
+    if (generation != api.sessionVersion) {
+      throw const ApiFailure('session_changed');
+    }
+    _token(session);
+    final account = _validatedAccount(session['account']);
+    if (account['user_id'] != session['user_id']) {
+      throw const ApiFailure('invalid_credentials');
+    }
+    // Save the accepted one-time grant without another network request.
+    await _signIn(() async => session, verifiedAccount: account);
+  }
+
+  Future<void> _signIn(
+    Future<Map<String, dynamic>> Function() request, {
+    Map<String, dynamic>? verifiedAccount,
+  }) async {
     final clearing = clear();
     final generation = api.sessionVersion;
     await clearing;
@@ -111,7 +139,7 @@ class AuthRepository extends ChangeNotifier {
     api.accessToken = _token(session);
     _refreshToken = session['refresh_token'] as String?;
     try {
-      final account = await _readAccount();
+      final account = verifiedAccount ?? await _readAccount();
       if (generation != api.sessionVersion) {
         throw const ApiFailure('session_changed');
       }
@@ -127,8 +155,13 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> _readAccount() async {
-    final value = await api.get('/api/auth/me');
+  Future<Map<String, dynamic>> _readAccount() async =>
+      _validatedAccount(await api.get('/api/auth/me'));
+
+  static Map<String, dynamic> _validatedAccount(Object? value) {
+    if (value is! Map<String, dynamic>) {
+      throw const ApiFailure('invalid_credentials');
+    }
     final userId = value['user_id'];
     if (userId is! String || userId.isEmpty || value['kind'] == 'demo') {
       throw const ApiFailure('invalid_credentials');

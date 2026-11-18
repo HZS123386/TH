@@ -48,6 +48,9 @@ Future<void> _startApp(WebBrowserPort browser) async {
   ).wait;
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([
+      'libphonenumber', 'libphonenumber-js', 'Unicode CLDR', 'flag-icons',
+    ], await rootBundle.loadString('assets/licenses/phone-countries.txt'));
+    yield LicenseEntryWithLineBreaks([
       'Noto Sans Thai',
     ], await rootBundle.loadString('assets/fonts/OFL.txt'));
     yield LicenseEntryWithLineBreaks([
@@ -74,5 +77,6 @@ Future<void> _startApp(WebBrowserPort browser) async {
     language,
     language == 'zh' ? '运程解析 · FATE' : 'วิเคราะห์ดวงชะตา · FATE',
   );
+  browser.connectWelcome(controller.enterLanding);
   runApp(H5App(controller: controller));
 }

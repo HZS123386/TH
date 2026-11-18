@@ -55,7 +55,8 @@ class AccountPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          d.session.displayName ?? s.guest,
+                          d.session.displayName ??
+                              (d.auth.hasH5Reports ? s.h5Account : s.guest),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 19),

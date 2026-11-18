@@ -27,7 +27,10 @@ class _ReportsPageState extends State<ReportsPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       model!.setActive(widget.detail && !widget.example, view: this);
-      if (!widget.detail) model!.loadHistory();
+      if (!widget.detail) {
+        model!.loadHistory();
+        model!.setH5HistoryView(this, active: true);
+      }
       if (widget.detail && !widget.example && model!.reference == null) {
         model!.resume();
       }
@@ -111,6 +114,10 @@ class _ReportsPageState extends State<ReportsPage> {
                   s.reportIntro,
                   icon: Icons.menu_book_outlined,
                 ),
+                if (d.auth.hasH5Reports) ...[
+                  _H5History(model: d.reports),
+                  const SizedBox(height: 20),
+                ],
                 FateCard(
                   gold: true,
                   child: Column(
@@ -596,7 +603,80 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   void dispose() {
     model?.setActive(false, view: this);
+    model?.setH5HistoryView(this, active: false);
     super.dispose();
+  }
+}
+
+class _H5History extends StatelessWidget {
+  const _H5History({required this.model});
+
+  final ReportsViewModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    final dates = MaterialLocalizations.of(context);
+    return FateCard(
+      gold: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(s.h5Reports, style: const TextStyle(fontSize: 18)),
+              ),
+              IconButton(
+                tooltip: s.h5Refresh,
+                onPressed: model.h5Loading ? null : () => model.loadH5History(),
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          if (model.h5Loading) const LinearProgressIndicator(),
+          if (model.h5Failed)
+            Text(
+              s.h5ReportUnavailable,
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else if (!model.h5Loading && model.h5History.isEmpty)
+            Text(
+              s.h5ReportsEmpty,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          for (final report in model.h5History)
+            ListTile(
+              key: ValueKey('h5-report-${report.id}'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                report.birthDate.isEmpty
+                    ? s.reportTitle
+                    : '${s.birthDate}  ${report.birthDate}',
+              ),
+              subtitle: Text(
+                [
+                  h5ReportStatusLabel(s, report.full, report.fullState),
+                  if (report.createdAt case final date?) ...[
+                    dates.formatCompactDate(date),
+                    dates.formatTimeOfDay(TimeOfDay.fromDateTime(date)),
+                  ],
+                ].join(' · '),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () =>
+                  context.push('/reports/h5/${Uri.encodeComponent(report.id)}'),
+            ),
+          if (model.h5HasMore)
+            TextButton(
+              onPressed: model.h5Loading
+                  ? null
+                  : () => model.loadH5History(more: true),
+              child: Text(s.h5LoadMore),
+            ),
+        ],
+      ),
+    );
   }
 }
 

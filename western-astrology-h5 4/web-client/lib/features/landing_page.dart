@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
@@ -15,6 +14,8 @@ import 'history_dialog.dart';
 import 'information_page.dart';
 import 'place_picker.dart';
 
+enum _BirthFormProgress { empty, date, time, place, complete }
+
 class LandingPage extends StatefulWidget {
   const LandingPage({this.topic = 'life', super.key});
   final String topic;
@@ -24,39 +25,56 @@ class LandingPage extends StatefulWidget {
 
 class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   String _date = '', _time = '', _error = '';
-  bool _unknown = false, _custom = false, _confirming = false;
+  bool _unknown = false, _confirming = false;
   Place? _place;
-  String? _question;
-  final _questionText = TextEditingController(),
-      _questionPages = PageController();
   CancelToken? _request;
   GenerationState? _generation;
+  bool _recordedPage = false;
+  bool _resumeChecked = false;
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    unawaited(H5Scope.of(context).recordVisit());
+    final h5 = H5Scope.of(context);
+    if (!_resumeChecked) {
+      _resumeChecked = true;
+      final saved = h5.browser.readSetting('active-preview', session: true) ?? '';
+      if (RegExp(r'^[A-Za-z0-9_-]{8,128}$').hasMatch(saved)) {
+        h5.browser.writeSetting('active-preview', '', session: true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go('/report.html?id=$saved&lang=${h5.language}');
+        });
+      }
+    }
+    unawaited(h5.recordVisit());
+    if (!_recordedPage && !h5.welcomeOpen) {
+      _recordedPage = true;
+      h5.trackActivity('birth_form');
+      _recordFormProgress(h5);
+    }
   }
 
   @override
   void dispose() {
     _request?.cancel();
-    _questionText.dispose();
-    _questionPages.dispose();
     super.dispose();
   }
 
   Future<void> _datePicker(H5Controller h5) async {
+    h5.trackActivity('birth_form', 'select_birth_date');
     final value = await chooseBirthDate(
       context,
       h5.copy,
       _date,
       h5.browser.today(_place?.zone ?? 'Asia/Bangkok'),
     );
-    if (value != null && mounted) setState(() => _date = value);
+    if (!mounted) return;
+    if (value != null) setState(() => _date = value);
+    _recordFormProgress(h5);
   }
 
-  Future<void> _timePicker() async {
+  Future<void> _timePicker(H5Controller h5) async {
     final current = _time.split(':');
+    h5.trackActivity('birth_form', 'select_birth_time');
     final value = await showTimePicker(
       context: context,
       initialTime: current.length == 2
@@ -70,16 +88,40 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         child: child!,
       ),
     );
-    if (value != null && mounted) {
+    if (!mounted) return;
+    if (value != null) {
       setState(
         () => _time =
             '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',
       );
     }
+    _recordFormProgress(h5);
+  }
+
+  void _setUnknownTime(H5Controller h5, bool value) {
+    if (_unknown == value) return;
+    setState(() => _unknown = value);
+    _recordFormProgress(h5);
+  }
+
+  _BirthFormProgress _formProgress(H5Controller h5) {
+    if (_date.isEmpty && _time.isEmpty && !_unknown && _place == null) {
+      return _BirthFormProgress.empty;
+    }
+    if (!validBirthDate(_date, h5.browser.today(_place?.zone ?? 'Asia/Bangkok'))) {
+      return _BirthFormProgress.date;
+    }
+    if (!_unknown && _time.isEmpty) return _BirthFormProgress.time;
+    if (_place == null) return _BirthFormProgress.place;
+    return _BirthFormProgress.complete;
+  }
+
+  void _recordFormProgress(H5Controller h5, [_BirthFormProgress? checked]) {
+    final progress = checked ?? _formProgress(h5);
+    h5.trackActivity('birth_form', 'form_progress_${progress.name}');
   }
 
   Json _input(H5Controller h5) {
-    final start = h5.browser.today('Asia/Bangkok');
     return {
       'report_kind': 'fortune',
       'profile': {
@@ -94,32 +136,24 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         'latitude': null,
         'longitude': null,
       },
-      'year': _question != null && !_custom
-          ? int.parse(start.substring(0, 4))
-          : DateTime.now().year,
-      if (_question != null && !_custom)
-        'career_question': {'stage': _question, 'start': start},
-      if (_custom && _questionText.text.trim().isNotEmpty)
-        'user_question': _questionText.text.trim(),
+      'year': DateTime.now().year,
     };
   }
 
   Future<void> _generate(H5Controller h5) async {
     if (_generation != null || _confirming) return;
     final c = h5.copy;
-    if (!validBirthDate(
-      _date,
-      h5.browser.today(_place?.zone ?? 'Asia/Bangkok'),
-    )) {
-      setState(() => _error = c.t('ui', 'invalidDate'));
-      return;
-    }
-    if (!_unknown && _time.isEmpty) {
-      setState(() => _error = c.t('ui', 'timeRequired'));
-      return;
-    }
-    if (_place == null) {
-      setState(() => _error = c.t('ui', 'invalidPlace'));
+    final progress = _formProgress(h5);
+    _recordFormProgress(h5, progress);
+    final errorKey = switch (progress) {
+      _BirthFormProgress.empty || _BirthFormProgress.date => 'invalidDate',
+      _BirthFormProgress.time => 'timeRequired',
+      _BirthFormProgress.place => 'invalidPlace',
+      _BirthFormProgress.complete => null,
+    };
+    if (errorKey != null) {
+      setState(() => _error = c.t('ui', errorKey));
+      h5.trackActivity('birth_form', 'invalid_form');
       return;
     }
     setState(() {
@@ -136,11 +170,13 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     final input = _input(h5);
     final state = GenerationState();
     _generation = state;
+    var attempts = 0;
     Future<void> run() async {
       _request?.cancel();
       final token = CancelToken();
       _request = token;
       state.retry();
+      h5.trackActivity('generating_preview', attempts++ == 0 ? 'generate' : 'retry_generation');
       try {
         final report = await h5.repository.generate(input, token, (
           report,
@@ -148,6 +184,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
           phase,
         ) {
           state.update(report, percent, phase);
+          h5.browser.writeSetting('active-preview', report.id, session: true);
           unawaited(h5.trackReport(report.id, 'submitted'));
         }, visit: h5.browser.visitContext());
         await h5.prepareText(
@@ -156,7 +193,10 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         );
         if (mounted && !token.cancelled) state.ready(report);
       } catch (error) {
-        if (mounted && !token.cancelled) state.fail(h5.message(error));
+        if (mounted && !token.cancelled) {
+          state.fail(h5.message(error));
+          h5.trackActivity('generating_preview', 'generation_failed');
+        }
       }
     }
 
@@ -174,10 +214,13 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
           input: input,
           onCancel: () {
             _request?.cancel();
+            h5.browser.writeSetting('active-preview', '', session: true);
+            h5.trackActivity('birth_form', 'cancel_generation');
             Navigator.of(context, rootNavigator: true).pop();
           },
           onRetry: () => unawaited(run()),
           onComplete: (report) {
+            h5.browser.writeSetting('active-preview', '', session: true);
             Navigator.of(context, rootNavigator: true).pop();
             context.go(
               '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}&checkout=1',
@@ -222,8 +265,6 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final h5 = H5Scope.of(context), c = h5.copy;
-    final prompts = (c.value('jy', 'questions') as List).cast<List>();
-    const stages = ['unspecified', 'considering', 'searching', 'offer'];
     return LayoutBuilder(
       builder: (context, box) {
         final compact = box.maxWidth <= 360;
@@ -334,7 +375,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      '✦  ${c.t('jy', 'formTitle')}  ✦',
+                      c.t('jy', 'formTitle'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -424,8 +465,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                               label: c.t('jy', 'unknown'),
                               child: InkWell(
                                 key: const ValueKey('birth-time-unknown'),
-                                onTap: () =>
-                                    setState(() => _unknown = !_unknown),
+                                onTap: () => _setUnknownTime(h5, !_unknown),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -437,7 +477,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                                         child: Checkbox(
                                           value: _unknown,
                                           onChanged: (value) =>
-                                              setState(() => _unknown = value!),
+                                              _setUnknownTime(h5, value!),
                                           materialTapTargetSize:
                                               MaterialTapTargetSize.shrinkWrap,
                                         ),
@@ -467,7 +507,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       _time,
                       '--:--',
                       Icons.schedule,
-                      _unknown ? null : _timePicker,
+                      _unknown ? null : () => _timePicker(h5),
                     ),
                     if (_unknown)
                       Padding(
@@ -484,162 +524,13 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     const SizedBox(height: 13),
                     BirthplaceFields(
                       h5: h5,
-                      onSelected: (place) => setState(() => _place = place),
+                      onSelected: (place) {
+                        if (place == null && _place == null) return;
+                        setState(() => _place = place);
+                        _recordFormProgress(h5);
+                      },
                     ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c.t('jy', 'questionTitle'),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              height: 1.67,
-                              color: gold,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            c.t('jy', 'questionHint'),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              height: 1.45,
-                              color: lavender,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    LayoutBuilder(
-                      builder: (context, box) => Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: box.maxWidth < 480
-                                ? box.maxWidth
-                                : box.maxWidth - 140,
-                            child: _custom
-                                ? TextField(
-                                    key: const ValueKey('custom-question'),
-                                    controller: _questionText,
-                                    maxLength: 120,
-                                    style: const TextStyle(fontSize: 12),
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.deny(
-                                        RegExp(r'[\x00-\x1f\x7f]'),
-                                        replacementString: ' ',
-                                      ),
-                                    ],
-                                    decoration: InputDecoration(
-                                      hintText: c.t('jy', 'questionTitle'),
-                                      counterText: '',
-                                    ),
-                                  )
-                                : SizedBox(
-                                    height: 64,
-                                    child: PageView.builder(
-                                      controller: _questionPages,
-                                      scrollDirection: Axis.vertical,
-                                      itemCount: 4,
-                                      itemBuilder: (context, index) => InkWell(
-                                        key: ValueKey('question-$index'),
-                                        onTap: () => setState(
-                                          () => _question =
-                                              _question == stages[index]
-                                              ? null
-                                              : stages[index],
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 4,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Text(
-                                                '${prompts[index][0]}',
-                                                style: const TextStyle(
-                                                  fontSize: 10,
-                                                  color: gold,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  '${prompts[index][1]}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    height: 1.4,
-                                                    fontWeight: FontWeight.w600,
-                                                    color:
-                                                        _question ==
-                                                            stages[index]
-                                                        ? gold
-                                                        : cream,
-                                                  ),
-                                                ),
-                                              ),
-                                              if (_question == stages[index])
-                                                Text(
-                                                  c.t('jy', 'selected'),
-                                                  style: const TextStyle(
-                                                    fontSize: 9,
-                                                    color: gold,
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                          SizedBox(
-                            width: 132,
-                            child: _custom
-                                ? TextButton(
-                                    onPressed: () => setState(() {
-                                      _custom = false;
-                                      _question = null;
-                                      _questionText.clear();
-                                    }),
-                                    child: Text(
-                                      c.t('jy', 'browseQuestions'),
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: gold,
-                                      ),
-                                    ),
-                                  )
-                                : SizedBox(
-                                    height: 46,
-                                    child: TextField(
-                                      readOnly: true,
-                                      key: const ValueKey('write-question'),
-                                      onTap: () => setState(() {
-                                        _custom = true;
-                                        _question = null;
-                                      }),
-                                      textAlign: TextAlign.center,
-                                      decoration: InputDecoration(
-                                        hintText: c.t('jy', 'writeQuestion'),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 4,
-                                              vertical: 12,
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 8),
                     errorMessage(_error),
                     const SizedBox(height: 21),
                     JYButton(

@@ -12,9 +12,15 @@ import 'package:fate_app/app/fate_app.dart';
 import 'package:fate_app/core/models/birth_profile.dart';
 import 'package:fate_app/core/network/api_client.dart';
 import 'package:fate_app/core/storage/session_store.dart';
+import 'package:fate_app/features/actions/action_ledger.dart';
+import 'package:fate_app/features/actions/action_page.dart';
+import 'package:fate_app/features/reports/h5_report_page.dart';
+import 'package:fate_app/features/reports/reports_page.dart';
+import 'package:fate_app/l10n/generated/app_localizations.dart';
 import 'package:fate_app/l10n/generated/app_localizations_en.dart';
 import 'package:fate_app/features/home/home_page.dart';
 import 'package:fate_app/data/configuration_repository.dart';
+import 'package:fate_app/ui/theme.dart';
 
 class DelayedHeroBundle extends CachingAssetBundle {
   final requested = Completer<void>();
@@ -51,6 +57,88 @@ class MemorySessionStore implements SessionStore {
 }
 
 void main() {
+  for (final locale in [const Locale('zh'), const Locale('th')]) {
+    testWidgets(
+      'H5 unlocked report shows its generation state in ${locale.languageCode}',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 820);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        SharedPreferences.setMockInitialValues({
+          'fate.locale': locale.languageCode,
+        });
+        var state = 'limited';
+        final d = AppDependencies(
+          await SharedPreferences.getInstance(),
+          secureStore: MemorySessionStore(),
+          client: ApiClient(
+            'https://api.example.test',
+            client: MockClient((request) async {
+              final report = {
+                'id': 'report-1',
+                'title': 'H5 fixture',
+                'access': 'full',
+                'preview_state': 'ready',
+                'full_state': state,
+                'chapters': [
+                  {'key': 'annual', 'title': 'Saved chapter'},
+                ],
+              };
+              final data = switch (request.url.path) {
+                '/api/auth/h5-code' => {
+                  'token': 'web-session',
+                  'user_id': 'web-user',
+                  'account': {'user_id': 'web-user', 'kind': 'h5'},
+                },
+                '/api/app/h5-reports' => {
+                  'items': [report],
+                  'next_cursor': null,
+                },
+                '/api/app/h5-reports/report-1' => report,
+                _ => null,
+              };
+              return http.Response(jsonEncode(data), 200);
+            }),
+          ),
+        );
+        addTearDown(d.dispose);
+        await d.auth.signInH5Code('A2B3C4');
+        final s = await AppLocalizations.delegate.load(locale);
+
+        Future<void> show(Widget page) async {
+          await tester.pumpWidget(
+            DependencyScope(
+              dependencies: d,
+              child: MaterialApp(
+                locale: locale,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: Scaffold(body: page),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+        }
+
+        await show(const ReportsPage());
+        expect(find.textContaining(s.h5ReportLimited), findsOneWidget);
+        expect(find.text(s.fullReport), findsNothing);
+
+        await show(const H5ReportPage(id: 'report-1'));
+        expect(find.text(s.h5ReportLimited), findsOneWidget);
+        expect(find.text(s.h5ReportLimitedHelp), findsOneWidget);
+        expect(find.text('Saved chapter'), findsOneWidget);
+        state = 'ready';
+        await tester.tap(find.byTooltip(s.h5Refresh));
+        await tester.pumpAndSettle();
+        expect(find.text(s.fullReport), findsOneWidget);
+        expect(find.text(s.h5ReportLimitedHelp), findsNothing);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
+
   testWidgets(
     'motion preserves the draft, chat feedback, and iOS back gesture',
     (tester) async {
@@ -520,15 +608,16 @@ void main() {
     },
   );
   testWidgets(
-    'action plans persist locally and become reviewable after completion',
+    'action suggestions and custom tasks fill an offering once per completion',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
+      final preferences = await SharedPreferences.getInstance();
       final d = AppDependencies(
-        await SharedPreferences.getInstance(),
+        preferences,
         client: ApiClient(
           'https://api.example.test',
           client: MockClient((_) async => http.Response('{}', 404)),
@@ -539,13 +628,20 @@ void main() {
       await tester.pumpWidget(
         DependencyScope(
           dependencies: d,
-          child: FateApp(dependencies: d),
+          child: MaterialApp(
+            theme: fateTheme(),
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(body: ActionPage()),
+          ),
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(NavigationDestination, s.actionTab));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(s.chooseSmallAction));
+      expect(find.text(s.offeringJasmine), findsOneWidget);
+      expect(find.text('0 / 100'), findsOneWidget);
+
+      await tester.tap(find.text(s.actionDailySuggestion));
       await tester.pumpAndSettle();
       final done = find.widgetWithText(CheckboxListTile, s.actionCompleted);
       await tester.ensureVisible(done);
@@ -556,11 +652,80 @@ void main() {
       await tester.tap(save);
       await tester.pumpAndSettle();
 
-      final plan = d.actions.plans(d.session.owner).single;
-      expect(plan.title, s.careAction);
+      final owner = d.session.owner;
+      final plan = d.actions.plans(owner).single;
+      expect(plan.id, startsWith('daily-'));
       expect(plan.done, isTrue);
       expect(plan.readyOn(DateUtils.dateOnly(DateTime.now())), isTrue);
-      expect(d.actions.plans('another-owner'), isEmpty);
+      expect(find.text('20 / 100'), findsOneWidget);
+
+      await tester.tap(find.text(s.actionCustomPlan));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), 'Water the basil');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      final custom = d.actions.plans(owner).first;
+      expect(custom.title, 'Water the basil');
+      expect(custom.done, isFalse);
+      expect(d.actions.energyFor(owner), 20);
+
+      for (var i = 0; i < 3; i++) {
+        await d.actions.save(
+          owner,
+          ActionPlan(
+            id: 'completed-fixture-$i',
+            title: 'Completed action $i',
+            category: 0,
+            beneficiary: 0,
+            date: plan.date,
+            reviewDate: plan.reviewDate,
+            notes: '',
+            reflection: '',
+            done: true,
+            reviewed: false,
+          ),
+        );
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('80 / 100'), findsOneWidget);
+      final completeButton = find.widgetWithText(
+        FilledButton,
+        s.actionCompleteNow,
+      );
+      await tester.scrollUntilVisible(completeButton.hitTestable(), 155);
+      await tester.pumpAndSettle();
+      await tester.tap(completeButton.hitTestable());
+      await tester.pump();
+      expect(d.actions.energyFor(owner), 100);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 820));
+      final fill = find.byWidgetPredicate(
+        (widget) =>
+            widget is LinearProgressIndicator &&
+            widget.semanticsLabel == s.offeringEnergy,
+      );
+      expect(
+        tester.widget<LinearProgressIndicator>(fill).value,
+        inExclusiveRange(.8, 1.0),
+      );
+      await tester.pump(const Duration(milliseconds: 680));
+      expect(find.text('100 / 100'), findsOneWidget);
+      expect(find.text(s.offeringPresenting), findsOneWidget);
+      expect(find.text(s.offeringBlessing), findsNothing);
+      await tester.pumpAndSettle();
+      expect(find.text('100 / 100'), findsOneWidget);
+      expect(find.text(s.offeringComplete), findsOneWidget);
+      expect(find.text(s.offeringBlessing), findsOneWidget);
+
+      await d.actions.complete(owner, custom.id);
+      final reloaded = ActionLedger(LocalDraftStore(preferences));
+      expect(reloaded.energyFor(owner), 100);
+      expect(reloaded.energyFor('another-owner'), 0);
+      reloaded.dispose();
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       d.dispose();

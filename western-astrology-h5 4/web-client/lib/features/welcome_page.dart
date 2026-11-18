@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' show PathMetric;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../app/controller.dart';
+import '../core/browser_port.dart';
+import '../core/models.dart' show Json, object;
 import '../ui/jy_components.dart';
 import '../ui/theme.dart';
 
@@ -26,6 +30,7 @@ class _WelcomePageState extends State<WelcomePage>
   void initState() {
     super.initState();
     unawaited(widget.h5.recordVisit());
+    widget.h5.trackActivity('welcome');
     _motion.addListener(() {
       if (_motion.value >= 650 / 820) widget.h5.revealLandingPortrait();
     });
@@ -54,6 +59,8 @@ class _WelcomePageState extends State<WelcomePage>
   @override
   Widget build(BuildContext context) {
     final c = widget.h5.copy;
+    final signatureName = c.t('jy', 'welcome.name');
+    final thaiSignature = c.language == 'th';
     return Material(
       type: MaterialType.transparency,
       child: Listener(
@@ -184,6 +191,43 @@ class _WelcomePageState extends State<WelcomePage>
                         ),
                       ),
                       Positioned(
+                        right: math.max(
+                          thaiSignature ? 10 : 13,
+                          w -
+                              image.right +
+                              image.width * (thaiSignature ? .075 : .1),
+                        ),
+                        top: math.min(
+                          image.top + image.width * (thaiSignature ? .3 : .33),
+                          math.max(18, h - 245),
+                        ),
+                        width: thaiSignature
+                            ? (w * .29).clamp(112, 144)
+                            : (w * .32).clamp(124, 164),
+                        child: IgnorePointer(
+                          child: Opacity(
+                            opacity: fade,
+                            child: _WelcomeSignature(
+                              key: ValueKey(signatureName),
+                              browser: widget.h5.browser,
+                              name: signatureName,
+                              role: c.t('jy', 'welcome.role'),
+                              strokeData: object(
+                                object(
+                                  widget.h5.translations['welcomeStrokes'],
+                                )[signatureName],
+                              ),
+                              nameSize: thaiSignature
+                                  ? (w * .046).clamp(15, 23)
+                                  : (w * .055).clamp(17, 27),
+                              roleSize: thaiSignature
+                                  ? (w * .0255).clamp(9, 11)
+                                  : (w * .03).clamp(10, 13),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
                         left: 20,
                         right: 20,
                         bottom: 22 + MediaQuery.paddingOf(context).bottom,
@@ -207,48 +251,6 @@ class _WelcomePageState extends State<WelcomePage>
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Container(
-                                            width: 62,
-                                            height: 1,
-                                            decoration: const BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  Colors.transparent,
-                                                  Color(0xFFC36BFA),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          const Padding(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                            ),
-                                            child: Text(
-                                              '✦',
-                                              style: TextStyle(
-                                                color: Color(0xFFF3B5FF),
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ),
-                                          Container(
-                                            width: 62,
-                                            height: 1,
-                                            decoration: const BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  Color(0xFFC36BFA),
-                                                  Colors.transparent,
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
                                       Padding(
                                         padding: const EdgeInsets.only(
                                           top: 8,
@@ -265,10 +267,7 @@ class _WelcomePageState extends State<WelcomePage>
                                               ).createShader(rect),
                                           blendMode: BlendMode.srcIn,
                                           child: Text(
-                                            c.t(
-                                              'jy',
-                                              'welcome.${widget.h5.returningVisitor ? 'returning' : 'first'}',
-                                            ),
+                                            c.t('jy', 'welcome.headline'),
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
                                               fontSize: (w * .088).clamp(
@@ -282,10 +281,7 @@ class _WelcomePageState extends State<WelcomePage>
                                         ),
                                       ),
                                       Text(
-                                        c.t(
-                                          'jy',
-                                          'welcome.${widget.h5.returningVisitor ? 'returningNote' : 'firstNote'}',
-                                        ),
+                                        c.t('jy', 'welcome.note'),
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           color: const Color(0xFFE4CDEA),
@@ -293,14 +289,15 @@ class _WelcomePageState extends State<WelcomePage>
                                             14.08,
                                             16.0,
                                           ),
+                                          height: 1.55,
                                         ),
                                       ),
                                       SizedBox(
-                                        height: (h * .05).clamp(24.0, 44.0),
+                                        height: (h * .04).clamp(18.0, 32.0),
                                       ),
                                       ConstrainedBox(
                                         constraints: const BoxConstraints(
-                                          maxWidth: 310,
+                                          maxWidth: 410,
                                         ),
                                         child: DecoratedBox(
                                           decoration: BoxDecoration(
@@ -399,6 +396,238 @@ class _WelcomePageState extends State<WelcomePage>
       ),
     );
   }
+}
+
+class _WelcomeSignature extends StatefulWidget {
+  const _WelcomeSignature({
+    required this.browser,
+    required this.name,
+    required this.role,
+    required this.strokeData,
+    required this.nameSize,
+    required this.roleSize,
+    super.key,
+  });
+
+  final BrowserPort browser;
+  final String name;
+  final String role;
+  final Json strokeData;
+  final double nameSize;
+  final double roleSize;
+
+  @override
+  State<_WelcomeSignature> createState() => _WelcomeSignatureState();
+}
+
+class _WelcomeSignatureState extends State<_WelcomeSignature>
+    with SingleTickerProviderStateMixin {
+  static const _shimmerPeriod = Duration(milliseconds: 1800);
+  late final _clock = AnimationController(vsync: this);
+  late final _drawingWidth =
+      (widget.strokeData['width'] as num?)?.toDouble() ?? 0.0;
+  late final _strokes = _loadStrokes();
+  Duration _initialAge = Duration.zero;
+
+  List<PathMetric> _loadStrokes() {
+    final paths = widget.strokeData['strokes'];
+    if (paths is! List || _drawingWidth <= 0) return const [];
+    final strokes = <PathMetric>[];
+    for (final points in paths.cast<List>()) {
+      final path = Path()
+        ..moveTo((points[0] as num).toDouble(), (points[1] as num).toDouble());
+      for (var i = 2; i < points.length; i += 2) {
+        path.lineTo(
+          (points[i] as num).toDouble(),
+          (points[i + 1] as num).toDouble(),
+        );
+      }
+      strokes.add(path.computeMetrics().first);
+    }
+    return strokes;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _clock.stop();
+    } else if (!_clock.isAnimating) {
+      // Keep the phase of the signature already shown by the startup HTML.
+      _initialAge = widget.browser.welcomeAge;
+      _clock.repeat(period: _shimmerPeriod);
+    }
+  }
+
+  @override
+  void dispose() {
+    _clock.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final handwriting = _strokes.isNotEmpty;
+    final shimmerStart = handwriting ? 1110 : 720;
+    return Transform.rotate(
+      angle: -.035,
+      alignment: Alignment.centerRight,
+      child: AnimatedBuilder(
+        animation: _clock,
+        builder: (context, _) {
+          final clock =
+              _initialAge + (_clock.lastElapsedDuration ?? Duration.zero);
+          final ms = clock.inMilliseconds;
+          double ink(int delay, int duration) => reducedMotion
+              ? 1
+              : Curves.easeOut.transform(
+                  ((ms - delay) / duration).clamp(0.0, 1.0),
+                );
+          final phase =
+              (ms - shimmerStart) %
+              _shimmerPeriod.inMilliseconds /
+              _shimmerPeriod.inMilliseconds;
+          final nameOpacity = reducedMotion || ms < shimmerStart
+              ? 1.0
+              : 1 - .18 * Curves.easeInOut.transform(1 - (phase * 2 - 1).abs());
+          final role = FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              widget.role,
+              style: TextStyle(
+                color: const Color(0xFFF3CD91),
+                fontSize: widget.roleSize,
+                height: 1.4,
+                shadows: const [
+                  Shadow(color: Color(0xDD150A22), blurRadius: 6),
+                ],
+              ),
+            ),
+          );
+          final name = handwriting
+              ? Semantics(
+                  label: widget.name,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: widget.nameSize * _drawingWidth / 1024,
+                      height: widget.nameSize * 1.28,
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                          key: const ValueKey('welcome-name-strokes'),
+                          painter: _SignatureHandwriting(
+                            _strokes,
+                            _drawingWidth,
+                            reducedMotion
+                                ? 1
+                                : ((ms - 60) / 890).clamp(0.0, 1.0),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : ClipRect(
+                  clipper: _SignatureInk(ink(60, 440)),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      widget.name,
+                      style: TextStyle(
+                        color: const Color(0xFFFFE5AA),
+                        fontSize: widget.nameSize,
+                        fontWeight: FontWeight.w800,
+                        height: 1.28,
+                        shadows: const [
+                          Shadow(color: Color(0xDD190D25), blurRadius: 7),
+                          Shadow(color: Color(0x8FE0A54B), blurRadius: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Opacity(
+                  key: const ValueKey('welcome-name-shimmer'),
+                  opacity: nameOpacity,
+                  child: name,
+                ),
+                if (handwriting)
+                  Opacity(opacity: ink(950, 150), child: role)
+                else
+                  ClipRect(clipper: _SignatureInk(ink(200, 450)), child: role),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SignatureHandwriting extends CustomPainter {
+  const _SignatureHandwriting(this.strokes, this.drawingWidth, this.progress);
+
+  final List<PathMetric> strokes;
+  final double drawingWidth;
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / drawingWidth;
+    final count = progress * strokes.length;
+    final pen = Paint()
+      ..color = const Color(0xFFFFE5AA)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 68
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.save();
+    canvas.translate(0, (size.height - 1024 * scale) / 2);
+    canvas.scale(scale);
+    for (var i = 0; i < count; i++) {
+      final stroke = strokes[i];
+      final part = math.min(1.0, count - i);
+      final end = stroke.length * part;
+      canvas.drawPath(stroke.extractPath(0, end), pen);
+      if (part < 1) {
+        final tip = stroke.getTangentForOffset(end);
+        if (tip != null) {
+          canvas.drawCircle(
+            tip.position,
+            46,
+            Paint()..color = const Color(0xFFFFF3D4),
+          );
+        }
+      }
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_SignatureHandwriting oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.strokes != strokes ||
+      oldDelegate.drawingWidth != drawingWidth;
+}
+
+class _SignatureInk extends CustomClipper<Rect> {
+  const _SignatureInk(this.progress);
+
+  final double progress;
+
+  @override
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * progress, size.height);
+
+  @override
+  bool shouldReclip(_SignatureInk oldClipper) =>
+      oldClipper.progress != progress;
 }
 
 class _PortraitCrop extends CustomClipper<Rect> {

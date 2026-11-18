@@ -9,6 +9,76 @@ class AppLocalizationsVi extends AppLocalizations {
   AppLocalizationsVi([String locale = 'vi']) : super(locale);
 
   @override
+  String get h5CodeLogin => 'Đăng nhập bằng mã từ web';
+
+  @override
+  String get h5CodeHelp =>
+      'Nhập mã gồm 6 chữ cái và chữ số trên trang báo cáo H5 để đồng bộ báo cáo của trình duyệt đó.';
+
+  @override
+  String get h5CodeField => 'Mã đăng nhập từ web';
+
+  @override
+  String get h5CodeInvalid =>
+      'Mã không hợp lệ, đã hết hạn hoặc đã được dùng. Hãy lấy mã mới trên web.';
+
+  @override
+  String get h5CodeRateLimited => 'Bạn đã thử quá nhiều lần. Hãy thử lại sau.';
+
+  @override
+  String get h5Account => 'Tài khoản web';
+
+  @override
+  String get h5Reports => 'Báo cáo từ web';
+
+  @override
+  String get h5ReportsEmpty => 'Trình duyệt này chưa có báo cáo.';
+
+  @override
+  String get h5LoadMore => 'Tải báo cáo cũ hơn';
+
+  @override
+  String get h5Refresh => 'Làm mới báo cáo';
+
+  @override
+  String get h5ReportUnavailable =>
+      'Chưa mở được báo cáo này. Hãy làm mới hoặc xem trên web.';
+
+  @override
+  String get h5ReportQueued => 'Đã mở khóa · Đang xếp hàng';
+
+  @override
+  String get h5ReportGenerating => 'Đã mở khóa · Đang tạo báo cáo';
+
+  @override
+  String get h5ReportLimited => 'Đã mở khóa · Chạm giới hạn tạo báo cáo';
+
+  @override
+  String get h5ReportIncomplete => 'Đã mở khóa · Báo cáo chưa hoàn tất';
+
+  @override
+  String get h5ReportLimitedHelp =>
+      'Bạn có thể đọc các chương đã hoàn tất. Hãy quay lại trang web ban đầu để tiếp tục tạo báo cáo sau.';
+
+  @override
+  String get h5Plan => 'Kế hoạch hành động';
+
+  @override
+  String get h5Insight => 'Điểm chính';
+
+  @override
+  String get h5Watchpoint => 'Điều cần lưu ý';
+
+  @override
+  String get h5Example => 'Ví dụ trong cuộc sống';
+
+  @override
+  String get h5Pitfall => 'Điều nên tránh';
+
+  @override
+  String get h5Check => 'Cách theo dõi tiến triển';
+
+  @override
   String get actionTodo => 'Chờ thực hiện';
 
   @override
@@ -293,10 +363,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get myActions => 'Hành động của tôi';
 
   @override
-  String get actionsIntro =>
-      'Một lời luận giải giúp bạn hiểu hoàn cảnh. Ghi lại những việc nhỏ đã làm để nhìn lại sau này.';
-
-  @override
   String get actionPending => 'Chờ thực hiện';
 
   @override
@@ -306,17 +372,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get actionReady => 'Có thể xem lại';
 
   @override
-  String get chooseSmallAction => 'Chọn một việc nhỏ';
-
-  @override
-  String get chooseSmallActionNote => 'Một việc bạn chọn trong mười phút';
-
-  @override
   String get chooseFamilyAction => 'Lên ngày hành động cho gia đình';
-
-  @override
-  String get chooseFamilyActionNote =>
-      'Làm vài việc vừa sức trong cùng một ngày';
 
   @override
   String get weeklyMoment => 'Dành một ngày để hành động';
@@ -333,6 +389,62 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get actionLedger => 'Sổ hành động của tôi';
+
+  @override
+  String get actionDailySuggestion => 'Gợi ý hôm nay';
+
+  @override
+  String get actionUseSuggestion => 'Thêm việc này';
+
+  @override
+  String get actionCustomPlan => 'Tự đặt việc cần làm';
+
+  @override
+  String get actionCompleteNow => 'Hoàn thành';
+
+  @override
+  String get actionSuggestionThanks => 'Nhắn lời cảm ơn đến người đã giúp bạn';
+
+  @override
+  String get actionSuggestionCheckIn => 'Hỏi thăm một người bạn';
+
+  @override
+  String get actionSuggestionShare => 'Chia sẻ một điều hữu ích với ai đó';
+
+  @override
+  String get offeringEnergy => 'Năng lượng hành động';
+
+  @override
+  String get offeringJasmine => 'Vòng hoa nhài';
+
+  @override
+  String get offeringLotus => 'Hoa sen dâng lễ';
+
+  @override
+  String get offeringMarigold => 'Vòng hoa vạn thọ';
+
+  @override
+  String offeringCollected(int count) {
+    return 'Đã thu thập $count vật phẩm';
+  }
+
+  @override
+  String offeringPerAction(int points) {
+    return 'Hoàn thành một việc để nhận $points điểm năng lượng.';
+  }
+
+  @override
+  String get offeringPresenting => 'Đang dâng lễ vật…';
+
+  @override
+  String get offeringComplete => 'Đã dâng lễ vật';
+
+  @override
+  String get offeringBlessing =>
+      'Mong việc thiện nâng đỡ bạn, may mắn đồng hành và điều bạn ấp ủ thành hiện thực.';
+
+  @override
+  String get offeringNext => 'Việc tiếp theo sẽ bắt đầu một vật phẩm mới.';
 
   @override
   String get newPlan => 'Kế hoạch mới';

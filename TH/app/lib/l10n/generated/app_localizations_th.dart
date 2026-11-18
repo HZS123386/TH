@@ -9,6 +9,76 @@ class AppLocalizationsTh extends AppLocalizations {
   AppLocalizationsTh([String locale = 'th']) : super(locale);
 
   @override
+  String get h5CodeLogin => 'เข้าสู่ระบบด้วยรหัสจากเว็บ';
+
+  @override
+  String get h5CodeHelp =>
+      'กรอกรหัสตัวอักษรและตัวเลข 6 ตัวจากหน้ารายงาน H5 เพื่อซิงค์รายงานของเบราว์เซอร์นั้น';
+
+  @override
+  String get h5CodeField => 'รหัสเข้าสู่ระบบจากเว็บ';
+
+  @override
+  String get h5CodeInvalid =>
+      'รหัสไม่ถูกต้อง หมดอายุ หรือใช้แล้ว โปรดขอรหัสใหม่บนเว็บ';
+
+  @override
+  String get h5CodeRateLimited => 'ลองหลายครั้งเกินไป โปรดลองใหม่ในอีกสักครู่';
+
+  @override
+  String get h5Account => 'บัญชีเว็บ';
+
+  @override
+  String get h5Reports => 'รายงานจากเว็บ';
+
+  @override
+  String get h5ReportsEmpty => 'ยังไม่มีรายงานในเบราว์เซอร์นี้';
+
+  @override
+  String get h5LoadMore => 'โหลดรายงานก่อนหน้า';
+
+  @override
+  String get h5Refresh => 'รีเฟรชรายงาน';
+
+  @override
+  String get h5ReportUnavailable =>
+      'ยังเปิดรายงานนี้ไม่ได้ ลองรีเฟรชหรือกลับไปดูบนเว็บ';
+
+  @override
+  String get h5ReportQueued => 'ปลดล็อกแล้ว · อยู่ในคิว';
+
+  @override
+  String get h5ReportGenerating => 'ปลดล็อกแล้ว · กำลังสร้างรายงาน';
+
+  @override
+  String get h5ReportLimited => 'ปลดล็อกแล้ว · ถึงขีดจำกัดการสร้างรายงาน';
+
+  @override
+  String get h5ReportIncomplete => 'ปลดล็อกแล้ว · รายงานยังไม่เสร็จ';
+
+  @override
+  String get h5ReportLimitedHelp =>
+      'ตอนที่สร้างเสร็จแล้วอ่านได้ โปรดกลับไปที่หน้าเว็บเดิมแล้วลองสร้างรายงานต่อภายหลัง';
+
+  @override
+  String get h5Plan => 'แผนปฏิบัติ';
+
+  @override
+  String get h5Insight => 'ประเด็นสำคัญ';
+
+  @override
+  String get h5Watchpoint => 'สิ่งที่ควรระวัง';
+
+  @override
+  String get h5Example => 'ตัวอย่างในชีวิตประจำวัน';
+
+  @override
+  String get h5Pitfall => 'สิ่งที่ควรเลี่ยง';
+
+  @override
+  String get h5Check => 'วิธีสังเกตผล';
+
+  @override
   String get actionTodo => 'รอลงมือ';
 
   @override
@@ -290,10 +360,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get myActions => 'การลงมือทำของฉัน';
 
   @override
-  String get actionsIntro =>
-      'คำทำนายช่วยให้เห็นสถานการณ์ ลงมือทำสิ่งเล็ก ๆ แล้วบันทึกไว้กลับมาทบทวน';
-
-  @override
   String get actionPending => 'รอลงมือ';
 
   @override
@@ -303,16 +369,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get actionReady => 'พร้อมทบทวน';
 
   @override
-  String get chooseSmallAction => 'เลือกสิ่งเล็ก ๆ ทำ';
-
-  @override
-  String get chooseSmallActionNote => 'เลือกตามใจ ใช้เวลาไม่เกินสิบนาที';
-
-  @override
   String get chooseFamilyAction => 'วางแผนวันลงมือทำให้ครอบครัว';
-
-  @override
-  String get chooseFamilyActionNote => 'ทำสิ่งที่ทำได้สักสองสามอย่างในวันเดียว';
 
   @override
   String get weeklyMoment => 'เก็บวันลงมือทำไว้ให้ตัวเอง';
@@ -329,6 +386,62 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get actionLedger => 'สมุดบันทึกการลงมือทำ';
+
+  @override
+  String get actionDailySuggestion => 'กิจกรรมแนะนำวันนี้';
+
+  @override
+  String get actionUseSuggestion => 'เพิ่มกิจกรรมนี้';
+
+  @override
+  String get actionCustomPlan => 'กำหนดกิจกรรมเอง';
+
+  @override
+  String get actionCompleteNow => 'ทำเสร็จ';
+
+  @override
+  String get actionSuggestionThanks => 'ส่งข้อความขอบคุณคนที่เคยช่วยคุณ';
+
+  @override
+  String get actionSuggestionCheckIn => 'ทักไปถามไถ่เพื่อนสักคน';
+
+  @override
+  String get actionSuggestionShare => 'แบ่งปันสิ่งที่มีประโยชน์ให้ใครสักคน';
+
+  @override
+  String get offeringEnergy => 'พลังจากการลงมือทำ';
+
+  @override
+  String get offeringJasmine => 'พวงมาลัยดอกมะลิ';
+
+  @override
+  String get offeringLotus => 'ดอกบัวบูชา';
+
+  @override
+  String get offeringMarigold => 'พวงมาลัยดาวเรือง';
+
+  @override
+  String offeringCollected(int count) {
+    return 'สะสมแล้ว $count ชิ้น';
+  }
+
+  @override
+  String offeringPerAction(int points) {
+    return 'ทำเสร็จ 1 กิจกรรม รับพลัง $points แต้ม';
+  }
+
+  @override
+  String get offeringPresenting => 'กำลังถวายของบูชา…';
+
+  @override
+  String get offeringComplete => 'ถวายของบูชาแล้ว';
+
+  @override
+  String get offeringBlessing =>
+      'ขอให้บุญกุศลเกื้อหนุน ขอให้โชคดีและสมหวังในสิ่งที่ตั้งใจ';
+
+  @override
+  String get offeringNext => 'ทำกิจกรรมถัดไปเพื่อเริ่มสะสมของบูชาชิ้นใหม่';
 
   @override
   String get newPlan => 'แผนใหม่';

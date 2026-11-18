@@ -42,12 +42,22 @@ const fatePerfEnabled=new URLSearchParams(location.search).get('startup')==='1';
 const fateBootLabels=document.documentElement.lang==='zh'
   ?{engine:'正在准备星空画面',app:'正在载入你的专属页面',slow:'网络有点慢，请稍候',retry:'连接暂时中断，正在重新加载',failed:'页面加载失败，请检查网络后重试'}
   :{engine:'กำลังเตรียมภาพดวงดาว',app:'กำลังเปิดหน้าส่วนตัวของคุณ',slow:'เครือข่ายช้าเล็กน้อย กรุณารอสักครู่',retry:'การเชื่อมต่อขัดข้อง กำลังโหลดใหม่',failed:'โหลดไม่สำเร็จ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่'};
-let fateBootFinished=false,fateBootFailed=false,fateBootRecovery;
+let fateBootFinished=false,fateBootFailed=false,fateBootRecovery,fateWelcomeRequested=false,fateWelcomeEnter;
+let resumeWelcomeBoot;
 const fateBootRetryKey='fate-startup-recovery-at';
 const fateBootSlow=setTimeout(()=>{if(!fateBootFinished){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
-  stage(stage){const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
+  welcomePaint:Promise.resolve(),
+  stage(stage){const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage==='engine'||stage==='app'?(fateWelcomeRequested?'waiting':stage):stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
+  connectWelcome(enter){fateWelcomeEnter=enter;},
+  enterWelcome(){
+    if(fateBootFinished||fateBootFailed||document.documentElement.dataset.welcome!=='true')return;
+    fateWelcomeRequested=true;
+    document.getElementById('fate-welcome-start')?.setAttribute('aria-busy','true');
+    this.stage('waiting');
+    resumeWelcomeBoot?.();
+  },
   fail(){
     if(fateBootFinished||fateBootFailed)return;
     fateBootFailed=true;clearTimeout(fateBootSlow);
@@ -65,6 +75,9 @@ window.fateBoot={
     fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootRecovery);
     try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
     document.getElementById('fate-startup')?.remove();performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));
+    // Deliver an early click to the existing Flutter landing flow exactly once.
+    if(fateWelcomeRequested){fateWelcomeRequested=false;fateWelcomeEnter?.();}
+    fateWelcomeEnter=undefined;
   }
 };
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
@@ -72,7 +85,181 @@ window.addEventListener('error',event=>{
   if(event.target?.tagName==='SCRIPT'&&/\/main\.dart\.js(?:\?|$)/.test(event.target.src))window.fateBoot.fail();
 },true);
 document.addEventListener('DOMContentLoaded',()=>document.getElementById('fate-startup-retry')?.addEventListener('click',()=>location.reload()),{once:true});
+const fatePendingKey = 'fate-activity-pending';
+let fateActivity, fateActivitySequence = 0, fatePending = [], fateDropped = {};
+let fateUnstored = new Map(), fateRemoved = new Set(), fateStoredKeys = new Set(), fateStoredDropped = {}, fateOverflow = {};
+let fateSending = 0, fateRetryAt = 0, fateRetryCount = 0, fateSendTimer, fateDwellTimer;
+const fateTrackingAllowed = () => window.navigator?.globalPrivacyControl !== true && window.navigator?.doNotTrack !== '1';
+const fateState = () => document.visibilityState === 'hidden' ? 'hidden' : 'visible';
+const fateEventKey = item => `${item.visit.id}:${item.event.sequence}`;
+function persistFateActivity(added, delivered = []) {
+  if (!fateActivity) return false;
+  if (added) fateUnstored.set(fateEventKey(added), added);
+  for (const key of delivered) { fateUnstored.delete(key); fateRemoved.add(key); }
+  let stored = fatePending, readable = false;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(fatePendingKey) || '{}');
+    if (saved.owner && saved.owner !== fateActivity.key) { clearFateActivity(false); return false; }
+    stored = Array.isArray(saved.items) ? saved.items.filter(item => typeof item?.visit?.id === 'string' &&
+      Number.isSafeInteger(item?.event?.sequence) && Number.isFinite(item?.event?.occurred_at)) : [];
+    fateStoredKeys = new Set(stored.map(fateEventKey));
+    fateStoredDropped = saved.dropped || {};
+    readable = true;
+  } catch {}
+  // Merge only unsaved changes into the latest shared queue; cached snapshots may already be acknowledged.
+  fateRemoved = new Set([...fateRemoved].filter(key => fateStoredKeys.has(key)));
+  const merged = new Map(stored.map(item => [fateEventKey(item), item]));
+  for (const [key, item] of fateUnstored) if (!merged.has(key)) merged.set(key, item);
+  for (const key of fateRemoved) merged.delete(key);
+  for (const key of delivered) merged.delete(key);
+  const forget = item => {
+    const key = fateEventKey(item);
+    fateUnstored.delete(key);
+    if (fateStoredKeys.has(key)) fateRemoved.add(key);
+  };
+  const checkpoints = new Set();
+  fatePending = [...merged.values()].sort((a, b) => b.event.sequence - a.event.sequence).filter(item => {
+    const checkpoint = `${item.visit.id}:${item.event.page_view_id}`;
+    if (item.event.occurred_at < Date.now() / 1000 - 30 * 86400 ||
+        (item.event.kind === 'dwell' && checkpoints.has(checkpoint))) {
+      forget(item); return false;
+    }
+    if (item.event.kind === 'dwell') checkpoints.add(checkpoint);
+    return true;
+  }).reverse();
+  while (fatePending.length > 500) {
+    const removed = fatePending.shift();
+    forget(removed);
+    fateOverflow[removed.visit.id] = (fateOverflow[removed.visit.id] || 0) + 1;
+  }
+  fateDropped = { ...fateStoredDropped };
+  for (const [id, count] of Object.entries(fateOverflow)) fateDropped[id] = Math.min(2147483647, (fateDropped[id] || 0) + count);
+  if (readable) try {
+    sessionStorage.setItem(fatePendingKey, JSON.stringify({ owner: fateActivity.key, items: fatePending, dropped: fateDropped }));
+    fateUnstored.clear(); fateRemoved.clear(); fateOverflow = {};
+    fateStoredKeys = new Set(fatePending.map(fateEventKey));
+    fateStoredDropped = { ...fateDropped };
+  } catch {}
+  return true;
+}
+function clearFateActivity(clearStored = true) {
+  fatePending = []; fateDropped = {}; fateActivity = undefined;
+  fateUnstored.clear(); fateRemoved.clear(); fateStoredKeys.clear(); fateStoredDropped = {}; fateOverflow = {};
+  fateRetryAt = 0; fateRetryCount = 0;
+  clearTimeout(fateSendTimer); clearTimeout(fateDwellTimer);
+  if (clearStored) try { sessionStorage.removeItem(fatePendingKey); } catch {}
+}
+function scheduleFateActivity(delay = 250) {
+  clearTimeout(fateSendTimer);
+  fateSendTimer = setTimeout(flushFateActivity, Math.max(delay, fateRetryAt - Date.now()));
+}
+async function flushFateActivity(urgent = false) {
+  if (!fateTrackingAllowed()) { clearFateActivity(); return; }
+  if (!fateActivity || fateSending >= (urgent ? 2 : 1)) return;
+  if (!persistFateActivity() || !fatePending.length) return;
+  if (Date.now() < fateRetryAt) { scheduleFateActivity(); return; }
+  const owner = fateActivity.key, endpoint = fateActivity.endpoint, first = urgent ? fatePending.at(-1) : fatePending[0];
+  const matching = fatePending.filter(item => item.visit.id === first.visit.id);
+  const batch = urgent ? matching.slice(-20) : matching.slice(0, 20);
+  fateSending++;
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), 15000);
+  let retryDelay = 0;
+  try {
+    // Small batches stay below the browser's shared 64 KiB keepalive budget.
+    const response = await fetch(endpoint, {
+      method: 'POST', keepalive: true, signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', 'X-Report-Key': owner, 'X-Visit-Id': first.visit.id },
+      body: JSON.stringify({ ...first.visit, events: batch.map(item => item.event), dropped_events: fateDropped[first.visit.id] || 0 }),
+    });
+    if (!response.ok) {
+      const retry = response.headers.get('Retry-After');
+      retryDelay = /^\d+(\.\d+)?$/.test(retry || '') ? Number(retry) * 1000 : Math.max(0, Date.parse(retry) - Date.now()) || 0;
+      throw new Error('Activity not acknowledged');
+    }
+    const result = await response.json();
+    if (result.ok !== true || !Array.isArray(result.accepted_sequences)) throw new Error('Activity not acknowledged');
+    if (fateActivity?.key !== owner) return;
+    const accepted = new Set(result.accepted_sequences);
+    const delivered = batch.filter(item => accepted.has(item.event.sequence)).map(fateEventKey);
+    if (!delivered.length) throw new Error('Activity not acknowledged');
+    fateRetryCount = 0; fateRetryAt = 0;
+    persistFateActivity(undefined, delivered);
+  } catch {
+    if (fateActivity?.key === owner) {
+      fateRetryCount++;
+      fateRetryAt = Date.now() + Math.max(retryDelay, Math.min(60000, 1000 * 2 ** Math.min(fateRetryCount, 6)));
+    }
+  } finally {
+    clearTimeout(deadline);
+    fateSending--;
+    if (fatePending.length && fateActivity) scheduleFateActivity();
+  }
+}
+function recordFateActivity(kind = 'action', state = fateState(), action, failure = {}) {
+  if (!fateTrackingAllowed()) { clearFateActivity(); return; }
+  if (!fateActivity) return;
+  const now = performance.now();
+  if (fateActivity.visibleSince !== null) fateActivity.visibleMs += Math.max(0, now - fateActivity.visibleSince);
+  fateActivity.visibleSince = state === 'visible' ? now : null;
+  let previous = 0;
+  try { previous = Number(sessionStorage.getItem('fate-activity-sequence')) || 0; } catch {}
+  fateActivitySequence = Math.max(Date.now(), fateActivitySequence + 1, previous + 1);
+  try { sessionStorage.setItem('fate-activity-sequence', String(fateActivitySequence)); } catch {}
+  const event = { ...fateActivity.activity, ...(action ? { action } : {}), ...failure, state, kind, sequence: fateActivitySequence,
+    page_view_id: fateActivity.pageViewId, occurred_at: Date.now() / 1000, visible_ms: Math.min(2592000000, Math.round(fateActivity.visibleMs)) };
+  persistFateActivity({ visit: fateActivity.visit, event });
+  scheduleFateActivity();
+}
+function scheduleFateDwell() {
+  clearTimeout(fateDwellTimer);
+  if (fateActivity && fateState() === 'visible') fateDwellTimer = setTimeout(() => {
+    recordFateActivity('dwell'); scheduleFateDwell();
+  }, 15000);
+}
+function fateVisibility(state) {
+  recordFateActivity('state', state);
+  clearTimeout(fateSendTimer);
+  void flushFateActivity(state !== 'visible');
+  scheduleFateDwell();
+}
+document.addEventListener('visibilitychange', () => fateVisibility(fateState()));
+window.addEventListener('pagehide', () => fateVisibility('pagehide'));
+window.addEventListener('pageshow', event => { if (event.persisted) fateVisibility(fateState()); });
+window.addEventListener('online', () => { scheduleFateActivity(0); });
+let fateWelcomeStartedAt;
 window.fateH5 = {
+  welcomeAge(){return fateWelcomeStartedAt===undefined?0:performance.now()-fateWelcomeStartedAt;},
+  trackFailure(path, code, method) {
+    recordFateActivity('action', fateState(), 'request_failed', { failure_path: path, failure_code: code, failure_method: method });
+    if (fateActivity) fateActivity.activity = { ...fateActivity.activity, action: 'request_failed' };
+  },
+  trackActivity(payload, key, endpoint) {
+    if (!fateTrackingAllowed()) { clearFateActivity(); return; }
+    try {
+      const { activity, ...visit } = JSON.parse(payload);
+      if (!fateActivity || fateActivity.key !== key) {
+        clearFateActivity(false);
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(fatePendingKey) || '{}');
+          if (saved.owner && saved.owner !== key) sessionStorage.removeItem(fatePendingKey);
+        } catch {}
+      }
+      if (fateActivity && (fateActivity.visit.id !== visit.id || fateActivity.activity.page !== activity.page)) {
+        recordFateActivity('state', fateState(), 'leave_page');
+        fateActivity = undefined;
+      }
+      if (!fateActivity) {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+        const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+        fateActivity = { visit, activity, key, endpoint, visibleMs: 0, visibleSince: null,
+          pageViewId: `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}` };
+      } else fateActivity.activity = activity;
+      recordFateActivity();
+      scheduleFateDwell();
+    } catch {}
+  },
   today(zone) {
     const parts=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
     const get=name=>parts.find(part=>part.type===name).value;
@@ -98,3 +285,95 @@ window.fateH5 = {
     requestAnimationFrame(()=>console.debug('[FATE H5 performance] '+JSON.stringify({page,readyMs:Math.round(performance.now()),resources:performance.getEntriesByType('resource').filter(e=>/api\/|main\.dart|skwasm|canvaskit|fonts\/|astrologer/.test(e.name)).map(e=>({name:new URL(e.name).pathname.replace(/(life-reports\/)\w{8,}/,'$1:id'),startMs:Math.round(e.startTime),endMs:Math.round(e.responseEnd),bytes:e.transferSize}))})));
   }
 };
+function writeWelcomeName(welcome){
+  const data=document.getElementById('fate-welcome-strokes')?.textContent?.trim();
+  const name=welcome?.querySelector('.fate-welcome-name');
+  const label=name?.querySelector(`.fate-startup-${document.documentElement.lang}`)?.textContent?.trim();
+  if(!data?.startsWith('{')||!label)return;
+  const drawing=JSON.parse(data)[label];
+  if(!drawing?.strokes?.length||drawing.width<=0)return;
+  const canvas=document.createElement('canvas');
+  const pen=canvas.getContext('2d');
+  if(!pen)return;
+  canvas.width=Math.ceil(drawing.width/8);
+  canvas.height=164;
+  canvas.setAttribute('aria-hidden','true');
+  name.style.width=`${drawing.width/1024}em`;
+  name.classList.add('fate-welcome-stroke-name');
+  name.append(canvas);
+  const strokes=drawing.strokes.map(points=>{
+    const lengths=[];
+    for(let i=2;i<points.length;i+=2){
+      lengths.push(Math.hypot(points[i]-points[i-2],points[i+1]-points[i-1]));
+    }
+    return {points,lengths,total:lengths.reduce((a,b)=>a+b,0)};
+  });
+  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+  function paint(now){
+    if(!canvas.isConnected)return;
+    const progress=reduced.matches?1:Math.min(1,Math.max(0,(now-fateWelcomeStartedAt-60)/890));
+    pen.resetTransform();
+    pen.clearRect(0,0,canvas.width,canvas.height);
+    pen.setTransform(.125,0,0,.125,0,18);
+    pen.strokeStyle='#ffe5aa';
+    pen.lineWidth=68;
+    pen.lineCap=pen.lineJoin='round';
+    let tip;
+    const count=progress*strokes.length;
+    for(let i=0;i<count;i++){
+      const {points,lengths,total}=strokes[i];
+      let remaining=total*Math.min(1,count-i);
+      let x=points[0], y=points[1];
+      pen.beginPath();
+      pen.moveTo(x,y);
+      for(let part=0;part<lengths.length&&remaining>0;part++){
+        const length=lengths[part];
+        const fraction=length?Math.min(1,remaining/length):1;
+        x+=(points[part*2+2]-x)*fraction;
+        y+=(points[part*2+3]-y)*fraction;
+        pen.lineTo(x,y);
+        remaining-=length;
+      }
+      pen.stroke();
+      if(count-i<1)tip=[x,y];
+    }
+    if(tip){
+      pen.beginPath();
+      pen.arc(tip[0],tip[1],46,0,2*Math.PI);
+      pen.fillStyle='#fff3d4';
+      pen.fill();
+    }
+    if(progress<1)requestAnimationFrame(paint);
+  }
+  paint(performance.now());
+}
+if(document.documentElement.dataset.welcome==='true'){
+  const welcome=document.getElementById('fate-welcome'),image=document.getElementById('fate-welcome-portrait');
+  if(welcome){
+    fateWelcomeStartedAt=performance.now();
+    writeWelcomeName(welcome);
+  }
+  if(image){
+    window.fateBoot.welcomePaint = new Promise(resolve => {
+      const finish = () => {
+        clearTimeout(deadline);
+        resumeWelcomeBoot = undefined;
+        resolve();
+      };
+      // Give the actual portrait one paint before Flutter downloads, with an early-click and slow-image escape.
+      const deadline = setTimeout(finish, 800);
+      resumeWelcomeBoot = finish;
+      image.addEventListener('load', () => {
+        window.fateH5.pageReady('welcome-visible');
+        requestAnimationFrame(() => requestAnimationFrame(finish));
+      }, {once: true});
+      image.addEventListener('error', finish, {once: true});
+    });
+    image.src='assets/assets/images/astrologer-900.webp';
+  }
+  document.getElementById('fate-welcome-start')?.addEventListener('click',()=>window.fateBoot.enterWelcome());
+  let touchStart;
+  welcome?.addEventListener('touchstart',event=>{touchStart=event.touches[0]?.clientY;},{passive:true});
+  welcome?.addEventListener('touchend',event=>{if(touchStart!==undefined&&touchStart-event.changedTouches[0]?.clientY>48)window.fateBoot.enterWelcome();touchStart=undefined;},{passive:true});
+  welcome?.addEventListener('wheel',event=>{if(event.deltaY>12)window.fateBoot.enterWelcome();},{passive:true});
+}

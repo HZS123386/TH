@@ -3,7 +3,7 @@
 
 // Keep the original Flutter loader, including its JavaScript compatibility build.
 const fateFlutterConfig = { canvasKitBaseUrl: 'engine/' + _flutter.buildConfig.engineRevision + '/' };
-if(!window.fateBoot.upgrading)_flutter.loader.load({
+if(!window.fateBoot.upgrading)window.fateBoot.welcomePaint.then(() => _flutter.loader.load({
   config: fateFlutterConfig,
   onEntrypointLoaded: async (initializer) => {
     try {
@@ -16,7 +16,7 @@ if(!window.fateBoot.upgrading)_flutter.loader.load({
       console.error('FATE startup failed', error);
     }
   }
-}).catch((error) => {
+})).catch((error) => {
   window.fateBoot.fail();
   console.error('FATE loader failed', error);
 });

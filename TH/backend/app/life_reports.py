@@ -19,7 +19,7 @@ from pydantic import Field, model_validator
 from . import thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
 from .bazi_reports import report_progress_context, report_usage_context
-from .landing_features import VisitInput, record_visit
+from .landing_features import VisitInput, record_submission, record_visit
 from .life_card_payments import CARD_AMOUNT, SIMULATED_AMOUNT, SIMULATED_MERCHANT, SUNLANDS_AMOUNT, LifeCardPayments
 from .life_report_content import CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION, QUESTIONS, TITLES, TRAIT_HOUSES, VERSION, LifeWriter, career_report_content, preview_writing_progress, writing_progress
 from .schemas import Input, ProfileInput, ThaiReadingInput
@@ -134,6 +134,7 @@ def public_point(row, facts, language):
 
 class LifeReports:
     chapter_concurrency = 3
+    full_concurrency = 10
     lease_seconds = 180
     heartbeat_seconds = 30
 
@@ -149,6 +150,10 @@ class LifeReports:
         self.parts_writer = LifeWriter(store, settings, model_slots, charge=False)
         self.tasks = {}
         self.preview_tasks = {}
+        self.dispatcher = None
+        self.queue_wakeup = asyncio.Event()
+        self.queue_closing = False
+        self.chart_slots = asyncio.Semaphore(settings.life_chart_concurrency)
         self.card_payments = LifeCardPayments(store, settings)
 
     def row(self, report_id, owner):
@@ -159,7 +164,7 @@ class LifeReports:
         return dict(result)
 
     def update(self, report_id, *, expected_lease=None, **values):
-        allowed = {"preview", "preview_state", "chapters", "plan", "unlocked", "full_state", "lease", "lease_until", "feedback", "generation_progress"}
+        allowed = {"chart", "preview", "preview_state", "chapters", "plan", "unlocked", "full_state", "lease", "lease_until", "feedback", "generation_progress"}
         if not values or not set(values) <= allowed:
             raise ValueError("invalid report update")
         with self.store.connect() as db:
@@ -191,7 +196,6 @@ class LifeReports:
         return result
 
     async def create(self, body, owner, network, *, wait=True):
-        profile = body.profile.model_dump(mode="json")
         snapshot = body.model_dump(mode="json", exclude=None if body.career else {"career"})
         if body.report_kind == "life":
             snapshot.pop("report_kind")
@@ -206,71 +210,174 @@ class LifeReports:
         fingerprint = hashlib.sha256(encoded([version, snapshot]).encode()).hexdigest()
         with self.store.connect() as db:
             existing = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s", (owner, fingerprint)).fetchone()
-        if existing:
-            row = self.row(existing["id"], owner)
-            if row["preview"]:
-                return self.public(self.row(row["id"], owner))
-        else:
-            async with self.calculation_slots:
-                # Keep the submitted time unknown; only this report's calculation uses an explicit noon estimate.
-                chart = (await self.adapters["astrology"].calculate(body.profile, owner, network) if use_roxy else
-                         await asyncio.to_thread(thai.natal, {**profile, "birth_time": profile["birth_time"] or "12:00"}))
-            if chart["status"] != "ready":
-                raise HTTPException(422, "thai_reading_details_required")
-            if not profile["birth_time"] and not use_roxy:
-                chart["time_known"] = False
-                chart["calculation_input"]["time_precision"] = "estimated-noon"
-            report_id = secrets.token_hex(16)
-            with self.store.connect() as db:
-                attribution = {}
-                if body.landing_visit is not None:
-                    try:
-                        with db.transaction():
-                            record_visit(db, body.landing_visit, owner)
+            visit_id, attribution = None, {}
+            if body.landing_visit is not None:
+                try:
+                    with db.transaction():
+                        record_visit(db, body.landing_visit, owner)
+                        if not existing:
                             attribution = db.execute("""
                                 SELECT visitor_number,first_source,first_campaign,region_code
                                 FROM landing_visitors WHERE owner=%s
                             """, (owner,)).fetchone() or {}
-                    except (psycopg.Error, HTTPException):
-                        logger.warning("H5 attribution was unavailable during report creation")
+                    visit_id = str(body.landing_visit.id)
+                except (psycopg.Error, HTTPException):
+                    logger.warning("H5 attribution was unavailable during report creation")
+            if existing:
+                report_id = existing["id"]
+            else:
+                # Save the job before any external calculation; no chart positions are fabricated.
+                chart = {"status": "queued", "provider": "roxy" if use_roxy else "thai",
+                         "domain": "astrology", "version": version}
+                report_id = secrets.token_hex(16)
                 db.execute("""
-                    INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,
+                    INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview_state,preview_network,
                                              landing_visitor_number,landing_source,landing_campaign,landing_region)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING
-                """, (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time(),
+                    VALUES (%s,%s,%s,%s,%s,%s,'queued',%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING
+                """, (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time(), network,
                       attribution.get("visitor_number"), attribution.get("first_source"),
                       attribution.get("first_campaign"), attribution.get("region_code")))
                 report_id = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s", (owner, fingerprint)).fetchone()["id"]
-            row = self.row(report_id, owner)
+            if visit_id is not None:
+                try:
+                    with db.transaction():
+                        record_submission(db, visit_id, report_id, owner)
+                except psycopg.Error:
+                    logger.warning("H5 submission tracking was unavailable during report creation")
+        row = self.row(report_id, owner)
+        if existing and row["preview"]:
+            return self.public(self.row(row["id"], owner))
         return await self.start_preview_generation(row, body, owner, network, wait=wait)
 
     async def start_preview_generation(self, row, body, owner, network, *, wait=False):
-        # Public creation and administrator retries share the same snapshot and lease.
-        task = self.preview_tasks.get(row["id"])
-        if task is None and not row["preview"]:
+        # Retries reuse the persisted input/chart and cannot duplicate an active job.
+        with self.store.connect() as db:
+            db.execute("UPDATE life_reports SET preview_state='queued',preview_network=%s,lease='',lease_until=0 "
+                       "WHERE id=%s AND preview IS NULL AND lease_until<%s AND "
+                       "(preview_state NOT IN ('queued','generating') OR "
+                       "(preview_state='generating' AND preview_network=''))",
+                       (network, row["id"], time.time()))
+        self.wake_dispatcher()
+        if wait:
+            while self.row(row["id"], owner)["preview_state"] in ("queued", "generating"):
+                await asyncio.sleep(0.05)
+        return self.get(row["id"], owner)
+
+    def start(self):
+        if self.dispatcher is None or self.dispatcher.done():
+            self.queue_closing = False
+            self.dispatcher = asyncio.create_task(self.dispatch_generation())
+
+    def wake_dispatcher(self):
+        self.start()
+        self.queue_wakeup.set()
+
+    def job_finished(self, jobs, report_id, task):
+        if jobs.get(report_id) is task:
+            jobs.pop(report_id)
+        if not task.cancelled() and task.exception():
+            logger.error("Report worker failed: %s", report_id, exc_info=task.exception())
+        self.queue_wakeup.set()
+
+    async def dispatch_generation(self):
+        while not self.queue_closing:
+            self.queue_wakeup.clear()
+            for dispatch in (self.dispatch_full_reports, self.dispatch_previews):
+                try:
+                    dispatch()
+                except Exception:
+                    logger.exception("Report queue dispatch failed: %s", dispatch.__name__)
+            try:
+                await asyncio.wait_for(self.queue_wakeup.wait(), timeout=1)
+            except TimeoutError:
+                pass
+
+    def dispatch_previews(self):
+        now = time.time()
+        with self.store.connect() as db:
+            # Expired leases recover after a crash; old failed reports remain available for manual retry.
+            db.execute("UPDATE life_reports SET preview_state='queued',lease='',lease_until=0 "
+                       "WHERE preview IS NULL AND preview_state='generating' AND lease_until<%s "
+                       "AND preview_network<>'' AND id<>ALL(%s)", (now, list(self.preview_tasks)))
+            rows = db.execute("SELECT * FROM life_reports WHERE preview IS NULL AND preview_state='queued' "
+                              "AND lease_until<%s AND id<>ALL(%s) ORDER BY created,id LIMIT %s",
+                              (now, list(self.preview_tasks),
+                               max(0, self.settings.life_generation_concurrency - len(self.preview_tasks)))).fetchall()
+        for row in rows:
+            body = LifeInput.model_validate_json(row["input"])
             lease = secrets.token_hex(16)
             with self.store.connect() as db:
                 claimed = db.execute("UPDATE life_reports SET preview_state='generating',lease=%s,lease_until=%s "
-                                     "WHERE id=%s AND preview IS NULL AND lease_until<%s",
-                                     (lease, time.time() + self.lease_seconds, row["id"], time.time()))
+                                     "WHERE id=%s AND preview IS NULL AND preview_state='queued' AND lease_until<%s",
+                                     (lease, now + self.lease_seconds, row["id"], now))
             if claimed.rowcount:
-                task = asyncio.create_task(self.generate_preview(row, body, owner, network, lease))
+                task = asyncio.create_task(self.generate_preview(row, body, row["owner"], row["preview_network"], lease))
                 self.preview_tasks[row["id"]] = task
-                task.add_done_callback(lambda finished: self.preview_tasks.pop(row["id"], None))
-        if wait and task is not None:
-            await asyncio.shield(task)
-        return self.get(row["id"], owner)
+                task.add_done_callback(lambda done, report_id=row["id"]: self.job_finished(self.preview_tasks, report_id, done))
+
+    def dispatch_full_reports(self):
+        now = time.time()
+        active = list(self.tasks)
+        available = self.full_concurrency - len(active)
+        if available <= 0:
+            return
+        claimed = []
+        with self.store.connect() as db:
+            # A pending report has already consumed its generation admission.
+            db.execute("UPDATE life_reports SET full_state='pending',lease='',lease_until=0 "
+                       "WHERE unlocked=1 AND preview IS NOT NULL AND full_state='generating' "
+                       "AND lease_until<%s AND id<>ALL(%s)", (now, active))
+            rows = db.execute("""
+                SELECT r.id,r.owner,r.input,r.full_state,COALESCE(p.network,NULLIF(r.preview_network,''),r.owner) network
+                FROM life_reports r LEFT JOIN life_card_payments p ON p.report_id=r.id
+                WHERE r.unlocked=1 AND r.preview IS NOT NULL AND r.lease_until<%s AND r.id<>ALL(%s)
+                  AND (r.full_state IN ('queued','pending') OR (
+                    r.full_state='not_started' AND p.provider_order IS NOT NULL
+                    AND (NOT starts_with(p.merchant,'sunlands:') OR (
+                        p.sunlands_order::jsonb ->> 'paymentStatus'='PAID'
+                        AND p.provider_order=p.sunlands_gateway||'/'||p.sunlands_order_number
+                    ))
+                  ))
+                ORDER BY r.created,r.id LIMIT %s FOR UPDATE OF r SKIP LOCKED
+            """, (now, active, available)).fetchall()
+            for row in rows:
+                if row["full_state"] != "pending" and not self.admit_full(db, row, row["network"]):
+                    db.execute("UPDATE life_reports SET full_state='limited',lease='',lease_until=0 WHERE id=%s", (row["id"],))
+                    continue
+                lease = secrets.token_hex(16)
+                db.execute("UPDATE life_reports SET full_state='generating',lease=%s,lease_until=%s WHERE id=%s",
+                           (lease, time.time() + self.lease_seconds, row["id"]))
+                claimed.append((row, lease))
+        for row, lease in claimed:
+            report_id = row["id"]
+            task = asyncio.create_task(self.complete(report_id, row["owner"], row["network"], lease))
+            self.tasks[report_id] = task
+            task.add_done_callback(lambda done, report_id=report_id: self.job_finished(self.tasks, report_id, done))
 
     async def generate_preview(self, row, body, owner, network, lease):
         heartbeat = asyncio.create_task(self.keep_lease(row["id"], lease))
         usage_token = report_usage_context.set((row["id"], "preview"))
         progress_token = report_progress_context.set(lambda raw: self.record_progress(row["id"], lease, preview_writing_progress(raw, body.profile.language)))
         try:
+            chart = json.loads(row["chart"])
+            if chart.get("status") != "ready":
+                profile = body.profile.model_dump(mode="json")
+                use_roxy = western(chart)
+                async with self.chart_slots if use_roxy else self.calculation_slots:
+                    chart = (await self.adapters["astrology"].calculate(body.profile, owner, network) if use_roxy else
+                             await asyncio.to_thread(thai.natal, {**profile, "birth_time": profile["birth_time"] or "12:00"}))
+                if chart["status"] != "ready":
+                    raise ValueError("chart_unavailable")
+                if not profile["birth_time"] and not use_roxy:
+                    chart["time_known"] = False
+                    chart["calculation_input"]["time_precision"] = "estimated-noon"
+                row["chart"] = encoded(chart)
+                self.update(row["id"], expected_lease=lease, chart=row["chart"])
             await self.write_preview(row, body, owner, network, lease)
         except ReportLeaseLost:
             pass
         except asyncio.CancelledError:
-            self.fail_preview(row["id"], lease)
+            self.update(row["id"], expected_lease=lease, preview_state="queued", lease="", lease_until=time.time() + 21)
             raise
         except Exception:
             logger.exception("Life preview generation failed: %s", row["id"])
@@ -314,6 +421,8 @@ class LifeReports:
             bundle["user_question"] = {"subject": "career decision", **body.career_question.model_dump(mode="json")}
         result = await self.writer.generate(bundle, owner, network)
         values = {"preview_state": result["state"], "lease": "", "lease_until": 0}
+        if result["state"] == "pending":
+            values.update(preview_state="queued", lease_until=time.time() + 2)
         if result.get("story"):
             preview = {"story": result["story"], "evidence": bundle["evidence"]}
             if body.career_question and not western(chart):
@@ -338,7 +447,17 @@ class LifeReports:
 
     async def write_part(self, report_id, lease, bundle, owner, network):
         key = "plan" if bundle["stage"] == "plan" else bundle["reading"]
-        token = report_progress_context.set(lambda raw: self.record_progress(report_id, lease, {key: writing_progress(raw, bundle["stage"], compact=bundle.get("format") == WESTERN_VERSION)}))
+        last_progress = 0
+
+        def progress(raw):
+            nonlocal last_progress
+            percent = writing_progress(raw, bundle["stage"], compact=bundle.get("format") == WESTERN_VERSION)
+            # Stream fragments only hit the database when visible progress advances.
+            if percent >= last_progress + 5:
+                self.record_progress(report_id, lease, {key: percent})
+                last_progress = percent
+
+        token = report_progress_context.set(progress)
         try:
             return await self.parts_writer.generate(bundle, owner, network)
         finally:
@@ -418,12 +537,12 @@ class LifeReports:
             amount = order["amount"] if order and order["merchant"] == SIMULATED_MERCHANT else SIMULATED_AMOUNT
         result = {
             "id": row["id"], "version": version, "title": title,
-            "input": body, "created_at": stamp(row["created"]), "location": chart["location"],
+            "input": body, "created_at": stamp(row["created"]), "location": chart.get("location"),
             "method": ({"name": "RoxyAPI Western Astrology", "house_system": "placidus", "version": "v2",
-                        "zodiac": "tropical", "node_type": "true", "source": chart["source"]} if is_western else
+                        "zodiac": "tropical", "node_type": "true", "source": chart.get("source")} if is_western else
                        {"name": "Thai Suriyayatra", "house_system": "whole-sign", "version": thai.ENGINE_VERSION}),
             "format": "western-compact" if is_western else "legacy",
-            "chart": self.chart_view(chart, bool(body["profile"].get("birth_time")), language),
+            "chart": self.chart_view(chart, bool(body["profile"].get("birth_time")), language) if chart.get("status") == "ready" else None,
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
                               "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
             "price": {"amount": amount, "currency": "THB", "display": f"฿{amount // 100}",
@@ -431,7 +550,8 @@ class LifeReports:
                       "payso_test" if self.card_payments.enabled and not career else "direct"},
             "payment_simulation": simulation,
             "preview_state": row["preview_state"], "access": "full" if row["unlocked"] else "preview",
-            "full_state": row["full_state"], "progress": {"completed": completed, "total": len(sections)},
+            "full_state": "queued" if row["full_state"] == "pending" else row["full_state"],
+            "progress": {"completed": completed, "total": len(sections)},
             "generation_progress": {"percent": percent, "sections": sections},
             "preview_generation_progress": {"percent": int(sum(section["percent"] for section in preview_sections) / 4), "sections": preview_sections},
             "feedback": row["feedback"],
@@ -441,6 +561,14 @@ class LifeReports:
                         "traits": [public_point(item, preview["evidence"], language) for item in preview["story"]["traits"]]} if preview else None,
             "chapters": [], "plan": None,
         }
+        position = 0
+        if row["preview_state"] == "queued":
+            with self.store.connect() as db:
+                position = db.execute("SELECT COUNT(*) AS total FROM life_reports WHERE preview_state='queued' "
+                                      "AND (created<%s OR (created=%s AND id<=%s))",
+                                      (row["created"], row["created"], row["id"])).fetchone()["total"]
+        result["generation_queue"] = {"state": "calculating" if row["preview_state"] == "generating" and chart.get("status") != "ready"
+                                      else row["preview_state"], "position": position}
         if career:
             result["reference_period"] = {"start": career["start"], "end": (date.fromisoformat(career["start"]) + timedelta(days=29)).isoformat()}
         if preview and "career_answer" in preview:
@@ -465,24 +593,37 @@ class LifeReports:
 
     def get(self, report_id, owner):
         row = self.row(report_id, owner)
-        if not row["preview"] and row["preview_state"] == "generating" and row["lease_until"] < time.time():
+        if not row["preview"] and not row.get("preview_network") and row["preview_state"] == "generating" and row["lease_until"] < time.time():
             with self.store.connect() as db:
                 db.execute("UPDATE life_reports SET preview_state='unavailable',lease='',lease_until=0 "
                            "WHERE id=%s AND lease=%s AND preview IS NULL AND preview_state='generating' AND lease_until<%s",
                            (report_id, row["lease"], time.time()))
             row = self.row(report_id, owner)
-        if row["full_state"] == "generating" and row["lease_until"] < time.time():
-            with self.store.connect() as db:
-                db.execute("UPDATE life_reports SET full_state='unavailable',lease='',lease_until=0 "
-                           "WHERE id=%s AND owner=%s AND full_state='generating' AND lease_until<%s", (report_id, owner, time.time()))
-            row = self.row(report_id, owner)
         return self.public(row)
 
-    def list(self, owner):
+    def _history_rows(self, owner, limit, before=None):
+        cursor_filter = "AND (created,id)<(%s,%s)" if before is not None else ""
+        params = (owner, *before, limit) if before is not None else (owner, limit)
         with self.store.connect() as db:
-            rows = db.execute("SELECT id,input,created,unlocked,full_state FROM life_reports WHERE owner=%s ORDER BY created DESC LIMIT 30", (owner,)).fetchall()
-        return [{"id": row["id"], "input": json.loads(row["input"]), "created_at": stamp(row["created"]),
-                 "access": "full" if row["unlocked"] else "preview", "full_state": row["full_state"]} for row in rows]
+            return db.execute(
+                f"SELECT id,input,created,unlocked,preview_state,full_state FROM life_reports "
+                f"WHERE owner=%s {cursor_filter} ORDER BY created DESC,id DESC LIMIT %s", params,
+            ).fetchall()
+
+    @staticmethod
+    def _history_item(row):
+        return {"id": row["id"], "input": json.loads(row["input"]), "created_at": stamp(row["created"]),
+                "access": "full" if row["unlocked"] else "preview", "preview_state": row["preview_state"],
+                "full_state": "queued" if row["full_state"] == "pending" else row["full_state"]}
+
+    def list(self, owner):
+        return [self._history_item(row) for row in self._history_rows(owner, 30)]
+
+    def history_page(self, owner, before=None):
+        rows = self._history_rows(owner, 31, before)
+        page = rows[:30]
+        next_cursor = {"created": page[-1]["created"], "id": page[-1]["id"]} if len(rows) > 30 else None
+        return {"items": [self._history_item(row) for row in page], "next_cursor": next_cursor}
 
     def delete(self, report_id, owner):
         # Verify ownership and generation state inside the same write transaction.
@@ -497,7 +638,7 @@ class LifeReports:
             active_task = any(task is not None and not task.done()
                               for task in (self.preview_tasks.get(report_id), self.tasks.get(report_id)))
             claimed = (row["preview_state"] in ("pending", "generating") or row["full_state"] == "generating")
-            if active_task or (claimed and row["lease_until"] > time.time()):
+            if active_task or row["full_state"] in ("queued", "pending") or (claimed and row["lease_until"] > time.time()):
                 raise HTTPException(409, "life_report_generating")
             db.execute("DELETE FROM life_card_payments WHERE report_id=%s", (report_id,))
             db.execute("DELETE FROM life_reports WHERE id=%s AND owner=%s", (report_id, owner))
@@ -535,42 +676,46 @@ class LifeReports:
             raise HTTPException(409, "life_payment_unavailable")
         return self.card_payments.create(report_id, network, body["profile"]["language"])
 
-    async def simulate_payment(self, report_id, owner, network, reference):
+    async def simulate_payment(self, report_id, owner, reference):
         row = self.row(report_id, owner)
         if not self.can_simulate_payment(json.loads(row["input"]).get("career")):
             raise HTTPException(404, "life_payment_unavailable")
         if not self.card_payments.confirm_simulated(report_id, reference):
             raise HTTPException(409, "life_payment_required")
-        await self.start_full_generation(report_id, owner, network)
+        self.wake_dispatcher()
         return {"paid": True}
 
     async def confirm_card_order(self, order, owner, notification=None):
+        if order:
+            self.row(order["report_id"], owner)
         if order and order["merchant"].startswith("sunlands:"):
             paid = await self.card_payments.confirm_sunlands(order, notification)
         else:
             paid = await self.card_payments.confirm(order)
         if not paid:
             return False
-        await self.start_full_generation(order["report_id"], owner, order["network"])
+        self.wake_dispatcher()
         return True
 
+    def admit_full(self, db, row, network):
+        return (bool(json.loads(row["input"]).get("career")) or not self.writer.enabled
+                or self.writer.reserve_run(row["owner"], network, db=db))
+
     async def start_full_generation(self, report_id, owner, network):
-        row = self.row(report_id, owner)
-        if not row["preview"]:
-            return
-        if row["full_state"] == "ready" or report_id in self.tasks:
-            return
-        lease = secrets.token_hex(16)
         with self.store.connect() as db:
-            cursor = db.execute("UPDATE life_reports SET full_state='generating',lease=%s,lease_until=%s "
-                                "WHERE id=%s AND owner=%s AND lease_until<%s AND full_state<>'ready'", (lease, time.time() + self.lease_seconds, report_id, owner, time.time()))
-        if cursor.rowcount:
-            if not json.loads(row["input"]).get("career") and self.writer.enabled and not self.writer.reserve_run(owner, network):
-                self.update(report_id, expected_lease=lease, full_state="limited", lease="", lease_until=0)
+            row = db.execute("SELECT * FROM life_reports WHERE id=%s AND owner=%s FOR UPDATE", (report_id, owner)).fetchone()
+            if not row:
+                raise HTTPException(404, "life_report_not_found")
+            if not row["unlocked"] or not row["preview"]:
                 return
-            task = asyncio.create_task(self.complete(report_id, owner, network, lease))
-            self.tasks[report_id] = task
-            task.add_done_callback(lambda finished: self.tasks.pop(report_id, None))
+            if row["full_state"] not in ("queued", "pending", "generating", "ready") and row["lease_until"] < time.time():
+                state = "pending" if self.admit_full(db, row, network) else "limited"
+                db.execute("UPDATE life_reports SET full_state=%s,lease='',lease_until=0 WHERE id=%s", (state, report_id))
+        self.wake_dispatcher()
+
+    def finish_full_attempt(self, report_id, lease, state):
+        self.update(report_id, expected_lease=lease, full_state=state, lease="",
+                    lease_until=time.time() + 2 if state == "pending" else 0)
 
     async def complete(self, report_id, owner, network, lease):
         usage_token = report_usage_context.set((report_id, "full"))
@@ -616,7 +761,8 @@ class LifeReports:
                 jobs = [group.create_task(chapter(reading)) for reading in chapter_keys if reading not in records]
             failures = [job.result() for job in jobs if job.result() != "ready"]
             if failures:
-                self.update(report_id, expected_lease=lease, full_state=failures[0], lease="", lease_until=0)
+                state = next((failure for failure in failures if failure != "pending"), "pending")
+                self.finish_full_attempt(report_id, lease, state)
                 return
             # The editor selects existing actions from concise excerpts; full details stay in the snapshot.
             actions = {f"{reading}:{index}": {"title": item["title"], "text": item["text"], "first_step": item["steps"][0], "check": item["check"]}
@@ -631,11 +777,14 @@ class LifeReports:
             if generated.get("story"):
                 self.update(report_id, expected_lease=lease, plan=encoded(generated["story"]), full_state="ready", lease="", lease_until=0)
             else:
-                self.update(report_id, expected_lease=lease, full_state=generated["state"], lease="", lease_until=0)
+                self.finish_full_attempt(report_id, lease, generated["state"])
         except ReportLeaseLost:
             return
         except asyncio.CancelledError:
-            self.fail_lease(report_id, lease)
+            try:
+                self.update(report_id, expected_lease=lease, full_state="pending", lease="", lease_until=time.time() + 21)
+            except ReportLeaseLost:
+                pass
             raise
         except Exception:
             logger.exception("Life report generation failed: %s", report_id)
@@ -662,7 +811,11 @@ class LifeReports:
             db.execute("UPDATE life_reports SET preview_state='unavailable',lease='',lease_until=0 WHERE id=%s AND lease=%s AND preview IS NULL", (report_id, lease))
 
     async def close(self):
-        tasks = [*self.tasks.values(), *self.preview_tasks.values()]
+        self.queue_closing = True
+        if self.dispatcher:
+            self.dispatcher.cancel()
+            await asyncio.gather(self.dispatcher, return_exceptions=True)
+        tasks = [*self.tasks.values(), *self.preview_tasks.values(), *self.writer.inflight.values(), *self.parts_writer.inflight.values()]
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -671,8 +824,11 @@ class LifeReports:
 def life_report_router(service):
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        await service.close()
+        service.start()
+        try:
+            yield
+        finally:
+            await service.close()
     router = APIRouter(prefix="/api/life-reports", lifespan=lifespan)
     key_header = Annotated[str, Header(alias="X-Report-Key", min_length=32, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")]
 
@@ -695,6 +851,15 @@ def life_report_router(service):
     async def get(report_id: str, request: Request, key: key_header):
         return service.get(report_id, scopes(key, request)[0])
 
+    @router.post("/{report_id}/app-login-code")
+    def app_login_code(report_id: str, request: Request, key: key_header):
+        owner, _ = scopes(key, request)
+        service.row(report_id, owner)
+        result = service.store.issue_h5_login_code(owner)
+        if result is None:
+            raise HTTPException(503, "h5_login_code_unavailable")
+        return result
+
     @router.delete("/{report_id}", status_code=204)
     async def delete(report_id: str, request: Request, key: key_header):
         service.delete(report_id, scopes(key, request)[0])
@@ -716,17 +881,16 @@ def life_report_router(service):
 
     @router.post("/{report_id}/payment/check")
     async def check_payment(report_id: str, request: Request, key: key_header):
-        owner, network = scopes(key, request)
+        owner, _ = scopes(key, request)
         row = service.row(report_id, owner)
         if row["unlocked"]:
-            await service.start_full_generation(report_id, owner, network)
             return {"paid": True}
         return {"paid": await service.confirm_card_order(service.card_payments.order_for(report_id), owner)}
 
     @router.post("/{report_id}/payment/simulate")
     async def simulate_payment(report_id: str, body: SimulatedPayment, request: Request, key: key_header):
-        owner, network = scopes(key, request)
-        return await service.simulate_payment(report_id, owner, network, body.reference)
+        owner, _ = scopes(key, request)
+        return await service.simulate_payment(report_id, owner, body.reference)
 
     @router.post("/payment/payso/postback")
     async def payso_postback(request: Request):

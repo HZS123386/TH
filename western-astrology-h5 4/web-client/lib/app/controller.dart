@@ -14,9 +14,9 @@ class H5Controller extends ChangeNotifier {
     this.ensureTextFont,
   }) : _language = language {
     repository.language = language;
+    repository.visitContext = browser.visitContext;
+    repository.onClientFailure = browser.trackFailure;
     welcomeOpen = true;
-    returningVisitor = browser.readSetting('fate-welcome-seen') == '1';
-    browser.writeSetting('fate-welcome-seen', '1');
     noticeAccepted =
         browser.readSetting('fate-data-use-version') == noticeVersion;
   }
@@ -28,18 +28,50 @@ class H5Controller extends ChangeNotifier {
   static const noticeVersion = 'h5-data-use-3';
   static const _visitTimeout = Duration(seconds: 8);
   late bool welcomeOpen, noticeAccepted;
-  late final bool returningVisitor;
   bool welcomePortraitRevealed = false;
   bool landingPrepared = false;
   Future<void>? _visitRequest;
   Json _visit = {};
   final _events = <String, Future<bool>>{};
   final _background = CancelToken();
+  AppLoginCode? _appLoginCode;
+  String? _appLoginReport;
+  Future<AppLoginCode>? _appLoginRequest;
+
+  Future<AppLoginCode>? get currentAppLoginCode {
+    final code = _appLoginCode;
+    return _appLoginRequest ?? (code == null ? null : Future.value(code));
+  }
+
+  Future<AppLoginCode> requestAppLoginCode(
+    String reportId, {
+    bool refresh = false,
+  }) {
+    final cached = _appLoginCode;
+    if (!refresh &&
+        _appLoginReport == reportId &&
+        cached != null &&
+        !cached.expired) {
+      return Future.value(cached);
+    }
+    return _appLoginRequest ??= repository
+        .createAppLoginCode(reportId, _background)
+        .then((code) {
+          _appLoginReport = reportId;
+          _appLoginCode = code;
+          return code;
+        })
+        .whenComplete(() => _appLoginRequest = null);
+  }
+
+  void trackActivity(String page, [String action = 'view']) =>
+      browser.trackActivity(page, action);
 
   void enterLanding() {
     landingPrepared = true;
     welcomeOpen = false;
     welcomePortraitRevealed = true;
+    trackActivity('birth_form', 'enter_form');
     notifyListeners();
     unawaited(recordVisit());
     // Warm later place/report text after the welcome is already visible.
@@ -198,7 +230,13 @@ class H5Controller extends ChangeNotifier {
     final c = labels ?? copy;
     if (error is FormatException) return c.t('ui', 'badResult');
     if (error is ApiFailure) {
-      for (final group in ['checkout', 'experience', 'generation', 'ui', 'life']) {
+      for (final group in [
+        'checkout',
+        'experience',
+        'generation',
+        'ui',
+        'life',
+      ]) {
         final value = c.t(group, error.code);
         if (value.isNotEmpty) return value;
       }

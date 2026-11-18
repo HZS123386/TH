@@ -102,6 +102,138 @@ abstract class AppLocalizations {
     Locale('zh'),
   ];
 
+  /// No description provided for @h5CodeLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with a web code'**
+  String get h5CodeLogin;
+
+  /// No description provided for @h5CodeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the six-character code shown on the H5 report screen to sync that browser’s reports.'**
+  String get h5CodeHelp;
+
+  /// No description provided for @h5CodeField.
+  ///
+  /// In en, this message translates to:
+  /// **'Web sign-in code'**
+  String get h5CodeField;
+
+  /// No description provided for @h5CodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This code is invalid, expired or already used. Get a new code on H5.'**
+  String get h5CodeInvalid;
+
+  /// No description provided for @h5CodeRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again in a few minutes.'**
+  String get h5CodeRateLimited;
+
+  /// No description provided for @h5Account.
+  ///
+  /// In en, this message translates to:
+  /// **'Web account'**
+  String get h5Account;
+
+  /// No description provided for @h5Reports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports from H5'**
+  String get h5Reports;
+
+  /// No description provided for @h5ReportsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser has no reports yet.'**
+  String get h5ReportsEmpty;
+
+  /// No description provided for @h5LoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load older reports'**
+  String get h5LoadMore;
+
+  /// No description provided for @h5Refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh reports'**
+  String get h5Refresh;
+
+  /// No description provided for @h5ReportUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This report could not be loaded. Refresh or view it on H5.'**
+  String get h5ReportUnavailable;
+
+  /// No description provided for @h5ReportQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked · In queue'**
+  String get h5ReportQueued;
+
+  /// No description provided for @h5ReportGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked · Generating'**
+  String get h5ReportGenerating;
+
+  /// No description provided for @h5ReportLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked · Generation limit reached'**
+  String get h5ReportLimited;
+
+  /// No description provided for @h5ReportIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked · Report unfinished'**
+  String get h5ReportIncomplete;
+
+  /// No description provided for @h5ReportLimitedHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed chapters are available. Return to the original web page to continue generating the report later.'**
+  String get h5ReportLimitedHelp;
+
+  /// No description provided for @h5Plan.
+  ///
+  /// In en, this message translates to:
+  /// **'Action plan'**
+  String get h5Plan;
+
+  /// No description provided for @h5Insight.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights'**
+  String get h5Insight;
+
+  /// No description provided for @h5Watchpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'What to watch for'**
+  String get h5Watchpoint;
+
+  /// No description provided for @h5Example.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyday example'**
+  String get h5Example;
+
+  /// No description provided for @h5Pitfall.
+  ///
+  /// In en, this message translates to:
+  /// **'What to avoid'**
+  String get h5Pitfall;
+
+  /// No description provided for @h5Check.
+  ///
+  /// In en, this message translates to:
+  /// **'How to check your progress'**
+  String get h5Check;
+
   /// No description provided for @actionTodo.
   ///
   /// In en, this message translates to:
@@ -642,12 +774,6 @@ abstract class AppLocalizations {
   /// **'My actions'**
   String get myActions;
 
-  /// No description provided for @actionsIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'A reading helps you see where you stand. Record the small things you do and come back to reflect.'**
-  String get actionsIntro;
-
   /// No description provided for @actionPending.
   ///
   /// In en, this message translates to:
@@ -666,29 +792,11 @@ abstract class AppLocalizations {
   /// **'Ready to review'**
   String get actionReady;
 
-  /// No description provided for @chooseSmallAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a small action'**
-  String get chooseSmallAction;
-
-  /// No description provided for @chooseSmallActionNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Ten minutes, at your own pace'**
-  String get chooseSmallActionNote;
-
   /// No description provided for @chooseFamilyAction.
   ///
   /// In en, this message translates to:
   /// **'Plan a day for family'**
   String get chooseFamilyAction;
-
-  /// No description provided for @chooseFamilyActionNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Do a few manageable things together'**
-  String get chooseFamilyActionNote;
 
   /// No description provided for @weeklyMoment.
   ///
@@ -719,6 +827,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My action journal'**
   String get actionLedger;
+
+  /// No description provided for @actionDailySuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s suggestion'**
+  String get actionDailySuggestion;
+
+  /// No description provided for @actionUseSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Add this'**
+  String get actionUseSuggestion;
+
+  /// No description provided for @actionCustomPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Set my own action'**
+  String get actionCustomPlan;
+
+  /// No description provided for @actionCompleteNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get actionCompleteNow;
+
+  /// No description provided for @actionSuggestionThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a thank-you to someone who helped you'**
+  String get actionSuggestionThanks;
+
+  /// No description provided for @actionSuggestionCheckIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Check in with a friend'**
+  String get actionSuggestionCheckIn;
+
+  /// No description provided for @actionSuggestionShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share something useful with someone'**
+  String get actionSuggestionShare;
+
+  /// No description provided for @offeringEnergy.
+  ///
+  /// In en, this message translates to:
+  /// **'Action energy'**
+  String get offeringEnergy;
+
+  /// No description provided for @offeringJasmine.
+  ///
+  /// In en, this message translates to:
+  /// **'Jasmine garland'**
+  String get offeringJasmine;
+
+  /// No description provided for @offeringLotus.
+  ///
+  /// In en, this message translates to:
+  /// **'Lotus offering'**
+  String get offeringLotus;
+
+  /// No description provided for @offeringMarigold.
+  ///
+  /// In en, this message translates to:
+  /// **'Marigold garland'**
+  String get offeringMarigold;
+
+  /// No description provided for @offeringCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'Collected {count}'**
+  String offeringCollected(int count);
+
+  /// No description provided for @offeringPerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete an action to add {points} energy.'**
+  String offeringPerAction(int points);
+
+  /// No description provided for @offeringPresenting.
+  ///
+  /// In en, this message translates to:
+  /// **'Presenting your offering…'**
+  String get offeringPresenting;
+
+  /// No description provided for @offeringComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Offering presented'**
+  String get offeringComplete;
+
+  /// No description provided for @offeringBlessing.
+  ///
+  /// In en, this message translates to:
+  /// **'May your good deeds lift you up. May good fortune stay with you, and may your hopes come true.'**
+  String get offeringBlessing;
+
+  /// No description provided for @offeringNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Your next action starts a new offering.'**
+  String get offeringNext;
 
   /// No description provided for @newPlan.
   ///

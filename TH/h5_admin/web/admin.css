@@ -399,9 +399,26 @@ nav {
 .page-actions button {
   font-size: 11px;
 }
+.data-group-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.data-group-heading h2 {
+  color: #374152;
+  font-size: 14px;
+  font-weight: 650;
+}
+.data-group-heading a {
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
 .stat-card,
@@ -413,13 +430,21 @@ nav {
 }
 .stat-card {
   padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 .stat-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #737b89;
-  font-size: 11px;
+  gap: 6px;
+  color: #495568;
+  font-size: 12px;
+}
+.stat-top h3 {
+  font: inherit;
+  font-weight: 650;
 }
 .stat-icon {
   width: 29px;
@@ -429,6 +454,7 @@ nav {
   display: grid;
   place-items: center;
   color: #9084cc;
+  flex: none;
 }
 .stat-icon svg {
   width: 15px;
@@ -443,15 +469,23 @@ nav {
   font-variant-numeric: tabular-nums;
 }
 .stat-value .unit {
-  font-size: 17px;
-  color: #9298a4;
-  margin-right: 4px;
-  font-weight: 400;
+  margin-inline-start: 5px;
+  font-size: 12px;
+  color: #637083;
+  font-weight: 500;
+  letter-spacing: normal;
+}
+.stat-hint {
+  margin: 0 0 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #626b7b;
 }
 .stat-foot {
   font-size: 10px;
-  color: #9a9fac;
+  color: #646e7e;
   border-top: 1px solid #f0f1f4;
+  margin-top: auto;
   padding-top: 10px;
   display: flex;
   align-items: center;
@@ -460,10 +494,6 @@ nav {
 .stat-foot a {
   margin-left: auto;
   color: #a0a5af;
-}
-.stat-foot strong {
-  color: #646c7c;
-  font-weight: 550;
 }
 .notice-strip {
   display: flex;
@@ -598,16 +628,6 @@ nav {
   font-size: 11px;
   color: #757e8e;
 }
-.funnel-label .step {
-  display: grid;
-  place-items: center;
-  border: 1px solid #e8e8f2;
-  color: #a09bba;
-  border-radius: 4px;
-  width: 19px;
-  height: 19px;
-  font-size: 9px;
-}
 .funnel-label strong {
   margin-left: auto;
   color: #434957;
@@ -690,6 +710,37 @@ td button.link {
   color: var(--accent);
   font-size: 11px;
   cursor: pointer;
+}
+.visit-records th,
+.visit-records td {
+  padding-inline: 14px;
+}
+.visit-records td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.visit-record-id {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.visit-record-id small {
+  margin-top: 0;
+}
+.visit-last-record small {
+  margin-top: 4px;
+  color: #677386;
+}
+.visit-record-id .button {
+  min-height: 28px;
+  padding: 4px 8px;
+}
+.visit-form-status {
+  margin-top: 5px;
+  font-size: 10px;
+  color: #626a7a;
 }
 .mono {
   font-family: 'SFMono-Regular', Consolas, monospace;
@@ -1045,6 +1096,55 @@ td button.link {
   border-bottom: 1px solid var(--line);
   font-size: 13px;
 }
+.visit-detail-meta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: #647085;
+  overflow-wrap: anywhere;
+}
+.visit-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 17px;
+}
+.visit-detail-summary > .detail-section {
+  margin-bottom: 0;
+}
+.visit-detail-summary .field-label {
+  color: #667184;
+  font-size: 11px;
+}
+.visit-section-heading {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.visit-section-heading h3 {
+  font-size: 13px;
+}
+.visit-section-heading p {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #626e80;
+}
+.visit-data-section table {
+  white-space: normal;
+}
+.visit-data-section td {
+  overflow-wrap: anywhere;
+}
+.visit-detail-note {
+  margin: 0;
+  padding: 14px 18px;
+  font-size: 12px;
+}
+.visit-detail-pagination {
+  padding: 10px 18px;
+}
 .detail-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1233,6 +1333,7 @@ summary {
     padding: 0 24px;
   }
   .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 11px;
   }
   .stat-card {
@@ -1292,7 +1393,7 @@ summary {
     width: calc(100% - 68px);
   }
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .page-heading {
     align-items: flex-start;
@@ -1338,7 +1439,7 @@ summary {
     flex: 1;
   }
   .stat-top {
-    font-size: 10px;
+    font-size: 11px;
   }
   .stat-icon {
     width: 24px;
@@ -1403,6 +1504,10 @@ summary {
   .detail-fields {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+  }
+  .visit-detail-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
   .detail-dialog {
     width: 100vw;

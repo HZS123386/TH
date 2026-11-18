@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import mimetypes
+import re
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -21,7 +22,7 @@ from .config import Settings
 from .i18n import LOCALES, MESSAGES, message, request_language
 from .modules import MODULES
 from .providers import ProviderError, ProviderRegistry, route_tools
-from .schemas import AccountInput, BaziTestInput, ChatInput, CompanionInput, FortuneInput, FortuneNarrativeInput, LanguageInput, MemoryInput, ProfileInput, ThaiReadingInput
+from .schemas import AccountInput, BaziTestInput, ChatInput, CompanionInput, FortuneInput, FortuneNarrativeInput, H5AppLoginInput, LanguageInput, MemoryInput, ProfileInput, ThaiReadingInput
 from .storage import Storage
 from .companion_memory import CompanionMemory
 from .companion_models import CompanionModels
@@ -34,7 +35,7 @@ from .bazi_testing import generate_bazi_test
 from .bazi_reports import BaziReports
 from .thai_readings import ThaiReports, generate_reading
 from .life_reports import LifeReports, life_report_router
-from .landing_features import LandingFeatures, landing_router
+from .landing_features import LandingFeatures, landing_router, owner_for
 from .western_app import NOTICE as WESTERN_NOTICE, WesternApp, WesternProfileInput, western_router
 from .static_assets import LandingStaticFiles
 from h5_admin.service import H5Admin, admin_page_router, admin_router
@@ -74,7 +75,7 @@ def create_app(settings: Settings | None = None):
     account_slots = asyncio.Semaphore(2)
     thai_slots = asyncio.Semaphore(2)
     fortune_calculations = FortuneCalculations(thai_slots)
-    model_slots = asyncio.Semaphore(4)
+    model_slots = asyncio.Semaphore(settings.life_generation_concurrency)
     reports = FortuneReports(store, settings, model_slots)
     bazi_reports = BaziReports(store, settings, model_slots)
     thai_reports = ThaiReports(store, settings, model_slots)
@@ -144,7 +145,7 @@ def create_app(settings: Settings | None = None):
     @app.middleware("http")
     async def boundaries(request: Request, call_next):
         started = time.monotonic()
-        h5_request = request.url.path == "/api/life-reports" or request.url.path.startswith(("/api/life-reports/", "/api/landing/"))
+        h5_request = request.url.path in ("/api/life-reports", "/api/thai-locations") or request.url.path.startswith(("/api/life-reports/", "/api/landing/"))
         if request.url.path.startswith("/api/"):
             # Read a bounded body before validation, including chunked requests.
             body = bytearray()
@@ -157,6 +158,11 @@ def create_app(settings: Settings | None = None):
                     return response
             request._body = bytes(body)
             key = (request.client.host if request.client else "unknown", request.url.path)
+            telemetry = request.method == "POST" and request.url.path == "/api/landing/visits"
+            report_key = request.headers.get("X-Report-Key", "")
+            if telemetry and re.fullmatch(r"[A-Za-z0-9_-]{32,128}", report_key):
+                # Visits batch many observations; shared networks must not share one visitor's quota.
+                key = (owner_for(report_key), request.url.path)
             now = time.monotonic()
             # Keep the prototype limiter bounded, including arbitrary requested paths.
             for stale in [key for key, times in rates.items() if not times or times[-1] < now - 60]:
@@ -170,7 +176,9 @@ def create_app(settings: Settings | None = None):
             bucket = rates[key]
             while bucket and bucket[0] < now - 60:
                 bucket.popleft()
-            if len(bucket) >= 30:
+            # Report creation/listing has its own allowance; payment and other routes keep their limit.
+            limit = 120 if telemetry else settings.life_requests_per_minute if request.url.path == "/api/life-reports" else 30
+            if len(bucket) >= limit:
                 response = error_response("too_many_requests", 429, request)
                 response.headers["Retry-After"] = str(max(1, int(bucket[0] + 60 - now) + 1))
                 if h5_request:
@@ -188,6 +196,10 @@ def create_app(settings: Settings | None = None):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Content-Language"] = LOCALES[request_language(request)]
+        if (request.url.path == "/api/auth/h5-code"
+                or request.url.path.startswith("/api/app/h5-reports")
+                or request.url.path.endswith("/app-login-code")):
+            response.headers["Cache-Control"] = "no-store"
         if request.url.path == "/admin" or request.url.path.startswith(("/admin/", "/api/admin/")):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Content-Language"] = "zh-CN"
@@ -296,6 +308,36 @@ def create_app(settings: Settings | None = None):
     async def guest():
         # A private anonymous session uses the same owner checks as an account.
         return store.login(settings.session_hours)
+
+    @app.post("/api/auth/h5-code")
+    def h5_login(body: H5AppLoginInput, request: Request):
+        network = "network:" + store.hash(request.client.host if request.client else "unknown")
+        error, session = store.redeem_h5_login_code(body.code.upper(), network, settings.session_hours)
+        if error:
+            if error == "too_many_requests":
+                logger.warning("H5 App code redemption rate limited")
+            raise HTTPException(429 if error == "too_many_requests" else 401, error)
+        return session
+
+    @app.get("/api/app/h5-reports")
+    def app_h5_reports(
+        user_id: str = Depends(visitor),
+        before_created: float | None = Query(default=None, gt=0, le=1000000000000),
+        before_id: str | None = Query(default=None, min_length=1, max_length=128),
+    ):
+        if (before_created is None) != (before_id is None):
+            raise HTTPException(422, "validation_failed")
+        owner = store.h5_report_owner(user_id)
+        if owner is None:
+            return {"items": [], "next_cursor": None}
+        return life_reports.history_page(owner, (before_created, before_id) if before_id is not None else None)
+
+    @app.get("/api/app/h5-reports/{report_id}")
+    def app_h5_report(report_id: str, user_id: str = Depends(visitor)):
+        owner = store.h5_report_owner(user_id)
+        if owner is None:
+            raise HTTPException(404, "life_report_not_found")
+        return life_reports.get(report_id, owner)
 
     @app.post("/api/auth/logout", status_code=204)
     async def logout(authorization: str | None = Header(default=None), user_id: str = Depends(visitor)):

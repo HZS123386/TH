@@ -34,6 +34,9 @@ class Settings:
     roxy_api_key: str = field(default="", repr=False)
     roxy_enabled: bool = False
     life_astrology_provider: str = "thai"
+    life_requests_per_minute: int = 30
+    life_generation_concurrency: int = 4
+    life_chart_concurrency: int = 4
     bazi_provider: str = "github"
     roxy_per_minute: int = 12
     roxy_per_day: int = 80
@@ -83,6 +86,9 @@ class Settings:
             roxy_api_key=os.getenv("ROXY_API_KEY", ""),
             roxy_enabled=os.getenv("ROXY_ENABLED", "false").lower() == "true",
             life_astrology_provider=os.getenv("LIFE_ASTROLOGY_PROVIDER", "thai").lower(),
+            life_requests_per_minute=max(1, int(os.getenv("LIFE_REQUESTS_PER_MINUTE", "30"))),
+            life_generation_concurrency=max(1, min(128, int(os.getenv("LIFE_GENERATION_CONCURRENCY", "4")))),
+            life_chart_concurrency=max(1, min(32, int(os.getenv("LIFE_CHART_CONCURRENCY", "4")))),
             bazi_provider=os.getenv("BAZI_PROVIDER", "github"),
             roxy_per_minute=max(0, int(os.getenv("ROXY_REQUESTS_PER_MINUTE", "12"))),
             roxy_per_day=max(0, int(os.getenv("ROXY_REQUESTS_PER_DAY", "80"))),

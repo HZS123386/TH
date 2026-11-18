@@ -21,6 +21,7 @@ import '../features/companion/bond_page.dart';
 import '../features/companion/companion_page.dart';
 import '../features/companion/guardian.dart';
 import '../features/lucky_numbers/lucky_numbers_page.dart';
+import '../features/reports/h5_report_page.dart';
 import '../features/reports/reports_page.dart';
 import '../features/reports/report_recovery_sheet.dart';
 import '../features/shop/shop_page.dart';
@@ -184,6 +185,17 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
                 example: state.uri.queryParameters['example'] == '1',
               ),
             ),
+          ),
+          GoRoute(
+            path: '/reports/h5/:id',
+            pageBuilder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _motionPage(
+                context,
+                state,
+                H5ReportPage(id: id, key: ValueKey(id)),
+              );
+            },
           ),
           GoRoute(
             path: '/divination',
@@ -433,7 +445,11 @@ class _AppShell extends StatelessWidget {
                           ? BackButton(
                               onPressed: () => context.canPop()
                                   ? context.pop()
-                                  : context.go(_tabs[selected]),
+                                  : context.go(
+                                      path.startsWith('/reports/h5/')
+                                          ? '/reports'
+                                          : _tabs[selected],
+                                    ),
                             )
                           : null,
                       toolbarHeight: 56,

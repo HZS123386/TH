@@ -23,6 +23,50 @@ class ImmediateToken extends CancelToken {
 }
 
 void main() {
+  for (final language in ['zh', 'th']) {
+    test('$language resumes a queued preview through calculation without creating another report', () async {
+      final done = fixture(language: language);
+      final queued = {...done, 'preview': null, 'preview_state': 'queued', 'chart': null,
+        'generation_queue': {'state': 'queued', 'position': 68}};
+      final token = ImmediateToken();
+      final phases = <String>[];
+      final requests = <http.Request>[];
+      final repo = ReportRepository(TestBrowser(), baseUrl: 'https://example.test', client: MockClient((request) async {
+        requests.add(request);
+        return jsonResponse(requests.length == 1
+            ? {...queued, 'preview_state': 'generating', 'generation_queue': {'state': 'calculating', 'position': 0}}
+            : done);
+      }));
+      final result = await repo.resumeGeneration(
+        LifeReport.parse(queued), token, (_, _, phase) => phases.add(phase), full: false,
+      );
+      expect(result.preview, isNotEmpty);
+      expect(result.language, language);
+      expect(phases, ['queued', 'calculating', 'preview']);
+      expect(requests.every((r) => r.method == 'GET' && r.url.path.endsWith(done['id'] as String)), isTrue);
+      expect(token.delays, [const Duration(seconds: 2), const Duration(seconds: 2)]);
+    });
+  }
+  test('request failures retain visit ownership without sending personal paths to telemetry', () async {
+    final browser = TestBrowser()..visit = {'id': 'synthetic-visit'};
+    final failures = <List<String>>[];
+    late http.Request sent;
+    final repo = ReportRepository(browser, baseUrl: 'https://example.test', client: MockClient((request) async {
+      sent = request;
+      throw http.ClientException('offline');
+    }))
+      ..visitContext = browser.visitContext
+      ..onClientFailure = ((path, code, method) => failures.add([path, code, method]));
+    await expectLater(repo.request('/api/life-reports/private-report/payment?secret=discard', CancelToken()), throwsA(isA<ApiFailure>()));
+    expect(sent.headers['X-Visit-Id'], 'synthetic-visit');
+    expect(sent.headers['X-Report-Key'], browser.key);
+    expect(failures, [['/api/life-reports/{report_id}/payment', 'network', 'GET']]);
+    await expectLater(repo.request('/api/landing/visits', CancelToken(), body: browser.visit), throwsA(isA<ApiFailure>()));
+    expect(failures.length, 1);
+    await expectLater(repo.request('/api/thai-locations?country=TH', CancelToken(), owned: false), throwsA(isA<ApiFailure>()));
+    expect(sent.headers['X-Visit-Id'], 'synthetic-visit');
+    expect(failures.last, ['/api/thai-locations', 'network', 'GET']);
+  });
   test(
     'a stalled progress read times out without cancelling the report',
     () async {
@@ -80,46 +124,108 @@ void main() {
       expect(report.preview, isNotEmpty);
     },
   );
-  test(
-    '429 honors Retry-After while polling, and no synthetic progress reaches 100',
-    () async {
-      final ready = fixture();
-      final generating = {
-        ...ready,
-        'preview': null,
-        'preview_state': 'generating',
-      };
-      var reads = 0;
-      final phases = <String>[];
-      final percentages = <double>[];
-      final token = ImmediateToken();
-      final repo = ReportRepository(
-        TestBrowser(),
-        baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          if (request.method == 'POST') return jsonResponse(generating);
-          if (reads++ == 0) {
-            return http.Response(
-              '{"detail":"limited"}',
-              429,
-              headers: {'retry-after': '7'},
-            );
-          }
-          return jsonResponse(ready);
-        }),
-      );
-      await repo.generate(object(ready['input']), token, (_, percent, phase) {
-        percentages.add(percent);
-        phases.add(phase);
-      });
-      expect(token.delays, [
-        const Duration(seconds: 3),
-        const Duration(seconds: 7),
-      ]);
-      expect(phases, contains('waiting'));
-      expect(percentages.where((p) => p == 100), hasLength(1));
-    },
-  );
+  for (final retryAfter in ['7', '1', null]) {
+    test(
+      '429 honors Retry-After $retryAfter and resumes normal polling',
+      () async {
+        final ready = fixture();
+        final generating = {
+          ...ready,
+          'preview': null,
+          'preview_state': 'generating',
+        };
+        var reads = 0;
+        final phases = <String>[];
+        final percentages = <double>[];
+        final token = ImmediateToken();
+        final repo = ReportRepository(
+          TestBrowser(),
+          baseUrl: 'https://example.test',
+          client: MockClient((request) async {
+            if (request.method == 'POST') return jsonResponse(generating);
+            if (reads++ == 0) {
+              return http.Response(
+                '{"detail":"limited"}',
+                429,
+                headers: retryAfter == null
+                    ? const {}
+                    : {'retry-after': retryAfter},
+              );
+            }
+            return jsonResponse(reads == 2 ? generating : ready);
+          }),
+        );
+        await repo.generate(object(ready['input']), token, (_, percent, phase) {
+          percentages.add(percent);
+          phases.add(phase);
+        });
+        expect(token.delays, [
+          const Duration(seconds: 2),
+          Duration(
+            seconds: retryAfter == null
+                ? 60
+                : retryAfter == '1'
+                ? 3
+                : 7,
+          ),
+          const Duration(seconds: 2),
+        ]);
+        expect(phases, contains('waiting'));
+        expect(percentages.where((p) => p == 100), hasLength(1));
+      },
+    );
+  }
+  for (final language in ['zh', 'th']) {
+    test(
+      'long previews complete with two-second polling in $language',
+      () async {
+        final ready = fixture();
+        ready['input'] = {
+          ...object(ready['input']),
+          'profile': {
+            ...object(object(ready['input'])['profile']),
+            'language': language,
+          },
+        };
+        final generating = {
+          ...ready,
+          'preview': null,
+          'preview_state': 'generating',
+        };
+        final token = ImmediateToken();
+        var reads = 0;
+        var starts = 0;
+        final repo = ReportRepository(
+          TestBrowser(),
+          baseUrl: 'https://example.test',
+          client: MockClient((request) async {
+            expect(request.headers['Accept-Language'], language);
+            if (request.method == 'POST') {
+              starts++;
+              return jsonResponse(generating);
+            }
+            return jsonResponse(++reads < 36 ? generating : ready);
+          }),
+        )..language = language;
+        final result = await repo.generate(
+          object(ready['input']),
+          token,
+          (_, _, _) {},
+        );
+        expect(result.preview, isNotEmpty);
+        expect(starts, 1);
+        expect(reads, 36);
+        expect(token.delays, List.filled(36, const Duration(seconds: 2)));
+        expect(
+          token.delays.fold<int>(
+            0,
+            (seconds, delay) => seconds + delay.inSeconds,
+          ),
+          72,
+        );
+      },
+    );
+  }
   test(
     'pending provider response is a busy rejection, not a pollable job',
     () async {
@@ -203,7 +309,7 @@ void main() {
     },
   );
   test(
-    'location queries preserve country/province scope without sending an owner key',
+    'province queries preserve country scope without sending an owner key',
     () async {
       late http.Request request;
       final repo = ReportRepository(
@@ -214,13 +320,10 @@ void main() {
           return http.Response('{"items":[],"total":0}', 200);
         }),
       );
-      await repo.cities('TH', 'geonames:1609348', 'Bangkok', 20, CancelToken());
+      await repo.provinces('TH', CancelToken());
       expect(request.url.queryParameters, {
         'country': 'TH',
-        'province': 'geonames:1609348',
-        'level': 'locality',
-        'query': 'Bangkok',
-        'offset': '20',
+        'level': 'province',
       });
       expect(request.headers.containsKey('X-Report-Key'), isFalse);
     },

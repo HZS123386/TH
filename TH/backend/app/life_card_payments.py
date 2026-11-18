@@ -430,7 +430,7 @@ class LifeCardPayments:
         if check["status"] == "CHECK_FAILED":
             check["errorCode"] = error_code
 
-        # Persist verified settlement and the report entitlement together, preserving creation receipts.
+        # Save the verified receipt, entitlement and generation request together.
         with self.store.connect() as db:
             db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
             current = db.execute("SELECT * FROM life_card_payments WHERE reference=%s", (order["reference"],)).fetchone()
@@ -452,7 +452,7 @@ class LifeCardPayments:
                 else:
                     saved["paidAt"] = time.time()
                     saved["verifiedSubOrderNumber"] = check["subOrderNumber"]
-                    db.execute("UPDATE life_reports SET unlocked=1 WHERE id=%s", (order["report_id"],))
+                    self._unlock_and_queue(db, order["report_id"])
             db.execute("UPDATE life_card_payments SET sunlands_order=%s WHERE reference=%s",
                        (json.dumps(saved, ensure_ascii=False), order["reference"]))
         if check["status"] == "CHECK_FAILED":
@@ -547,7 +547,7 @@ class LifeCardPayments:
         return self._record_payment(order, provider_order)
 
     def _record_payment(self, order, provider_order):
-        # Record the payment and report entitlement in the same transaction.
+        # Share the same settlement boundary for verified card and demo orders.
         with self.store.connect() as db:
             db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
             self._assign_receipt(db, order, provider_order)
@@ -555,8 +555,16 @@ class LifeCardPayments:
                                   (order["reference"],)).fetchone()
             paid = recorded is not None and recorded["provider_order"] == provider_order
             if paid:
-                db.execute("UPDATE life_reports SET unlocked=1 WHERE id=%s", (order["report_id"],))
+                self._unlock_and_queue(db, order["report_id"])
         return paid
+
+    @staticmethod
+    def _unlock_and_queue(db, report_id):
+        db.execute(
+            "UPDATE life_reports SET unlocked=1, "
+            "full_state=CASE WHEN preview IS NOT NULL AND full_state='not_started' THEN 'queued' ELSE full_state END "
+            "WHERE id=%s", (report_id,),
+        )
 
     @staticmethod
     def _assign_receipt(db, order, provider_order):

@@ -53,8 +53,33 @@ void main() {
           initialLocation: '/?lang=zh&topic=love&utm_source=facebook',
         ),
       );
-      await tester.pumpAndSettle();
-      expect(find.text('很高兴你来了'), findsOneWidget);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      final name = find.byKey(const ValueKey('welcome-name-strokes'));
+      expect(name, findsOneWidget);
+      final initialInk = tester.widget<CustomPaint>(name).painter!;
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(
+        tester.widget<CustomPaint>(name).painter!.shouldRepaint(initialInk),
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 520));
+      expect(find.text('情缘法宗师'), findsOneWidget);
+      expect(find.text('该断该续？'), findsOneWidget);
+      expect(find.text('揪出搅局的人'), findsOneWidget);
+      expect(
+        tester.getCenter(name).dx,
+        greaterThan(tester.getCenter(find.text('该断该续？')).dx),
+      );
+      final shimmer = find.byKey(const ValueKey('welcome-name-shimmer'));
+      final bright = tester.widget<Opacity>(shimmer).opacity;
+      final completedInk = tester.widget<CustomPaint>(name).painter!;
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
+        tester.widget<CustomPaint>(name).painter!.shouldRepaint(completedInk),
+        isFalse,
+      );
+      expect(tester.widget<Opacity>(shimmer).opacity, lessThan(bright));
       expect(find.byType(LandingPage), findsNothing);
       await tester.tap(find.byKey(const ValueKey('welcome-start')));
       await tester.pump();
@@ -68,27 +93,42 @@ void main() {
       ).routeInformationProvider.value.uri;
       expect(uri.queryParameters['topic'], 'love');
       expect(uri.queryParameters['utm_source'], 'facebook');
-      expect(browser.readSetting('fate-welcome-seen'), '1');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
-      expect(
-        H5Controller(
+      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      // Browsers with the old preference still show the same welcome page.
+      browser.writeSetting('fate-welcome-dismissed', '1', session: true);
+      for (final language in ['zh', 'th']) {
+        final reopened = H5Controller(
           translations(),
           ReportRepository(browser),
           browser,
-        ).welcomeOpen,
-        isTrue,
-      );
-      browser.settings.remove('session:fate-welcome-dismissed');
-      final returning = H5Controller(
-        translations(),
-        ReportRepository(browser),
-        browser,
-      );
-      expect(returning.returningVisitor, isTrue);
-      expect(returning.welcomeOpen, isTrue);
-      returning.dispose();
+          language: language,
+        );
+        await tester.pumpWidget(
+          H5App(controller: reopened, initialLocation: '/?lang=$language'),
+        );
+        await tester.pump();
+        expect(find.byType(WelcomePage), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('welcome-name-strokes')),
+          findsOneWidget,
+        );
+        expect(
+          find.text(language == 'zh' ? '该断该续？' : 'ควรพอหรือไปต่อ?'),
+          findsOneWidget,
+        );
+        expect(find.byType(LandingPage), findsNothing);
+        await tester.tap(find.byKey(const ValueKey('welcome-start')));
+        await tester.pump();
+        expect(find.byType(WelcomePage), findsNothing);
+        expect(find.byType(LandingPage), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        reopened.dispose();
+      }
     },
   );
 

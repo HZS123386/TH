@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from pydantic import Field
 
 from backend.app.accounts import DUMMY_PASSWORD_HASH, password_matches
-from backend.app.landing_features import VISIT_RETENTION_SECONDS
+from backend.app.landing_features import VISIT_RETENTION_SECONDS, owner_for
 from backend.app.life_reports import LifeInput
 from backend.app.schemas import Input
 
@@ -33,7 +33,8 @@ BASE = f"""WITH active_visits AS (
  SELECT owner,visitor_number,region_code,first_visit_date FROM landing_visitors
  WHERE last_visited_at>=EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::double precision-{VISIT_RETENTION_SECONDS}
 ), reports AS (
- SELECT r.id,r.id report_id,r.created,r.preview_state,r.full_state,r.unlocked,r.lease_until,
+ SELECT r.id,r.id report_id,r.created,r.preview_state,
+ CASE WHEN r.full_state='pending' THEN 'queued' ELSE r.full_state END full_state,r.unlocked,r.lease_until,
  substr(r.owner,6,12) visitor,COALESCE(r.landing_visitor_number,n.visitor_number) visitor_number,
  COALESCE(r.input::jsonb #>> '{{profile,display_name}}','') name,
  COALESCE(r.input::jsonb #>> '{{profile,language}}','') language,
@@ -44,6 +45,7 @@ BASE = f"""WITH active_visits AS (
  CASE WHEN (r.preview_state='generating' OR r.full_state='generating') AND r.lease_until<EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) THEN 'stalled'
  WHEN r.preview_state IN {FAILURES} OR (r.unlocked=1 AND r.full_state IN {FAILURES}) THEN 'failed'
  WHEN r.preview_state='generating' OR r.full_state='generating' THEN 'generating'
+ WHEN r.preview_state='queued' OR (r.unlocked=1 AND r.full_state IN ('queued','pending')) THEN 'queued'
  WHEN r.full_state='ready' THEN 'ready' WHEN r.preview_state='ready' THEN 'preview' ELSE 'pending' END status,
  CASE WHEN r.preview_state IN {FAILURES} THEN 'preview:'||r.preview_state
  WHEN r.full_state IN {FAILURES} THEN 'full:'||r.full_state
@@ -82,22 +84,37 @@ BASE = f"""WITH active_visits AS (
 ), visits AS (
  SELECT v.id,v.visited_at created,substr(v.owner,6,12) visitor,v.source,v.campaign,v.region_code entry_region,
  n.visitor_number,n.region_code,n.first_visit_date,
- v.submitted_at,v.seen_at,links.reports,links.report_ids,
+ v.submitted_at,v.seen_at,links.reports,links.report_ids,form.action form_progress,
+ v.last_page,v.last_action,v.last_activity_at,v.last_state,v.dropped_events,dwell.visible_ms,
  CASE WHEN v.seen_at IS NOT NULL THEN 'seen' WHEN v.submitted_at IS NOT NULL THEN 'submitted' ELSE 'visited' END status
  FROM active_visits v LEFT JOIN active_visitors n ON n.owner=v.owner
+ LEFT JOIN LATERAL (
+   SELECT a.action FROM landing_visit_activity a
+   WHERE a.visit_id=v.id AND a.page='birth_form' AND a.kind='action' AND starts_with(a.action,'form_progress_')
+   ORDER BY a.sequence DESC LIMIT 1
+ ) form ON TRUE
  LEFT JOIN LATERAL (
    SELECT COUNT(*) reports,COALESCE(json_agg(l.report_id ORDER BY l.report_id),'[]'::json)::text report_ids
    FROM landing_visit_reports l JOIN life_reports r ON r.id=l.report_id AND r.owner=v.owner
    WHERE l.visit_id=v.id
  ) links ON TRUE
+ LEFT JOIN LATERAL (
+   SELECT SUM(t.visible_ms) visible_ms FROM (
+     SELECT MAX(a.visible_ms) visible_ms FROM landing_visit_activity a WHERE a.visit_id=v.id GROUP BY a.page_view_id
+   ) t
+ ) dwell ON TRUE
 ), issues AS (
- SELECT 'report:'||id id,report_id,created,name,source,campaign,'report' category,status,code,case_status,'' path,NULL::bigint http_status,NULL::bigint duration_ms,attribution,visitor_number
+ SELECT 'report:'||id id,report_id,created,name,source,campaign,'report' category,status,code,case_status,'' path,NULL::bigint http_status,NULL::bigint duration_ms,attribution,visitor_number,NULL::text visit_id
  FROM reports WHERE status IN ('failed','stalled')
- UNION ALL SELECT 'order:'||id,report_id,created,name,source,campaign,'payment',status,code,case_status,'',NULL,NULL,attribution,visitor_number FROM orders WHERE status IN ('check_failed','create_failed','needs_review')
- UNION ALL SELECT 'call:'||id,report_id,created,name,source,campaign,'model','failed',code,case_status,'',NULL,duration_ms,attribution,visitor_number FROM calls WHERE status='failed'
- UNION ALL SELECT 'request:'||f.id,r.id,f.created,COALESCE(r.name,''),COALESCE(r.source,''),COALESCE(r.campaign,''),
- 'request','failed',f.code,COALESCE(r.case_status,''),f.method||' '||f.path,f.http_status,f.duration_ms,COALESCE(r.attribution,'unattributed'),r.visitor_number
+ UNION ALL SELECT 'order:'||id,report_id,created,name,source,campaign,'payment',status,code,case_status,'',NULL,NULL,attribution,visitor_number,NULL FROM orders WHERE status IN ('check_failed','create_failed','needs_review')
+ UNION ALL SELECT 'call:'||id,report_id,created,name,source,campaign,'model','failed',code,case_status,'',NULL,duration_ms,attribution,visitor_number,NULL FROM calls WHERE status='failed'
+ UNION ALL SELECT 'request:'||f.id,r.id,f.created,COALESCE(r.name,''),COALESCE(v.source,r.source,''),COALESCE(v.campaign,r.campaign,''),
+ 'request','failed',f.code,COALESCE(r.case_status,''),f.method||' '||f.path,f.http_status,f.duration_ms,
+ CASE WHEN v.id IS NOT NULL THEN CASE WHEN v.source='' THEN 'untagged' ELSE 'tagged' END ELSE COALESCE(r.attribution,'unattributed') END,
+ COALESCE(n.visitor_number,r.visitor_number),v.id
  FROM h5_request_failures f LEFT JOIN reports r ON r.id=f.report_id
+ LEFT JOIN active_visits v ON v.id=f.visit_id AND v.owner=f.owner
+ LEFT JOIN active_visitors n ON n.owner=f.owner
 ), audit AS (
  SELECT a.id,a.report_id,a.created,a.actor,a.action,a.status,a.code,a.note,'' source,'' campaign,
  r.visitor_number,r.id IS NOT NULL report_exists
@@ -107,6 +124,17 @@ BASE = f"""WITH active_visits AS (
 SOURCES = [
     {"name": "访问与渠道", "table": "landing_visits / landing_visitors / landing_visit_reports", "origin": "H5 首次访问埋点及提交、查看预览事件",
      "rule": "同一匿名浏览器使用一个访客编号，首次日期按北京时间。访问记录保留最近 30 天，编号在 30 天未访问后过期。每次访问保存该链接提供的渠道、活动和投放地区。"},
+    {"name": "次日回访人数", "table": "landing_visits / landing_visit_activity", "origin": "新访问、打开页面或恢复前台的记录",
+     "rule": "按北京时间自然日计算。同一浏览器连续两天有访问记录，第二天算回访。按回访日期筛选，范围内每个浏览器计一次。"
+             "轨迹按发生时间归日，历史无轨迹使用访问记录时间。"},
+    {"name": "最后页面与操作", "table": "landing_visits.last_page / last_action / last_activity_at / last_state", "origin": "H5 页面、操作及浏览器前后台/离开事件的最后一次成功上报",
+     "rule": "时间为服务器收到最新事件的时间。前台表示上报时可见，不保证当前在线；切到后台不等于离开。离开事件不能区分关闭、刷新或跳转。外部收银台内部页面不可观测，支付结果以服务端核验为准。历史缺失显示未采集，隐私设置、断网或浏览器关闭可能造成漏报；不据此推断放弃或离开原因。"},
+    {"name": "操作轨迹与停留", "table": "landing_visit_activity", "origin": "H5 原页面和操作埋点、可见状态变化及每 15 秒的时长检查点",
+     "rule": "只累计前台可见时间，不等于阅读时间。每次进入页面按累计最大时长去重，再求和；补发不会重复计时。操作时间来自浏览器，接收时间来自服务器。保留 30 天，旧记录不回填；浏览器关闭可能缺最后一段。待发队列最多 500 条，溢出数量单独标记。"},
+    {"name": "填写进度与已提交资料", "table": "landing_visit_activity / landing_visit_reports / life_reports.input",
+     "origin": "H5 表单必填校验的状态，以及服务器保存的关联报告",
+     "rule": "填写进度取最近一次记录，包括未选资料、下一项需要填写的内容、已填完。表单上报只包含状态。"
+             "访问轨迹详情从同一访客的关联报告读取已提交的出生资料。旧访问缺少进度时显示未采集。"},
     {"name": "报告与权限", "table": "life_reports", "origin": "现有报告创建与生成服务",
      "rule": "按报告创建时间筛选，展示当前状态；同一浏览器的相同输入可能复用报告。已解锁不等于实收；过期生成租约标记为中断待核查。"},
     {"name": "订单与到账", "table": "life_card_payments.sunlands_order / provider_order", "origin": "官方建单回执及服务端核验结果",
@@ -118,7 +146,7 @@ SOURCES = [
     {"name": "处理记录", "table": "admin_audit / admin_cases", "origin": "已登录管理员提交的业务操作和备注",
      "rule": "处理进度只是内部跟进状态，不修改订单支付状态或报告权限。所有操作记录管理员、时间、原因与结果。"},
     {"name": "接口失败", "table": "h5_request_failures", "origin": "现有 H5 API 请求边界中的非成功响应",
-     "rule": "仅从后台启用后开始采集，保留最近 30 天且最多 20000 条。记录接口模板、HTTP 状态、错误码与耗时，不保存请求体、手机号、访问密钥、IP 或查询参数；可覆盖报告创建前的失败。"},
+     "rule": "保留最近 30 天且最多 20000 条。记录接口模板、HTTP 状态、错误码、耗时、匿名访客哈希和访问编号；按所有权核对关联。包含地点查询和报告创建前的失败；客户端网络或响应解析异常单独标注，不当作服务端 HTTP 失败。不保存请求体、手机号、访问密钥、IP 或查询参数。"},
 ]
 
 
@@ -144,17 +172,26 @@ class H5Admin:
 
     def record_failure(self, request, status, duration_ms):
         route = request.scope.get("route")
-        fallback = "/api/life-reports/{unrouted}" if request.url.path.startswith("/api/life-reports") else "/api/landing/{unrouted}"
+        fallback = "/api/life-reports/{unrouted}" if request.url.path.startswith("/api/life-reports") else "/api/thai-locations" if request.url.path == "/api/thai-locations" else "/api/landing/{unrouted}"
         path = getattr(route, "path", fallback)
         code = str(getattr(request.state, "failure_code", "http_" + str(status)))[:160]
         if not re.fullmatch(r"[A-Za-z0-9_:.-]+", code):
             code = "http_" + str(status)
         report_id = request.path_params.get("report_id", "")[:128]
+        key = request.headers.get("X-Report-Key", "")
+        key_owner = owner_for(key) if re.fullmatch(r"[A-Za-z0-9_-]{32,128}", key) else None
+        try:
+            visit_id = str(UUID(request.headers.get("X-Visit-Id", ""))) if key_owner else None
+        except ValueError:
+            visit_id = None
+        owner = key_owner if visit_id else None
         try:
             with self.store.connect() as db:
                 db.execute("SET LOCAL lock_timeout = '100ms'")
-                db.execute("INSERT INTO h5_request_failures(created,method,path,http_status,code,duration_ms,report_id) VALUES(%s,%s,%s,%s,%s,%s,%s)",
-                           (time.time(), request.method, path, status, code, duration_ms, report_id))
+                if report_id and not db.execute("SELECT 1 FROM life_reports WHERE id=%s AND owner=%s", (report_id, key_owner)).fetchone():
+                    report_id = ""
+                db.execute("INSERT INTO h5_request_failures(created,method,path,http_status,code,duration_ms,report_id,owner,visit_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                           (time.time(), request.method, path, status, code, duration_ms, report_id, owner, visit_id))
                 db.execute("DELETE FROM h5_request_failures WHERE created<%s", (time.time() - 30 * 86400,))
                 db.execute("DELETE FROM h5_request_failures WHERE id IN (SELECT id FROM h5_request_failures ORDER BY created DESC OFFSET 20000)")
         except psycopg.Error:
@@ -232,6 +269,32 @@ class H5Admin:
         metrics = self.rows("""SELECT COUNT(*) visits,COUNT(DISTINCT owner) visitors,
                                COUNT(submitted_at) submitted,COUNT(seen_at) seen
                                FROM active_visits WHERE visited_at>=%s""", (since,))[0]
+        # Use the original start time when the first upload of a visit is delayed.
+        metrics["next_day_return_visitors"] = self.rows("""
+            , observed_visits AS (
+                SELECT v.owner,LEAST(v.visited_at, (
+                    SELECT MIN(a.occurred_at) FROM landing_visit_activity a
+                    WHERE a.visit_id=v.id AND a.kind<>'dwell'
+                )) AS observed_at
+                FROM active_visits v
+                UNION ALL
+                SELECT v.owner,LEAST(a.occurred_at,a.received_at) AS observed_at
+                FROM active_visits v JOIN landing_visit_activity a ON a.visit_id=v.id
+                WHERE a.state='visible' AND (
+                    (a.kind='action' AND a.action IN ('view','enter_form'))
+                    OR (a.kind='state' AND a.action<>'leave_page')
+                )
+            ), visit_days AS (
+                SELECT DISTINCT owner,(to_timestamp(observed_at) AT TIME ZONE 'Asia/Shanghai')::date AS visit_day
+                FROM observed_visits
+                WHERE observed_at BETWEEN EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::double precision-%s
+                    AND EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::double precision
+            )
+            SELECT COUNT(DISTINCT returned.owner) AS value
+            FROM visit_days returned JOIN visit_days prior
+                ON prior.owner=returned.owner AND prior.visit_day=returned.visit_day-1
+            WHERE %s=0 OR returned.visit_day>(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Shanghai')::date-%s
+        """, (VISIT_RETENTION_SECONDS, days, days))[0]["value"]
         for name, sql in {
             "reports": "SELECT COUNT(*) value FROM reports WHERE created>=%s",
             "report_failures": "SELECT COUNT(*) value FROM reports WHERE created>=%s AND status IN ('failed','stalled')",
@@ -259,7 +322,7 @@ class H5Admin:
         columns = {
             "reports": "id,name,visitor_number,visitor,code", "orders": "id,report_id,visitor_number,name,order_number,code",
             "visits": "id,visitor,visitor_number,campaign", "calls": "id,report_id,visitor_number,request_id,code,model,reading",
-            "issues": "id,report_id,visitor_number,name,code,category,path", "audit": "id,report_id,visitor_number,actor,note,action,code",
+            "issues": "id,report_id,visitor_number,visit_id,name,code,category,path", "audit": "id,report_id,visitor_number,actor,note,action,code",
         }
         if kind not in columns:
             raise HTTPException(404, "admin_category_not_found")
@@ -287,6 +350,33 @@ class H5Admin:
         sources = self.rows(f"SELECT DISTINCT source FROM {kind} WHERE created>=%s ORDER BY source", (params[0],)) if kind != "audit" else []
         return {"items": items, "total": total, "page": page, "page_size": page_size,
                 "facets": facets, "source_options": [row["source"] for row in sources]}
+
+    def visit_detail(self, visit_id, page):
+        visits = self.rows("SELECT * FROM visits WHERE id=%s", (visit_id,))
+        if not visits:
+            raise HTTPException(404, "landing_visit_not_found")
+        with self.store.connect() as db:
+            events = db.execute("SELECT sequence,page,action,state,kind,occurred_at,received_at,visible_ms "
+                                "FROM landing_visit_activity WHERE visit_id=%s AND kind<>'dwell' "
+                                "ORDER BY sequence LIMIT 50 OFFSET %s", (visit_id, (page - 1) * 50)).fetchall()
+            total = db.execute("SELECT COUNT(*) count FROM landing_visit_activity WHERE visit_id=%s AND kind<>'dwell'", (visit_id,)).fetchone()["count"]
+            pages = db.execute("""SELECT page,SUM(visible_ms) visible_ms,COUNT(*) entries FROM (
+                SELECT page_view_id,page,MAX(visible_ms) visible_ms FROM landing_visit_activity
+                WHERE visit_id=%s GROUP BY page_view_id,page
+            ) t GROUP BY page ORDER BY page""", (visit_id,)).fetchall()
+            profiles = db.execute("""
+                SELECT r.id report_id,r.input::jsonb #>> '{profile,birth_date}' birth_date,
+                       r.input::jsonb #>> '{profile,birth_time}' birth_time,
+                       (r.input::jsonb #> '{profile,birth_time}')='null'::jsonb birth_time_unknown,
+                       r.input::jsonb #>> '{profile,birthplace}' birthplace
+                FROM landing_visit_reports l JOIN landing_visits v ON v.id=l.visit_id
+                JOIN life_reports r ON r.id=l.report_id AND r.owner=v.owner
+                WHERE v.id=%s ORDER BY r.created DESC,r.id LIMIT 50
+            """, (visit_id,)).fetchall()
+        return {"visit": visits[0], "events": [dict(row) for row in events], "pages": [dict(row) for row in pages],
+                "total": total, "page": page, "page_size": 50,
+                "submitted_profiles": [dict(row) for row in profiles],
+                "failures": self.rows("SELECT * FROM issues WHERE category='request' AND visit_id=%s ORDER BY created DESC LIMIT 100", (visit_id,))}
 
     def report(self, report_id):
         with self.store.connect() as db:
@@ -359,8 +449,6 @@ class H5Admin:
                 paid = await self.reports.confirm_card_order(order, row["owner"])
                 code = "payment_verified" if paid else "payment_pending"
             else:
-                if row["lease_until"] > time.time():
-                    raise HTTPException(409, "life_report_generating")
                 if not row["preview"]:
                     await self.reports.start_preview_generation(row, LifeInput.model_validate_json(row["input"]), row["owner"], "admin:" + actor)
                 else:
@@ -372,7 +460,9 @@ class H5Admin:
                     await self.reports.start_full_generation(report_id, row["owner"], "admin:" + actor)
                 current = self.report(report_id)
                 code = (current["full_state"] if current["preview"] else current["preview_state"])
-                if code not in ("generating", "ready"):
+                if current["preview"] and code == "pending":
+                    code = "queued"
+                if code not in ("queued", "generating", "ready"):
                     raise HTTPException(409, "admin_retry_" + code)
             status = "succeeded"
             return {"ok": True, "code": code}
@@ -424,6 +514,10 @@ def admin_router(service):
     @router.get("/reports/{report_id}")
     def detail(report_id: str, current=Depends(service.session)):
         return service.detail(report_id)
+
+    @router.get("/visits/{visit_id}")
+    def visit_detail(visit_id: str, page: int = Query(1, ge=1, le=10000), current=Depends(service.session)):
+        return service.visit_detail(visit_id, page)
 
     @router.post("/reports/{report_id}/actions")
     async def action(report_id: str, body: Action, current=Depends(service.write_session)):

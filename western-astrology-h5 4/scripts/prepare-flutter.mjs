@@ -13,10 +13,27 @@ import {fortuneTopics,fortuneCopy} from './src/lib/fortuneTopics';
 export default {life:lifeCopy,career:careerCopy,western:westernCopy,generation:generationCopy,ui,fortune:fortuneCopy,topics:fortuneTopics,reading:{zh:readingCopy('zh'),th:readingCopy('th')}};`,resolveDir:root},bundle:true,platform:'node',format:'esm',outfile:extracted});
 const copy = (await import(pathToFileURL(extracted).href + '?v=' + Date.now())).default;
 copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checkout.json'),'utf8'));
+copy.phoneCountries = JSON.parse(await readFile(path.join(root,'src','content','phone-countries.json'),'utf8')).countries;
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));
 const jy = JSON.parse(await readFile(path.join(root,'src','content','jy.json'),'utf8'));
 copy.jy = jy.jy;
 copy.jyThemes = jy.jyThemes;
+const handwriting = JSON.parse(await readFile(path.join(root,'src','content','welcome-strokes.json'),'utf8'));
+copy.welcomeStrokes = {};
+for (const { welcome: { name } } of Object.values(copy.jy)) {
+  const letters = [...name];
+  if (letters.some(letter => !handwriting.glyphs[letter]?.length)) continue;
+  let width = 0;
+  const strokes = [];
+  // Both renderers share these positioned paths, including marks with no advance.
+  for (const letter of letters) {
+    for (const stroke of handwriting.glyphs[letter]) {
+      strokes.push(stroke.map((point, index) => index % 2 === 0 ? point + width : point));
+    }
+    width += handwriting.advances[letter] ?? 1024;
+  }
+  copy.welcomeStrokes[name] = { width, strokes };
+}
 await mkdir(path.join(target,'assets','images'),{recursive:true});
 await mkdir(path.join(target,'assets','fonts'),{recursive:true});
 await writeFile(path.join(target,'assets','copy.json'),JSON.stringify(copy));

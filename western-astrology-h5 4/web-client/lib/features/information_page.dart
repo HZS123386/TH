@@ -18,11 +18,16 @@ class InformationPage extends StatefulWidget {
 class _InformationPageState extends State<InformationPage> {
   final _request = CancelToken();
   bool _loaded = false;
+  bool _recordedPage = false;
   String _email = '';
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_recordedPage) {
+      _recordedPage = true;
+      H5Scope.of(context).trackActivity(widget.support ? 'support' : 'privacy');
+    }
     if (widget.support && !_loaded) {
       _loaded = true;
       unawaited(_load());
@@ -150,11 +155,16 @@ class _InformationPageState extends State<InformationPage> {
 }
 
 Future<bool> confirmDataUse(BuildContext context, H5Controller h5) async {
-  return await showDialog<bool>(
+  h5.trackActivity('consent');
+  final accepted = await showDialog<bool>(
         context: context,
         builder: (_) => _DataUseDialog(h5: h5),
       ) ??
       false;
+  if (context.mounted) {
+    h5.trackActivity('birth_form', accepted ? 'consent_accept' : 'consent_cancel');
+  }
+  return accepted;
 }
 
 class _DataUseDialog extends StatefulWidget {

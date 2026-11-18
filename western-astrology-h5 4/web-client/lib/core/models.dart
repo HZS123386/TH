@@ -162,6 +162,10 @@ class LifeReport {
   Json get profile => object(input['profile']);
   String get language => text(profile['language']);
   bool get full => json['access'] == 'full';
+  bool get previewInProgress =>
+      ['queued', 'generating'].contains(json['preview_state']);
+  bool get fullInProgress =>
+      full && ['queued', 'generating'].contains(json['full_state']);
   bool get ready =>
       full &&
       json['full_state'] == 'ready' &&
