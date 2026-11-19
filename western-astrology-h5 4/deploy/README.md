@@ -36,6 +36,7 @@ sudo docker compose logs --tail 80 app
 `runtime.env` 与应用压缩包分开生成和上传，不进入 Docker 构建上下文。打包程序会检查构建文件中是否包含本机已配置的密钥，并排除原有用户数据库。地点索引单独复制，后续版本复用服务器已有文件。
 
 更新现有服务器时，保留线上已有的模型、数据库路径和环境模式，只合并本次明确要发布的配置项；不要用包含本机代理地址的开发配置整体覆盖线上 `runtime.env`。支付凭据同样只放在该私有配置文件中，发布前备份旧配置，失败时连同应用版本一起恢复。部署验收不创建真实订单或付款。
+准备 PostgreSQL 版发布包时，通过 `FATE_DEPLOY_DATABASE_URL` 提供该部署环境的 FATE 业务库连接。切换前，先对服务器现有业务库做一致性备份，并在目标 PostgreSQL 应用 `TH/backend/alembic.ini` 的迁移。使用 `TH/scripts/migrate-sqlite-to-postgres.py` 导入并对账后更新服务端 `runtime.env`，再启动新版。回退前保留 PostgreSQL 中切换后产生的订单和报告。2026-11-16 完成的是本机库的迁移，服务器需按其自身数据另行核对。
 
 首次部署依次使用 `stage_server.sh`、`start_server.sh` 和 `publish_proxy.py`。后续更新只需构建和启动新应用版本。需要修改已有 IP 入口时，向网关脚本额外提供上个版本的 `Caddyfile.ip` 路径；只有旧配置逐字匹配时才替换该站点，避免重复添加或改动其他网站。
 

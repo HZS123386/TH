@@ -1,20 +1,31 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../app/dependencies.dart';
-import '../../core/models/calculation.dart';
-import '../../core/models/report.dart';
 import '../../data/reports_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
-import '../../ui/strings.dart';
 import '../../ui/theme.dart';
-import '../chart/chart_wheel.dart';
 import '../purchases/purchase_sheet.dart';
+import '../companion/guardian.dart';
 import 'reports_view_model.dart';
+import 'content_report_sheet.dart';
+import '../../core/models/calculation.dart';
+import '../../core/models/report.dart';
+import '../../ui/strings.dart';
+import '../chart/chart_wheel.dart';
 
 class ReportsPage extends StatefulWidget {
-  const ReportsPage({this.example = false, this.fromChart = false, super.key});
-  final bool example, fromChart;
+  const ReportsPage({
+    this.detail = false,
+    this.fromChart = false,
+    this.example = false,
+    this.backLocation = '/reports',
+    super.key,
+  });
+  final String backLocation;
+  final bool detail, example, fromChart;
   @override
   State<ReportsPage> createState() => _ReportsPageState();
 }
@@ -22,10 +33,10 @@ class ReportsPage extends StatefulWidget {
 class _ReportsPageState extends State<ReportsPage> {
   ReportsViewModel? model;
   bool exampleExpanded = false;
-  bool opening = false;
-  bool movingToProgress = false;
+  bool opening = false, movingToProgress = false;
   String? openedScope;
   final sectionKeys = <String, GlobalKey>{};
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -33,7 +44,11 @@ class _ReportsPageState extends State<ReportsPage> {
     model = DependencyScope.of(context).reports;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      model!.setActive(!widget.example, view: this);
+      model!.setActive(widget.detail && !widget.example, view: this);
+      if (!widget.detail) {
+        model!.loadHistory();
+        model!.setH5HistoryView(this, active: true);
+      }
     });
   }
 
@@ -81,18 +96,15 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> generate() async {
     final d = DependencyScope.of(context), s = AppLocalizations.of(context);
-    final scope = d.session.scope;
-    bool current() => mounted && scope == d.session.scope;
-    if (d.session.profile?.isServerRevision != true) {
+    if (d.session.profile == null) {
       context.go('/birth');
       return;
     }
     if (d.chart.result == null) {
+      context.go('/chart');
       await d.chart.calculate();
-      if (!current() || d.chart.result == null) return;
+      return;
     }
-    if (!mounted || !current()) return;
-    final calculation = d.chart.result!;
     final noticeVersion = d.session.capabilities.aiNoticeVersion;
     if (!d.session.capabilities.reports || noticeVersion == null) {
       ScaffoldMessenger.of(
@@ -100,8 +112,10 @@ class _ReportsPageState extends State<ReportsPage> {
       ).showSnackBar(SnackBar(content: Text(s.serviceSetup)));
       return;
     }
+    final scope = d.session.scope, result = d.chart.result!;
     final consent = await showDialog<bool>(
       context: context,
+      animationStyle: FateMotion.dialog(context),
       builder: (context) => AlertDialog(
         content: Text(s.aiConsent),
         actions: [
@@ -116,13 +130,16 @@ class _ReportsPageState extends State<ReportsPage> {
         ],
       ),
     );
-    if (consent != true || !mounted || !current()) return;
+    if (consent != true || !mounted || d.session.scope != scope) return;
     try {
       await d.session.configuration.consent(noticeVersion);
-      if (!current()) return;
-      await d.reports.generate(calculation);
+      if (d.session.scope != scope) return;
+      await d.reports.generate(result);
+      if (mounted && !widget.detail && d.session.scope == scope) {
+        context.go('/reports/reading');
+      }
     } catch (_) {
-      if (mounted && current()) {
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(s.error)));
@@ -136,7 +153,8 @@ class _ReportsPageState extends State<ReportsPage> {
     return ListenableBuilder(
       listenable: Listenable.merge([d.reports, d.chart, d.session]),
       builder: (context, _) {
-        if (!widget.example &&
+        if (widget.detail &&
+            !widget.example &&
             !d.session.loading &&
             (!widget.fromChart || !d.chart.loading) &&
             !opening &&
@@ -152,7 +170,9 @@ class _ReportsPageState extends State<ReportsPage> {
             : d.reports.report;
         final full = widget.example ? exampleExpanded : report?.full == true;
         if (report?.generating != true) movingToProgress = false;
-        if (!widget.example &&
+        if (widget.detail &&
+            widget.backLocation != '/reports' &&
+            !widget.example &&
             report?.generating == true &&
             !movingToProgress) {
           movingToProgress = true;
@@ -186,125 +206,236 @@ class _ReportsPageState extends State<ReportsPage> {
               ? () => setState(() => exampleExpanded = true)
               : null,
         );
-        final result = widget.example
-            ? teachingChart
-            : report?.calculation ??
-                  (d.chart.result?.id ==
-                          (widget.fromChart
-                              ? d.chart.result?.id
-                              : d.reports.reference?.resultId)
-                      ? d.chart.result
-                      : null);
-        final ready =
-            widget.example ||
-            (report != null && !report.generating && !report.failed);
-        final busy =
-            opening ||
-            d.chart.loading ||
-            d.reports.loading ||
-            report?.generating == true;
+        if (!widget.detail) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PageHeading(
+                  s.reports,
+                  s.reportIntro,
+                  icon: Icons.menu_book_outlined,
+                ),
+                TextButton.icon(
+                  key: const ValueKey('reports-saved-readings'),
+                  onPressed: () => context.push('/chart/readings?from=reports'),
+                  icon: const Icon(Icons.history),
+                  label: Text(s.savedReadings),
+                ),
+                if (d.auth.hasH5Reports) ...[
+                  _H5History(model: d.reports),
+                  const SizedBox(height: 20),
+                ],
+                FateCard(
+                  gold: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.free,
+                        style: const TextStyle(color: goldColor, fontSize: 11),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        s.reportTitle,
+                        style: const TextStyle(fontSize: 24, height: 1.6),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        s.homeReportText,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const Divider(),
+                      Wrap(
+                        spacing: 15,
+                        runSpacing: 12,
+                        children:
+                            [
+                                  s.chapterPersonality,
+                                  s.chapterLove,
+                                  s.chapterWork,
+                                  s.chapterMoney,
+                                ]
+                                .map(
+                                  (label) => Text(
+                                    '✧ $label',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: mutedColor,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        onPressed: d.reports.loading ? null : generate,
+                        child: Text(
+                          d.reports.loading ? s.reportPending : s.generate,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            context.go('/reports/reading?example=1'),
+                        child: Text(s.exampleReport),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (d.reports.hasResumable)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: OutlinedButton(
+                      onPressed: () {
+                        d.reports.resume();
+                        context.go('/reports/reading');
+                      },
+                      child: Text(s.resumeReport),
+                    ),
+                  ),
+                if (d.reports.history.isNotEmpty) ...[
+                  Text(s.personalReport, style: const TextStyle(fontSize: 17)),
+                  for (final reference in d.reports.history)
+                    ListTile(
+                      title: Text(s.reportTitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        d.reports.resume(reference);
+                        context.go('/reports/reading');
+                      },
+                    ),
+                ],
+                FateCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.savedReports,
+                        style: const TextStyle(fontSize: 17),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        s.exampleSavedNote,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 14),
+                      if (d.reports.exampleSaved)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(s.exampleBadge),
+                          trailing: IconButton(
+                            tooltip: s.remove,
+                            onPressed: d.reports.removeExample,
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                          onTap: () => context.go('/reports/reading?example=1'),
+                        )
+                      else
+                        Text(
+                          s.reportEmpty,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        if (!widget.example && report == null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (d.reports.loading) const CircularProgressIndicator(),
+                  const SizedBox(height: 20),
+                  Text(
+                    opening || d.reports.loading
+                        ? s.reportPending
+                        : s.reportEmpty,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: opening || d.reports.loading ? null : generate,
+                    child: Text(s.generate),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/reports/reading?example=1'),
+                    child: Text(s.exampleReport),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        if (!widget.example && (report!.generating || report.failed)) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (report.generating) const CircularProgressIndicator(),
+                  const SizedBox(height: 24),
+                  Text(
+                    report.generating ? s.reportPending : failureText,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  if (report.generating)
+                    Text(
+                      s.reportGeneratingText,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  if (report.failed)
+                    FilledButton(
+                      onPressed: d.reports.loading ? null : generate,
+                      child: Text(s.generate),
+                    ),
+                  TextButton(
+                    onPressed: () => context.go(widget.backLocation),
+                    child: Text(s.reports),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         final sections = [...?report?.preview, if (full) ...?report?.sections];
         GlobalKey sectionKey(String key) =>
-            sectionKeys.putIfAbsent(key, () => GlobalKey());
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: SingleChildScrollView(
-                key: const ValueKey('reading-scroll'),
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  12,
-                  20,
-                  ready && !full ? 100 : 28,
-                ),
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: PageHeading(s.chartRead, s.reportIntro),
-                    ),
-                    if (!widget.example && report?.number != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: SelectableText(
-                            '${s.reportNumberLabel} · ${report!.number}',
-                            style: const TextStyle(
-                              color: goldColor,
-                              fontSize: 13,
+            sectionKeys.putIfAbsent(key, GlobalKey.new);
+        return FateEntrance(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: SingleChildScrollView(
+                  key: const ValueKey('reading-scroll'),
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, full ? 28 : 100),
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () => context.go(widget.backLocation),
+                          icon: const Icon(Icons.arrow_back, size: 17),
+                          label: Text(s.reports),
+                        ),
+                      ),
+                      if (widget.example)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: FateCard(
+                            child: Text(
+                              '${s.exampleBadge}\n${s.exampleNote}',
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
                         ),
-                      ),
-                    if (widget.example)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: FateCard(
-                          child: Text(
-                            '${s.exampleBadge}\n${s.exampleNote}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ),
-                    if (result != null) ...[
-                      _ReadingChart(result: result),
-                      const SizedBox(height: 20),
-                    ],
-                    if (!ready)
-                      FateCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (busy) ...[
-                              const Center(child: CircularProgressIndicator()),
-                              const SizedBox(height: 24),
-                            ],
-                            Text(
-                              busy
-                                  ? s.reportPending
-                                  : report?.failed == true
-                                  ? failureText
-                                  : d.reports.error != null
-                                  ? s.error
-                                  : s.reportEmptyText,
-                            ),
-                            const SizedBox(height: 16),
-                            if (busy)
-                              Text(
-                                s.reportGeneratingText,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              )
-                            else ...[
-                              FilledButton(
-                                onPressed: () {
-                                  if (report?.failed != true &&
-                                      d.reports.reference != null &&
-                                      (!widget.fromChart ||
-                                          d.reports.reference?.resultId ==
-                                              d.chart.result?.id) &&
-                                      report == null) {
-                                    d.reports.refresh();
-                                  } else {
-                                    generate();
-                                  }
-                                },
-                                child: Text(
-                                  d.reports.error != null
-                                      ? s.resumeReport
-                                      : s.generate,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () =>
-                                    context.go('/chart/reading?example=1'),
-                                child: Text(s.exampleReport),
-                              ),
-                            ],
-                          ],
-                        ),
-                      )
-                    else ...[
                       if (sections.isNotEmpty) ...[
                         FateCard(
                           child: Column(
@@ -438,16 +569,66 @@ class _ReportsPageState extends State<ReportsPage> {
                                 ],
                               ),
                             ),
-                            const Divider(),
-                            if (widget.example)
-                              Text(
-                                s.traits,
-                                style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w600,
+                            if (!widget.example) ...[
+                              const SizedBox(height: 20),
+                              OutlinedButton.icon(
+                                onPressed: () => openGuardian(
+                                  context,
+                                  reading: ReadingHandoff(
+                                    title: s.reportTitle,
+                                    owner: d.session.owner,
+                                    text: [
+                                      report!.summary,
+                                      ...report.preview.expand(
+                                        (section) => section.paragraphs,
+                                      ),
+                                      if (report.full)
+                                        ...report.sections.expand(
+                                          (section) => section.paragraphs,
+                                        ),
+                                    ].join('\n\n'),
+                                  ),
                                 ),
+                                icon: const Icon(Icons.chat_bubble_outline),
+                                label: Text(s.continueReading),
                               ),
-                            if (widget.example) const SizedBox(height: 24),
+                            ],
+                            if (report?.number case final number?)
+                              SelectableText(
+                                '${s.reportNumberLabel} · $number',
+                              ),
+                            if (widget.example || report?.calculation != null)
+                              _ReadingChart(
+                                result: widget.example
+                                    ? teachingChart
+                                    : report!.calculation!,
+                              ),
+                            if (!widget.example)
+                              TextButton.icon(
+                                key: const ValueKey('chart-reading-history'),
+                                onPressed: () {
+                                  final location =
+                                      widget.backLocation.startsWith(
+                                        '/chart/readings',
+                                      )
+                                      ? widget.backLocation
+                                      : widget.backLocation == '/reports'
+                                      ? '/chart/readings?from=reports'
+                                      : '/chart/readings';
+                                  context.go(location);
+                                },
+                                icon: const Icon(Icons.history),
+                                label: Text(s.savedReadings),
+                              ),
+                            const Divider(),
+                            Text(
+                              s.traits,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
                             if (widget.example) ...[
                               ReadingParagraph(
                                 s.sampleTrait1Title,
@@ -464,29 +645,37 @@ class _ReportsPageState extends State<ReportsPage> {
                                   section: section,
                                   number: sections.indexOf(section) + 1,
                                 ),
-                            if (widget.example || !full) const Divider(),
-                            if (widget.example || !full)
-                              Text(
-                                widget.example ? s.watch : s.fullReading,
-                                style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            const Divider(),
+                            Text(
+                              widget.example ? s.watch : s.fullReading,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w600,
                               ),
-                            if (widget.example || !full)
-                              const SizedBox(height: 24),
+                            ),
+                            const SizedBox(height: 24),
                             if (full)
-                              if (widget.example)
-                                _ExampleReading(s: s)
-                              else ...[
-                                if (report!.generating) Text(s.reportPending),
-                                for (final section in report.sections)
-                                  _ReadingSection(
-                                    key: sectionKey(section.key),
-                                    section: section,
-                                    number: sections.indexOf(section) + 1,
-                                  ),
-                              ]
+                              FateEntrance(
+                                key: const ValueKey('unlocked-reading'),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (widget.example)
+                                      _ExampleReading(s: s)
+                                    else ...[
+                                      if (report!.generating)
+                                        Text(s.reportPending),
+                                      for (final section in report.sections)
+                                        _ReadingSection(
+                                          key: sectionKey(section.key),
+                                          section: section,
+                                          number: sections.indexOf(section) + 1,
+                                        ),
+                                    ],
+                                  ],
+                                ),
+                              )
                             else
                               Stack(
                                 children: [
@@ -567,6 +756,16 @@ class _ReportsPageState extends State<ReportsPage> {
                                   ),
                                 ],
                               ),
+                            if (!widget.example)
+                              TextButton.icon(
+                                onPressed: () => showContentReport(
+                                  context,
+                                  kind: 'western_report',
+                                  id: report!.id,
+                                ),
+                                icon: const Icon(Icons.flag_outlined, size: 17),
+                                label: Text(s.contentReport),
+                              ),
                             if (d.reports.error != null)
                               Text(
                                 s.error,
@@ -576,30 +775,30 @@ class _ReportsPageState extends State<ReportsPage> {
                         ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-            ),
-            if (ready && !full)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  decoration: const BoxDecoration(
-                    color: panelColor,
-                    border: Border(top: BorderSide(color: lineColor)),
-                  ),
-                  child: FilledButton.icon(
-                    key: const ValueKey('unlock-report'),
-                    onPressed: unlock,
-                    icon: const Icon(Icons.lock_outline, size: 18),
-                    label: Text('${s.unlock}  →'),
                   ),
                 ),
               ),
-          ],
+              if (!full)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    decoration: const BoxDecoration(
+                      color: panelColor,
+                      border: Border(top: BorderSide(color: lineColor)),
+                    ),
+                    child: FilledButton.icon(
+                      key: const ValueKey('unlock-report'),
+                      onPressed: unlock,
+                      icon: const Icon(Icons.lock_outline, size: 18),
+                      label: Text('${s.unlock}  →'),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
@@ -608,7 +807,80 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   void dispose() {
     model?.setActive(false, view: this);
+    model?.setH5HistoryView(this, active: false);
     super.dispose();
+  }
+}
+
+class _H5History extends StatelessWidget {
+  const _H5History({required this.model});
+
+  final ReportsViewModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    final dates = MaterialLocalizations.of(context);
+    return FateCard(
+      gold: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(s.h5Reports, style: const TextStyle(fontSize: 18)),
+              ),
+              IconButton(
+                tooltip: s.h5Refresh,
+                onPressed: model.h5Loading ? null : () => model.loadH5History(),
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          if (model.h5Loading) const LinearProgressIndicator(),
+          if (model.h5Failed)
+            Text(
+              s.h5ReportUnavailable,
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else if (!model.h5Loading && model.h5History.isEmpty)
+            Text(
+              s.h5ReportsEmpty,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          for (final report in model.h5History)
+            ListTile(
+              key: ValueKey('h5-report-${report.id}'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                report.birthDate.isEmpty
+                    ? s.reportTitle
+                    : '${s.birthDate}  ${report.birthDate}',
+              ),
+              subtitle: Text(
+                [
+                  h5ReportStatusLabel(s, report.full, report.fullState),
+                  if (report.createdAt case final date?) ...[
+                    dates.formatCompactDate(date),
+                    dates.formatTimeOfDay(TimeOfDay.fromDateTime(date)),
+                  ],
+                ].join(' · '),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () =>
+                  context.push('/reports/h5/${Uri.encodeComponent(report.id)}'),
+            ),
+          if (model.h5HasMore)
+            TextButton(
+              onPressed: model.h5Loading
+                  ? null
+                  : () => model.loadH5History(more: true),
+              child: Text(s.h5LoadMore),
+            ),
+        ],
+      ),
+    );
   }
 }
 

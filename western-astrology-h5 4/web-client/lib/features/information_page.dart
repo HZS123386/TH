@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
+import '../core/repository.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
 import '../ui/site_header.dart';
@@ -22,10 +23,15 @@ class _InformationPageState extends State<InformationPage> {
   String? _language;
   Object? _error;
   int _revision = 0;
+  bool _recordedPage = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_recordedPage) {
+      _recordedPage = true;
+      H5Scope.of(context).trackActivity(widget.support ? 'support' : 'privacy');
+    }
     final language = H5Scope.of(context).language;
     if (_language != language) {
       _language = language;
@@ -180,6 +186,120 @@ class _InformationPageState extends State<InformationPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+Future<bool> confirmDataUse(BuildContext context, H5Controller h5) async {
+  h5.trackActivity('consent');
+  final accepted =
+      await showDialog<bool>(
+        context: context,
+        builder: (_) => _DataUseDialog(h5: h5),
+      ) ??
+      false;
+  if (context.mounted) {
+    h5.trackActivity(
+      'birth_form',
+      accepted ? 'consent_accept' : 'consent_cancel',
+    );
+  }
+  return accepted;
+}
+
+class _DataUseDialog extends StatefulWidget {
+  const _DataUseDialog({required this.h5});
+  final H5Controller h5;
+  @override
+  State<_DataUseDialog> createState() => _DataUseDialogState();
+}
+
+class _DataUseDialogState extends State<_DataUseDialog> {
+  bool _saving = false;
+  bool _outdated = false;
+  String _error = '';
+
+  Future<void> _accept() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = '';
+    });
+    try {
+      await widget.h5.acceptDataUse();
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _outdated =
+              error is ApiFailure && error.code == 'landing_notice_outdated';
+          _error = widget.h5.copy.t(
+            'jy',
+            _outdated ? 'noticeOutdated' : 'consentError',
+          );
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.h5.copy;
+    return AlertDialog(
+      title: Text(
+        c.t('jy', 'consentTitle'),
+        style: const TextStyle(fontSize: 19),
+      ),
+      backgroundColor: const Color(0xFF1C122D),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0x55E4BC78)),
+      ),
+      scrollable: true,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            c.t('jy', 'consent'),
+            style: const TextStyle(fontSize: 12, color: lavender),
+          ),
+          TextButton(
+            onPressed: () => widget.h5.browser.openPage(
+              'privacy.html?lang=${widget.h5.language}',
+            ),
+            child: Text(
+              c.t('jy', 'privacy'),
+              style: const TextStyle(
+                fontSize: 12,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+          errorMessage(_error),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context, false),
+          child: Text(c.t('jy', 'cancel')),
+        ),
+        if (_outdated)
+          FilledButton(
+            key: const ValueKey('data-use-reload'),
+            onPressed: () => widget.h5.browser.openPage(
+              './?lang=${widget.h5.language}&preview=notice-${DateTime.now().millisecondsSinceEpoch}',
+            ),
+            child: Text(c.t('jy', 'openLatest')),
+          )
+        else
+          FilledButton(
+            key: const ValueKey('data-use-agree'),
+            onPressed: _saving ? null : () => unawaited(_accept()),
+            child: Text(c.t('jy', 'consentAction')),
+          ),
+      ],
     );
   }
 }

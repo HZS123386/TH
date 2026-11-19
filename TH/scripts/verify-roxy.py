@@ -17,6 +17,7 @@ from backend.app.config import Settings
 from backend.app.roxy import RoxyBazi
 from backend.app.schemas import BaziTestInput
 from backend.app.storage import Storage
+from backend.tests.postgres_fixture import isolated_database
 
 
 CASES = {
@@ -37,19 +38,19 @@ async def main():
         parser.error("Configure ROXY_ENABLED and ROXY_API_KEY on the server first.")
     folder = ROOT / "data/roxy-evals"
     folder.mkdir(parents=True, exist_ok=True)
-    store = Storage(str(folder / "usage.db"))
-    roxy = RoxyBazi(replace(settings, database_path=store.path), store)
     reports = []
-    for name in args.cases or list(CASES):
-        body = BaziTestInput(profile={**CASES[name], "display_name": "Synthetic evaluation", "language": "zh"},
-                             source="compare" if args.live else "github", clock="beijing" if name == "timezone" else "local",
-                             topics=["chart", "strength", "luck", "annual"] if args.all_topics and args.live else ["chart"], gender="female", year=2026)
-        value = await generate_bazi_test(body, roxy, "synthetic-evaluation", "synthetic-evaluation-network")
-        reports.append({"case": name, **value})
-        source = value["sources"].get("roxy", {})
-        print(json.dumps({"case": name, "mode": "live" if args.live else "local-only", "comparison": value["comparison"]["status"],
-                          "github_pillars": value["sources"]["github"]["chart"]["pillars"], "roxy_errors": source.get("errors", {}),
-                          "operations": list(source.get("details", {}))}, ensure_ascii=False))
+    with isolated_database() as database_url:
+        roxy = RoxyBazi(replace(settings, database_url=database_url), Storage(database_url))
+        for name in args.cases or list(CASES):
+            body = BaziTestInput(profile={**CASES[name], "display_name": "Synthetic evaluation", "language": "zh"},
+                                 source="compare" if args.live else "github", clock="beijing" if name == "timezone" else "local",
+                                 topics=["chart", "strength", "luck", "annual"] if args.all_topics and args.live else ["chart"], gender="female", year=2026)
+            value = await generate_bazi_test(body, roxy, "synthetic-evaluation", "synthetic-evaluation-network")
+            reports.append({"case": name, **value})
+            source = value["sources"].get("roxy", {})
+            print(json.dumps({"case": name, "mode": "live" if args.live else "local-only", "comparison": value["comparison"]["status"],
+                              "github_pillars": value["sources"]["github"]["chart"]["pillars"], "roxy_errors": source.get("errors", {}),
+                              "operations": list(source.get("details", {}))}, ensure_ascii=False))
     output = folder / ("bazi-" + ("live-" if args.live else "local-") + datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
     output.write_text(json.dumps({"live": args.live, "reports": reports, "prediction_accuracy": "not-established"}, ensure_ascii=False, indent=2), encoding="utf-8")
     print(str(output))

@@ -130,32 +130,37 @@ class _Shell extends StatelessWidget {
   Widget build(BuildContext context) {
     final h5 = H5Scope.of(context);
     final showWelcome = landing && h5.welcomeOpen;
+    final screen = MediaQuery.sizeOf(context);
+    final wide = screen.width >= 700;
     return ColoredBox(
       color: const Color(0xFF0B0715),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: MediaQuery.sizeOf(context).width >= 700 ? 28 : 0,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ExcludeSemantics(
-                  excluding: showWelcome,
-                  child: IgnorePointer(
-                    ignoring: showWelcome,
-                    // Build the hidden form when the welcome transition begins.
-                    child: Scaffold(
-                      body: showWelcome && !h5.landingPrepared
-                          ? const SizedBox.expand()
-                          : child,
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: wide ? 24 : 0,
+            vertical: wide && screen.height >= 600 ? 24 : 0,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: h5PageMaxWidth),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ExcludeSemantics(
+                    excluding: showWelcome,
+                    child: IgnorePointer(
+                      ignoring: showWelcome,
+                      // Build the hidden form when the welcome transition begins.
+                      child: Scaffold(
+                        body: showWelcome && !h5.landingPrepared
+                            ? const SizedBox.expand()
+                            : child,
+                      ),
                     ),
                   ),
-                ),
-                if (showWelcome) Positioned.fill(child: WelcomePage(h5: h5)),
-              ],
+                  if (showWelcome) Positioned.fill(child: WelcomePage(h5: h5)),
+                ],
+              ),
             ),
           ),
         ),

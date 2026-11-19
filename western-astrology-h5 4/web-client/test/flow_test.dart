@@ -1,3 +1,4 @@
+import 'package:fate_h5/ui/theme.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -56,6 +57,251 @@ Future<void> click(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  for (final language in ['zh', 'th']) {
+    testWidgets('$language history retries list and sign-in code timeouts', (
+      tester,
+    ) async {
+      phone(tester);
+      final report = fixture(language: language);
+      final browser = TestBrowser();
+      final slowList = Completer<http.Response>();
+      final slowCode = Completer<http.Response>();
+      var listRequests = 0, codeRequests = 0;
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          if (request.url.path == '/api/life-reports') {
+            expect(request.method, 'GET');
+            listRequests++;
+            if (listRequests == 1) return slowList.future;
+            return response({
+              'items': [report],
+            });
+          }
+          if (request.url.path ==
+              "/api/life-reports/${report['id']}/app-login-code") {
+            expect(request.headers['X-Report-Key'], browser.key);
+            codeRequests++;
+            if (codeRequests == 1) return slowCode.future;
+            return response({'code': 'A2B3C4', 'expires_in': 600});
+          }
+          return response({'notice_version': H5Controller.noticeVersion});
+        }),
+      );
+      final h5 = H5Controller(translations(), repo, browser, language: language)
+        ..enterLanding();
+      await tester.pumpWidget(
+        H5App(controller: h5, initialLocation: '/?lang=$language'),
+      );
+      await tester.pumpAndSettle();
+      String label(String key) => h5.copy.t('jy', key);
+
+      final history = find.text(label('history'));
+      await tester.ensureVisible(history);
+      await tester.tap(history);
+      await tester.pump();
+      final retryList = find.text(h5.copy.t('generation', 'retry'));
+      await tester.pump(const Duration(seconds: 9));
+      expect(listRequests, 1);
+      expect(retryList, findsNothing);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(retryList, findsOneWidget);
+      expect(codeRequests, 0);
+      await click(tester, retryList);
+      slowList.complete(response({'items': []}));
+      await tester.pumpAndSettle();
+      expect(listRequests, 2);
+      expect(find.text(label('checkout.resume')), findsOneWidget);
+      await click(tester, find.text(label('appLogin.get')));
+      expect(find.text(label('appLogin.loading')), findsOneWidget);
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
+      expect(find.text(label('appLogin.failed')), findsOneWidget);
+      await click(tester, find.text(label('appLogin.refresh')));
+      slowCode.complete(response({'code': 'D5E6F7', 'expires_in': 600}));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<SelectableText>(
+              find.byKey(const ValueKey('h5-app-login-code')),
+            )
+            .data,
+        'A2B3C4',
+      );
+      expect(codeRequests, 2);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
+    });
+
+    testWidgets(
+      '$language refresh resumes the saved queue with no duplicate submission',
+      (tester) async {
+        phone(tester);
+        final done = fixture(language: language);
+        var current = {
+          ...done,
+          'preview': null,
+          'preview_state': 'queued',
+          'chart': null,
+          'generation_queue': {'state': 'queued', 'position': 12},
+        };
+        final browser = TestBrowser()
+          ..settings['session:active-preview'] = done['id'] as String;
+        final requests = <String>[];
+        var codeRequests = 0;
+        final repo = ReportRepository(
+          browser,
+          baseUrl: 'https://example.test',
+          client: MockClient((request) async {
+            if (request.url.path ==
+                "/api/life-reports/${done['id']}/app-login-code") {
+              expect(request.method, 'POST');
+              expect(request.headers['X-Report-Key'], browser.key);
+              codeRequests++;
+              return response({'code': 'A2B3C4', 'expires_in': 600});
+            }
+            if (request.url.path.startsWith('/api/life-reports')) {
+              requests.add('${request.method} ${request.url.path}');
+              return response(current);
+            }
+            return response({'notice_version': H5Controller.noticeVersion});
+          }),
+        );
+        final h5 = H5Controller(
+          translations(),
+          repo,
+          browser,
+          language: language,
+        )..enterLanding();
+        await tester.pumpWidget(
+          H5App(controller: h5, initialLocation: '/?lang=$language'),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(GenerationDialog), findsOneWidget);
+        expect(
+          find.text(h5.copy.t('jy', 'interpretation.queued')),
+          findsOneWidget,
+        );
+        expect(
+          tester
+              .widget<SelectableText>(
+                find.byKey(const ValueKey('h5-app-login-code')),
+              )
+              .data,
+          'A2B3C4',
+        );
+        expect(requests.every((request) => request.startsWith('GET ')), isTrue);
+        tester
+            .widget<GenerationDialog>(find.byType(GenerationDialog))
+            .onCancel();
+        await tester.pumpAndSettle();
+        final queuedLabel = h5.copy.t('life', 'previewStates.queued');
+        expect(queuedLabel, isNotEmpty);
+        expect(find.text(queuedLabel), findsOneWidget);
+        expect(find.text(h5.copy.t('life', 'viewProgress')), findsOneWidget);
+        current = done;
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('free-report-content')),
+          findsOneWidget,
+        );
+        expect(codeRequests, 1);
+        expect(requests.every((request) => request.startsWith('GET ')), isTrue);
+        for (final width in [320.0, 360.0, 1100.0]) {
+          tester.view.physicalSize = Size(width, 640);
+          await tester.pumpAndSettle();
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: '$language report at width $width',
+          );
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        h5.dispose();
+      },
+    );
+
+    testWidgets(
+      '$language paid queue resumes the original report and keeps polling after leaving the animation',
+      (tester) async {
+        phone(tester);
+        final done = fixture(language: language, full: true);
+        var current = {
+          ...done,
+          'full_state': 'queued',
+          'chapters': [],
+          'plan': null,
+          'progress': {
+            'completed': 0,
+            'total': object(done['progress'])['total'],
+          },
+        };
+        final browser = TestBrowser();
+        final methods = <String>[];
+        var codeRequests = 0;
+        final repo = ReportRepository(
+          browser,
+          baseUrl: 'https://example.test',
+          client: MockClient((request) async {
+            if (request.url.path ==
+                "/api/life-reports/${done['id']}/app-login-code") {
+              expect(request.method, 'POST');
+              codeRequests++;
+              return response({'code': 'A2B3C4', 'expires_in': 600});
+            }
+            if (request.url.path.startsWith('/api/life-reports')) {
+              methods.add(request.method);
+            }
+            return response(current);
+          }),
+        );
+        final h5 = H5Controller(
+          translations(),
+          repo,
+          browser,
+          language: language,
+        );
+        await tester.pumpWidget(
+          H5App(
+            controller: h5,
+            initialLocation: '/report.html?id=${done['id']}&lang=$language',
+          ),
+        );
+        await tester.pumpAndSettle();
+        final label = h5.copy.t('life', 'states.queued');
+        expect(label, isNotEmpty);
+        expect(find.textContaining(label), findsWidgets);
+        await click(tester, find.text(h5.copy.t('life', 'viewProgress')));
+        expect(
+          find.text(h5.copy.t('jy', 'interpretation.queued')),
+          findsOneWidget,
+        );
+        tester
+            .widget<GenerationDialog>(find.byType(GenerationDialog))
+            .onCancel();
+        await tester.pumpAndSettle();
+        current = done;
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pumpAndSettle();
+        expect(find.textContaining(label), findsNothing);
+        expect(find.text(h5.copy.t('life', 'viewProgress')), findsNothing);
+        expect(methods.length, greaterThan(1));
+        expect(methods.every((method) => method == 'GET'), isTrue);
+        expect(codeRequests, 1);
+        for (final width in [320.0, 1100.0]) {
+          tester.view.physicalSize = Size(width, 640);
+          await tester.pumpAndSettle();
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        h5.dispose();
+      },
+    );
+  }
+
   for (final variant in ['zh', 'th', 'en', 'zh-legacy', 'zh-unknown']) {
     final language = variant.split('-').first;
     final legacy = variant == 'zh-legacy';
@@ -313,7 +559,7 @@ void main() {
             );
           }
         }
-        expect(find.text(h5.copy.t('jy', 'checkout.pay')), findsOneWidget);
+        expect(find.text(h5.copy.t('checkout', 'title')), findsOneWidget);
         expect(
           find.textContaining('2026-11-23 – 2026-11-29'),
           legacy || unknown ? findsNothing : findsOneWidget,
@@ -344,7 +590,7 @@ void main() {
 
   for (final full in [false, true]) {
     testWidgets(
-      '${full ? 'full' : 'free'} report back button restores editable birth details and question on home',
+      '${full ? 'full' : 'free'} report back button restores birth details for the active country',
       (tester) async {
         phone(tester);
         final language = full ? 'th' : 'zh';
@@ -441,9 +687,9 @@ void main() {
         expect(time.initialValue, full ? '' : '09:30');
         expect(time.enabled, !full);
         expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, full);
-        expect(field('birth-country'), h5.copy.t('jy', 'thailand'));
-        expect(field('birth-province'), full ? 'กรุงเทพมหานคร' : '曼谷');
-        expect(field('birth-city'), full ? 'กรุงเทพมหานคร' : 'Bangkok');
+        expect(find.byKey(const ValueKey('birth-country')), findsNothing);
+        expect(find.byKey(const ValueKey('birth-province')), findsNothing);
+        expect(field('birth-city'), full ? 'กรุงเทพมหานคร' : isEmpty);
         if (full) {
           expect(
             find.descendant(
@@ -453,22 +699,8 @@ void main() {
             findsOneWidget,
           );
         } else {
-          final question = find.byKey(const ValueKey('custom-question'));
-          expect(
-            tester.widget<TextField>(question).controller!.text,
-            '我想调整工作方向',
-          );
-          await tester.ensureVisible(question);
-          await tester.enterText(question, '想换一个发展方向');
-          expect(
-            tester.widget<TextField>(question).controller!.text,
-            '想换一个发展方向',
-          );
+          expect(find.byKey(const ValueKey('custom-question')), findsNothing);
         }
-        await click(tester, find.byKey(const ValueKey('birth-country')));
-        await click(tester, find.text(h5.copy.t('jy', 'china')));
-        expect(field('birth-province'), isEmpty);
-        expect(field('birth-city'), isEmpty);
         expect(posts, 0);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
@@ -476,16 +708,17 @@ void main() {
       },
     );
   }
+
   for (final kind in ['city', 'slim', 'coordinates', 'offline']) {
     testWidgets(
       '$kind location restores usable data for editing and resubmission',
       (tester) async {
         phone(tester);
         final browser = TestBrowser();
-        final data = fixture();
+        final data = fixture(language: 'th');
         final city = {
           ...object(data['location']),
-          'nameChinese': '曼谷城区',
+          'nameThai': 'กรุงเทพฯ',
           'placeType': 'city',
           'coordinateKind': 'administrative-area',
         };
@@ -506,15 +739,24 @@ void main() {
                 'nameEnglish': profile['birthplace'],
                 'country': profile['country_code'],
               };
-        final queriedProvinces = <String>[];
-        var detailRequests = 0;
+        var detailRequests = 0, cityListings = 0;
         Json? submitted;
         final repo = ReportRepository(
           browser,
           baseUrl: 'https://example.test',
           client: MockClient((request) async {
+            if (request.url.path == '/api/landing/config') {
+              return response({'notice_version': H5Controller.noticeVersion});
+            }
+            if (request.url.path == '/api/landing/consents') {
+              return response({
+                'accepted': true,
+                'notice_version': H5Controller.noticeVersion,
+              });
+            }
             if (request.url.path == '/api/thai-locations') {
               final query = request.url.queryParameters;
+              expect(query['country'], 'TH');
               if (query['level'] == 'detail') {
                 detailRequests++;
                 expect(query['query'], profile['location_id']);
@@ -525,27 +767,28 @@ void main() {
                   'total': 1,
                 });
               }
-              if (query['level'] == 'locality') {
-                queriedProvinces.add(query['province']!);
-              }
+              expect(query['level'], 'locality');
+              expect(query.containsKey('province'), isFalse);
+              cityListings++;
               return response({
-                'items': query['level'] == 'province' ? [province] : [city],
+                'items': [city],
                 'total': 1,
               });
             }
-            if (request.method == 'POST') {
+            if (request.method == 'POST' &&
+                request.url.path == '/api/life-reports') {
               submitted = object(jsonDecode(request.body));
             }
-            final returned = {...data};
-            if (submitted != null) returned['input'] = submitted;
-            return response(returned);
+            return response(
+              submitted == null ? data : marriageFixture(input: submitted),
+            );
           }),
         );
-        final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+        final h5 = H5Controller(translations(), repo, browser, language: 'th');
         await tester.pumpWidget(
           H5App(
             controller: h5,
-            initialLocation: '/report.html?id=${data['id']}&lang=zh',
+            initialLocation: '/report.html?id=${data['id']}&lang=th',
           ),
         );
         await tester.pumpAndSettle();
@@ -554,18 +797,15 @@ void main() {
             .widget<TextFormField>(find.byKey(ValueKey(key)))
             .controller!
             .text;
-        expect(field('birth-country'), '泰国');
         if (kind == 'city' || kind == 'slim') {
-          expect(field('birth-province'), '曼谷');
-          expect(field('birth-city'), '曼谷城区');
+          expect(field('birth-city'), city['nameThai']);
           await click(tester, find.byKey(const ValueKey('birth-city')));
-          expect(queriedProvinces, isNotEmpty);
-          expect(queriedProvinces.every((id) => id == province['id']), isTrue);
+          expect(cityListings, 1);
           await click(
             tester,
             find.descendant(
               of: find.byType(PlacePicker),
-              matching: find.text('曼谷城区'),
+              matching: find.text(text(city['nameThai'])),
             ),
           );
         } else {
@@ -637,14 +877,22 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('free-report-content')), findsOneWidget);
+    expect(browser.activities.last, {
+      'page': 'preview_report',
+      'action': 'report_ready',
+    });
     final paidText = text(
       object(objects(paid['chapters']).first['summary'])['text'],
     );
     expect(find.text(paidText), findsNothing);
-    expect(find.byKey(const ValueKey('jy-app-download')), findsNothing);
-    expect(find.byKey(const ValueKey('app-testing-dialog')), findsNothing);
+    final appButton = find.byKey(const ValueKey('jy-app-download'));
+    expect(appButton, findsNothing);
     await click(tester, find.byKey(const ValueKey('jy-payment-preview')));
     expect(find.byKey(const ValueKey('order-mobile')), findsOneWidget);
+    expect(browser.activities.last, {
+      'page': 'payment',
+      'action': 'open_payment',
+    });
     await click(
       tester,
       find.widgetWithText(
@@ -653,6 +901,10 @@ void main() {
       ),
     );
     expect(find.byType(ReportPaymentDialog), findsNothing);
+    expect(browser.activities.last, {
+      'page': 'preview_report',
+      'action': 'close_payment',
+    });
     expect(find.byType(ReportCheckout), findsOneWidget);
     expect(
       calls.where(
@@ -668,69 +920,114 @@ void main() {
     h5.dispose();
   });
 
-  testWidgets(
-    'Sunlands opens and cancels phone entry without creating an order',
-    (tester) async {
-      phone(tester);
-      final browser = TestBrowser();
-      final report = LifeReport.parse({
-        ...fixture(),
-        'payment_simulation': false,
-        'price': {
-          'amount': 3000,
-          'currency': 'THB',
-          'display': '฿30',
-          'mode': 'sunlands_order_only',
-        },
-      });
-      final requests = <http.Request>[];
-      final repo = ReportRepository(
-        browser,
-        baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          requests.add(request);
-          return http.Response('', 204);
-        }),
-      );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => ReportPaymentDialog(h5: h5, report: report),
+  for (final language in ['zh', 'th']) {
+    testWidgets(
+      'Sunlands opens and cancels phone entry on a small phone without creating an order ($language)',
+      (tester) async {
+        phone(tester);
+        tester.view.physicalSize = const Size(320, 568);
+        final browser = TestBrowser();
+        final report = LifeReport.parse({
+          ...fixture(language: language),
+          'payment_simulation': false,
+          'price': {
+            'amount': 3000,
+            'currency': 'THB',
+            'display': '฿30',
+            'mode': 'sunlands_order_only',
+          },
+        });
+        final requests = <http.Request>[];
+        final repo = ReportRepository(
+          browser,
+          baseUrl: 'https://example.test',
+          client: MockClient((request) async {
+            requests.add(request);
+            return http.Response('', 204);
+          }),
+        );
+        final h5 = H5Controller(
+          translations(),
+          repo,
+          browser,
+          language: language,
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: h5Theme(),
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => ReportPaymentDialog(h5: h5, report: report),
+                  ),
+                  child: const Text('Open checkout'),
                 ),
-                child: const Text('Open checkout'),
               ),
             ),
           ),
-        ),
-      );
-      for (var attempt = 0; attempt < 2; attempt++) {
-        await click(tester, find.text('Open checkout'));
-        await tester.enterText(
-          find.byKey(const ValueKey('order-mobile')),
-          '812345678',
         );
-        await click(
-          tester,
-          find.text(h5.copy.t('checkout', 'cancelOrderEntry')),
-        );
-        expect(find.byType(ReportPaymentDialog), findsNothing);
-        expect(requests.length, attempt + 1);
-        expect(
-          requests.every(
-            (r) => r.method == 'GET' && r.url.path.endsWith('/payment'),
-          ),
-          isTrue,
-        );
-      }
-      await tester.pumpWidget(const SizedBox.shrink());
-      h5.dispose();
-    },
-  );
+        for (var attempt = 0; attempt < 2; attempt++) {
+          await click(tester, find.text('Open checkout'));
+          expect(tester.takeException(), isNull);
+          await tester.enterText(
+            find.byKey(const ValueKey('order-mobile')),
+            '812345678',
+          );
+          await click(tester, find.byKey(const ValueKey('order-nation-code')));
+          final menu = find.byKey(const ValueKey('phone-country-menu'));
+          expect(
+            tester.getTopLeft(menu).dy,
+            closeTo(
+              tester
+                      .getBottomLeft(
+                        find.byKey(const ValueKey('order-nation-code')),
+                      )
+                      .dy +
+                  5,
+              1,
+            ),
+          );
+          expect(tester.getSize(menu).height, lessThanOrEqualTo(280));
+          final search = find.byKey(const ValueKey('phone-country-search'));
+          await tester.enterText(
+            search,
+            attempt == 0 ? (language == 'zh' ? '中国' : 'จีน') : 'Canada',
+          );
+          tester.view.physicalSize = const Size(320, 360);
+          await tester.pumpAndSettle();
+          await click(
+            tester,
+            find.byKey(ValueKey('phone-country-${attempt == 0 ? 'CN' : 'CA'}')),
+          );
+          expect(
+            tester
+                .widget<TextField>(find.byKey(const ValueKey('order-mobile')))
+                .controller!
+                .text,
+            '812345678',
+          );
+          tester.view.physicalSize = const Size(320, 568);
+          await tester.pumpAndSettle();
+          await click(
+            tester,
+            find.text(h5.copy.t('checkout', 'cancelOrderEntry')),
+          );
+          expect(find.byType(ReportPaymentDialog), findsNothing);
+          expect(requests.length, attempt + 1);
+          expect(
+            requests.every(
+              (r) => r.method == 'GET' && r.url.path.endsWith('/payment'),
+            ),
+            isTrue,
+          );
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        h5.dispose();
+      },
+    );
+  }
 
   testWidgets(
     'Sunlands creates an order without submitting payment or unlocking',
@@ -781,10 +1078,13 @@ void main() {
         find.text(h5.copy.t('checkout', 'life_order_phone_invalid')),
         findsOneWidget,
       );
+      await click(tester, find.byKey(const ValueKey('order-nation-code')));
       await tester.enterText(
-        find.byKey(const ValueKey('order-nation-code')),
+        find.byKey(const ValueKey('phone-country-search')),
         '+86',
       );
+      await tester.pumpAndSettle();
+      await click(tester, find.byKey(const ValueKey('phone-country-CN')));
       await tester.enterText(
         find.byKey(const ValueKey('order-mobile')),
         '130 0000 0000',
@@ -804,6 +1104,7 @@ void main() {
       h5.dispose();
     },
   );
+
   for (final failure in [
     ('life_order_access_denied', 'accessDenied', 503),
     ('life_order_rejected', 'orderRejected', 409),
@@ -890,6 +1191,7 @@ void main() {
       },
     );
   }
+
   testWidgets(
     'Sunlands reopens and closes the saved cashier without creating or paying',
     (tester) async {
@@ -953,6 +1255,10 @@ void main() {
           ),
         );
         expect(browser.openedPages, List.filled(attempt + 1, url));
+        expect(browser.activities.last, {
+          'page': 'payment',
+          'action': 'open_cashier',
+        });
         expect(
           find.text(h5.copy.t('checkout', 'pendingOrder')),
           findsOneWidget,
@@ -1270,6 +1576,7 @@ void main() {
       h5.dispose();
     },
   );
+
   testWidgets(
     'paid generation keeps the same visible wheel across stages until the report is ready',
     (tester) async {
@@ -1420,16 +1727,25 @@ void main() {
       expect(route.queryParameters, containsPair('lang', 'zh'));
       expect(route.queryParameters, containsPair('topic', 'love'));
       expect(route.queryParameters, containsPair('startup', '1'));
-      expect(find.textContaining('从出生时刻，读懂你的运程'), findsOneWidget);
+      expect(find.text(h5.copy.t('marriage', 'title')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
     },
   );
+
   testWidgets(
-    'JY inline form starts a free report directly without a confirmation dialog or notice',
+    'birth details alone start a free marriage report with one click',
     (tester) async {
       phone(tester);
+      const city = {
+        'id': 'geonames:1816670',
+        'countryCode': 'CN',
+        'nameEnglish': 'Beijing',
+        'nameChinese': '北京市',
+        'timeZone': 'Asia/Shanghai',
+        'placeType': 'city',
+      };
       final browser = TestBrowser()..settings.remove('fate-data-use-version');
       Json? input;
       var current = fixture();
@@ -1440,35 +1756,17 @@ void main() {
         client: MockClient((request) async {
           calls.add('${request.method} ${request.url.path}');
           if (request.url.path == '/api/thai-locations') {
+            expect(request.url.queryParameters['country'], 'CN');
+            expect(request.url.queryParameters['level'], 'locality');
             return response({
-              'items': request.url.queryParameters['level'] == 'province'
-                  ? [province]
-                  : [],
-              'total': request.url.queryParameters['level'] == 'province'
-                  ? 1
-                  : 0,
+              'items': [city],
+              'total': 1,
             });
           }
-          if (request.method == 'POST') {
+          if (request.method == 'POST' &&
+              request.url.path == '/api/life-reports') {
             input = object(jsonDecode(request.body));
-            final chart = object(fixture()['chart']);
-            current = {
-              ...fixture(),
-              'input': input,
-              'time_accuracy': {
-                'mode': 'estimated',
-                'assumed_local_time': '12:00',
-              },
-              'chart': {
-                ...chart,
-                'precision': 'estimated',
-                'houses': [],
-                'planets': [
-                  for (final p in objects(chart['planets']))
-                    if (p['id'] != 'ascendant') {...p, 'house': null},
-                ],
-              },
-            };
+            current = marriageFixture(input: input);
           }
           return response(current);
         }),
@@ -1485,25 +1783,24 @@ void main() {
         find.widgetWithText(FilledButton, h5.copy.t('ui', 'confirm')),
       );
       await click(tester, find.byKey(const ValueKey('birth-time-unknown')));
-      await click(tester, find.byKey(const ValueKey('birth-country')));
-      await click(tester, find.text('泰国'));
-      await click(tester, find.byKey(const ValueKey('birth-province')));
-      await click(
-        tester,
-        find.descendant(
-          of: find.byType(PlacePicker),
-          matching: find.text('曼谷'),
-        ),
-      );
       await click(tester, find.byKey(const ValueKey('birth-city')));
       await click(
         tester,
         find.descendant(
           of: find.byType(PlacePicker),
-          matching: find.text('曼谷'),
+          matching: find.widgetWithText(InkWell, '北京市'),
         ),
       );
       expect(find.byKey(const ValueKey('data-use-notice')), findsNothing);
+      for (final field in [
+        'relationship-status',
+        'custom-question',
+        'relationship-roles',
+        'relationship-event',
+        'relationship-source',
+      ]) {
+        expect(find.byKey(ValueKey(field)), findsNothing);
+      }
       expect(input, isNull);
       expect(calls, isNot(contains('POST /api/landing/consents')));
       await click(tester, find.byKey(const ValueKey('generate-report')));
@@ -1515,21 +1812,50 @@ void main() {
       expect(input, isNotNull);
       expect(object(input!['profile'])['birth_time'], isNull);
       expect(object(input!['profile'])['birth_date'], '1999-01-01');
-      expect(object(input!['profile'])['location_id'], province['id']);
-      expect(input!['report_kind'], 'fortune');
+      expect(object(input!['profile'])['location_id'], city['id']);
+      expect(object(input!['profile'])['country_code'], 'CN');
+      expect(object(input!['profile'])['timezone'], 'Asia/Shanghai');
+      expect(input!['report_kind'], 'marriage');
+      expect(input!.containsKey('relationship'), isFalse);
+      expect(input!.containsKey('user_question'), isFalse);
       expect(calls, contains('POST /api/life-reports'));
       expect(calls, isNot(contains('POST /api/landing/consents')));
       expect(calls.any((value) => value.endsWith('/unlock')), isFalse);
       expect(find.byType(GenerationDialog), findsNothing);
       expect(find.byType(ReportCheckout), findsOneWidget);
-      expect(find.text('解锁您的运程'), findsOneWidget);
-      expect(find.text('฿39'), findsOneWidget);
-      expect(find.textContaining('先看清自己的判断习惯'), findsOneWidget);
+      expect(find.text('解锁后，深入查看六大主题'), findsOneWidget);
+      final themeBadges = find.byKey(const ValueKey('checkout-theme-badges'));
+      expect(themeBadges, findsOneWidget);
+      final labels = ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议'];
+      final centers = [
+        for (final title in labels)
+          tester.getCenter(
+            find.descendant(of: themeBadges, matching: find.text(title)),
+          ),
+      ];
+      for (final row in [centers.take(3).toList(), centers.skip(3).toList()]) {
+        expect(row[0].dy, closeTo(row[2].dy, 2));
+        expect(row[0].dx, lessThan(row[1].dx));
+        expect(row[1].dx, lessThan(row[2].dx));
+      }
+      expect(centers[0].dy, lessThan(centers[3].dy));
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('jy-payment-preview')),
+          matching: find.text('支付并解锁'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('泰式占星 · 婚姻关系报告'), findsOneWidget);
+      expect(find.text('当前感情能量判断'), findsOneWidget);
+      expect(find.text('Free marriage section 3.'), findsOneWidget);
+      expect(find.text('婚姻与长期关系完整解剖'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
     },
   );
+
   testWidgets(
     'saved complete reports use JY sections and retain all original chapters, plan and PDF export',
     (tester) async {
@@ -1568,6 +1894,7 @@ void main() {
       h5.dispose();
     },
   );
+
   test(
     'saved free report waits for its language and body fonts before showing its contents',
     () async {
@@ -1602,6 +1929,7 @@ void main() {
       h5.dispose();
     },
   );
+
   test(
     'latest language request wins after an earlier slow font download',
     () async {

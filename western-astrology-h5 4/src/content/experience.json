@@ -1,9 +1,5 @@
 {
   "zh": {
-    "welcomeFirst": "很高兴遇见你",
-    "welcomeReturning": "欢迎回来",
-    "welcomeFirstNote": "从你的星盘，探索自己的下一程",
-    "welcomeReturningNote": "很高兴你又回来了",
     "start": "开始探索",
     "swipe": "上滑进入",
     "privacy": "隐私与资料使用",
@@ -33,10 +29,6 @@
     "landing_visit_not_found": "暂时无法记录本次访问。"
   },
   "th": {
-    "welcomeFirst": "ยินดีที่คุณมา",
-    "welcomeReturning": "ยินดีต้อนรับกลับมา",
-    "welcomeFirstNote": "ออกสำรวจแผนที่ดวงดาวของคุณ",
-    "welcomeReturningNote": "ดีใจที่ได้พบคุณอีกครั้ง",
     "start": "เริ่มสำรวจ",
     "swipe": "ปัดขึ้นเพื่อเริ่ม",
     "privacy": "ความเป็นส่วนตัวและการใช้ข้อมูล",

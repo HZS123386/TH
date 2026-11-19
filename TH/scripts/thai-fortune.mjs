@@ -142,26 +142,29 @@ function analysisSample(sample) {
   };
 }
 
+export function calculateBirthSunWindow(birthDate, birthWindow, frameSeconds) {
+  const samples = birthWindow.map(({ time, offset_seconds }) => {
+    const { sun } = calculateThaiHoroscope({
+      ...civil(birthDate, time),
+      referenceMode: 'traditional',
+      planetaryTimeReference: {
+        civilUtcOffsetSeconds: offset_seconds,
+        referenceUtcOffsetSeconds: frameSeconds,
+      },
+    }).points;
+    return { sign: sun.sign, longitude: sun.longitudeDegrees };
+  });
+  // The Sun moves forward by less than one sign over these <=50-hour windows.
+  return { samples, signs: [...new Set(samples.map((sample) => sample.sign))] };
+}
+
 /** Computed factors + openly versioned editorial rules, without predictive scores. */
 export function calculateFortune(request, engine, natal) {
   const { profile, birth_window, period, now } = request;
   const window = periodWindow(period, now);
-  const birthCharts = birth_window.map(({ time, offset_seconds }) =>
-    calculateThaiHoroscope({
-      ...civil(profile.birth_date, time),
-      referenceMode: 'traditional',
-      planetaryTimeReference: {
-        civilUtcOffsetSeconds: offset_seconds,
-        referenceUtcOffsetSeconds: engine.planetaryFrameSeconds,
-      },
-    }),
+  const { samples: suns, signs: sunSigns } = calculateBirthSunWindow(
+    profile.birth_date, birth_window, engine.planetaryFrameSeconds,
   );
-  const suns = birthCharts.map((chart) => ({
-    sign: chart.points.sun.sign,
-    longitude: chart.points.sun.longitudeDegrees,
-  }));
-  // The Sun moves forward by less than one sign over these <=50-hour windows.
-  const sunSigns = [...new Set(suns.map((sun) => sun.sign))];
   const full = natal?.status === 'ready' ? natal.chart : null;
   const references = full ? [full.points.ascendant.sign] : sunSigns;
   const basis = full ? 'ascendant' : sunSigns.length === 1 ? 'sun-sign' : 'sun-sign-range';

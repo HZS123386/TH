@@ -8,11 +8,13 @@ import '../ui/theme.dart';
 class BirthplaceFields extends StatefulWidget {
   const BirthplaceFields({
     required this.h5,
+    required this.country,
     required this.onSelected,
     this.initialPlace,
     super.key,
   });
   final H5Controller h5;
+  final String country;
   final ValueChanged<Place?> onSelected;
   final Place? initialPlace;
   @override
@@ -20,20 +22,11 @@ class BirthplaceFields extends StatefulWidget {
 }
 
 class _BirthplaceFieldsState extends State<BirthplaceFields> {
-  final _countryText = TextEditingController(),
-      _provinceText = TextEditingController(),
-      _cityText = TextEditingController();
-  final _menus = {
-    for (final id in ['birth-country', 'birth-province', 'birth-city'])
-      id: OverlayPortalController(),
-  };
-  String _country = '',
-      _countryQuery = '',
-      _provinceQuery = '',
-      _cityQuery = '',
-      _open = '',
-      _language = '';
-  Place? _province, _city;
+  final _cityText = TextEditingController();
+  final _menu = OverlayPortalController();
+  String _cityQuery = '';
+  bool _open = false;
+  Place? _city;
   final _initialPlaceRequest = CancelToken();
   Copy get c => widget.h5.copy;
 
@@ -41,40 +34,15 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
   void initState() {
     super.initState();
     final place = widget.initialPlace;
-    if (place == null) return;
+    if (place == null || place.country != widget.country) return;
     _restorePlace(place);
-    if (place.id.isNotEmpty && _provinceText.text.isEmpty) {
+    if (place.id.isNotEmpty && place.json['placeType'] == null) {
       unawaited(_resolveInitialPlace(place));
     }
   }
 
-  String get _countryName => switch (_country) {
-    'CN' => c.t('jy', 'china'),
-    'TH' => c.t('jy', 'thailand'),
-    _ => _country,
-  };
-
   void _restorePlace(Place place) {
-    _country = place.country;
     _city = place;
-    _province =
-        place.json['placeType'] == 'province' ||
-            place.id.isNotEmpty && place.id == place.provinceId
-        ? place
-        : place.provinceId.isEmpty
-        ? null
-        : Place({
-            'id': place.provinceId,
-            'countryCode': place.country,
-            'timeZone': place.zone,
-            'placeType': 'province',
-            'nameEnglish': place.json['provinceNameEnglish'],
-            'nameChinese': place.json['provinceNameChinese'],
-            'nameThai': place.json['provinceNameThai'],
-          });
-    _language = c.language;
-    _countryText.text = _countryName;
-    _provinceText.text = _province?.name(c.language) ?? '';
     _cityText.text = place.name(c.language);
   }
 
@@ -100,7 +68,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
           !identical(_city, initial) ||
           place.id != initial.id ||
           place.zone != initial.zone ||
-          initial.country.isNotEmpty && place.country != initial.country) {
+          place.country != widget.country) {
         return;
       }
       setState(() => _restorePlace(place));
@@ -110,20 +78,23 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
     }
   }
 
-  void _setOpen(String id) {
-    if (_open == id) return;
-    _menus[_open]?.hide();
-    _open = id;
-    _menus[id]?.show();
+  void _setOpen(bool value) {
+    if (_open == value) return;
+    _open = value;
+    if (value) {
+      _menu.show();
+      widget.h5.trackActivity('birth_form', 'select_birthplace');
+    } else {
+      _menu.hide();
+    }
   }
 
   Widget _floatingOptions(
     BuildContext context,
     OverlayChildLayoutInfo layout,
-    String id,
-    Widget? options,
+    Widget options,
   ) {
-    if (_open != id || options == null) return const SizedBox.shrink();
+    if (!_open) return const SizedBox.shrink();
     final anchor = MatrixUtils.transformRect(
       layout.childPaintTransform,
       Offset.zero & layout.childSize,
@@ -150,7 +121,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
       bottom: upward ? layout.overlaySize.height - anchor.top + 5 : null,
       width: anchor.width,
       child: ConstrainedBox(
-        key: ValueKey('$id-options'),
+        key: const ValueKey('birth-city-options'),
         constraints: BoxConstraints(maxHeight: upward ? above : below),
         child: TextFieldTapRegion(
           child: Material(
@@ -168,298 +139,104 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
   @override
   void dispose() {
     _initialPlaceRequest.cancel();
-    _countryText.dispose();
-    _provinceText.dispose();
     _cityText.dispose();
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(covariant BirthplaceFields oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_language != c.language) {
-      _language = c.language;
-      if (_country.isNotEmpty) {
-        _countryText.text = _countryName;
-      }
-      unawaited(_localizeSelectedPlace(c.language));
-    }
-  }
-
-  Future<void> _localizeSelectedPlace(String language) async {
-    final province = _province, city = _city;
-    final names = [
-      if (province != null) province.name(language),
-      if (city != null) city.name(language),
-    ];
-    if (names.isEmpty) return;
-    try {
-      await widget.h5.prepareText(names.join(), language: language);
-    } catch (_) {
-      // Keep the readable names until their translated glyphs are available.
-      return;
-    }
-    if (!mounted ||
-        _language != language ||
-        !identical(_province, province) ||
-        !identical(_city, city)) {
-      return;
-    }
-    if (province != null) _provinceText.text = province.name(language);
-    if (city != null) _cityText.text = city.name(language);
-  }
-
-  void _clearCity() {
-    _city = null;
-    _cityQuery = '';
-    _cityText.clear();
-    widget.onSelected(null);
-  }
-
-  void _setCountry(String country) {
+  void _select(Place place) {
+    if (place.country != widget.country) return;
     setState(() {
-      _country = country;
-      _countryQuery = '';
-      _province = null;
-      _provinceQuery = '';
-      _provinceText.clear();
-      _clearCity();
-      _setOpen('');
-      _countryText.text = c.t('jy', country == 'CN' ? 'china' : 'thailand');
+      _cityQuery = '';
+      _restorePlace(place);
+      _setOpen(false);
     });
+    widget.onSelected(place);
   }
 
   @override
-  Widget build(BuildContext context) {
-    _language = c.language;
-    final hasRegions = _country == 'TH' || _country == 'CN';
-    final canSearchCity = _province != null;
-    Widget field(
-      String id,
-      String label,
-      TextEditingController controller,
-      String hint,
-      VoidCallback open,
-      ValueChanged<String> edit,
-      Widget? options, {
-      bool enabled = true,
-    }) => Focus(
-      onFocusChange: (focused) {
-        // Web focus can arrive before an arrow press; only explicit taps open it.
-        if (mounted && !focused && _open == id) {
-          setState(() => _setOpen(''));
-        }
+  Widget build(BuildContext context) => Focus(
+    onFocusChange: (focused) {
+      if (mounted && !focused && _open) setState(() => _setOpen(false));
+    },
+    // Keep the suggestion in the same tap region as its text field.
+    child: TextFieldTapRegion(
+      onTapOutside: (_) {
+        if (mounted && _open) setState(() => _setOpen(false));
       },
-      // Mouse-down on a suggestion must not blur and remove it before mouse-up.
-      child: TextFieldTapRegion(
-        onTapOutside: (_) {
-          if (_open == id && mounted) setState(() => _setOpen(''));
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '⌖  ${c.t('jy', 'city')}',
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 7),
+          OverlayPortal.overlayChildLayoutBuilder(
+            controller: _menu,
+            overlayChildBuilder: (context, layout) => _floatingOptions(
+              context,
+              layout,
+              PlacePicker(
+                h5: widget.h5,
+                country: widget.country,
+                query: _cityQuery,
+                onSelected: _select,
+              ),
             ),
-            const SizedBox(height: 7),
-            OverlayPortal.overlayChildLayoutBuilder(
-              controller: _menus[id]!,
-              overlayChildBuilder: (context, layout) =>
-                  _floatingOptions(context, layout, id, options),
-              child: SizedBox(
-                height: 46,
-                child: TextFormField(
-                  key: ValueKey(id),
-                  controller: controller,
-                  enabled: enabled,
-                  style: const TextStyle(fontSize: 13),
-                  autocorrect: false,
-                  maxLength: 80,
-                  onTap: open,
-                  onChanged: edit,
-                  decoration: InputDecoration(
-                    hintText: hint,
-                    counterText: '',
-                    suffixIconConstraints: const BoxConstraints(
-                      minWidth: 36,
-                      maxWidth: 36,
-                    ),
-                    suffixIcon: IconButton(
-                      tooltip: label,
-                      onPressed: enabled
-                          ? () =>
-                                setState(() => _setOpen(_open == id ? '' : id))
-                          : null,
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 19,
-                        color: gold,
-                      ),
+            child: SizedBox(
+              height: 46,
+              child: TextFormField(
+                key: const ValueKey('birth-city'),
+                controller: _cityText,
+                style: const TextStyle(fontSize: 13),
+                autocorrect: false,
+                maxLength: 80,
+                onTap: () => setState(() => _setOpen(true)),
+                onChanged: (value) {
+                  setState(() {
+                    _cityQuery = value;
+                    _city = null;
+                    _setOpen(true);
+                  });
+                  widget.onSelected(null);
+                },
+                decoration: InputDecoration(
+                  hintText: c.t('jy', 'citySearch'),
+                  counterText: '',
+                  suffixIconConstraints: const BoxConstraints(
+                    minWidth: 36,
+                    maxWidth: 36,
+                  ),
+                  suffixIcon: IconButton(
+                    tooltip: c.t('jy', 'city'),
+                    onPressed: () => setState(() => _setOpen(!_open)),
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 19,
+                      color: gold,
                     ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-    final countries = [
-      ('CN', c.t('jy', 'china'), 'china 中国 中國 จีน cn'),
-      ('TH', c.t('jy', 'thailand'), 'thailand 泰国 泰國 ไทย th'),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        field(
-          'birth-country',
-          '⌖  ${c.t('jy', 'country')}',
-          _countryText,
-          c.t('jy', 'countryPrompt'),
-          () => setState(() => _setOpen('birth-country')),
-          (v) => setState(() {
-            _countryQuery = v;
-            _country = '';
-            _province = null;
-            _provinceQuery = '';
-            _provinceText.clear();
-            _clearCity();
-            _setOpen('birth-country');
-          }),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF171027),
-              border: Border.all(color: const Color(0x40E4BC78)),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final item in countries)
-                    if ('${item.$2} ${item.$3}'.toLowerCase().contains(
-                      _countryQuery.toLowerCase().trim(),
-                    ))
-                      InkWell(
-                        onTap: () => _setCountry(item.$1),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 9,
-                          ),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              item.$2,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ),
-                      ),
-                ],
-              ),
-            ),
           ),
-        ),
-        const SizedBox(height: 9),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: field(
-                'birth-province',
-                c.t('jy', 'region'),
-                _provinceText,
-                c.t(
-                  'jy',
-                  !hasRegions
-                      ? 'countryFirst'
-                      : _country == 'TH'
-                      ? 'thaiRegionPrompt'
-                      : 'regionPrompt',
-                ),
-                () => setState(() => _setOpen('birth-province')),
-                (v) => setState(() {
-                  _province = null;
-                  _provinceQuery = v;
-                  _clearCity();
-                  _setOpen('birth-province');
-                }),
-                PlacePicker(
-                  key: ValueKey('province-$_country'),
-                  h5: widget.h5,
-                  country: _country,
-                  query: _provinceQuery,
-                  onSelected: (value) => setState(() {
-                    _province = value;
-                    _provinceText.text = value.name(c.language);
-                    _provinceQuery = '';
-                    _clearCity();
-                    _setOpen('');
-                  }),
-                ),
-                enabled: hasRegions,
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: field(
-                'birth-city',
-                c.t('jy', 'city'),
-                _cityText,
-                c.t(
-                  'jy',
-                  canSearchCity
-                      ? (_country == 'CN' ? 'cityExample' : 'citySearch')
-                      : _country.isEmpty
-                      ? 'countryFirst'
-                      : 'regionFirst',
-                ),
-                () => setState(() => _setOpen('birth-city')),
-                (v) => setState(() {
-                  _cityQuery = v;
-                  _city = null;
-                  widget.onSelected(null);
-                  _setOpen('birth-city');
-                }),
-                PlacePicker(
-                  key: ValueKey('city-$_country-${_province?.id}'),
-                  h5: widget.h5,
-                  country: _country,
-                  province: _province,
-                  query: _cityQuery,
-                  onSelected: (value) => setState(() {
-                    _city = value;
-                    _cityText.text = value.name(c.language);
-                    _cityQuery = '';
-                    _setOpen('');
-                    widget.onSelected(value);
-                  }),
-                ),
-                enabled: canSearchCity,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+        ],
+      ),
+    ),
+  );
 }
 
 class PlacePicker extends StatefulWidget {
   const PlacePicker({
     required this.h5,
     required this.country,
-    this.province,
     this.query = '',
     required this.onSelected,
     super.key,
   });
   final H5Controller h5;
   final String country;
-  final Place? province;
   final String query;
   final ValueChanged<Place> onSelected;
   @override
@@ -470,35 +247,25 @@ class _PlacePickerState extends State<PlacePicker> {
   CancelToken? _request;
   Timer? _debounce;
   List<Place> _items = [];
-  List<Place>? _provinces;
   bool _busy = true;
-  String _query = '', _error = '';
+  String _error = '';
   int _total = 0, _offset = 0;
   Copy get c => widget.h5.copy;
   @override
   void initState() {
     super.initState();
-    _query = widget.query;
     unawaited(_load());
   }
 
   @override
   void didUpdateWidget(covariant PlacePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.query != widget.query) {
-      _query = widget.query;
+    if (oldWidget.query != widget.query ||
+        oldWidget.country != widget.country) {
       _request?.cancel();
       _debounce?.cancel();
       _error = '';
       _offset = 0;
-      if (widget.province == null &&
-          widget.country.isNotEmpty &&
-          _provinces != null) {
-        _items = _provinces!.where((p) => p.matches(_query)).toList();
-        _total = _items.length;
-        _busy = false;
-        return;
-      }
       _items = [];
       _total = 0;
       _busy = true;
@@ -519,35 +286,30 @@ class _PlacePickerState extends State<PlacePicker> {
       }
     });
     try {
-      List<Place> items;
-      int total;
-      if (widget.province == null && widget.country.isNotEmpty) {
-        _provinces ??= await widget.h5.repository.provinces(
-          widget.country,
-          token,
-        );
-        items = _provinces!.where((p) => p.matches(_query)).toList();
-        total = items.length;
-      } else {
-        final result = await widget.h5.repository.cities(
-          widget.country,
-          widget.province?.id ?? '',
-          _query,
-          _offset,
-          token,
-        );
-        items = objects(result['items']).map(Place.new).toList();
-        total = (result['total'] as num?)?.toInt() ?? items.length;
-      }
+      final result = await widget.h5.repository.cities(
+        widget.country,
+        widget.query,
+        _offset,
+        token,
+      );
       if (!mounted || token.cancelled) return;
+      final rows = objects(result['items']);
+      final items = rows
+          .map(Place.new)
+          .where((place) => place.country == widget.country)
+          .toList();
       await widget.h5.prepareText(
-        items.map((place) => place.name(c.language)).join(),
+        items
+            .map((place) => '${place.name(c.language)}${_detail(place)}')
+            .join(),
       );
       if (!mounted || token.cancelled) return;
       setState(() {
         _items = more ? [..._items, ...items] : items;
-        _offset = _items.length;
-        _total = total;
+        _offset += rows.length;
+        _total = rows.isEmpty
+            ? _offset
+            : (result['total'] as num?)?.toInt() ?? _offset;
         _busy = false;
       });
     } catch (error) {
@@ -587,13 +349,8 @@ class _PlacePickerState extends State<PlacePicker> {
               style: const TextStyle(fontSize: 11, color: lavender),
             ),
           ),
-        if (widget.province != null && _query.trim().isEmpty)
-          _option(widget.province!),
         for (final place in _items) _option(place),
-        if (!_busy &&
-            _items.isEmpty &&
-            _error.isEmpty &&
-            (widget.province == null || _query.trim().isNotEmpty))
+        if (!_busy && _items.isEmpty && _error.isEmpty)
           Padding(
             padding: const EdgeInsets.all(10),
             child: Text(
@@ -601,7 +358,7 @@ class _PlacePickerState extends State<PlacePicker> {
               style: const TextStyle(fontSize: 11, color: lavender),
             ),
           ),
-        if (_items.length < _total)
+        if (_offset < _total)
           TextButton(
             onPressed: _busy ? null : () => _load(more: true),
             child: Text(
@@ -628,24 +385,48 @@ class _PlacePickerState extends State<PlacePicker> {
       ],
     ),
   );
-  Widget _option(Place place) => InkWell(
-    onTap: () => widget.onSelected(place),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            place.name(c.language),
-            style: const TextStyle(fontSize: 12, height: 1.4),
-          ),
-          if (widget.province != null || widget.country.isEmpty)
+  String _detail(Place place) {
+    final name = place.name(c.language);
+    final local = text(
+      place.json[switch (c.language) {
+        'zh' => 'provinceNameChinese',
+        'th' => 'provinceNameThai',
+        _ => 'provinceNameEnglish',
+      }],
+    );
+    final region = local.isNotEmpty
+        ? local
+        : text(place.json['provinceNameEnglish']);
+    return [
+      if (region.isNotEmpty && region != name) region,
+      if (place.english.isNotEmpty &&
+          place.english != name &&
+          place.english != region)
+        place.english,
+    ].join(' · ');
+  }
+
+  Widget _option(Place place) {
+    final detail = _detail(place);
+    return InkWell(
+      onTap: () => widget.onSelected(place),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              place.english,
-              style: const TextStyle(fontSize: 10, color: lavender),
+              place.name(c.language),
+              style: const TextStyle(fontSize: 12, height: 1.4),
             ),
-        ],
+            if (detail.isNotEmpty)
+              Text(
+                detail,
+                style: const TextStyle(fontSize: 10, color: lavender),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

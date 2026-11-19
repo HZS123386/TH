@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -11,191 +12,231 @@ import '../core/storage/session_store.dart';
 class AuthRepository extends ChangeNotifier {
   AuthRepository(this.api, this.store) {
     api.refreshSession = refresh;
-    api.onSessionExpired = () {
-      clear();
-    };
+    api.onSessionExpired = () => unawaited(clear());
   }
+
   final ApiClient api;
   final SessionStore store;
-  Map<String, dynamic>? account;
+  Map<String, dynamic>? _account;
   String? _refreshToken;
-  int _generation = 0;
-  Future<void>? _creatingGuest;
-  String get owner => account?['user_id'] as String? ?? 'guest';
-  bool get hasSession => account != null;
-  bool get isGuest => account?['kind'] == 'guest';
+  Future<void>? _guestRequest;
+
+  Map<String, dynamic>? get account => _account;
+  String get owner => _account?['user_id'] as String? ?? 'guest';
+  bool get hasSession => _account != null;
+  bool get isGuest => _account?['kind'] == 'guest';
+  bool get hasH5Reports => _account?['kind'] == 'h5';
   bool get signedIn => hasSession && !isGuest;
-
-  Future<void> ensureGuest() {
-    if (hasSession) return Future.value();
-    return _creatingGuest ??= _createGuest().whenComplete(
-      () => _creatingGuest = null,
-    );
-  }
-
-  Future<void> _createGuest() async {
-    final generation = _generation;
-    final response = await api.request(
-      'POST',
-      '/api/auth/guest',
-      authenticated: false,
-    );
-    if (generation != _generation || hasSession) {
-      throw const ApiFailure('session_changed');
-    }
-    await _accept(response);
-    if (!isGuest || owner != response['user_id']) {
-      throw const ApiFailure('session_changed');
-    }
-  }
-
-  Future<void> restore() async {
-    final sessionVersion = api.sessionVersion;
-    final stored = await store.read();
-    if (stored == null || api.sessionVersion != sessionVersion) return;
-    api.accessToken = stored['access_token'] as String?;
-    _refreshToken = stored['refresh_token'] as String?;
-    try {
-      await _loadAccount();
-      if (api.sessionVersion != sessionVersion) return;
-    } on ApiFailure catch (error) {
-      if (api.sessionVersion != sessionVersion) return;
-      if (error.status == 401) {
-        await clear();
-      } else {
-        rethrow;
-      }
-    }
-  }
-
-  Future<void> signInApple() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
-      throw const ApiFailure('native_apple_required');
-    }
-    final nonce = List.generate(
-      32,
-      (_) => Random.secure().nextInt(256),
-    ).map((v) => v.toRadixString(16).padLeft(2, '0')).join();
-    final credential = await SignInWithApple.getAppleIDCredential(
-      scopes: [AppleIDAuthorizationScopes.email],
-      nonce: sha256.convert(utf8.encode(nonce)).toString(),
-    );
-    if (credential.identityToken == null) {
-      throw const ApiFailure('apple_identity_missing');
-    }
-    final response = await api.request(
-      'POST',
-      '/api/auth/apple',
-      authenticated: false,
-      body: {
-        'authorization_code': credential.authorizationCode,
-        'id_token': credential.identityToken,
-        'nonce': nonce,
-      },
-    );
-    await _accept(response);
-  }
-
-  // Kept until the existing FastAPI account API has moved to Apple/LINE sessions.
   bool get canUseDevelopmentLogin =>
       kDebugMode ||
       (kIsWeb &&
           const bool.fromEnvironment('FATE_DEVELOPMENT_PREVIEW') &&
-          ['127.0.0.1', 'localhost'].contains(Uri.base.host));
+          ['localhost', '127.0.0.1'].contains(Uri.base.host));
+
+  Future<void> ensureGuest() {
+    if (hasSession) return Future.value();
+    return _guestRequest ??= _signIn(
+      () => api.request('POST', '/api/auth/guest', authenticated: false),
+    ).whenComplete(() => _guestRequest = null);
+  }
+
+  Future<void> restore() async {
+    final generation = api.sessionVersion;
+    final session = await store.read();
+    if (session == null || generation != api.sessionVersion) return;
+    api.accessToken = _token(session);
+    _refreshToken = session['refresh_token'] as String?;
+    try {
+      final account = await _readAccount();
+      if (generation != api.sessionVersion) return;
+      _account = account;
+      notifyListeners();
+    } catch (_) {
+      if (generation == api.sessionVersion) {
+        api.accessToken = null;
+        _refreshToken = null;
+      }
+      rethrow;
+    }
+  }
 
   Future<void> signInDevelopment(
     String username,
     String password, {
     bool register = false,
-  }) async {
+  }) {
     if (!canUseDevelopmentLogin) {
       throw const ApiFailure('development_login_disabled');
     }
-    await _accept(
-      await api.request(
-        'POST',
-        '/api/auth/${register ? 'register' : 'login'}',
-        authenticated: register && isGuest,
-        body: {'username': username.trim(), 'password': password},
-      ),
-    );
+    final upgradeGuest = register && isGuest;
+    return _signIn(() => api.request(
+      'POST',
+      register ? '/api/auth/register' : '/api/auth/login',
+      authenticated: upgradeGuest,
+      body: {'username': username.trim(), 'password': password},
+    ), keepGuest: upgradeGuest);
   }
 
-  Future<void> _accept(Map<String, dynamic> response) async {
-    final token = response['access_token'] ?? response['token'];
-    if (token is! String || token.isEmpty) {
-      throw const ApiFailure('invalid_session');
+  Future<void> signInApple() => _signIn(() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      throw const ApiFailure('native_apple_required');
     }
-    final sessionVersion = ++api.sessionVersion;
-    api.accessToken = token;
-    _refreshToken = response['refresh_token'] as String?;
+    final random = Random.secure();
+    final nonce = base64UrlEncode(
+      List.generate(32, (_) => random.nextInt(256)),
+    );
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: const [],
+      nonce: sha256.convert(utf8.encode(nonce)).toString(),
+    );
+    final token = credential.identityToken;
+    if (token == null || token.isEmpty) {
+      throw const ApiFailure('invalid_credentials');
+    }
+    return api.request(
+      'POST',
+      '/api/auth/apple',
+      authenticated: false,
+      body: {
+        'authorization_code': credential.authorizationCode,
+        'id_token': token,
+        'nonce': nonce,
+      },
+    );
+  });
+
+  Future<void> signInH5Code(String value) async {
+    final code = value.trim().toUpperCase();
+    if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code)) {
+      throw const ApiFailure('h5_login_code_invalid');
+    }
+    final generation = api.sessionVersion;
+    final session = await api.request(
+      'POST',
+      '/api/auth/h5-code',
+      authenticated: false,
+      body: {'code': code},
+    );
+    if (generation != api.sessionVersion) {
+      throw const ApiFailure('session_changed');
+    }
+    _token(session);
+    final account = _validatedAccount(session['account']);
+    if (account['user_id'] != session['user_id']) {
+      throw const ApiFailure('invalid_credentials');
+    }
+    // Save the accepted one-time grant without another network request.
+    await _signIn(() async => session, verifiedAccount: account);
+  }
+
+  Future<void> _signIn(
+    Future<Map<String, dynamic>> Function() request, {
+    Map<String, dynamic>? verifiedAccount,
+    bool keepGuest = false,
+  }) async {
+    final clearing = keepGuest ? Future<void>.value() : clear();
+    final generation = api.sessionVersion;
+    await clearing;
+    if (generation != api.sessionVersion) {
+      throw const ApiFailure('session_changed');
+    }
+    final session = await request();
+    if (generation != api.sessionVersion) {
+      throw const ApiFailure('session_changed');
+    }
+    api.accessToken = _token(session);
+    _refreshToken = session['refresh_token'] as String?;
     try {
-      await _loadAccount();
-      if (api.sessionVersion != sessionVersion) return;
-      await store.write({
-        'access_token': token,
-        'refresh_token': _refreshToken,
-      });
+      final account = verifiedAccount ?? await _readAccount();
+      if (generation != api.sessionVersion) {
+        throw const ApiFailure('session_changed');
+      }
+      await store.write(_session(api.accessToken!, _refreshToken));
+      if (generation != api.sessionVersion) {
+        throw const ApiFailure('session_changed');
+      }
+      _account = account;
+      notifyListeners();
     } catch (_) {
-      if (api.sessionVersion == sessionVersion) await clear();
+      if (generation == api.sessionVersion) await clear();
       rethrow;
     }
   }
 
-  Future<void> _loadAccount() async {
-    final generation = ++_generation;
-    final response = await api.get('/api/auth/me');
-    if (response['user_id'] is! String) {
-      throw const ApiFailure('invalid_identity');
+  Future<Map<String, dynamic>> _readAccount() async =>
+      _validatedAccount(await api.get('/api/auth/me'));
+
+  static Map<String, dynamic> _validatedAccount(Object? value) {
+    if (value is! Map<String, dynamic>) {
+      throw const ApiFailure('invalid_credentials');
     }
-    if (generation == _generation) {
-      account = response;
-      notifyListeners();
+    final userId = value['user_id'];
+    if (userId is! String || userId.isEmpty || value['kind'] == 'demo') {
+      throw const ApiFailure('invalid_credentials');
     }
+    return value;
   }
 
   Future<bool> refresh() async {
-    final token = _refreshToken, generation = _generation;
-    if (token == null) return false;
+    final refreshToken = _refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+    final generation = api.sessionVersion;
     try {
-      final response = await api.request(
+      final next = await api.request(
         'POST',
         '/api/auth/refresh',
         authenticated: false,
-        body: {'refresh_token': token},
+        body: {'refresh_token': refreshToken},
       );
-      if (generation != _generation ||
-          response['access_token'] is! String ||
-          response['refresh_token'] is! String) {
-        return false;
-      }
-      api.accessToken = response['access_token'] as String;
-      _refreshToken = response['refresh_token'] as String;
-      await store.write({
-        'access_token': api.accessToken,
-        'refresh_token': _refreshToken,
-      });
-      return generation == _generation;
+      if (generation != api.sessionVersion) return false;
+      final token = _token(next);
+      final rotated = next['refresh_token'] as String?;
+      if (rotated == null || rotated.isEmpty) return false;
+      await store.write(_session(token, rotated));
+      if (generation != api.sessionVersion) return false;
+      api.accessToken = token;
+      _refreshToken = rotated;
+      return true;
     } catch (_) {
       return false;
     }
   }
 
   Future<void> logout() async {
-    try {
-      await api.request('POST', '/api/auth/logout');
-    } finally {
-      await clear();
-    }
+    final revoke = api
+        .request('POST', '/api/auth/logout', retryAuth: false)
+        .then<void>((_) {}, onError: (Object _) {});
+    await clear();
+    await revoke;
   }
 
   Future<void> clear() async {
     ++api.sessionVersion;
-    ++_generation;
     api.accessToken = null;
     _refreshToken = null;
-    account = null;
+    _account = null;
     notifyListeners();
     await store.clear();
+  }
+
+  static String _token(Map<String, dynamic> value) {
+    final token = value['access_token'] ?? value['token'];
+    if (token is! String || token.isEmpty) {
+      throw const ApiFailure('invalid_credentials');
+    }
+    return token;
+  }
+
+  static Map<String, dynamic> _session(String token, String? refreshToken) => {
+    'access_token': token,
+    'refresh_token': ?refreshToken,
+  };
+
+  @override
+  void dispose() {
+    ++api.sessionVersion;
+    api.refreshSession = null;
+    api.onSessionExpired = null;
+    super.dispose();
   }
 }

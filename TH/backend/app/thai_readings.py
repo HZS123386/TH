@@ -96,11 +96,11 @@ def copy_for(language):
     return json.loads((Path(__file__).resolve().parents[2] / "src/content/thai-test.json").read_text(encoding="utf-8"))[language]
 
 
-def grounding(body, value, months, *, houses=None):
+def grounding(body, value, months, *, houses=None, supporting_planets=()):
     chart = value["chart"]
     evidence = {"N0": {"type": "ascendant", "sign": chart["points"]["ascendant"]["sign"]}}
     relevant = []
-    planets = {"sun", "moon"}
+    planets = {"sun", "moon", *supporting_planets}
     for number in HOUSES[body.reading] if houses is None else houses:
         house = chart["houses"][number - 1]
         ruler = house["ruler"]["key"]

@@ -171,7 +171,7 @@ class RoxyClient:
         self.cache = OrderedDict()
         self.inflight = {}
         self.failures = OrderedDict()
-        self.slots = asyncio.Semaphore(4)
+        self.slots = asyncio.Semaphore(settings.life_chart_concurrency)
 
     @property
     def enabled(self):
@@ -203,7 +203,7 @@ class RoxyClient:
         try:
             if not self.store.reserve_roxy([owner, network], self.settings.roxy_per_minute, self.settings.roxy_per_day):
                 raise RoxyError("roxy_local_limit")
-            async with asyncio.timeout(30), self.slots:
+            async with self.slots, asyncio.timeout(30):
                 async with httpx.AsyncClient(timeout=25, follow_redirects=False) as client:
                     async with client.stream("POST", BASE_URL + self.paths[operation],
                                              headers={"X-API-Key": self.settings.roxy_api_key}, params={"lang": lang}, json=body) as response:

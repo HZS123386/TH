@@ -42,9 +42,9 @@ def test_free_context_keeps_facts_and_summaries_without_changing_full_source():
     assert all(set(ids) <= full["evidence"].keys() and len(ids) >= 2 for ids in full["citation_rules"]["themes"].values())
 
 
-def test_preview_writer_sends_compact_facts_but_keeps_display_evidence(tmp_path):
-    config = settings(tmp_path)
-    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+def test_preview_writer_sends_compact_facts_but_keeps_display_evidence(postgres_url):
+    config = settings(postgres_url)
+    writer = LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
     body = LifeInput.model_validate({"profile": PROFILE, "year": 2026, "user_question": "怎样处理感情分歧？"})
     chart = {"time_known": True, "raw": deepcopy(GOLDEN)}
     chart["raw"]["planets"][0]["interpretation"] = {"summary": "A real source note."}
@@ -63,9 +63,9 @@ def test_preview_writer_sends_compact_facts_but_keeps_display_evidence(tmp_path)
     assert len(json.dumps(model_input, ensure_ascii=False)) < len(json.dumps(bundle, ensure_ascii=False))
 
 
-def test_preview_wait_returns_on_completion_and_cancelling_reader_keeps_job(tmp_path, monkeypatch):
+def test_preview_wait_returns_on_completion_and_cancelling_reader_keeps_job(postgres_url, monkeypatch):
     async def run():
-        app = create_app(settings(tmp_path))
+        app = create_app(settings(postgres_url))
         service = app.state.life_reports
         started, release = asyncio.Event(), asyncio.Event()
 
@@ -110,10 +110,10 @@ def test_preview_wait_returns_on_completion_and_cancelling_reader_keeps_job(tmp_
     asyncio.run(run())
 
 
-def test_personal_free_report_does_not_wait_for_paid_calculations(tmp_path, monkeypatch, transport):
+def test_personal_free_report_does_not_wait_for_paid_calculations(postgres_url, monkeypatch, transport):
     async def run():
-        config = settings(tmp_path)
-        service = LifeReports(Storage(config.database_path), config, asyncio.Semaphore(4), asyncio.Semaphore(2))
+        config = settings(postgres_url)
+        service = LifeReports(Storage(config.database_url), config, asyncio.Semaphore(4), asyncio.Semaphore(2))
         body = LifeInput.model_validate({"profile": PROFILE, "year": 2026})
         started, release = asyncio.Event(), asyncio.Event()
         calls, order_task = [], None
@@ -141,7 +141,7 @@ def test_personal_free_report_does_not_wait_for_paid_calculations(tmp_path, monk
             assert waiting["preview_state"] == "ready" and waiting["personal"]["free_lines"] == free["personal"]["free_lines"]
             assert waiting["access"] == "preview" and calls == ["personal_preview"]
             with service.store.connect() as db:
-                assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()[0] == 0
+                assert db.execute("SELECT COUNT(*) AS total FROM life_card_payments").fetchone()["total"] == 0
             release.set()
             await asyncio.wait_for(order_task, 1)
             assert not service.tasks and calls == ["personal_preview"]
@@ -154,8 +154,8 @@ def test_personal_free_report_does_not_wait_for_paid_calculations(tmp_path, monk
     asyncio.run(run())
 
 
-def test_report_calculations_overlap_and_forecast_is_kept(tmp_path, monkeypatch):
-    adapter = RoxyAstrology(settings(tmp_path), Storage(str(tmp_path / "calculations.db")))
+def test_report_calculations_overlap_and_forecast_is_kept(postgres_url, monkeypatch):
+    adapter = RoxyAstrology(settings(postgres_url), Storage(postgres_url))
     profile = LifeInput.model_validate({"profile": PROFILE, "year": 2026}).profile
 
     async def run():
@@ -177,8 +177,8 @@ def test_report_calculations_overlap_and_forecast_is_kept(tmp_path, monkeypatch)
     asyncio.run(run())
 
 
-def test_failed_natal_calculation_releases_the_forecast_waiter(tmp_path, monkeypatch):
-    adapter = RoxyAstrology(settings(tmp_path), Storage(str(tmp_path / "cancel.db")))
+def test_failed_natal_calculation_releases_the_forecast_waiter(postgres_url, monkeypatch):
+    adapter = RoxyAstrology(settings(postgres_url), Storage(postgres_url))
     profile = LifeInput.model_validate({"profile": PROFILE, "year": 2026}).profile
 
     async def run():
@@ -202,9 +202,9 @@ def test_failed_natal_calculation_releases_the_forecast_waiter(tmp_path, monkeyp
     asyncio.run(run())
 
 
-def test_paid_generation_leaves_a_model_slot_for_free_preview(tmp_path, monkeypatch):
+def test_paid_generation_leaves_a_model_slot_for_free_preview(postgres_url, monkeypatch):
     async def run():
-        config = settings(tmp_path)
+        config = settings(postgres_url)
         config.fortune_provider = "openai"
         config.fortune_fallback_provider = "qwen"
         config.providers["openai"] = ProviderConfig(
@@ -213,7 +213,7 @@ def test_paid_generation_leaves_a_model_slot_for_free_preview(tmp_path, monkeypa
         config.life_preview_openai_model = "gpt-6.1-terra"
         config.life_preview_openai_reasoning_effort = "none"
         config.life_preview_openai_languages = frozenset({"zh", "th"})
-        service = LifeReports(Storage(config.database_path), config, asyncio.Semaphore(4), asyncio.Semaphore(2))
+        service = LifeReports(Storage(config.database_url), config, asyncio.Semaphore(4), asyncio.Semaphore(2))
         writer = service.preview_writer_for("zh")
         assert (writer.config.model, writer.config.reasoning_effort) == ("gpt-6.1-terra", "none")
         assert service.preview_writer_for("lo").config == service.parts_writer.config == config.providers["openai"]

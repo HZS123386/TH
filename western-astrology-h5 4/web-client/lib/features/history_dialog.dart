@@ -6,11 +6,18 @@ import '../core/models.dart';
 import '../core/repository.dart';
 import '../ui/theme.dart';
 import 'birth_date_dialog.dart';
+import 'generation_dialog.dart';
 
-Future<void> showHistory(BuildContext context, H5Controller h5) => showDialog(
-  context: context,
-  builder: (_) => HistoryDialog(h5: h5),
-);
+Future<void> showHistory(BuildContext context, H5Controller h5) async {
+  h5.trackActivity('history');
+  final opened = await showDialog<bool>(
+    context: context,
+    builder: (_) => HistoryDialog(h5: h5),
+  );
+  if (context.mounted && opened != true) {
+    h5.trackActivity('birth_form', 'close_history');
+  }
+}
 
 class HistoryDialog extends StatefulWidget {
   const HistoryDialog({required this.h5, super.key});
@@ -33,7 +40,11 @@ class _HistoryDialogState extends State<HistoryDialog> {
   Future<void> _load() async {
     try {
       final data = object(
-        await widget.h5.repository.request('/api/life-reports', _token),
+        await widget.h5.repository.request(
+          '/api/life-reports',
+          _token,
+          timeout: const Duration(seconds: 10),
+        ),
       );
       if (mounted) setState(() => _items = objects(data['items']));
     } catch (error) {
@@ -51,7 +62,7 @@ class _HistoryDialogState extends State<HistoryDialog> {
 
   void _open(Json item) {
     final language = text(object(object(item['input'])['profile'])['language']);
-    Navigator.pop(context);
+    Navigator.pop(context, true);
     context.go(
       '/report.html?id=${Uri.encodeComponent(text(item['id']))}&lang=$language${item['access'] == 'full' ? '' : '&checkout=1'}',
     );
@@ -115,6 +126,14 @@ class _HistoryDialogState extends State<HistoryDialog> {
                   child: ListView(
                     shrinkWrap: true,
                     children: [
+                      if (_items!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: AppLoginCodePanel(
+                            h5: widget.h5,
+                            reportId: text(_items!.first['id']),
+                          ),
+                        ),
                       if (_items!.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(12),
@@ -167,6 +186,30 @@ class _HistoryDialogState extends State<HistoryDialog> {
                                         color: lavender,
                                       ),
                                     ),
+                                    if (item['access'] == 'full'
+                                        ? [
+                                            'queued',
+                                            'generating',
+                                          ].contains(item['full_state'])
+                                        : [
+                                            'queued',
+                                            'generating',
+                                          ].contains(item['preview_state']))
+                                      Text(
+                                        item['access'] == 'full'
+                                            ? c.t(
+                                                'life',
+                                                'states.${item['full_state']}',
+                                              )
+                                            : c.t(
+                                                'life',
+                                                'previewStates.${item['preview_state']}',
+                                              ),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: lavender,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),

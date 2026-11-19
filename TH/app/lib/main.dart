@@ -15,6 +15,9 @@ Future<void> main() async {
     yield LicenseEntryWithLineBreaks([
       'Noto Sans SC',
     ], await rootBundle.loadString('assets/fonts/OFL-CJK.txt'));
+    yield LicenseEntryWithLineBreaks([
+      'Noto Sans Symbols',
+    ], await rootBundle.loadString('assets/fonts/OFL-Symbols.txt'));
     yield const LicenseEntryWithLineBreaks(
       ['Rider–Waite–Smith Tarot'],
       'Public-domain illustrations by Pamela Colman Smith, 1909.\n'

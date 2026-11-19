@@ -397,33 +397,12 @@ class WesternApp:
                                          (settings.western_review_fallback_provider, settings.western_review_fallback_model))) if provider]
         self.jobs = {}
         self.calculating = {}
-        with store.connect() as db:
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS western_calculations(
-                    id TEXT PRIMARY KEY,owner TEXT NOT NULL,revision INTEGER NOT NULL,fingerprint TEXT NOT NULL,
-                    payload TEXT NOT NULL,chart TEXT NOT NULL,created REAL NOT NULL,UNIQUE(owner,fingerprint));
-                CREATE TABLE IF NOT EXISTS western_reports(
-                    id TEXT PRIMARY KEY,owner TEXT NOT NULL,result_id TEXT NOT NULL,locale TEXT NOT NULL,
-                    state TEXT NOT NULL,payload TEXT,started REAL NOT NULL,version TEXT NOT NULL,
-                    UNIQUE(owner,result_id,locale,version));
-                CREATE TABLE IF NOT EXISTS app_privacy_consents(
-                    owner TEXT NOT NULL,purpose TEXT NOT NULL,version TEXT NOT NULL,granted INTEGER NOT NULL,
-                    created REAL NOT NULL,PRIMARY KEY(owner,purpose,version));
-            """)
-            db.execute("BEGIN IMMEDIATE")
-            columns = {row["name"] for row in db.execute("PRAGMA table_info(western_reports)")}
-            if "report_number" not in columns:
-                db.execute("ALTER TABLE western_reports ADD COLUMN report_number TEXT")
-            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS western_report_numbers ON western_reports(report_number)")
-            for row in db.execute("SELECT id FROM western_reports WHERE report_number IS NULL").fetchall():
-                db.execute("UPDATE western_reports SET report_number=? WHERE id=?",
-                           (self.new_report_number(db), row["id"]))
 
     @staticmethod
     def new_report_number(db):
         for _ in range(12):
             number = "FATE-" + uuid4().hex[:10].upper()
-            if not db.execute("SELECT 1 FROM western_reports WHERE report_number=?", (number,)).fetchone():
+            if not db.execute("SELECT 1 FROM western_reports WHERE report_number=%s", (number,)).fetchone():
                 return number
         raise HTTPException(503, "report_number_unavailable")
 
@@ -474,7 +453,7 @@ class WesternApp:
 
     async def _calculate(self, current, owner, network, signature):
         with self.store.connect() as db:
-            cached = db.execute("SELECT id,chart FROM western_calculations WHERE owner=? AND fingerprint=?", (owner, signature)).fetchone()
+            cached = db.execute("SELECT id,chart FROM western_calculations WHERE owner=%s AND fingerprint=%s", (owner, signature)).fetchone()
         if cached:
             value = snapshot(json.loads(cached["chart"]), cached["id"])
             return {**value, "profile_id": current["profile_id"], "profile_revision": current["revision"]}
@@ -485,18 +464,18 @@ class WesternApp:
         value = snapshot(chart, result_id)
         value.update(profile_id=current["profile_id"], profile_revision=current["revision"])
         with self.store.connect() as db:
-            db.execute("INSERT OR IGNORE INTO western_calculations VALUES(?,?,?,?,?,?,?)",
+            db.execute("INSERT INTO western_calculations VALUES(%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
                        (result_id, owner, current["revision"], signature, encoded(value), encoded(chart), time.time()))
-            saved = db.execute("SELECT id,chart FROM western_calculations WHERE owner=? AND fingerprint=?", (owner, signature)).fetchone()
+            saved = db.execute("SELECT id,chart FROM western_calculations WHERE owner=%s AND fingerprint=%s", (owner, signature)).fetchone()
         value = snapshot(json.loads(saved["chart"]), saved["id"])
         return {**value, "profile_id": current["profile_id"], "profile_revision": current["revision"]}
 
     async def create_report(self, body, owner, network):
         self.profile(owner, body.profile_revision)
         with self.store.connect() as db:
-            calculation = db.execute("SELECT * FROM western_calculations WHERE id=? AND owner=?",
+            calculation = db.execute("SELECT * FROM western_calculations WHERE id=%s AND owner=%s",
                                      (body.calculation_result_id, owner)).fetchone()
-            consent = db.execute("SELECT granted FROM app_privacy_consents WHERE owner=? AND purpose='ai_reading' AND version=?", (owner, NOTICE)).fetchone()
+            consent = db.execute("SELECT granted FROM app_privacy_consents WHERE owner=%s AND purpose='ai_reading' AND version=%s", (owner, NOTICE)).fetchone()
         if not calculation:
             raise HTTPException(404, "report_not_found")
         if calculation["revision"] != body.profile_revision:
@@ -506,8 +485,8 @@ class WesternApp:
         if not self.enabled:
             raise HTTPException(503, "bazi_report_unconfigured")
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT * FROM western_reports WHERE owner=? AND result_id=? AND locale=? AND version=?",
+            db.execute("LOCK TABLE western_reports IN SHARE ROW EXCLUSIVE MODE")
+            row = db.execute("SELECT * FROM western_reports WHERE owner=%s AND result_id=%s AND locale=%s AND version=%s",
                              (owner, calculation["id"], body.locale, self.version)).fetchone()
             if row and row["state"] == "ready":
                 return {"report_id": row["id"], "report_number": row["report_number"]}
@@ -522,7 +501,7 @@ class WesternApp:
             number = row["report_number"] if row else self.new_report_number(db)
             started = time.time()
             db.execute("INSERT INTO western_reports(id,owner,result_id,locale,state,payload,started,version,report_number) "
-                       "VALUES(?,?,?,?,'running',NULL,?,?,?) ON CONFLICT(id) DO UPDATE SET state='running',started=excluded.started",
+                       "VALUES(%s,%s,%s,%s,'running',NULL,%s,%s,%s) ON CONFLICT(id) DO UPDATE SET state='running',started=excluded.started",
                        (identifier, owner, calculation["id"], body.locale, started, self.version, number))
         chart = json.loads(calculation["chart"])
         bundle = report_bundle(snapshot(chart, calculation["id"]), chart, body.locale)
@@ -572,7 +551,7 @@ class WesternApp:
                 return
             progress.update(stage=stage, percent=percent, completed_topics=completed)
             with self.store.connect() as db:
-                db.execute("UPDATE western_reports SET payload=? WHERE id=? AND started=? AND state='running'",
+                db.execute("UPDATE western_reports SET payload=%s WHERE id=%s AND started=%s AND state='running'",
                            (encoded({"_progress": progress}), identifier, started))
 
         def set_phase(stage, low, high, targets=()):
@@ -677,14 +656,14 @@ class WesternApp:
                 payload["_progress"] = {**progress, "stage": "failed"}
             # The lease predicate prevents a timed-out worker overwriting a newer run.
             with self.store.connect() as db:
-                db.execute("UPDATE western_reports SET state=?,payload=? WHERE id=? AND started=? AND state='running'",
+                db.execute("UPDATE western_reports SET state=%s,payload=%s WHERE id=%s AND started=%s AND state='running'",
                            ("ready" if story else "failed", encoded(payload), identifier, started))
 
     def report(self, identifier, owner):
         with self.store.connect() as db:
             row = db.execute("SELECT r.*,c.payload AS calculation_payload,c.chart AS calculation_chart FROM western_reports r "
                              "JOIN western_calculations c ON c.id=r.result_id AND c.owner=r.owner "
-                             "WHERE r.id=? AND r.owner=?", (identifier, owner)).fetchone()
+                             "WHERE r.id=%s AND r.owner=%s", (identifier, owner)).fetchone()
         if not row:
             raise HTTPException(404, "report_not_found")
         calculation = json.loads(row["calculation_payload"])
@@ -736,24 +715,23 @@ class WesternApp:
         with self.store.connect() as db:
             rows = db.execute(
                 "SELECT r.id AS report_id,r.report_number,r.result_id,r.locale,c.revision AS profile_revision,"
-                "r.started AS created_at,CASE WHEN r.state='running' AND r.started<? THEN 'failed' ELSE r.state END AS state "
+                "r.started AS created_at,CASE WHEN r.state='running' AND r.started<%s THEN 'failed' ELSE r.state END AS state "
                 "FROM western_reports r JOIN western_calculations c ON c.id=r.result_id AND c.owner=r.owner "
-                "WHERE r.owner=? AND (? IS NULL OR r.locale=?) "
-                "AND REPLACE(r.report_number,'-','') LIKE ? ESCAPE '\\' ORDER BY r.started DESC,r.id DESC LIMIT 100",
+                "WHERE r.owner=%s AND (%s::text IS NULL OR r.locale=%s) "
+                "AND REPLACE(r.report_number,'-','') LIKE %s ESCAPE '\\' ORDER BY r.started DESC,r.id DESC LIMIT 100",
                 (time.time() - self.lease_seconds, owner, locale, locale, "%" + query + "%")).fetchall()
         return {"items": [dict(row) for row in rows]}
 
     def delete_report(self, identifier, owner):
         with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT state,started FROM western_reports WHERE id=? AND owner=?", (identifier, owner)).fetchone()
+            row = db.execute("SELECT state,started FROM western_reports WHERE id=%s AND owner=%s FOR UPDATE", (identifier, owner)).fetchone()
             if row is None:
                 raise HTTPException(404, "report_not_found")
             task = self.jobs.get(identifier)
             if (task is not None and not task.done()) or (
                     row["state"] == "running" and row["started"] > time.time() - self.lease_seconds):
                 raise HTTPException(409, "report_generating")
-            db.execute("DELETE FROM western_reports WHERE id=? AND owner=?", (identifier, owner))
+            db.execute("DELETE FROM western_reports WHERE id=%s AND owner=%s", (identifier, owner))
 
     async def close(self):
         pending = [*self.jobs.values(), *self.calculating.values(), *self.writer.inflight.values(),
@@ -781,7 +759,7 @@ def western_router(service, authenticate):
     @router.post("/api/privacy/consents", status_code=204)
     async def consent(body: ConsentInput, owner=Depends(authenticate)):
         with service.store.connect() as db:
-            db.execute("INSERT INTO app_privacy_consents VALUES(?,?,?,?,?) ON CONFLICT(owner,purpose,version) DO UPDATE SET granted=excluded.granted,created=excluded.created",
+            db.execute("INSERT INTO app_privacy_consents VALUES(%s,%s,%s,%s,%s) ON CONFLICT(owner,purpose,version) DO UPDATE SET granted=excluded.granted,created=excluded.created",
                        (owner, body.purpose, body.notice_version, int(body.granted), time.time()))
 
     @router.post("/api/western/reports", status_code=202)

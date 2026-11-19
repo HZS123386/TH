@@ -1,5 +1,5 @@
 import informationCopy from "../content/jy.json";
-import type { LifeLabels, LifePoint, LifeReport, LifeSummary } from "./lifeReport";
+import { marriageSections, type LifeLabels, type LifePoint, type LifeReport, type LifeSummary } from "./lifeReport";
 import { previewParagraphs, reportContent, reportReference } from "./reportContent";
 import originalCopy from "../content/thai-test.json" with { type: "json" };
 import { additionalCopy, additionalLocales, localeTag, type Language } from "./locales";
@@ -95,7 +95,7 @@ export const ui = {
     chooseCity: "请选择对应的出生地点",
     searching: "正在识别出生地点…",
     placeHint: "先输入国家，再填写省份 / 府州和市区；支持中、泰、英文检索。",
-    noCity: "暂未识别到地点，请补充省份或尝试其他名称。",
+    noCity: "未找到该城市，请尝试其他名称。",
     locationError: "地点识别暂时不可用，请重试。",
     provinceNote: "按所选省份的省会或府治代表坐标排盘。",
     areaNote: "所选地点为行政区，采用该行政区的代表坐标排盘。",
@@ -105,7 +105,7 @@ export const ui = {
     retryPlaces: "重新查找",
     selectedPlace: "已识别",
     invalidDate: "请选择有效的出生日期，范围为1901年起，不能晚于出生地的今天。",
-    invalidPlace: "请输入出生地点，并确认识别结果。",
+    invalidPlace: "请从列表选择出生城市。",
     invalidTimezone: "出生地点的时区信息无效，请重新输入或选择地点。",
     invalidYear: "请选择1901至2100之间的年份。",
     theme: "选择你想了解的主题",
@@ -142,7 +142,7 @@ export const ui = {
     chooseCity: "เลือกสถานที่เกิดที่ตรงกับข้อมูลของคุณ",
     searching: "กำลังระบุสถานที่เกิด…",
     placeHint: "กรอกประเทศ แล้วกรอกมณฑล / จังหวัดและเมือง / เขต ค้นหาได้ด้วยภาษาจีน ไทย หรืออังกฤษ",
-    noCity: "ยังไม่พบสถานที่ ลองเพิ่มจังหวัดหรือใช้ชื่ออื่น",
+    noCity: "ไม่พบเมืองที่ตรงกัน ลองใช้ชื่ออื่น",
     locationError: "ยังระบุสถานที่ไม่ได้ กรุณาลองอีกครั้ง",
     provinceNote: "ใช้พิกัดตัวแทนของเมืองหลวงมณฑลหรือที่ตั้งศาลากลางจังหวัดในการคำนวณดวง",
     areaNote: "สถานที่ที่เลือกเป็นเขตปกครอง ระบบใช้พิกัดตัวแทนของเขตนั้นในการคำนวณ",
@@ -153,7 +153,7 @@ export const ui = {
     selectedPlace: "ระบุสถานที่แล้ว",
     invalidDate:
       "เลือกวันเกิดที่ถูกต้อง ตั้งแต่ปี ค.ศ. 1901 และไม่เกินวันนี้ในเขตเวลาเกิด",
-    invalidPlace: "กรอกสถานที่เกิดและยืนยันผลการค้นหา",
+    invalidPlace: "กรุณาเลือกเมืองเกิดจากรายการ",
     invalidTimezone: "เขตเวลาของสถานที่เกิดไม่ถูกต้อง กรุณากรอกหรือเลือกสถานที่อีกครั้ง",
     invalidYear: "เลือกปี ค.ศ. ตั้งแต่ 1901 ถึง 2100",
     theme: "เลือกเรื่องที่คุณอยากเข้าใจ",
@@ -236,6 +236,8 @@ export async function api<T>(
 export function reportHtml(result: LifeReport, c: LifeLabels): string {
   const language = result.input.profile.language;
   const personalCopy = result.format === "western-personal" ? (language === "zh" || language === "th" ? informationCopy.jy[language].personal : additionalLocales[language].jy.personal) : undefined;
+  const relationshipMode = !!personalCopy && !!result.input.relationship;
+  const marriageMode = result.format === "thai-marriage";
   const sections = reportContent(result);
   const advice = sections.find(section => section.key === "advice");
   const full = result.access === "full" && result.full_state === "ready";
@@ -256,7 +258,18 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
       : '<section><h2>' + escape(paragraph.title) + '</h2>' + window(paragraph)
         + '<p class="takeaway">' + escape(paragraph.text) + '</p>' + (paragraph.evidence.length ? evidence(paragraph) : '') + '</section>').join('');
   }
-  if (personalCopy) {
+  if (marriageMode) {
+    preview = marriageSections(result).map(({title, paragraphs}) =>
+      '<section><h2>' + escape(title) + '</h2>' +
+      paragraphs.map(paragraph => '<p>' + escape(paragraph) + '</p>').join('') + '</section>').join('');
+  } else if (relationshipMode) {
+    const answers = full ? result.personal?.relationship_sections : result.personal?.relationship_preview_sections;
+    preview = result.catalog.map(({key, title}) => {
+      const lines = answers?.[key as keyof typeof answers] ?? [];
+      const content = lines.flatMap(line => line.split('\n')).map(line => '<p>' + escape(line) + '</p>').join('');
+      return content ? '<section><h2>' + escape(title) + '</h2>' + content + '</section>' : '';
+    }).join('');
+  } else if (personalCopy) {
     const personal = result.personal;
     const structured = personal?.traits?.length === 3;
     const planets = readingCopy(language).planets;
@@ -278,7 +291,7 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
     }).join('') + '</section>';
   }
   let personalBody = '';
-  if (full && personalCopy && result.personal?.talent) {
+  if (full && personalCopy && !relationshipMode && result.personal?.talent) {
     const names = language === 'zh' || language === 'th' ? informationCopy.jy[language].report.westernSections : additionalLocales[language].jy.report.westernSections;
     const themes = result.personal.themes;
     const directions = result.personal.talent.directions.map(direction => '<article><h4>' + escape(direction.title) + '</h4><p>' + escape(direction.text) + '</p></article>').join('');
@@ -288,14 +301,15 @@ export function reportHtml(result: LifeReport, c: LifeLabels): string {
     personalBody = themes
       ? '<section><h2>' + escape(names.natal) + '</h2><p>' + escape(result.personal.talent.text) + '</p></section>'
         + '<section><h2>' + escape(names.career) + '</h2>' + directions + '</section>'
-        + (['wealth', 'love', 'risk'] as const).map(key => '<section><h2>' + escape(names[key]) + '</h2><p>' + escape(themes[key].text) + '</p>'
+        + (['wealth', 'love', 'risk'] as const).map(key => '<section><h2>' + escape(names[key]) + '</h2>'
+          + themes[key].text.split('\n\n').map(paragraph => '<p>' + escape(paragraph) + '</p>').join('')
           + evidence({ ...themes[key], period: null }) + '</section>').join('')
         + '<section><h2>' + escape(names.plan) + '</h2>' + nodes + '</section>'
       : '<section><h2>' + escape(personalCopy.talent) + '</h2><p>' + escape(result.personal.talent.text) + '</p>' + directions + '</section>' + nodes;
   }
-  const catalog = personalCopy ? '' : '<section><h2>' + escape(c.catalog) + '</h2>' + sections.filter(section => full || !section.paid).map(section => '<h3>' + escape(section.title) + '</h3><p>' + escape(section.description) + '</p>').join('') + '</section>';
+  const catalog = personalCopy || marriageMode ? '' : '<section><h2>' + escape(c.catalog) + '</h2>' + sections.filter(section => full || !section.paid).map(section => '<h3>' + escape(section.title) + '</h3><p>' + escape(section.description) + '</p>').join('') + '</section>';
   const chapters = full ? sections.filter(section => section.paid && section.groups.length).map(section => '<section><h2>' + escape(section.title) + '</h2>' + section.summaries.map(summary => window(summary) + '<p class="takeaway">' + escape(summary.text) + '</p>' + evidence(summary)).join('') + section.groups.map(group => '<h3>' + escape(group.title) + '</h3>' + group.entries.map(entry => point(entry.point)).join('')).join('') + '</section>').join('') : '';
   const plan = full && result.plan && advice ? '<section><h2>' + escape(advice.title) + '</h2><p>' + escape(advice.description) + '</p>' + result.plan.phases.map((phase,index) => '<h3>' + escape(c.priority) + ' ' + (index + 1) + '</h3><h4>' + escape(phase.title) + '</h4><p>' + escape(phase.text) + '</p>' + phase.actions.map(action => '<h4>' + escape(action.title) + '</h4>' + window(action) + list(action.steps || [],true)).join('')).join('') + '</section>' : '';
-  const header = personalCopy ? '<header><p class="label">FATE</p><h1>' + escape(personalCopy.title) + '</h1></header>' : '<header><p class="label">FATE</p><h1>' + escape(c.title) + '</h1><p>' + escape(c.subtitle) + '</p><h2>' + escape(sections[0].title) + '</h2><p>' + escape(c.name) + ': ' + escape(result.input.profile.display_name || c.defaultName) + '</p><p>' + escape(result.input.profile.birth_date) + ' · ' + escape(result.input.profile.birth_time || c.timeUnknown) + '<br>' + escape(result.input.profile.birthplace) + ' · ' + escape(result.input.profile.timezone) + '</p>' + (!result.input.profile.birth_time ? '<p>' + escape(ui[language].timeNote) + '</p>' : '') + '<p class="label">' + (result.format === 'western-compact' ? '' : escape(c.methodValue) + '<br>') + escape(c.timeRange) + ': ' + escape(reportReference(result, c)) + '<br>' + escape(result.id.toUpperCase()) + '</p></header>';
-  return '<!doctype html><html lang="' + language + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(c.title) + '</title><style>html{background:#130c24;color-scheme:dark}*{box-sizing:border-box}body{max-width:820px;margin:0 auto;padding:40px 28px;background:radial-gradient(ellipse at 0 0,#352044,transparent 55%),#130c24;color:#fff5df;font:15px/1.95 "Noto Sans SC","Noto Sans Thai",system-ui,sans-serif}h1,h2,h3,h4,h5{break-after:avoid}h1{font-size:36px;font-weight:500}h2{font-size:25px;color:#e4bc78}h3{font-size:19px;color:#e4bc78}h4{font-size:17px;margin:0 0 12px}h5{font-size:14px;color:#e4bc78;margin-bottom:6px}p,li{overflow-wrap:anywhere;color:#d5c8e3}p{margin:12px 0}.label{font-size:12px;color:#e4bc78}.takeaway{font-size:20px;color:#fff5df}section{border-top:1px solid #e4bc7850;margin-top:34px;padding-top:18px}.personal-free-keywords{background:linear-gradient(135deg,#422650,#251733);border-color:#d5ae7080}.personal-signs{font-size:26px;font-weight:700;line-height:1.4;color:#fff5df;margin:10px 0}.personal-signs span{display:inline-block;margin-right:6px}.personal-keywords{display:flex;flex-wrap:wrap;gap:8px}.personal-keywords span{padding:2px 12px;border:1px solid #d5ae70;border-radius:30px;color:#e4bc78;font-size:13px}.personal-trait{padding:12px 0}.personal-trait+.personal-trait{border-top:1px solid #d5ae7044}.personal-trait h4{margin:0;font-size:16px}.personal-trait p{margin:3px 0 0;font-size:14px;line-height:1.6}.personal-free-opportunity .personal-free-line{font-size:20px;font-weight:600;color:#fff5df}.personal-free-zone h3{margin:0 0 8px;font-size:14px}.personal-free-zone{margin:16px 0}.personal-free-opportunity{background:linear-gradient(135deg,#463344,#2b1c35);border-color:#d5ae7080}article{margin:26px 0;padding:18px;background:#21162f;border:1px solid #e4bc7830;border-radius:12px;break-inside:avoid}details{font-size:12px;background:#160f24;border:1px solid #e4bc7830;border-radius:8px;padding:12px;margin-top:16px;color:#b4a8c6}summary{color:#e4bc78;cursor:pointer}li{padding-left:4px;margin:10px 0}header{border:1px solid #e4bc7860;border-radius:16px;padding:24px;background:#241535}footer{margin-top:36px;font-size:11px;color:#b4a8c6}@page{size:A4;margin:16mm}@media print{html,body{background:#130c24!important;color:#fff5df;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:0;max-width:none;font-size:11pt}details{display:block}details>*{display:block}article{break-inside:auto}section{break-before:auto}}</style></head><body>' + header + preview + personalBody + catalog + chapters + plan + (personalCopy ? '' : '<footer>' + escape(c.sourceVersion) + ' · ' + escape(result.method.version) + ' / ' + escape(result.version) + '</footer>') + '</body></html>';
+  const header = personalCopy || marriageMode ? '<header><p class="label">FATE</p><h1>' + escape(personalCopy && !relationshipMode ? personalCopy.title : c.title) + '</h1></header>' : '<header><p class="label">FATE</p><h1>' + escape(c.title) + '</h1><p>' + escape(c.subtitle) + '</p><h2>' + escape(sections[0].title) + '</h2><p>' + escape(c.name) + ': ' + escape(result.input.profile.display_name || c.defaultName) + '</p><p>' + escape(result.input.profile.birth_date) + ' · ' + escape(result.input.profile.birth_time || c.timeUnknown) + '<br>' + escape(result.input.profile.birthplace) + ' · ' + escape(result.input.profile.timezone) + '</p>' + (!result.input.profile.birth_time ? '<p>' + escape(ui[language].timeNote) + '</p>' : '') + '<p class="label">' + (result.format === 'western-compact' ? '' : escape(c.methodValue) + '<br>') + escape(c.timeRange) + ': ' + escape(reportReference(result, c)) + '<br>' + escape(result.id.toUpperCase()) + '</p></header>';
+  return '<!doctype html><html lang="' + language + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(c.title) + '</title><style>html{background:#130c24;color-scheme:dark}*{box-sizing:border-box}body{max-width:820px;margin:0 auto;padding:40px 28px;background:radial-gradient(ellipse at 0 0,#352044,transparent 55%),#130c24;color:#fff5df;font:15px/1.95 "Noto Sans SC","Noto Sans Thai",system-ui,sans-serif}h1,h2,h3,h4,h5{break-after:avoid}h1{font-size:36px;font-weight:500}h2{font-size:25px;color:#e4bc78}h3{font-size:19px;color:#e4bc78}h4{font-size:17px;margin:0 0 12px}h5{font-size:14px;color:#e4bc78;margin-bottom:6px}p,li{overflow-wrap:anywhere;color:#d5c8e3}p{margin:12px 0}.label{font-size:12px;color:#e4bc78}.takeaway{font-size:20px;color:#fff5df}section{border-top:1px solid #e4bc7850;margin-top:34px;padding-top:18px}.personal-free-keywords{background:linear-gradient(135deg,#422650,#251733);border-color:#d5ae7080}.personal-signs{font-size:26px;font-weight:700;line-height:1.4;color:#fff5df;margin:10px 0}.personal-signs span{display:inline-block;margin-right:6px}.personal-keywords{display:flex;flex-wrap:wrap;gap:8px}.personal-keywords span{padding:2px 12px;border:1px solid #d5ae70;border-radius:30px;color:#e4bc78;font-size:13px}.personal-trait{padding:12px 0}.personal-trait+.personal-trait{border-top:1px solid #d5ae7044}.personal-trait h4{margin:0;font-size:16px}.personal-trait p{margin:3px 0 0;font-size:14px;line-height:1.6}.personal-free-opportunity .personal-free-line{font-size:20px;font-weight:600;color:#fff5df}.personal-free-zone h3{margin:0 0 8px;font-size:14px}.personal-free-zone{margin:16px 0}.personal-free-opportunity{background:linear-gradient(135deg,#463344,#2b1c35);border-color:#d5ae7080}article{margin:26px 0;padding:18px;background:#21162f;border:1px solid #e4bc7830;border-radius:12px;break-inside:avoid}details{font-size:12px;background:#160f24;border:1px solid #e4bc7830;border-radius:8px;padding:12px;margin-top:16px;color:#b4a8c6}summary{color:#e4bc78;cursor:pointer}li{padding-left:4px;margin:10px 0}header{border:1px solid #e4bc7860;border-radius:16px;padding:24px;background:#241535}footer{margin-top:36px;font-size:11px;color:#b4a8c6}@page{size:A4;margin:16mm}@media print{html,body{background:#130c24!important;color:#fff5df;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:0;max-width:none;font-size:11pt}details{display:block}details>*{display:block}article{break-inside:auto}section{break-before:auto}}</style></head><body>' + header + preview + personalBody + catalog + chapters + plan + (personalCopy || marriageMode ? '' : '<footer>' + escape(c.sourceVersion) + ' · ' + escape(result.method.version) + ' / ' + escape(result.version) + '</footer>') + '</body></html>';
 }

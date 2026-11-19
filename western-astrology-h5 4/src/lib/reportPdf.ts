@@ -83,7 +83,7 @@ function edition(report: LifeReport, labels: LifeLabels): string {
 }
 
 function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
-  if (report.format === "western-personal") return [
+  if (report.format === "western-personal" || report.format === "thai-marriage") return [
     { text: "FATE", color: palette.paleGold, characterSpacing: 2.2, fontSize: 9, margin: [0, 0, 0, 10] },
     { text: textRuns(labels.title), fontSize: 26, color: "#FFF5DF", lineHeight: 1.15, margin: [0, 0, 0, report.input.profile.language === "my" ? 104 : 54] },
   ];
@@ -122,7 +122,7 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
   const document = new DOMParser().parseFromString(reportHtml(report, labels), "text/html");
   const full = report.access === "full" && report.full_state === "ready";
   const sections = reportContent(report);
-  const personal = report.format === "western-personal";
+  const personal = report.format === "western-personal" || report.format === "thai-marriage";
   const compact = personal || report.format === "western-compact";
   const paidTitles = new Set(sections.filter(section => section.paid).map(section => section.title));
   let evidenceNoteShown = false;

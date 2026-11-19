@@ -77,7 +77,7 @@ def story_for(bundle):
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
+def client(postgres_url, monkeypatch):
     bundles = []
     mode = {"value": "ready"}
     real_client = httpx.AsyncClient
@@ -102,7 +102,7 @@ def client(tmp_path, monkeypatch):
             return httpx.Response(503)
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(story, ensure_ascii=False)}}]})
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
-    settings = Settings(database_path=str(tmp_path / "thai-readings.db"), providers={"qwen": ProviderConfig("private-test-key", "https://model.example/v1", "test")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
+    settings = Settings(database_url=postgres_url, providers={"qwen": ProviderConfig("private-test-key", "https://model.example/v1", "test")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
     with TestClient(create_app(settings)) as test_client:
         yield test_client, bundles, mode
 
@@ -186,8 +186,8 @@ def test_failed_or_fabricated_writing_has_no_fake_fallback_and_can_be_repaired(c
     assert bool(result["report"]["sections"]) == (expected == "ready")
 
 
-def test_unconfigured_reading_still_returns_real_chart(tmp_path):
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "unconfigured.db")))) as http:
+def test_unconfigured_reading_still_returns_real_chart(postgres_url):
+    with TestClient(create_app(Settings(database_url=postgres_url))) as http:
         result = http.post("/api/thai-reading", json={"profile": PROFILE}).json()
         assert result["natal"]["status"] == "ready"
         assert result["report"]["sections"] == []

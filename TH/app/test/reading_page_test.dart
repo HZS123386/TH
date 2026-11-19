@@ -237,8 +237,24 @@ void main() {
         );
         await tester.pumpAndSettle();
         final s = AppLocalizationsEn();
-        await tester.tap(find.byKey(const ValueKey('app-nav/chart')));
-        await tester.pumpAndSettle();
+        Future<void> openFromHome(String path) async {
+          await tester.tap(find.byType(NavigationDestination).first);
+          await tester.pumpAndSettle();
+          final entry = find.byKey(ValueKey('home-entry-$path'));
+          await tester.ensureVisible(entry);
+          await tester.tap(entry);
+          await tester.pumpAndSettle();
+        }
+
+        Future<void> openRecords() async {
+          await openFromHome('/reports');
+          final saved = find.byKey(const ValueKey('reports-saved-readings'));
+          await tester.ensureVisible(saved);
+          await tester.tap(saved);
+          await tester.pumpAndSettle();
+        }
+
+        await openFromHome('/chart');
         final read = find.widgetWithText(FilledButton, s.chartRead);
         await tester.ensureVisible(read);
         await tester.tap(read);
@@ -266,6 +282,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         expect(creates, 1);
         expect(d.auth.signedIn, isFalse);
+        await tester.pumpAndSettle();
+        expect(d.reports.report?.generating, isTrue, reason: d.reports.error);
         expect(find.byKey(const ValueKey('reading-progress')), findsOneWidget);
         expect(
           tester
@@ -322,8 +340,7 @@ void main() {
             find.byKey(const ValueKey('app-bottom-navigation')),
             findsOneWidget,
           );
-          await tester.tap(find.byKey(const ValueKey('app-nav/reports')));
-          await tester.pumpAndSettle();
+          await openRecords();
           expect(find.text(s.reportRecords), findsOneWidget);
           expect(find.text(number), findsOneWidget);
           await tester.tap(find.byKey(const ValueKey('open-report-r1')));
@@ -398,8 +415,7 @@ void main() {
         );
         if (full && !estimated) {
           expect(find.text(s.reportRecords), findsOneWidget);
-          await tester.tap(find.byKey(const ValueKey('app-nav/chart')));
-          await tester.pumpAndSettle();
+          await openFromHome('/chart');
         }
         await tester.ensureVisible(read);
         await tester.tap(read);
@@ -407,6 +423,9 @@ void main() {
         expect(creates, 1);
         expect(find.byType(AlertDialog), findsNothing);
         expect(find.text('Your personal chart summary'), findsOneWidget);
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('chart-reading-history')),
+        );
         await tester.tap(find.byKey(const ValueKey('chart-reading-history')));
         await tester.pumpAndSettle();
         expect(find.text(s.reportRecords), findsOneWidget);
@@ -429,8 +448,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(back);
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const ValueKey('app-nav/reports')));
-        await tester.pumpAndSettle();
+        await openRecords();
         expect(find.text(s.reportRecords), findsOneWidget);
         expect(find.text(number), findsOneWidget);
         expect(find.text('Your personal chart summary'), findsNothing);
@@ -465,6 +483,9 @@ void main() {
         );
         await tester.tap(find.byKey(const ValueKey('open-report-r1')));
         await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('chart-reading-history')),
+        );
         await tester.tap(find.byKey(const ValueKey('chart-reading-history')));
         await tester.pumpAndSettle();
         expect(find.text(s.reportRecords), findsOneWidget);
@@ -473,7 +494,7 @@ void main() {
           findsOneWidget,
         );
         expect(creates, 1);
-        await tester.tap(find.byKey(const ValueKey('app-nav/profile')));
+        await tester.tap(find.byType(NavigationDestination).last);
         await tester.pumpAndSettle();
         final profileReports = find.byKey(
           const ValueKey('profile-reading-history'),

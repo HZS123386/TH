@@ -7,7 +7,8 @@ import pytest
 
 
 @pytest.fixture
-def release(tmp_path):
+def release(tmp_path, monkeypatch):
+    monkeypatch.setenv("FATE_DEPLOY_DATABASE_URL", "postgresql://test-example@db.example.test/fate_test")
     script = Path(__file__).resolve().parents[3] / 'western-astrology-h5 4/deploy/prepare_release.py'
     spec = importlib.util.spec_from_file_location('fate_prepare_release', script)
     module = importlib.util.module_from_spec(spec)
@@ -15,7 +16,7 @@ def release(tmp_path):
     module.ROOT = tmp_path / 'h5'
     module.TH = tmp_path / 'TH'
     module.PRIVATE = tmp_path / 'output/deploy'
-    for name in ('backend', 'scripts', 'src/content', 'src/locales', 'src/data', 'node_modules/thai-astrology'):
+    for name in ('backend', 'h5_admin', 'scripts', 'src/content', 'src/locales', 'src/data', 'node_modules/thai-astrology'):
         folder = module.TH / name
         folder.mkdir(parents=True)
         (folder / 'fixture.txt').write_text('source fixture', encoding='utf-8')
@@ -68,8 +69,6 @@ def test_runtime_carries_live_payment_and_configured_report_writers(release):
         env.write('FORTUNE_PROVIDER=openai\nFORTUNE_FALLBACK_PROVIDER=qwen\n'
                   'OPENAI_API_KEY=test-openai-secret\nOPENAI_BASE_URL=https://example.test/v1\n'
                   'OPENAI_MODEL=test-writer\nOPENAI_REASONING_EFFORT=low\n'
-                  'LIFE_PREVIEW_OPENAI_MODEL=test-preview\nLIFE_PREVIEW_OPENAI_REASONING_EFFORT=none\n'
-                  'LIFE_PREVIEW_OPENAI_LANGUAGES=zh,th\n'
                   'WESTERN_REVIEW_ENABLED=true\nWESTERN_REVIEW_PROVIDER=kimi\n'
                   'KIMI_API_KEY=test-kimi-secret\nKIMI_MODEL=test-review\n'
                   'SUNLANDS_ORDER_ONLY=true\nSUNLANDS_BASE_URL=https://api-prod.sunlands.com\n'
@@ -79,8 +78,6 @@ def test_runtime_carries_live_payment_and_configured_report_writers(release):
     runtime = (latest / 'runtime.env').read_text()
     for setting in ('FORTUNE_PROVIDER=openai', 'FORTUNE_FALLBACK_PROVIDER=qwen',
                     'OPENAI_API_KEY=test-openai-secret', 'OPENAI_REASONING_EFFORT=low',
-                    'LIFE_PREVIEW_OPENAI_MODEL=test-preview', 'LIFE_PREVIEW_OPENAI_REASONING_EFFORT=none',
-                    'LIFE_PREVIEW_OPENAI_LANGUAGES=zh,th',
                     'WESTERN_REVIEW_ENABLED=true', 'KIMI_API_KEY=test-kimi-secret',
                     'SUNLANDS_ORDER_ONLY=true', 'SUNLANDS_APP_SECRET=test-payment-secret'):
         assert setting in runtime

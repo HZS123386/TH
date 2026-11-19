@@ -105,7 +105,7 @@ class GenerationPoster extends StatelessWidget {
           ).createShader(rect),
           child: FateImage(
             'assets/images/report-loading-poster.webp',
-            fit: BoxFit.fill,
+            fit: BoxFit.contain,
           ),
         ),
       ),

@@ -1,28 +1,38 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/account/account_page.dart';
 import '../features/account/birth_page.dart';
 import '../features/account/login_page.dart';
+import '../features/account/privacy_page.dart';
+import '../features/account/support_page.dart';
+import '../features/actions/action_page.dart';
+import '../features/purchases/purchase_center_page.dart';
 import '../features/chart/chart_page.dart';
+import '../features/chart/thai_chart_page.dart';
 import '../features/home/daily_horoscope.dart';
 import '../features/home/home_page.dart';
+import '../features/home/divination_page.dart';
+import '../features/home/live_page.dart';
+import '../features/home/reading_guide.dart';
+import '../features/home/thai_calendar_page.dart';
+import '../features/home/welcome_page.dart';
+import '../features/companion/bond_page.dart';
+import '../features/companion/companion_page.dart';
+import '../features/companion/guardian.dart';
 import '../features/lucky_numbers/lucky_numbers_page.dart';
+import '../features/reports/h5_report_page.dart';
 import '../features/reports/reports_page.dart';
-import '../features/reports/report_records_page.dart';
 import '../features/reports/report_progress_page.dart';
+import '../features/reports/report_records_page.dart';
+import '../features/reports/report_recovery_sheet.dart';
+import '../features/shop/shop_page.dart';
 import '../features/tarot/tarot_page.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../ui/theme.dart';
 import 'app_opening.dart';
 import 'dependencies.dart';
-
-String _reportRecordsLocation(Map<String, String> parameters) =>
-    switch (parameters['origin']) {
-      'reports' => '/reports',
-      'profile' => '/chart/readings?from=profile',
-      _ => '/chart/readings',
-    };
 
 class FateApp extends StatefulWidget {
   const FateApp({
@@ -36,13 +46,14 @@ class FateApp extends StatefulWidget {
   State<FateApp> createState() => _FateAppState();
 }
 
-class _FateAppState extends State<FateApp> {
+class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
   bool _firstFrameDeferred = false;
   final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (_showOpening) return;
     _firstFrameDeferred = true;
     final binding = WidgetsBinding.instance;
@@ -50,7 +61,18 @@ class _FateAppState extends State<FateApp> {
     // Build normally, but present the first frame only after the hero is decoded.
     binding.addPostFrameCallback((_) async {
       try {
-        if (mounted) await precacheImage(homeHeroImage, context);
+        if (mounted) {
+          await Future.wait([
+            precacheImage(homeHeroImage, context),
+            precacheImage(sirinPortrait, context),
+            precacheImage(guideDuo, context),
+            precacheImage(const AssetImage(objectsArtwork), context),
+            precacheImage(
+              const AssetImage('assets/images/fate-brand-gold.png'),
+              context,
+            ),
+          ]);
+        }
       } finally {
         _allowFirstFrame();
       }
@@ -63,51 +85,89 @@ class _FateAppState extends State<FateApp> {
     WidgetsBinding.instance.allowFirstFrame();
   }
 
+  String get _startPath =>
+      widget.playOpening &&
+          widget.dependencies.session.drafts.preferences.getBool(
+                WelcomePage.seenKey,
+              ) !=
+              true
+      ? '/welcome'
+      : '/fortune';
+
   late final GoRouter _router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/fortune',
+    initialLocation: _startPath,
     routes: [
+      GoRoute(
+        path: '/welcome',
+        pageBuilder: (context, state) =>
+            _motionPage(context, state, const WelcomePage()),
+      ),
       ShellRoute(
-        builder: (context, state, child) => _AppShell(
-          path: state.uri.path == DailyHoroscopePage.location
-              ? '/fortune'
-              : state.uri.path,
-          child: child,
-        ),
+        builder: (context, state, child) {
+          final path = state.uri.path;
+          final parameters = state.uri.queryParameters;
+          final history = parameters['from'] == 'history';
+          final back = switch (path) {
+            '/chart/reading' || '/chart/generating' =>
+              history
+                  ? _recordsLocation(parameters['origin'])
+                  : parameters['example'] == '1'
+                  ? '/chart?example=1'
+                  : '/chart',
+            '/chart/readings' => switch (parameters['from']) {
+              'profile' => '/more',
+              'reports' => '/reports',
+              _ => '/chart',
+            },
+            _ => null,
+          };
+          return _AppShell(
+            path: path == DailyHoroscopePage.location ? '/fortune' : path,
+            readingBack: back,
+            hideNavigation:
+                back != null &&
+                !(path == '/chart/readings' && parameters['from'] == 'reports'),
+            child: child,
+          );
+        },
         routes: [
           GoRoute(
             path: '/fortune',
-            builder: (_, _) => const HomePage(),
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              HomePage(
+                initialGuide: ReadingGuide.fromName(
+                  state.uri.queryParameters['guide'],
+                ),
+              ),
+              tab: true,
+            ),
             routes: [
-              GoRoute(path: 'tarot', builder: (_, _) => const TarotPage()),
+              GoRoute(
+                path: 'calendar',
+                pageBuilder: (context, state) => _motionPage(
+                  context,
+                  state,
+                  ThaiCalendarPage(
+                    repository: widget.dependencies.thaiCalendar,
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'tarot',
+                pageBuilder: (context, state) =>
+                    _motionPage(context, state, const TarotPage()),
+              ),
               GoRoute(
                 path: DailyHoroscopePage.path,
                 parentNavigatorKey: _rootNavigatorKey,
                 pageBuilder: (context, state) {
-                  final reduceMotion = MediaQuery.disableAnimationsOf(context);
-                  return CustomTransitionPage<void>(
-                    key: state.pageKey,
-                    transitionDuration: reduceMotion
-                        ? Duration.zero
-                        : const Duration(milliseconds: 230),
-                    reverseTransitionDuration: reduceMotion
-                        ? Duration.zero
-                        : const Duration(milliseconds: 190),
-                    transitionsBuilder: (context, animation, _, child) {
-                      // Slide the opaque page in one pass without blending two full screens.
-                      return SlideTransition(
-                        position: animation
-                            .drive(CurveTween(curve: Curves.easeInOutCubic))
-                            .drive(
-                              Tween(
-                                begin: const Offset(1, 0),
-                                end: Offset.zero,
-                              ),
-                            ),
-                        child: child,
-                      );
-                    },
-                    child: const _AppShell(
+                  return _motionPage(
+                    context,
+                    state,
+                    const _AppShell(
                       path: DailyHoroscopePage.location,
                       child: DailyHoroscopePage(),
                     ),
@@ -116,89 +176,212 @@ class _FateAppState extends State<FateApp> {
               ),
               GoRoute(
                 path: 'lucky-numbers',
-                builder: (_, _) => const LuckyNumbersPage(),
+                pageBuilder: (context, state) =>
+                    _motionPage(context, state, const LuckyNumbersPage()),
               ),
             ],
           ),
           GoRoute(
             path: '/chart',
-            builder: (_, state) =>
-                ChartPage(example: state.uri.queryParameters['example'] == '1'),
-            routes: [
-              GoRoute(
-                path: 'reading',
-                parentNavigatorKey: _rootNavigatorKey,
-                builder: (_, state) => _AppShell(
-                  path: state.uri.path,
-                  backLocation: state.uri.queryParameters['from'] == 'history'
-                      ? _reportRecordsLocation(state.uri.queryParameters)
-                      : state.uri.queryParameters['example'] == '1'
-                      ? '/chart?example=1'
-                      : '/chart',
-                  child: ReportsPage(
-                    example: state.uri.queryParameters['example'] == '1',
-                    fromChart: ![
-                      'history',
-                      'generation',
-                    ].contains(state.uri.queryParameters['from']),
-                  ),
-                ),
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              ChartPage(example: state.uri.queryParameters['example'] == '1'),
+            ),
+          ),
+          GoRoute(
+            path: '/chart/reading',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              ReportsPage(
+                detail: true,
+                example: state.uri.queryParameters['example'] == '1',
+                fromChart: ![
+                  'history',
+                  'generation',
+                ].contains(state.uri.queryParameters['from']),
+                backLocation: state.uri.queryParameters['from'] == 'history'
+                    ? _recordsLocation(state.uri.queryParameters['origin'])
+                    : '/chart',
               ),
-              GoRoute(
-                path: 'generating',
-                parentNavigatorKey: _rootNavigatorKey,
-                builder: (_, state) {
-                  final parameters = Map<String, String>.from(
-                    state.uri.queryParameters,
-                  )..remove('report');
-                  final history = parameters['from'] == 'history';
-                  final back = history
-                      ? _reportRecordsLocation(parameters)
-                      : '/chart';
-                  if (!history) parameters['from'] = 'generation';
-                  final destination = Uri(
+            ),
+          ),
+          GoRoute(
+            path: '/chart/generating',
+            pageBuilder: (context, state) {
+              final query = Map<String, String>.of(state.uri.queryParameters);
+              final id = query.remove('report');
+              final history = query['from'] == 'history';
+              if (!history) query['from'] = 'generation';
+              final back = history
+                  ? _recordsLocation(query['origin'])
+                  : '/chart';
+              if (!history) query['from'] = 'generation';
+              return _motionPage(
+                context,
+                state,
+                ReportProgressPage(
+                  reportId: id,
+                  destination: Uri(
                     path: '/chart/reading',
-                    queryParameters: parameters,
-                  ).toString();
-                  return _AppShell(
-                    path: state.uri.path,
-                    backLocation: back,
-                    child: ReportProgressPage(
-                      reportId: state.uri.queryParameters['report'],
-                      destination: destination,
-                      backLocation: back,
-                    ),
-                  );
+                    queryParameters: query,
+                  ).toString(),
+                  backLocation: back,
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/chart/readings',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              ReportRecordsPage(
+                origin: switch (state.uri.queryParameters['from']) {
+                  'profile' => ReportRecordsOrigin.profile,
+                  'reports' => ReportRecordsOrigin.reports,
+                  _ => ReportRecordsOrigin.chart,
                 },
               ),
-              GoRoute(
-                path: 'readings',
-                parentNavigatorKey: _rootNavigatorKey,
-                builder: (_, state) => _AppShell(
-                  path: state.uri.path,
-                  backLocation: state.uri.queryParameters['from'] == 'profile'
-                      ? '/profile'
-                      : '/chart',
-                  child: ReportRecordsPage(
-                    origin: state.uri.queryParameters['from'] == 'profile'
-                        ? ReportRecordsOrigin.profile
-                        : ReportRecordsOrigin.chart,
-                  ),
-                ),
-              ),
-            ],
+            ),
+          ),
+          GoRoute(
+            path: '/chart/thai',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const ThaiChartPage()),
           ),
           GoRoute(
             path: '/reports',
-            builder: (_, _) =>
-                const ReportRecordsPage(origin: ReportRecordsOrigin.reports),
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const ReportsPage()),
           ),
-          GoRoute(path: '/profile', builder: (_, _) => const AccountPage()),
-          GoRoute(path: '/birth', builder: (_, _) => const BirthPage()),
-          GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+          GoRoute(
+            path: '/reports/reading',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              ReportsPage(
+                detail: true,
+                example: state.uri.queryParameters['example'] == '1',
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/reports/h5/:id',
+            pageBuilder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _motionPage(
+                context,
+                state,
+                H5ReportPage(id: id, key: ValueKey(id)),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/divination',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const DivinationPage(), tab: true),
+          ),
+          GoRoute(
+            path: '/profile',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const BondPage(), tab: true),
+          ),
+          GoRoute(
+            path: '/more',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const AccountPage(), tab: true),
+          ),
+          GoRoute(
+            path: '/action',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const ActionPage(), tab: true),
+          ),
+          GoRoute(
+            path: '/live',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              LivePage(
+                room: state.uri.queryParameters['room'] == 'objects'
+                    ? LiveRoom.objects
+                    : LiveRoom.temple,
+              ),
+              tab: true,
+            ),
+          ),
+          GoRoute(
+            path: '/shop',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const ShopPage(), tab: true),
+          ),
+          GoRoute(
+            path: '/reading/:guide',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              CompanionPage.guide(
+                key: state.pageKey,
+                guide: ReadingGuide.fromName(state.pathParameters['guide']),
+                voice: state.uri.queryParameters['voice'] == '1',
+                sample: state.uri.queryParameters['sample'] == '1',
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/companion/:guardian',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              CompanionPage(
+                key: state.pageKey,
+                guardian: Guardian.fromId(state.pathParameters['guardian']),
+                reading: state.extra is ReadingHandoff
+                    ? state.extra as ReadingHandoff
+                    : null,
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/birth',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              BirthPage(
+                returnToPrevious: true,
+                openThaiChart: state.uri.queryParameters['reading'] == 'thai',
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/login',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const LoginPage()),
+          ),
+          GoRoute(
+            path: '/privacy',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const PrivacyPage()),
+          ),
+          GoRoute(
+            path: '/support',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const SupportPage()),
+          ),
+          GoRoute(
+            path: '/delete-account',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const DeleteAccountPage()),
+          ),
+          GoRoute(
+            path: '/purchases',
+            pageBuilder: (context, state) =>
+                _motionPage(context, state, const PurchaseCenterPage()),
+          ),
         ],
       ),
-      GoRoute(path: '/', redirect: (_, _) => '/fortune'),
+      GoRoute(path: '/', redirect: (_, _) => _startPath),
     ],
     errorBuilder: (_, _) => const HomePage(),
   );
@@ -208,6 +391,7 @@ class _FateAppState extends State<FateApp> {
       const {
         '/',
         '/fortune',
+        '/welcome',
       }.contains(_router.routeInformationProvider.value.uri.path);
 
   @override
@@ -221,281 +405,307 @@ class _FateAppState extends State<FateApp> {
       locale: widget.dependencies.session.locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
-      builder: (context, child) =>
-          _showOpening ? AppOpening(child: child!) : child!,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(disableAnimations: FateMotion.reduced(context)),
+        child: _showOpening ? AppOpening(child: child!) : child!,
+      ),
     ),
   );
   @override
+  void didChangeAccessibilityFeatures() => setState(() {});
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _allowFirstFrame();
     _router.dispose();
     super.dispose();
   }
 }
 
+const _shellBackdrop = BoxDecoration(
+  gradient: RadialGradient(
+    center: Alignment(0, -.48),
+    radius: .94,
+    colors: [Color(0xFF20172E), Color(0xFF13101F)],
+  ),
+);
+
+Page<void> _motionPage(
+  BuildContext context,
+  GoRouterState state,
+  Widget child, {
+  bool tab = false,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: FateMotion.duration(
+      context,
+      tab ? FateMotion.settle : FateMotion.page,
+    ),
+    reverseTransitionDuration: FateMotion.duration(context, FateMotion.settle),
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (FateMotion.reduced(context)) return child;
+      // Keep the route and draft alive when reduced motion changes, including on iOS.
+      if (!tab && Theme.of(context).platform == TargetPlatform.iOS) {
+        return CupertinoRouteTransitionMixin.buildPageTransitions<void>(
+          ModalRoute.of(context)! as PageRoute<void>,
+          context,
+          animation,
+          secondaryAnimation,
+          child,
+        );
+      }
+      final eased = animation.drive(CurveTween(curve: Curves.easeOutCubic));
+      if (tab) {
+        // Fade the incoming content over the background so outgoing text cannot show through.
+        return DecoratedBox(
+          decoration: _shellBackdrop,
+          child: FadeTransition(opacity: eased, child: child),
+        );
+      }
+      return FadeTransition(
+        opacity: eased,
+        child: SlideTransition(
+          position: Tween(
+            begin: const Offset(.045, 0),
+            end: Offset.zero,
+          ).animate(eased),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+String _recordsLocation(String? origin) => switch (origin) {
+  'profile' => '/chart/readings?from=profile',
+  'reports' => '/chart/readings?from=reports',
+  _ => '/chart/readings',
+};
+
 class _AppShell extends StatelessWidget {
-  const _AppShell({required this.path, required this.child, this.backLocation});
+  const _AppShell({
+    required this.path,
+    required this.child,
+    this.readingBack,
+    this.hideNavigation = false,
+  });
   final String path;
   final Widget child;
-  final String? backLocation;
+  final String? readingBack;
+  final bool hideNavigation;
+  static const _tabs = ['/fortune', '/action', '/live', '/shop', '/more'];
+
   @override
   Widget build(BuildContext context) {
-    final s = AppLocalizations.of(context),
-        session = DependencyScope.of(context).session;
+    final s = AppLocalizations.of(context), d = DependencyScope.of(context);
     final daily = path == DailyHoroscopePage.location;
-    final selected = path.startsWith('/chart') || path == '/birth'
-        ? 1
-        : path.startsWith('/reports')
-        ? 2
-        : ['/profile', '/login'].contains(path)
-        ? 3
+    final chatting = path.startsWith('/companion/');
+    final calendar = path == '/fortune/calendar';
+    final guideChat = path.startsWith('/reading/');
+    final selected = _tabs.contains(path)
+        ? _tabs.indexOf(path)
+        : const [
+            '/profile',
+            '/login',
+            '/privacy',
+            '/support',
+            '/delete-account',
+            '/purchases',
+          ].contains(path)
+        ? 4
         : 0;
+    final showBack = !_tabs.contains(path) && (context.canPop() || !guideChat);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return ColoredBox(
       color: const Color(0xFF0B0715),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 430),
-          child: Scaffold(
-            key: backLocation == null
-                ? null
-                : const ValueKey('standalone-chart-reading'),
-            appBar: AppBar(
-              leading: backLocation == null
-                  ? (path.startsWith('/fortune/')
-                        ? BackButton(onPressed: () => context.pop())
-                        : null)
-                  : IconButton(
-                      key: const ValueKey('reading-back'),
-                      tooltip:
-                          backLocation == '/reports' ||
-                              backLocation!.startsWith('/chart/readings')
-                          ? s.savedReadings
-                          : backLocation == '/profile'
-                          ? s.mine
-                          : s.backToChart,
-                      onPressed: () => context.go(backLocation!),
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-              titleSpacing: 18,
-              centerTitle: daily ? true : null,
-              title: daily
-                  ? Text(
-                      s.dailyHoroscopeTitle,
-                      style: const TextStyle(
-                        color: horoscopeTitleColor,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    )
-                  : InkWell(
-                      onTap: () => context.go('/fortune'),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.auto_awesome_outlined, size: 25),
-                          SizedBox(width: 12),
-                          Text(
-                            'FATE',
-                            style: TextStyle(
-                              fontFamily: 'serif',
-                              letterSpacing: 3,
-                              fontSize: 20,
+          child: DecoratedBox(
+            decoration: _shellBackdrop,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              appBar: chatting || calendar
+                  ? null
+                  : AppBar(
+                      backgroundColor: Colors.transparent,
+                      automaticallyImplyLeading: false,
+                      leading: readingBack != null
+                          ? BackButton(
+                              key: const ValueKey('reading-back'),
+                              onPressed: () => context.go(readingBack!),
+                            )
+                          : showBack
+                          ? BackButton(
+                              onPressed: () => context.canPop()
+                                  ? context.pop()
+                                  : context.go(
+                                      path.startsWith('/reports/h5/')
+                                          ? '/reports'
+                                          : _tabs[selected],
+                                    ),
+                            )
+                          : null,
+                      toolbarHeight: 56,
+                      titleSpacing: showBack ? 0 : 20,
+                      centerTitle: daily ? true : null,
+                      title: daily
+                          ? Text(
+                              s.dailyHoroscopeTitle,
+                              style: const TextStyle(
+                                color: horoscopeTitleColor,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            )
+                          : InkWell(
+                              onTap: () => context.go('/fortune'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                child: Image.asset(
+                                  'assets/images/fate-brand-gold.png',
+                                  height: 22,
+                                  semanticLabel: 'FATE',
+                                ),
+                              ),
                             ),
+                      actions: [
+                        if (daily)
+                          PopupMenuButton<String>(
+                            tooltip: s.language,
+                            icon: const Icon(Icons.language_outlined, size: 21),
+                            onSelected: d.session.changeLocale,
+                            itemBuilder: (_) => [
+                              for (final row in const [
+                                ('th', 'ภาษาไทย'),
+                                ('en', 'English'),
+                                ('zh', '简体中文'),
+                                ('vi', 'Tiếng Việt'),
+                              ])
+                                PopupMenuItem(
+                                  value: row.$1,
+                                  child: Text(row.$2),
+                                ),
+                            ],
+                          ),
+                        if (!daily)
+                          TextButton.icon(
+                            onPressed: () => showReportRecovery(context),
+                            icon: const Icon(Icons.article_outlined, size: 17),
+                            label: Text(
+                              s.reports,
+                              maxLines: 1,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: mutedColor,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                            ),
+                          ),
+                        if (path == '/shop')
+                          ValueListenableBuilder(
+                            valueListenable: d.demoCart,
+                            builder: (context, items, _) {
+                              final count = items.values.fold<int>(
+                                0,
+                                (total, value) => total + value,
+                              );
+                              return IconButton(
+                                tooltip: s.shopCart,
+                                onPressed: () => showShopCart(context),
+                                icon: Badge(
+                                  isLabelVisible: count > 0,
+                                  label: Text('$count'),
+                                  backgroundColor: goldColor,
+                                  textColor: canvasColor,
+                                  child: const Icon(
+                                    Icons.shopping_bag_outlined,
+                                    size: 21,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        else if (!daily)
+                          IconButton(
+                            tooltip: s.mine,
+                            onPressed: () => context.go('/more'),
+                            icon: const Icon(
+                              Icons.person_outline,
+                              color: mutedColor,
+                              size: 22,
+                            ),
+                          ),
+                        const SizedBox(width: 9),
+                      ],
+                    ),
+              body: child,
+              bottomNavigationBar:
+                  hideNavigation || daily || chatting || (guideChat && keyboard)
+                  ? null
+                  : DecoratedBox(
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Color(0x55463655)),
+                        ),
+                      ),
+                      child: NavigationBar(
+                        key: const ValueKey('app-bottom-navigation'),
+                        height: 64,
+                        backgroundColor: const Color(0xFF171222),
+                        indicatorColor: Colors.transparent,
+                        animationDuration: FateMotion.duration(
+                          context,
+                          FateMotion.change,
+                        ),
+                        selectedIndex: selected,
+                        onDestinationSelected: (index) =>
+                            context.go(_tabs[index]),
+                        destinations: [
+                          NavigationDestination(
+                            icon: const Icon(Icons.wb_sunny_outlined),
+                            label: s.todayTab,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(
+                              Icons.eco_outlined,
+                              color: actionColor,
+                            ),
+                            selectedIcon: const CircleAvatar(
+                              radius: 13,
+                              backgroundColor: Color(0x38ADBF9A),
+                              child: Icon(
+                                Icons.eco_outlined,
+                                color: actionColor,
+                                size: 19,
+                              ),
+                            ),
+                            label: s.actionTab,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(Icons.ondemand_video_outlined),
+                            label: s.liveTab,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(Icons.shopping_bag_outlined),
+                            label: s.objectsTab,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(Icons.person_outline),
+                            label: s.mine,
                           ),
                         ],
                       ),
                     ),
-              actions: [
-                if (backLocation != null && path == '/chart/reading')
-                  IconButton(
-                    key: const ValueKey('chart-reading-history'),
-                    tooltip: s.savedReadings,
-                    onPressed: () => context.go(
-                      backLocation == '/reports' ||
-                              backLocation!.startsWith('/chart/readings')
-                          ? backLocation!
-                          : '/chart/readings',
-                    ),
-                    icon: const Icon(Icons.history, size: 21),
-                  ),
-                PopupMenuButton<String>(
-                  tooltip: s.language,
-                  icon: const Icon(Icons.language_outlined, size: 21),
-                  onSelected: session.changeLocale,
-                  itemBuilder: (_) => [
-                    for (final row in const [
-                      ('th', 'ภาษาไทย'),
-                      ('en', 'English'),
-                      ('zh', '简体中文'),
-                      ('vi', 'Tiếng Việt'),
-                    ])
-                      PopupMenuItem(value: row.$1, child: Text(row.$2)),
-                  ],
-                ),
-                if (!daily)
-                  IconButton(
-                    tooltip: session.auth.signedIn ? s.account : s.login,
-                    onPressed: () => context.go(
-                      session.auth.signedIn ? '/profile' : '/login',
-                    ),
-                    icon: const Icon(Icons.person_outline, size: 22),
-                  ),
-              ],
-            ),
-            body: backLocation == null
-                ? child
-                : SafeArea(top: false, child: child),
-            bottomNavigationBar: backLocation == null && !daily
-                ? _AppNavigationBar(selectedIndex: selected)
-                : null,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AppNavigationBar extends StatelessWidget {
-  const _AppNavigationBar({required this.selectedIndex});
-  final int selectedIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppLocalizations.of(context);
-    final destinations = [
-      (path: '/fortune', label: s.home, icon: Icons.home_outlined),
-      (path: '/chart', label: s.chart, icon: Icons.public_outlined),
-      (path: '/reports', label: s.reports, icon: Icons.menu_book_outlined),
-      (path: '/profile', label: s.mine, icon: Icons.person_outline),
-    ];
-    final scaledLabel = MediaQuery.textScalerOf(context).scale(10.5);
-    final itemHeight = scaledLabel > 10.5
-        ? 60 + (scaledLabel - 10.5) * 3
-        : 60.0;
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Container(
-        key: const ValueKey('app-bottom-navigation'),
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A0C2C),
-          borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: const Color(0xFF513568), width: 1.2),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x3305000C),
-              blurRadius: 20,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: SizedBox(
-          height: itemHeight,
-          child: Row(
-            children: [
-              for (var index = 0; index < destinations.length; index++)
-                Expanded(
-                  child: _NavigationItem(
-                    key: ValueKey('app-nav${destinations[index].path}'),
-                    label: destinations[index].label,
-                    icon: destinations[index].icon,
-                    selected: selectedIndex == index,
-                    onTap: () => context.go(destinations[index].path),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavigationItem extends StatelessWidget {
-  const _NavigationItem({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-    super.key,
-  });
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? const Color(0xFFFCF4FF) : const Color(0xFFB3A0C9);
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Tooltip(
-        message: label,
-        excludeFromSemantics: true,
-        child: AnimatedContainer(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: selected
-                ? const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF8537C4),
-                      Color(0xFFAE28D4),
-                      Color(0xFFD21ACB),
-                    ],
-                  )
-                : null,
-            border: Border.all(
-              color: selected ? const Color(0x66D88AF5) : Colors.transparent,
-            ),
-            boxShadow: selected
-                ? const [
-                    BoxShadow(
-                      color: Color(0x50911CC7),
-                      blurRadius: 17,
-                      offset: Offset(0, 5),
-                    ),
-                  ]
-                : const [],
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            borderRadius: BorderRadius.circular(20),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 20, color: color),
-                    const SizedBox(height: 2),
-                    Text(
-                      label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 10.5,
-                        height: 1.2,
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
         ),

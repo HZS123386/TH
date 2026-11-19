@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,7 +70,7 @@ void main() {
   });
 
   testWidgets(
-    'language switching preserves form and scroll while selected place names wait for their glyphs',
+    'switching birth countries clears the old city and keeps date, time and scroll',
     (tester) async {
       tester.view.physicalSize = const Size(360, 740);
       tester.view.devicePixelRatio = 1;
@@ -83,6 +84,14 @@ void main() {
       final ui = Completer<void>(), body = Completer<void>();
       final browser = TestBrowser();
       final calls = <String>[];
+      const chinaCity = {
+        'id': 'geonames:2037355',
+        'countryCode': 'CN',
+        'placeType': 'city',
+        'timeZone': 'Asia/Shanghai',
+        'nameEnglish': 'Fushun',
+        'nameChinese': '抚顺市',
+      };
       final controller =
           H5Controller(
               translations(),
@@ -90,6 +99,20 @@ void main() {
                 browser,
                 client: MockClient((request) async {
                   calls.add(request.method);
+                  if (request.url.path == '/api/thai-locations') {
+                    expect(request.url.queryParameters['country'], 'CN');
+                    expect(request.url.queryParameters['level'], 'locality');
+                    return http.Response(
+                      jsonEncode({
+                        'items': [chinaCity],
+                        'total': 1,
+                      }),
+                      200,
+                      headers: {
+                        'content-type': 'application/json; charset=utf-8',
+                      },
+                    );
+                  }
                   return http.Response('{}', 200);
                 }),
               ),
@@ -101,27 +124,22 @@ void main() {
             )
             ..landingInput = {
               'profile': {'birth_date': '2001-02-03', 'birth_time': '09:15'},
-              'user_question': 'Original question',
             }
             ..landingPlace = Place({
               'id': 'synthetic-place',
-              'countryCode': 'CN',
-              'placeType': 'province',
-              'timeZone': 'Asia/Shanghai',
-              'nameEnglish': 'Fushun',
-              'nameChinese': '抚顺市',
-              'nameThai': 'ฟู่ซุ่น',
+              'countryCode': 'TH',
+              'placeType': 'city',
+              'timeZone': 'Asia/Bangkok',
+              'nameEnglish': 'Chiang Mai',
+              'nameThai': 'เชียงใหม่',
             })
             ..enterLanding();
       await tester.pumpWidget(
         H5App(controller: controller, initialLocation: '/?lang=th&topic=love'),
       );
       await tester.pumpAndSettle();
-      final question = find.byKey(const ValueKey('custom-question'));
-      await tester.ensureVisible(question);
-      await tester.enterText(question, 'Keep this edited question');
-      FocusManager.instance.primaryFocus?.unfocus();
-      await tester.pump();
+      final city = find.byKey(const ValueKey('birth-city'));
+      expect(tester.widget<TextFormField>(city).controller!.text, 'เชียงใหม่');
       final page = find.byType(LandingPage);
       final initialState = tester.state(page);
       final scroll = tester.state<ScrollableState>(
@@ -150,10 +168,6 @@ void main() {
       expect(identical(tester.state(page), initialState), isTrue);
       expect(scroll.position.pixels, closeTo(initialOffset, 1));
       expect(
-        tester.widget<TextField>(question).controller!.text,
-        'Keep this edited question',
-      );
-      expect(
         find.byKey(const ValueKey('birth-date:2001年2月3日')),
         findsOneWidget,
       );
@@ -163,9 +177,14 @@ void main() {
       ).routeInformationProvider.value.uri;
       expect(uri.queryParameters, containsPair('lang', 'zh'));
       expect(uri.queryParameters, containsPair('topic', 'love'));
-      final city = find.byKey(const ValueKey('birth-city'));
-      expect(tester.widget<TextFormField>(city).controller!.text, 'ฟู่ซุ่น');
+      expect(tester.widget<TextFormField>(city).controller!.text, isEmpty);
+      await tester.ensureVisible(city);
+      await tester.tap(city);
+      await tester.pump();
+      expect(find.text('抚顺市'), findsNothing);
       body.complete();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('抚顺市'));
       await tester.pumpAndSettle();
       expect(tester.widget<TextFormField>(city).controller!.text, '抚顺市');
       expect(calls.where((method) => method != 'GET'), isEmpty);

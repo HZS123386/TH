@@ -15,6 +15,18 @@ const h5Languages = [
 String h5Language(String? value) =>
     h5Languages.any((item) => item.$1 == value) ? value! : 'th';
 
+String h5BirthCountry(String language) => switch (language) {
+  'zh' => 'CN',
+  'en' => 'SG',
+  'vi' => 'VN',
+  'my' => 'MM',
+  'km' => 'KH',
+  'lo' => 'LA',
+  'ms' => 'MY',
+  'id' => 'ID',
+  _ => 'TH',
+};
+
 Locale h5Locale(String language) =>
     language == 'en' ? const Locale('en', 'SG') : Locale(language);
 

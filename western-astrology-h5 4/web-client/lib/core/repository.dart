@@ -8,6 +8,14 @@ abstract interface class DeviceStore {
   String ownerKey();
 }
 
+class AppLoginCode {
+  const AppLoginCode(this.value, this.expiresAt);
+
+  final String value;
+  final DateTime expiresAt;
+  bool get expired => !expiresAt.isAfter(DateTime.now());
+}
+
 class Cancelled implements Exception {
   const Cancelled();
 }
@@ -59,6 +67,29 @@ class ReportRepository {
   final http.Client client;
   final String baseUrl;
   String language = 'th';
+  Json Function()? visitContext;
+  void Function(String, String, String)? onClientFailure;
+
+  void _recordClientFailure(String path, String code, String method) {
+    if (path.split('?').first == '/api/landing/visits') return;
+    try {
+      final template = path
+          .split('?')
+          .first
+          .replaceFirst(
+            RegExp(r'^/api/life-reports/[^/]+'),
+            '/api/life-reports/{report_id}',
+          )
+          .replaceFirst(
+            RegExp(r'^/api/landing/visits/[^/]+'),
+            '/api/landing/visits/{visit_id}',
+          );
+      onClientFailure?.call(template, code, method);
+    } catch (_) {
+      // Optional diagnostics cannot replace the original error.
+    }
+  }
+
   Future<dynamic> request(
     String path,
     CancelToken token, {
@@ -73,9 +104,21 @@ class ReportRepository {
       if (body != null) 'Content-Type': 'application/json',
       if (owned) 'X-Report-Key': store.ownerKey(),
     };
+    try {
+      final visit = visitContext?.call() ?? {};
+      if (visit['id'] is String) {
+        headers.addAll({
+          'X-Visit-Id': visit['id'] as String,
+          'X-Report-Key': store.ownerKey(),
+        });
+      }
+    } catch (_) {
+      // Public location lookups remain usable if optional browser storage fails.
+    }
+    final requestMethod = method ?? (body == null ? 'GET' : 'POST');
     final deadline = Completer<void>();
     final request = http.AbortableRequest(
-      method ?? (body == null ? 'GET' : 'POST'),
+      requestMethod,
       Uri.parse('$baseUrl$path'),
       abortTrigger: Future.any([token.future, deadline.future]),
     )..headers.addAll(headers);
@@ -95,6 +138,7 @@ class ReportRepository {
             );
     } catch (_) {
       token.check();
+      _recordClientFailure(path, 'network', requestMethod);
       throw const ApiFailure('network');
     }
     token.check();
@@ -103,6 +147,7 @@ class ReportRepository {
     try {
       data = jsonDecode(utf8.decode(response.bodyBytes));
     } catch (_) {
+      _recordClientFailure(path, 'badResult', requestMethod);
       throw const ApiFailure('badResult');
     }
     if (response.statusCode >= 400) {
@@ -131,7 +176,10 @@ class ReportRepository {
         retryAfter: duration,
       );
     }
-    if (data == null) throw const ApiFailure('badResult');
+    if (data == null) {
+      _recordClientFailure(path, 'badResult', requestMethod);
+      throw const ApiFailure('badResult');
+    }
     return data;
   }
 
@@ -156,14 +204,37 @@ class ReportRepository {
   Future<LifeReport> generate(
     Json input,
     CancelToken token,
-    void Function(LifeReport, double, String) progress,
-  ) async {
+    void Function(LifeReport, double, String) progress, {
+    Json visit = const {},
+  }) async {
     final initial = await request(
       '/api/life-reports?wait=false',
       token,
-      body: input,
+      body: {...input, if (visit.isNotEmpty) 'landing_visit': visit},
     );
     return _wait(initial, input, token, false, progress);
+  }
+
+  Future<AppLoginCode> createAppLoginCode(
+    String reportId,
+    CancelToken token,
+  ) async {
+    final result = object(
+      await request(
+        '/api/life-reports/${Uri.encodeComponent(reportId)}/app-login-code',
+        token,
+        body: const {},
+        timeout: const Duration(seconds: 10),
+      ),
+    );
+    final code = text(result['code']), lifetime = result['expires_in'];
+    if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code) ||
+        lifetime is! int ||
+        lifetime <= 0 ||
+        lifetime > 600) {
+      throw const ApiFailure('badResult');
+    }
+    return AppLoginCode(code, DateTime.now().add(Duration(seconds: lifetime)));
   }
 
   Future<LifeReport> unlock(
@@ -179,6 +250,14 @@ class ReportRepository {
     return _wait(result, initial.input, token, true, progress, id: initial.id);
   }
 
+  Future<LifeReport> resumeGeneration(
+    LifeReport initial,
+    CancelToken token,
+    void Function(LifeReport, double, String) progress, {
+    required bool full,
+  }) =>
+      _wait(initial.json, initial.input, token, full, progress, id: initial.id);
+
   Future<PaymentOrder> createPayment(
     LifeReport report,
     CancelToken token, {
@@ -186,14 +265,25 @@ class ReportRepository {
     String nationCode = '',
   }) async {
     final order = object(
-      await request('/api/life-reports/${report.id}/payment', token,
-        body: report.orderOnly ? {'mobile': mobile, 'nationCode': nationCode} : {}),
+      await request(
+        '/api/life-reports/${report.id}/payment',
+        token,
+        body: report.orderOnly
+            ? {'mobile': mobile, 'nationCode': nationCode}
+            : {},
+      ),
     );
     return _paymentOrder(report, order);
   }
 
-  Future<PaymentOrder?> existingPayment(LifeReport report, CancelToken token) async {
-    final order = await request('/api/life-reports/${report.id}/payment', token);
+  Future<PaymentOrder?> existingPayment(
+    LifeReport report,
+    CancelToken token,
+  ) async {
+    final order = await request(
+      '/api/life-reports/${report.id}/payment',
+      token,
+    );
     return order == null ? null : _paymentOrder(report, object(order));
   }
 
@@ -207,8 +297,9 @@ class ReportRepository {
       }
       final gatewayOrder = text(order['order_number']);
       if (report.orderOnly &&
-          (order['order_only'] != true || order['state'] != 'CREATED' ||
-           !RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(gatewayOrder))) {
+          (order['order_only'] != true ||
+              order['state'] != 'CREATED' ||
+              !RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(gatewayOrder))) {
         throw const ApiFailure('badResult');
       }
       return (
@@ -272,26 +363,38 @@ class ReportRepository {
     String? id,
   }) async {
     var failures = 0;
-    var previousReadSeconds = full ? 0 : 3;
+    const interval = Duration(seconds: 2);
+    var previousReadSeconds = interval.inSeconds;
     while (true) {
       token.check();
       final report = LifeReport.parse(value, id: id, expectedInput: input);
       id = report.id;
       if (full && !report.full) throw const ApiFailure('badResult');
       final percent = report.percent(full);
-      progress(report, percent, full ? 'full' : 'preview');
-      if (percent == 100) return report;
       final state = text(report.json[full ? 'full_state' : 'preview_state']);
+      final queue = object(report.json['generation_queue']);
+      final phase = state == 'queued'
+          ? 'queued'
+          : full
+          ? 'full'
+          : queue['state'] == 'calculating'
+          ? 'calculating'
+          : 'preview';
+      progress(report, percent, phase);
+      if (percent == 100) return report;
       if (state == 'pending') throw const ApiFailure('busy');
-      if (state != 'generating' ||
-          (!full && report.json['preview_state'] == 'ready')) {
+      if (!(full ? report.fullInProgress : report.previewInProgress)) {
         throw ApiFailure('${full ? 'states' : 'previewStates'}.$state');
       }
-      // The server waits up to three seconds, returning immediately on completion.
-      // Count time spent waiting there toward the polling budget, including other workers' immediate responses.
-      var delay = Duration(
-        seconds: full ? 3 : (3 - previousReadSeconds).clamp(0, 3),
-      );
+      // Count the server's wait toward the polling budget.
+      var delay = full
+          ? interval
+          : Duration(
+              seconds: (interval.inSeconds - previousReadSeconds).clamp(
+                0,
+                interval.inSeconds,
+              ),
+            );
       while (true) {
         await token.pause(delay);
         try {
@@ -318,19 +421,8 @@ class ReportRepository {
     }
   }
 
-  Future<List<Place>> provinces(String country, CancelToken token) async =>
-      objects(
-        object(
-          await request(
-            '/api/thai-locations?country=$country&level=province',
-            token,
-            owned: false,
-          ),
-        )['items'],
-      ).map(Place.new).toList();
   Future<Json> cities(
     String country,
-    String province,
     String query,
     int offset,
     CancelToken token,
@@ -338,8 +430,7 @@ class ReportRepository {
     final params = Uri(
       queryParameters: {
         'country': country,
-        'province': province,
-        'level': province.isEmpty ? 'city' : 'locality',
+        'level': country == 'CN' || country == 'TH' ? 'locality' : 'city',
         'query': query,
         'offset': '$offset',
       },

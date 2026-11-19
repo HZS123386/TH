@@ -10,8 +10,8 @@ from backend.tests.test_app import login
 from backend.app.companion_context import preferences
 
 
-def test_jy_preferences_and_simulation_records_are_bound_to_the_account(tmp_path):
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "jy.db")))) as client:
+def test_jy_preferences_and_simulation_records_are_bound_to_the_account(postgres_url):
+    with TestClient(create_app(Settings(database_url=postgres_url))) as client:
         a, b = login(client), login(client)
         body = {
             "taste": {"style": "cool", "category": "crystal", "budget": 500},
@@ -47,7 +47,7 @@ def test_jy_preferences_and_simulation_records_are_bound_to_the_account(tmp_path
         },
     ],
 )
-def test_jy_state_rejects_invalid_or_future_receipts(tmp_path, invalid):
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "invalid.db")))) as client:
+def test_jy_state_rejects_invalid_or_future_receipts(postgres_url, invalid):
+    with TestClient(create_app(Settings(database_url=postgres_url))) as client:
         headers = login(client)
         assert client.put("/api/companion", headers=headers, json=invalid).status_code == 422

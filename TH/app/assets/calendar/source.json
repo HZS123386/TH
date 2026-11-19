@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "first_year": 2025,
+  "last_year": 2030,
+  "engine": {
+    "name": "thai-astrology",
+    "version": "0.3.2",
+    "source": "https://github.com/kongesque/thai-astrology",
+    "commit": "445577e7cbc8c09ddc98f2ec016cd3d1e32940fb",
+    "rules": "wanjai-suriyayatra-1",
+    "houseSystem": "whole-sign",
+    "weekdayBoundary": "06:00",
+    "planetaryFrameSeconds": 24124
+  },
+  "reference": "Traditional Thai calendar, civil date, Bangkok noon; daytime Ubakong only",
+  "sources": [
+    "https://www.culture.go.th/culture_th/ewt_news.php?filename=index&nid=9131",
+    "https://www.maneedee.com/yam-ubakong/",
+    "https://myhora.com/calendar/thai-05-2414-R09.aspx",
+    "https://siamduang.com/wp-content/uploads/2019/09/การให้ฤกษ์ฉบับง่าย-Example.pdf"
+  ]
+}

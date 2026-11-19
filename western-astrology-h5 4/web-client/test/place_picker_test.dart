@@ -12,174 +12,146 @@ import 'package:fate_h5/ui/theme.dart';
 import 'support.dart';
 
 void main() {
-  testWidgets(
-    'desktop arrows and mouse options select countries, provinces and cities without typing',
-    (tester) async {
-      tester.view.physicalSize = const Size(720, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      const places = {
-        'CN': {
-          'id': 'geonames:1808773',
-          'countryCode': 'CN',
-          'nameChinese': '河北省',
-          'nameEnglish': 'Hebei',
-          'timeZone': 'Asia/Shanghai',
-          'placeType': 'province',
-        },
-        'TH': {
-          'id': 'geonames:1153671',
-          'countryCode': 'TH',
-          'nameChinese': '清迈府',
-          'nameEnglish': 'Chiang Mai',
-          'timeZone': 'Asia/Bangkok',
-          'placeType': 'province',
-        },
-      };
-      const cities = {
-        'CN': {
-          'id': 'geonames:1808963',
-          'countryCode': 'CN',
-          'provinceId': 'geonames:1808773',
-          'nameChinese': '邯郸市',
-          'nameEnglish': 'Handan',
-          'timeZone': 'Asia/Shanghai',
-          'placeType': 'city',
-        },
-        'TH': {
-          'id': 'geonames:1153671',
-          'countryCode': 'TH',
-          'provinceId': 'geonames:1153671',
-          'nameChinese': '清迈',
-          'nameEnglish': 'Chiang Mai',
-          'timeZone': 'Asia/Bangkok',
-          'placeType': 'city',
-        },
-      };
-      final browser = TestBrowser();
-      final repo = ReportRepository(
-        browser,
-        baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          final query = request.url.queryParameters,
-              country = query['country']!;
-          final province = query['level'] == 'province';
-          if (!province) expect(query['province'], places[country]!['id']);
-          return http.Response(
-            jsonEncode({
-              'items': [province ? places[country] : cities[country]],
-              'total': 1,
-            }),
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }),
-      );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
-      Place? chosen;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: h5Theme(),
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    BirthplaceFields(
-                      h5: h5,
-                      onSelected: (value) => chosen = value,
-                    ),
-                    const Text('below fields'),
-                    const SizedBox(height: 220),
-                    const Text('outside'),
-                  ],
-                ),
+  testWidgets('the city field browses and searches only the selected country', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(720, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const places = [
+      {
+        'id': 'geonames:1816670',
+        'countryCode': 'CN',
+        'nameChinese': '北京市',
+        'nameEnglish': 'Beijing',
+        'timeZone': 'Asia/Shanghai',
+        'placeType': 'city',
+      },
+      {
+        'id': 'geonames:1808963',
+        'countryCode': 'CN',
+        'nameChinese': '邯郸市',
+        'nameEnglish': 'Handan',
+        'provinceNameChinese': '河北省',
+        'timeZone': 'Asia/Shanghai',
+        'placeType': 'city',
+      },
+      {
+        'id': 'geonames:1609350',
+        'countryCode': 'TH',
+        'nameChinese': '曼谷',
+        'nameThai': 'กรุงเทพมหานคร',
+        'nameEnglish': 'Bangkok',
+        'timeZone': 'Asia/Bangkok',
+        'placeType': 'city',
+      },
+    ];
+    final browser = TestBrowser();
+    final repo = ReportRepository(
+      browser,
+      baseUrl: 'https://example.test',
+      client: MockClient((request) async {
+        final params = request.url.queryParameters;
+        expect(params['country'], 'CN');
+        expect(params['level'], 'locality');
+        expect(params.containsKey('province'), isFalse);
+        final items = switch (params['query']) {
+          '邯郸' => [places[1]],
+          '' => [places[0], places[2]],
+          _ => [],
+        };
+        return http.Response(
+          jsonEncode({'items': items, 'total': items.length}),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+    Place? chosen;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: h5Theme(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  BirthplaceFields(
+                    h5: h5,
+                    country: 'CN',
+                    onSelected: (value) => chosen = value,
+                  ),
+                  const Text('below fields'),
+                  const SizedBox(height: 220),
+                  const Text('outside'),
+                ],
               ),
             ),
           ),
         ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Future<void> mouse(Finder finder) async {
+      await tester.ensureVisible(finder);
+      final pointer = await tester.startGesture(
+        tester.getCenter(finder),
+        kind: PointerDeviceKind.mouse,
       );
+      // Keep pointer down across a frame: a blur must not remove the option before mouse up.
+      await tester.pump();
+      await pointer.up();
       await tester.pumpAndSettle();
-      Future<void> mouse(Finder finder) async {
-        await tester.ensureVisible(finder);
-        final pointer = await tester.startGesture(
-          tester.getCenter(finder),
-          kind: PointerDeviceKind.mouse,
-        );
-        // Keep pointer down across a frame: a blur must not remove the option before mouse up.
-        await tester.pump();
-        await pointer.up();
-        await tester.pumpAndSettle();
-      }
+    }
 
-      Finder arrow(String key) => find.descendant(
-        of: find.byKey(ValueKey(key)),
-        matching: find.byType(IconButton),
-      );
-      String value(String key) => tester
-          .widget<TextFormField>(find.byKey(ValueKey(key)))
-          .controller!
-          .text;
-      final followingPosition = tester.getTopLeft(find.text('outside'));
-      void checkFloatingMenu(String id) {
-        expect(tester.getTopLeft(find.text('outside')), followingPosition);
-        final input = tester.getRect(find.byKey(ValueKey(id)));
-        final menu = tester.getRect(find.byKey(ValueKey('$id-options')));
-        expect(menu.top, closeTo(input.bottom + 5, .1));
-        expect(menu.width, closeTo(input.width, .1));
-      }
+    Finder arrow(String key) => find.descendant(
+      of: find.byKey(ValueKey(key)),
+      matching: find.byType(IconButton),
+    );
+    String value(String key) => tester
+        .widget<TextFormField>(find.byKey(ValueKey(key)))
+        .controller!
+        .text;
+    final followingPosition = tester.getTopLeft(find.text('outside'));
+    void checkFloatingMenu(String id) {
+      expect(tester.getTopLeft(find.text('outside')), followingPosition);
+      final input = tester.getRect(find.byKey(ValueKey(id)));
+      final menu = tester.getRect(find.byKey(ValueKey('$id-options')));
+      expect(menu.top, closeTo(input.bottom + 5, .1));
+      expect(menu.width, closeTo(input.width, .1));
+    }
 
-      for (final country in ['CN', 'TH']) {
-        await mouse(arrow('birth-country'));
-        checkFloatingMenu('birth-country');
-        expect(find.widgetWithText(InkWell, '中国'), findsOneWidget);
-        expect(find.widgetWithText(InkWell, '泰国'), findsOneWidget);
-        await mouse(
-          find.widgetWithText(InkWell, country == 'CN' ? '中国' : '泰国'),
-        );
-        expect(value('birth-country'), country == 'CN' ? '中国' : '泰国');
-        expect(value('birth-province'), isEmpty);
-        expect(value('birth-city'), isEmpty);
-        expect(chosen, isNull);
-        await mouse(arrow('birth-province'));
-        checkFloatingMenu('birth-province');
-        final province = find.descendant(
-          of: find.byType(PlacePicker),
-          matching: find.text(places[country]!['nameChinese']!),
-        );
-        expect(province, findsOneWidget);
-        await mouse(province);
-        expect(value('birth-province'), places[country]!['nameChinese']);
-        await mouse(arrow('birth-city'));
-        checkFloatingMenu('birth-city');
-        final city = find.descendant(
-          of: find.byType(PlacePicker),
-          matching: find.text(cities[country]!['nameChinese']!),
-        );
-        expect(city, findsOneWidget);
-        await mouse(city);
-        expect(value('birth-city'), cities[country]!['nameChinese']);
-        expect(chosen?.id, cities[country]!['id']);
-      }
-      // Editing remains available, and a mouse click can select the filtered result.
-      await mouse(find.byKey(const ValueKey('birth-country')));
-      await tester.enterText(find.byKey(const ValueKey('birth-country')), '中国');
-      await tester.pumpAndSettle();
-      await mouse(find.widgetWithText(InkWell, '中国'));
-      expect(value('birth-country'), '中国');
-      expect(chosen, isNull);
-      await mouse(arrow('birth-country'));
-      expect(find.widgetWithText(InkWell, '泰国'), findsOneWidget);
-      await mouse(find.text('outside'));
-      expect(find.widgetWithText(InkWell, '泰国'), findsNothing);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-      h5.dispose();
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.windows),
-  );
+    expect(find.byKey(const ValueKey('birth-country')), findsNothing);
+    expect(find.byKey(const ValueKey('birth-province')), findsNothing);
+    expect(chosen, isNull);
+    await mouse(arrow('birth-city'));
+    checkFloatingMenu('birth-city');
+    expect(find.text('曼谷'), findsNothing);
+    await mouse(find.text('北京市'));
+    expect(value('birth-city'), '北京市');
+    expect(chosen?.id, places.first['id']);
+    expect(chosen?.country, 'CN');
+    expect(chosen?.zone, 'Asia/Shanghai');
+
+    await tester.enterText(find.byKey(const ValueKey('birth-city')), '邯郸');
+    await tester.pumpAndSettle();
+    expect(chosen, isNull);
+    expect(find.text('北京市'), findsNothing);
+    expect(find.text('河北省 · Handan'), findsOneWidget);
+    await mouse(find.text('邯郸市'));
+    expect(value('birth-city'), '邯郸市');
+    expect(chosen?.id, places[1]['id']);
+    await mouse(arrow('birth-city'));
+    expect(find.byKey(const ValueKey('birth-city-options')), findsOneWidget);
+    await mouse(find.text('outside'));
+    expect(find.byKey(const ValueKey('birth-city-options')), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    h5.dispose();
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   testWidgets(
     'floating menus follow scrolling and stay above the phone keyboard',
     (tester) async {
@@ -191,13 +163,13 @@ void main() {
       addTearDown(tester.view.resetViewInsets);
       final browser = TestBrowser();
       final scroll = ScrollController();
-      final province = Place({
+      final city = Place({
         'id': 'geonames:1609350',
         'countryCode': 'TH',
         'nameThai': 'กรุงเทพมหานคร',
         'nameEnglish': 'Bangkok',
         'timeZone': 'Asia/Bangkok',
-        'placeType': 'province',
+        'placeType': 'city',
       });
       final repo = ReportRepository(
         browser,
@@ -205,12 +177,8 @@ void main() {
         client: MockClient(
           (request) async => http.Response(
             jsonEncode({
-              'items': request.url.queryParameters['level'] == 'province'
-                  ? [province.json]
-                  : [],
-              'total': request.url.queryParameters['level'] == 'province'
-                  ? 1
-                  : 0,
+              'items': [city.json],
+              'total': 1,
             }),
             200,
             headers: {'content-type': 'application/json; charset=utf-8'},
@@ -229,9 +197,11 @@ void main() {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    const SizedBox(height: 70),
+                    const SizedBox(height: 160),
                     BirthplaceFields(
                       h5: h5,
+                      country: 'TH',
+                      initialPlace: city,
                       onSelected: (value) => chosen = value,
                     ),
                     const SizedBox(height: 400),
@@ -247,92 +217,28 @@ void main() {
         of: find.byKey(ValueKey(key)),
         matching: find.byType(IconButton),
       );
-      await tester.tap(arrow('birth-country'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(InkWell, 'ไทย'));
-      await tester.pumpAndSettle();
-      await tester.tap(arrow('birth-province'));
+      await tester.tap(arrow('birth-city'));
       await tester.pumpAndSettle();
       Rect menu(String id) =>
           tester.getRect(find.byKey(ValueKey('$id-options')));
       Rect input(String id) => tester.getRect(find.byKey(ValueKey(id)));
       expect(
-        menu('birth-province').bottom,
-        closeTo(input('birth-province').top - 5, .1),
+        menu('birth-city').bottom,
+        closeTo(input('birth-city').top - 5, .1),
       );
       scroll.jumpTo(24);
       await tester.pumpAndSettle();
       expect(
-        menu('birth-province').bottom,
-        closeTo(input('birth-province').top - 5, .1),
+        menu('birth-city').bottom,
+        closeTo(input('birth-city').top - 5, .1),
       );
-      await tester.tap(find.text('กรุงเทพมหานคร'));
+      await tester.tap(find.widgetWithText(InkWell, 'กรุงเทพมหานคร'));
       await tester.pumpAndSettle();
-      await tester.tap(arrow('birth-city'));
-      await tester.pumpAndSettle();
-      expect(menu('birth-city').bottom, lessThanOrEqualTo(320));
-      expect(find.byType(Dialog), findsNothing);
-      final cityOption = find.descendant(
-        of: find.byType(PlacePicker),
-        matching: find.text('กรุงเทพมหานคร'),
-      );
-      expect(cityOption, findsOneWidget);
-      expect(find.text(h5.copy.t('ui', 'noCity')), findsNothing);
-      await tester.tap(cityOption);
-      expect(chosen?.id, province.id);
+      expect(chosen?.id, city.id);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       scroll.dispose();
       h5.dispose();
     },
   );
-  testWidgets(
-    'country suggestions open above the field when the keyboard leaves no room below',
-    (tester) async {
-      tester.view.physicalSize = const Size(360, 640);
-      tester.view.devicePixelRatio = 1;
-      tester.view.viewInsets = const FakeViewPadding(bottom: 320);
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.resetViewInsets);
-      final browser = TestBrowser();
-      final h5 = H5Controller(
-        translations(),
-        ReportRepository(browser),
-        browser,
-        language: 'zh',
-      );
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: h5Theme(),
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 246),
-                  BirthplaceFields(h5: h5, onSelected: (_) {}),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-      final country = find.byKey(const ValueKey('birth-country'));
-      await tester.tap(
-        find.descendant(of: country, matching: find.byType(IconButton)),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        tester.getBottomLeft(find.text('泰国')).dy,
-        lessThan(tester.getTopLeft(country).dy),
-      );
-      await tester.tap(find.text('泰国'));
-      await tester.pumpAndSettle();
-      expect(tester.widget<TextFormField>(country).controller!.text, '泰国');
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-      h5.dispose();
-    },
-  );
-
 }

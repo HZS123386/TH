@@ -8,6 +8,7 @@ import '../../data/daily_horoscope_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/strings.dart';
 import '../../ui/theme.dart';
+import '../companion/guardian.dart';
 import 'daily_horoscope_view_model.dart';
 
 const horoscopeTitleColor = Color(0xFFD8BFF1);
@@ -29,6 +30,21 @@ const _zodiacSigns = [
   'capricorn',
   'aquarius',
   'pisces',
+];
+
+const _zodiacGlyphs = [
+  '♈︎',
+  '♉︎',
+  '♊︎',
+  '♋︎',
+  '♌︎',
+  '♍︎',
+  '♎︎',
+  '♏︎',
+  '♐︎',
+  '♑︎',
+  '♒︎',
+  '♓︎',
 ];
 
 class DailyHoroscopeCard extends StatelessWidget {
@@ -160,7 +176,10 @@ class _ZodiacPickerState extends State<_ZodiacPicker> {
                 width: _tileWidth,
                 child: Material(
                   color: selected ? const Color(0xFF382A48) : _surface,
-                  animationDuration: Duration.zero,
+                  animationDuration: FateMotion.duration(
+                    context,
+                    FateMotion.settle,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: BorderSide(
@@ -249,6 +268,21 @@ class _ReadingCard extends StatelessWidget {
                       home: home,
                     ),
                   ),
+                  if (!home) ...[
+                    const SizedBox(height: 18),
+                    OutlinedButton.icon(
+                      onPressed: () => openGuardian(
+                        context,
+                        reading: ReadingHandoff(
+                          title: s.dailyHoroscopeToday(s.zodiacNames[sign]),
+                          text:
+                              '${day.date.toIso8601String().substring(0, 10)}\n${_forecastText(s, day.readings[sign])}',
+                        ),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: Text(s.continueReading),
+                    ),
+                  ],
                 ],
               );
             },
@@ -263,55 +297,81 @@ class _ReadingCard extends StatelessWidget {
         child: Padding(padding: const EdgeInsets.all(18), child: forecast),
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(height: 1, color: _outline),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                sign == null
-                    ? s.dailyHoroscopeTitle
-                    : s.dailyHoroscopeToday(s.zodiacNames[sign]),
-                style: const TextStyle(
-                  color: horoscopeTitleColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+    return FateCard(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      accent: horoscopeTitleColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  sign == null
+                      ? s.dailyHoroscopeTitle
+                      : s.dailyHoroscopeToday(s.zodiacNames[sign]),
+                  style: const TextStyle(
+                    color: horoscopeTitleColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.push(DailyHoroscopePage.location),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 44),
+                  padding: const EdgeInsets.only(left: 10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      sign == null
+                          ? s.dailyHoroscopeChooseSign
+                          : s.dailyHoroscopeMore,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, size: 16),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (sign == null)
+            InkWell(
+              onTap: () => context.push(DailyHoroscopePage.location),
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 4),
+                child: Row(
+                  children: [
+                    const FateEmblem(
+                      Icons.nights_stay_outlined,
+                      color: horoscopeTitleColor,
+                      size: 46,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        s.dailyHoroscopeEmpty,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            TextButton(
-              onPressed: () => context.go(DailyHoroscopePage.location),
-              style: TextButton.styleFrom(
-                minimumSize: const Size(48, 44),
-                padding: const EdgeInsets.only(left: 10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    sign == null
-                        ? s.dailyHoroscopeChooseSign
-                        : s.dailyHoroscopeMore,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, size: 16),
-                ],
-              ),
-            ),
+          if (forecast != null) ...[
+            const SizedBox(height: 4),
+            forecast,
+            const SizedBox(height: 10),
           ],
-        ),
-        if (forecast != null) ...[
-          const SizedBox(height: 4),
-          forecast,
-          const SizedBox(height: 10),
         ],
-      ],
+      ),
     );
   }
 
@@ -389,6 +449,32 @@ class _SignArtwork extends StatelessWidget {
     height: size,
     fit: BoxFit.contain,
     excludeFromSemantics: true,
+    errorBuilder: (_, _, _) => ExcludeSemantics(
+      child: Text(
+        _zodiacGlyphs[sign],
+        style: TextStyle(
+          fontFamily: 'NotoSansSymbols',
+          color: goldColor,
+          fontSize: size,
+          height: 1.1,
+        ),
+      ),
+    ),
+  );
+}
+
+String _forecastText(AppLocalizations s, DailyHoroscopeReading reading) {
+  final tone = reading.tone.name;
+  final advice = switch (reading.topic) {
+    HoroscopeTopic.love => s.dailyHoroscopeLoveAdvice(tone),
+    HoroscopeTopic.work => s.dailyHoroscopeWorkAdvice(tone),
+    HoroscopeTopic.money => s.dailyHoroscopeMoneyAdvice(tone),
+    HoroscopeTopic.health => s.dailyHoroscopeHealthAdvice(tone),
+  };
+  return s.dailyHoroscopeReading(
+    s.planetName(reading.planet),
+    reading.house,
+    advice,
   );
 }
 
@@ -401,13 +487,6 @@ class _ReadingBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final tone = reading.tone.name;
-    final advice = switch (reading.topic) {
-      HoroscopeTopic.love => s.dailyHoroscopeLoveAdvice(tone),
-      HoroscopeTopic.work => s.dailyHoroscopeWorkAdvice(tone),
-      HoroscopeTopic.money => s.dailyHoroscopeMoneyAdvice(tone),
-      HoroscopeTopic.health => s.dailyHoroscopeHealthAdvice(tone),
-    };
     final domains = [
       (
         HoroscopeTopic.love,
@@ -452,11 +531,7 @@ class _ReadingBody extends StatelessWidget {
                       MediaQuery.textScalerOf(context).scale(summaryFontSize),
           ),
           child: Text(
-            s.dailyHoroscopeReading(
-              s.planetName(reading.planet),
-              reading.house,
-              advice,
-            ),
+            _forecastText(s, reading),
             style: const TextStyle(
               fontSize: summaryFontSize,
               height: summaryLineHeight,

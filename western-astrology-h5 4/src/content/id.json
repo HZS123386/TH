@@ -1,5 +1,6 @@
 {
   "jy": {
+    "appLogin": {"title": "Kode masuk", "copy": "Salin", "copied": "Disalin", "get": "Dapatkan kode", "refresh": "Dapatkan kode baru", "loading": "Sedang mengambil kode…", "failed": "Kode masuk belum bisa diambil.", "expired": "Kode ini telah kedaluwarsa."},
     "language": "Bahasa",
     "dateParts": {
       "year": "Tahun Masehi",
@@ -15,14 +16,7 @@
     "house": "Rumah {number}",
     "home": "Beranda FATE",
     "title": "FATE · Pembacaan astrologi pribadi",
-    "welcome": {
-      "first": "Selamat datang",
-      "returning": "Selamat datang kembali",
-      "firstNote": "Jelajahi peta bintang Anda",
-      "returningNote": "Senang bertemu Anda lagi",
-      "start": "Mulai menjelajah",
-      "swipe": "Geser ke atas untuk mulai"
-    },
+    "welcome": {"first": "Selamat datang", "returning": "Selamat datang kembali", "firstNote": "Jelajahi peta bintang Anda", "returningNote": "Senang bertemu Anda lagi", "start": "Mulai menjelajah", "swipe": "Geser ke atas untuk mulai", "headline": "Siapa yang memengaruhi hubungan Anda?", "note": "Pahami orang dan perilaku yang memengaruhi hubungan melalui pengalaman Anda sendiri.", "name": "Ajarn Yada", "role": "Astrolog hubungan"},
     "persona": "Astrolog AI pribadi Anda",
       "personal": {"relationshipUnlock": "Buka laporan lengkap untuk panduan hubungan pribadi", "relationshipTitle": "Hal yang menghambat hubungan", "relationshipAction": "Satu langkah untuk dicoba", "title": "Bacaan astrologi Barat pribadi Anda", "freeTitle": "Bacaan gratis", "freeHint": "Kenali kepribadian alami dan cara Anda mengekspresikan diri.", "paidHint": "Bakat pribadi dan tiga bulan penting", "talent": "Bakat pribadi", "node-1": "Peluang pertama", "node-2": "Peluang kedua", "node-3": "Peluang ketiga", "benefit": "Hal yang mendukung", "caution": "Pengingat ringan", "action": "Langkah kecil", "timeUnknown": "Tambahkan waktu lahir yang akurat untuk mengakses bacaan pribadi lengkap.", "unavailable": "Informasi bulanan belum lengkap sehingga bacaan lengkap belum tersedia.", "nodesTitle": "Tiga bulan penting", "keywords": "Kata kunci bagan Anda", "traits": "Ciri pribadi", "opportunity": "Peluang dalam waktu dekat"},
     "formTitle": "Kenali diri melalui bagan kelahiran",
@@ -47,7 +41,7 @@
     "regionRetry": "Muat ulang daftar",
     "city": "Kota / kecamatan",
     "cityExample": "Contohnya, Handan",
-    "citySearch": "Cari atau pilih kota",
+    "citySearch": "Cari atau pilih kota di Indonesia",
     "cityHint": "Masukkan nama kota atau pilih lokasi yang disarankan",
     "cityError": "Pencarian sementara tidak tersedia",
     "placeHint": "Pilih negara, provinsi, lalu kota. Pencarian mendukung bahasa Mandarin, Thai, dan Inggris.",
@@ -109,40 +103,7 @@
         "running": "Menghitung posisi planet"
       }
     },
-    "interpretation": {
-      "title": "Membaca peta bintang Anda",
-      "steps": {
-        "basics": {
-          "title": "Data kelahiran",
-          "status": "Memeriksa dasar bagan kelahiran"
-        },
-        "placements": {
-          "title": "Planet dan rumah",
-          "status": "Menyusun posisi, rumah, dan faktor bagan"
-        },
-        "reading": {
-          "title": "Pembacaan pribadi",
-          "status": "Menulis pembacaan berdasarkan bagan"
-        }
-      },
-      "dateOnlyPlacements": "Menyusun posisi yang dapat dipastikan",
-      "preparing": "Menghitung bagan sebelum menulis pembacaan",
-      "awaitingContent": "Bagan siap. Menunggu bagian pertama",
-      "validating": "Memeriksa dan menyimpan pembacaan",
-      "reconnecting": "Menghubungkan kembali; progres tersimpan",
-      "waiting": "Layanan sibuk dan akan berlanjut otomatis",
-      "interrupted": "Pembacaan belum selesai. Silakan coba lagi",
-      "interruptedTitle": "Pembacaan belum lengkap",
-      "retryFree": "Buat ulang pembacaan gratis",
-      "retryFull": "Lanjutkan pembacaan lengkap",
-      "waitLabel": "Menunggu",
-      "next": "Tahap berikutnya",
-      "complete": "Pembacaan Anda siap",
-      "summarizing": "Menyiapkan ringkasan",
-      "planets": "Posisi planet",
-      "houses": "Rumah",
-      "aspects": "Aspek utama"
-    },
+    "interpretation": {"title": "Membaca peta bintang Anda", "steps": {"basics": {"title": "Data kelahiran", "status": "Memeriksa dasar bagan kelahiran"}, "placements": {"title": "Planet dan rumah", "status": "Menyusun posisi, rumah, dan faktor bagan"}, "reading": {"title": "Pembacaan pribadi", "status": "Menulis pembacaan berdasarkan bagan"}}, "dateOnlyPlacements": "Menyusun posisi yang dapat dipastikan", "preparing": "Menghitung bagan sebelum menulis pembacaan", "awaitingContent": "Bagan siap. Menunggu bagian pertama", "validating": "Memeriksa dan menyimpan pembacaan", "reconnecting": "Menghubungkan kembali; progres tersimpan", "waiting": "Layanan sibuk dan akan berlanjut otomatis", "interrupted": "Pembacaan belum selesai. Silakan coba lagi", "interruptedTitle": "Pembacaan belum lengkap", "retryFree": "Buat ulang pembacaan gratis", "retryFull": "Lanjutkan pembacaan lengkap", "waitLabel": "Menunggu", "next": "Tahap berikutnya", "complete": "Pembacaan Anda siap", "summarizing": "Menyiapkan ringkasan", "planets": "Posisi planet", "houses": "Rumah", "aspects": "Aspek utama", "queued": "Menunggu perhitungan bagan"},
     "erase": "Hapus hasil ini",
     "checkout": {"downloadUnavailable": "Aplikasi masih dalam pengujian dan belum dapat diunduh. Terima kasih atas minat Anda. Nantikan peluncuran resminya!",
       "eyebrow": "Jelajahi pembacaan pribadi",
@@ -232,6 +193,7 @@
     }
   },
   "life": {
+    "viewProgress": "Lihat progres",
     "title": "Laporan kehidupan",
     "eyebrow": "Ditulis untuk saat kelahiran Anda",
     "subtitle": "Pahami kebiasaan dan jelajahi pilihan yang sesuai untuk Anda.",
@@ -296,24 +258,8 @@
     "progressUnit": "selesai",
     "retry": "Lanjutkan pembuatan",
     "retryPreview": "Buat ulang pembacaan gratis",
-    "previewStates": {
-      "not_started": "Pratinjau gratis belum dimulai. Buat dengan data ini.",
-      "pending": "Pratinjau dengan data yang sama sedang dibuat. Buka kembali nanti.",
-      "generating": "Membuat pratinjau gratis…",
-      "ready": "Pratinjau gratis siap.",
-      "limited": "Batas sementara pratinjau tercapai. Data tersimpan; coba lagi nanti.",
-      "unavailable": "Pratinjau belum selesai. Data tersimpan; coba lagi dengan tombol di bawah.",
-      "unconfigured": "Bagan sudah dihitung, tetapi layanan pratinjau tidak tersedia."
-    },
-    "states": {
-      "not_started": "Buka untuk mulai membuat laporan lengkap.",
-      "pending": "Laporan yang sama sedang disiapkan. Coba lagi nanti.",
-      "generating": "Laporan lengkap dibuat di latar belakang. Baca pratinjau gratis dahulu.",
-      "ready": "Laporan lengkap siap.",
-      "limited": "Batas sementara layanan tercapai. Isi yang selesai tersimpan; lanjutkan nanti.",
-      "unavailable": "Pembuatan belum selesai. Bab yang selesai tersimpan dan dapat dilanjutkan.",
-      "unconfigured": "Bagan siap tetapi layanan pembacaan belum dikonfigurasi."
-    },
+    "previewStates": {"not_started": "Pratinjau gratis belum dimulai. Buat dengan data ini.", "pending": "Pratinjau dengan data yang sama sedang dibuat. Buka kembali nanti.", "generating": "Membuat pratinjau gratis…", "ready": "Pratinjau gratis siap.", "limited": "Batas sementara pratinjau tercapai. Data tersimpan; coba lagi nanti.", "unavailable": "Pratinjau belum selesai. Data tersimpan; coba lagi dengan tombol di bawah.", "unconfigured": "Bagan sudah dihitung, tetapi layanan pratinjau tidak tersedia.", "queued": "Pratinjau dengan data yang sama sedang dibuat. Buka kembali nanti."},
+    "states": {"not_started": "Buka untuk mulai membuat laporan lengkap.", "pending": "Laporan yang sama sedang disiapkan. Coba lagi nanti.", "generating": "Laporan lengkap dibuat di latar belakang. Baca pratinjau gratis dahulu.", "ready": "Laporan lengkap siap.", "limited": "Batas sementara layanan tercapai. Isi yang selesai tersimpan; lanjutkan nanti.", "unavailable": "Pembuatan belum selesai. Bab yang selesai tersimpan dan dapat dilanjutkan.", "unconfigured": "Bagan siap tetapi layanan pembacaan belum dikonfigurasi.", "queued": "Laporan yang sama sedang disiapkan. Coba lagi nanti."},
     "plan": "Saran penutup",
     "viewAction": "Kembali ke tema terkait",
     "navigation": "Isi laporan",
@@ -415,7 +361,7 @@
     "chooseCity": "Pilih lokasi kelahiran yang cocok",
     "searching": "Mencari tempat lahir…",
     "placeHint": "Pilih negara, provinsi, lalu kota. Pencarian mendukung bahasa Mandarin, Thai, dan Inggris.",
-    "noCity": "Lokasi tidak ditemukan. Tambahkan provinsi atau coba nama lain.",
+    "noCity": "Kota tidak ditemukan. Coba nama lain.",
     "locationError": "Pencarian lokasi tidak tersedia. Coba lagi.",
     "provinceNote": "Perhitungan menggunakan koordinat perwakilan ibu kota provinsi terpilih.",
     "areaNote": "Lokasi ini wilayah administratif. Koordinat perwakilannya digunakan.",
@@ -465,7 +411,7 @@
     "done": "Laporan lengkap Anda siap",
     "once": "Tujuh tema sekali buka · Data kelahiran dan tahun ini"
   },
-  "checkout": {"openCashier": "Buka halaman pembayaran", "loadingOrder": "Memuat pesanan tersimpan…", "cashierPreviewHint": "Bayar di halaman resmi, lalu kembali ke sini. Laporan terbuka setelah pembayaran diverifikasi.", "cashierUnavailable": "Tautan pembayaran belum tersedia. Hubungi bantuan dan jangan membuat pesanan ganda.", "nationCode": "Kode negara", "mobile": "Nomor telepon (tanpa kode negara)", "life_order_phone_invalid": "Masukkan nomor telepon dan kode negara yang valid.", "cancelOrderEntry": "Batal dan kembali", "createOrderOnly": "Buat pesanan belum dibayar", "orderOnlyHint": "Masukkan nomor telepon untuk membuat pesanan, lalu bayar di halaman resmi.", "orderCreated": "Pesanan dibuat", "localOrder": "Nomor pesanan lokal", "gatewayOrder": "Nomor pesanan platform", "pendingOrder": "Menunggu pembayaran · Laporan terkunci", "accessDenied": "Akses pesanan belum diaktifkan. Hubungi bantuan sebelum mencoba lagi.", "orderRejected": "Pesanan belum berhasil dibuat. Hubungi bantuan untuk pemeriksaan.", "configurationRequired": "Konfigurasi pembayaran belum lengkap. Coba lagi nanti.", "channelInvalid": "Saluran pesanan perlu diperiksa. Nomor pesanan belum diterima; jangan kirim ulang.", "orderNeedsReview": "Pesanan ini perlu diperiksa. Jangan membuat pesanan lain.", "life_order_needs_review": "Laporan memiliki pesanan nyata yang menunggu pemeriksaan dan belum bisa dihapus.", "demoHint": "Simulasi pembayaran lokal. Tidak ada uang yang ditagih.", "confirming": "Mengonfirmasi pembayaran simulasi…", "success": "Pembayaran berhasil", "demoSuccess": "Simulasi berhasil", "successHint": "Membuka laporan lengkap…", "openReport": "Buka laporan lengkap", "sunlandsWaiting": "Memverifikasi pembayaran. Laporan terbuka setelah konfirmasi…", "checkPayment": "Periksa pembayaran lagi",
+  "checkout": {"entryHint": "Masukkan nomor telepon untuk membuat pesanan, lalu bayar di halaman resmi.", "mobileHint": "Nomor telepon (tanpa kode negara)", "countrySearch": "Cari negara, wilayah, atau kode telepon", "countryEmpty": "Negara atau wilayah yang cocok tidak ditemukan", "phoneHint": "Nomor telepon (tanpa kode negara)", "openCashier": "Buka halaman pembayaran", "loadingOrder": "Memuat pesanan tersimpan…", "cashierPreviewHint": "Bayar di halaman resmi, lalu kembali ke sini. Laporan terbuka setelah pembayaran diverifikasi.", "cashierUnavailable": "Tautan pembayaran belum tersedia. Hubungi bantuan dan jangan membuat pesanan ganda.", "nationCode": "Kode negara", "mobile": "Nomor telepon (tanpa kode negara)", "life_order_phone_invalid": "Masukkan nomor telepon dan kode negara yang valid.", "cancelOrderEntry": "Batal dan kembali", "createOrderOnly": "Buat pesanan belum dibayar", "orderOnlyHint": "Masukkan nomor telepon untuk membuat pesanan, lalu bayar di halaman resmi.", "orderCreated": "Pesanan dibuat", "localOrder": "Nomor pesanan lokal", "gatewayOrder": "Nomor pesanan platform", "pendingOrder": "Menunggu pembayaran · Laporan terkunci", "accessDenied": "Akses pesanan belum diaktifkan. Hubungi bantuan sebelum mencoba lagi.", "orderRejected": "Pesanan belum berhasil dibuat. Hubungi bantuan untuk pemeriksaan.", "configurationRequired": "Konfigurasi pembayaran belum lengkap. Coba lagi nanti.", "channelInvalid": "Saluran pesanan perlu diperiksa. Nomor pesanan belum diterima; jangan kirim ulang.", "orderNeedsReview": "Pesanan ini perlu diperiksa. Jangan membuat pesanan lain.", "life_order_needs_review": "Laporan memiliki pesanan nyata yang menunggu pemeriksaan dan belum bisa dihapus.", "demoHint": "Simulasi pembayaran lokal. Tidak ada uang yang ditagih.", "confirming": "Mengonfirmasi pembayaran simulasi…", "success": "Pembayaran berhasil", "demoSuccess": "Simulasi berhasil", "successHint": "Membuka laporan lengkap…", "openReport": "Buka laporan lengkap", "sunlandsWaiting": "Memverifikasi pembayaran. Laporan terbuka setelah konfirmasi…", "checkPayment": "Periksa pembayaran lagi",
     "title": "Konfirmasi pesanan",
     "demo": "Demo pembayaran",
     "order": "ID pesanan demo",

@@ -3,199 +3,244 @@ import 'package:go_router/go_router.dart';
 import '../../app/dependencies.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
+import '../companion/guardian.dart';
 import '../purchases/purchase_sheet.dart';
 import 'daily_horoscope.dart';
+import 'live_page.dart';
+import 'reading_guide.dart';
 import 'thai_calendar_card.dart';
 
-const homeHeroImage = AssetImage('assets/images/astrologer.webp');
-const _showUpcomingTools = false;
+export 'live_page.dart' show homeHeroImage;
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  const HomePage({this.initialGuide = ReadingGuide.sirin, super.key});
+
+  final ReadingGuide initialGuide;
   @override
   Widget build(BuildContext context) {
     final dependencies = DependencyScope.of(context),
         s = AppLocalizations.of(context);
-    final cardWidth =
-        (MediaQuery.sizeOf(context).width.clamp(0.0, 430.0).toDouble() - 52) /
-        2;
     return ListenableBuilder(
-      listenable: dependencies.session,
+      listenable: Listenable.merge([
+        dependencies.session,
+        dependencies.companion,
+      ]),
       builder: (context, _) => SingleChildScrollView(
         key: const PageStorageKey('home-scroll'),
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _HomeHero(),
-            const SizedBox(height: 14),
-            ThaiCalendarCard(repository: dependencies.thaiCalendar),
-            const SizedBox(height: 14),
-            const DailyHoroscopeCard(),
-            const SizedBox(height: 14),
-            OutlinedButton(
-              onPressed: () => context.go(
-                dependencies.session.profile == null ? '/birth' : '/chart',
-              ),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(58),
-                backgroundColor: panelColor,
-                shape: const StadiumBorder(),
-              ),
+            _TodayReading(
+              initialGuide: initialGuide,
+              key: ValueKey(initialGuide),
+            ),
+            const SizedBox(height: 16),
+            FateCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              onTap: () => context.go('/action'),
+              accent: const Color(0xFFA8BE96),
               child: Row(
                 children: [
-                  const Icon(Icons.explore_outlined),
+                  const Icon(Icons.eco_outlined, color: Color(0xFFA8BE96)),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      dependencies.session.profile == null
-                          ? s.start
-                          : s.continueChart,
-                    ),
-                  ),
-                  const Icon(Icons.arrow_forward_rounded),
+                  Expanded(child: Text(s.myActions)),
+                  const Icon(Icons.chevron_right, size: 18, color: mutedColor),
                 ],
               ),
             ),
-            const SizedBox(height: 26),
-            Text(
-              s.journey,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            const SizedBox(height: 20),
+            ThaiCalendarCard(
+              repository: dependencies.thaiCalendar,
+              footer: TextButton.icon(
+                onPressed: () => context.push(
+                  dependencies.session.profile == null ? '/birth' : '/chart',
+                ),
+                icon: const Icon(Icons.explore_outlined, size: 18),
+                label: Text(
+                  dependencies.session.profile == null
+                      ? s.start
+                      : s.continueChart,
+                ),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                ),
+              ),
             ),
+            const SizedBox(height: 20),
+            const DailyHoroscopeCard(),
             const SizedBox(height: 18),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                for (final card in [
-                  (s.chart, s.chartNote, Icons.explore_outlined, '/chart'),
-                  (
-                    s.chartRead,
-                    s.reportNote,
-                    Icons.menu_book_outlined,
-                    '/chart/reading',
-                  ),
-                  (
-                    s.fullReport,
-                    s.fullNote,
-                    Icons.workspace_premium_outlined,
-                    'purchase',
-                  ),
-                  (
-                    s.birth,
-                    s.birthNote,
-                    Icons.calendar_month_outlined,
-                    '/birth',
-                  ),
-                ])
-                  SizedBox(
-                    width: cardWidth,
-                    child: Material(
-                      color: panelColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(22),
-                        side: const BorderSide(color: lineColor),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => card.$4 == 'purchase'
-                            ? showPurchaseSheet(context)
-                            : context.go(card.$4),
-                        child: Padding(
-                          padding: const EdgeInsets.all(17),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(card.$3, color: goldColor, size: 25),
-                              const SizedBox(height: 20),
-                              Text(
-                                card.$1,
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                card.$2,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: mutedColor,
-                                  height: 1.8,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              const Align(
-                                alignment: Alignment.centerRight,
-                                child: Icon(
-                                  Icons.north_east,
-                                  size: 16,
-                                  color: goldColor,
-                                ),
-                              ),
-                            ],
+            if (dependencies.companion
+                .conversation(dependencies.companion.selected)
+                .isNotEmpty) ...[
+              FateCard(
+                padding: const EdgeInsets.all(16),
+                onTap: () => openGuardian(context),
+                child: Row(
+                  children: [
+                    GuardianAvatar(dependencies.companion.selected),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.continueConversation,
+                            style: const TextStyle(
+                              color: goldColor,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
+                          Text(
+                            dependencies.companion
+                                    .conversation(
+                                      dependencies.companion.selected,
+                                    )
+                                    .last['content']
+                                as String,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12, height: 1.7),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                if (_showUpcomingTools) ...[
-                  _IllustratedFeatureCard(
-                    width: cardWidth,
-                    image: 'assets/images/theme-tarot.jpg',
-                    title: s.tarot,
-                    subtitle: s.tarotDraw,
-                    onTap: () => context.go('/fortune/tarot'),
-                  ),
-                  _IllustratedFeatureCard(
-                    width: cardWidth,
-                    image: 'assets/images/theme-lucky-numbers.jpg',
-                    title: s.luckyNumbers,
-                    subtitle: s.todayLuckyNumber,
-                    onTap: () => context.go('/fortune/lucky-numbers'),
-                  ),
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Icon(Icons.arrow_forward),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+            ],
+            FateSectionTitle(s.chooseGuardian, subtitle: s.guardianSectionNote),
+            LayoutBuilder(
+              builder: (context, constraints) => Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final guardian in Guardian.values)
+                    SizedBox(
+                      width: (constraints.maxWidth - 12) / 2,
+                      child: FateEntrance(
+                        delay: Duration(milliseconds: guardian.index * 40),
+                        child: _GuardianCard(guardian),
+                      ),
+                    ),
                 ],
-              ],
+              ),
             ),
             const SizedBox(height: 20),
             FateCard(
-              gold: true,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '✧  FATE',
-                    style: TextStyle(
-                      color: goldColor,
-                      fontSize: 11,
-                      letterSpacing: 2,
+              padding: EdgeInsets.zero,
+              onTap: () => context.push('/fortune/tarot'),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    const FateEmblem(Icons.style_outlined, size: 52),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.dailyDraw,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          Text(
+                            s.dailyDrawNote,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    s.homeReportTitle,
-                    style: const TextStyle(fontSize: 21, height: 1.6),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    s.homeReportText,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () => context.go('/chart/reading'),
-                    child: Text('${s.viewReport}  →'),
-                  ),
+                    const Icon(Icons.arrow_forward, color: goldColor, size: 20),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FateSectionTitle(s.journey),
+            FateCard(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Column(
+                children: [
+                  for (final entry in [
+                    (s.chart, s.chartNote, Icons.explore_outlined, '/chart'),
+                    (
+                      s.reports,
+                      s.reportNote,
+                      Icons.menu_book_outlined,
+                      '/reports',
+                    ),
+                    (
+                      s.fullReport,
+                      s.fullNote,
+                      Icons.workspace_premium_outlined,
+                      'purchase',
+                    ),
+                    (
+                      s.birth,
+                      s.birthNote,
+                      Icons.calendar_month_outlined,
+                      '/birth',
+                    ),
+                    (
+                      s.luckyNumbers,
+                      s.todayLuckyNumber,
+                      Icons.auto_awesome_outlined,
+                      '/fortune/lucky-numbers',
+                    ),
+                  ])
+                    ListTile(
+                      key: ValueKey('home-entry-${entry.$4}'),
+                      leading: Icon(entry.$3, color: goldColor, size: 22),
+                      title: Text(
+                        entry.$1,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        entry.$2,
+                        style: const TextStyle(fontSize: 11, color: mutedColor),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: mutedColor,
+                      ),
+                      onTap: () => entry.$4 == 'purchase'
+                          ? showPurchaseSheet(context)
+                          : context.push(entry.$4),
+                    ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Text(
+                s.aiCompanionNotice,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 10, color: mutedColor),
               ),
             ),
             if (dependencies.session.offline)
               Padding(
                 padding: const EdgeInsets.only(top: 20),
-                child: Text(
-                  s.connection,
-                  style: Theme.of(context).textTheme.bodySmall,
+                child: Column(
+                  children: [
+                    Text(
+                      s.connection,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    TextButton(
+                      onPressed: dependencies.session.loading
+                          ? null
+                          : dependencies.session.initialize,
+                      child: Text(s.serviceRetry),
+                    ),
+                  ],
                 ),
               ),
           ],
@@ -205,211 +250,368 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class _IllustratedFeatureCard extends StatelessWidget {
-  const _IllustratedFeatureCard({
-    required this.width,
-    required this.image,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final double width;
-  final String image, title, subtitle;
-  final VoidCallback onTap;
+class _TodayReading extends StatefulWidget {
+  const _TodayReading({required this.initialGuide, super.key});
+  final ReadingGuide initialGuide;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: width,
-    child: FateCard(
-      padding: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AspectRatio(
-              aspectRatio: 1.6,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset(
-                    image,
-                    fit: BoxFit.cover,
-                    excludeFromSemantics: true,
-                  ),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [panelColor, Color(0x0020152F)],
-                        stops: [0, .32],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 13),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: mutedColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.north_east, size: 16, color: goldColor),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+  State<_TodayReading> createState() => _TodayReadingState();
 }
 
-class _HomeHero extends StatelessWidget {
-  const _HomeHero();
+class _TodayReadingState extends State<_TodayReading> {
+  late ReadingGuide _selected = widget.initialGuide;
+
+  void _select(ReadingGuide guide) {
+    if (guide != _selected) setState(() => _selected = guide);
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final shape = BorderRadius.circular(22);
-
-    return ClipRRect(
-      borderRadius: shape,
-      child: DecoratedBox(
-        position: DecorationPosition.foreground,
-        decoration: BoxDecoration(
-          border: Border.all(color: goldColor.withValues(alpha: .22)),
-          borderRadius: shape,
+    final hasBirth = DependencyScope.of(context).session.profile != null;
+    final duration = FateMotion.duration(context, FateMotion.change);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                flex: 7,
+                child: Text(
+                  s.todayQuestion,
+                  style: const TextStyle(fontSize: 20, height: 1.36),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                flex: 3,
+                child: Text(
+                  s.todayNote,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(fontSize: 9, color: mutedColor),
+                ),
+              ),
+            ],
+          ),
         ),
-        child: ColoredBox(
-          color: const Color(0xFF1B112C),
-          child: LayoutBuilder(
-            builder: (context, constraints) => SizedBox(
-              width: constraints.maxWidth,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    left: constraints.maxWidth * .33,
-                    child: const Image(
-                      image: homeHeroImage,
-                      fit: BoxFit.cover,
-                      alignment: Alignment(.18, -.82),
-                      excludeFromSemantics: true,
-                    ),
-                  ),
-                  const Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color(0xFF1B112C),
-                            Color(0xF21B112C),
-                            Color(0xA01B112C),
-                            Color(0x001B112C),
-                          ],
-                          stops: [0, .32, .48, .74],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [Color(0xA61B112C), Color(0x001B112C)],
-                          stops: [0, .36],
-                        ),
-                      ),
-                    ),
-                  ),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 232),
+        const LiveTeasers(),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (final guide in ReadingGuide.values)
+              Expanded(
+                child: Semantics(
+                  selected: guide == _selected,
+                  child: InkWell(
+                    onTap: () => _select(guide),
+                    borderRadius: BorderRadius.circular(10),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(17, 19, 0, 17),
-                      child: SizedBox(
-                        width: constraints.maxWidth * .49,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.heroTitle,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                height: 1.28,
-                                fontWeight: FontWeight.w700,
-                                color: inkColor,
-                              ),
+                      padding: const EdgeInsets.only(top: 9),
+                      child: Column(
+                        children: [
+                          Text(
+                            guide.method(s),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: guide == _selected ? inkColor : mutedColor,
+                              fontSize: 12,
+                              fontWeight: guide == _selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
                             ),
-                            const SizedBox(height: 9),
-                            Text(
-                              s.heroText,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                height: 1.65,
-                                color: mutedColor,
-                              ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            guide.tradition,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 7,
+                              color: mutedColor,
+                              letterSpacing: .8,
                             ),
-                            const SizedBox(height: 12),
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: const Color(0x403C2A46),
-                                border: Border.all(
-                                  color: goldColor.withValues(alpha: .35),
-                                ),
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                child: Text(
-                                  '✧  ${s.system}',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: goldColor,
-                                  ),
-                                ),
-                              ),
+                          ),
+                          const SizedBox(height: 7),
+                          AnimatedContainer(
+                            duration: duration,
+                            width: guide == _selected ? 33 : 0,
+                            height: 2,
+                            decoration: BoxDecoration(
+                              color: goldColor,
+                              borderRadius: BorderRadius.circular(2),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const Divider(height: 1, color: lineColor),
+        const SizedBox(height: 5),
+        SizedBox(
+          height: 252,
+          child: LayoutBuilder(
+            builder: (context, constraints) => OverflowBox(
+              minWidth: constraints.maxWidth + 40,
+              maxWidth: constraints.maxWidth + 40,
+              child: GuideCarousel(selected: _selected, onSelect: _select),
+            ),
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (final guide in ReadingGuide.values)
+              AnimatedContainer(
+                duration: duration,
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+                width: guide == _selected ? 18 : 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: guide == _selected
+                      ? goldColor
+                      : mutedColor.withValues(alpha: .48),
+                ),
+              ),
+          ],
+        ),
+        SizedBox(
+          height: 26,
+          child: AnimatedSwitcher(
+            duration: duration,
+            child: Text(
+              _selected.hint(s),
+              key: ValueKey(_selected),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 10,
+                color: mutedColor,
+                height: 2,
+              ),
+            ),
+          ),
+        ),
+        FilledButton(
+          key: const ValueKey('start-selected-reading'),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFE3C696),
+            minimumSize: const Size.fromHeight(45),
+          ),
+          onPressed: () => _selected.start(context),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  _selected.startLabel(s, hasBirth),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward, size: 17),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _ChatEntry(
+                icon: Icons.chat_outlined,
+                label: s.textReading,
+                subtitle: s.textReadingNote,
+                onTap: () => _selected.openChat(context),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _ChatEntry(
+                icon: Icons.mic_none_rounded,
+                label: s.voiceReading,
+                subtitle: s.voiceReadingNote,
+                onTap: () => _selected.openChat(context, voice: true),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ChatEntry extends StatelessWidget {
+  const _ChatEntry({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label, subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => FateCard(
+    onTap: onTap,
+    radius: 12,
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    child: Row(
+      children: [
+        Icon(icon, color: goldColor, size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12),
+              ),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: mutedColor, fontSize: 9),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _GuardianCard extends StatelessWidget {
+  const _GuardianCard(this.guardian);
+  final Guardian guardian;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    return Semantics(
+      button: true,
+      label: '${guardian.title(s)} · ${s.startConversation}',
+      excludeSemantics: true,
+      onTap: () => openGuardian(context, guardian: guardian),
+      child: FateCard(
+        key: ValueKey('guardian-talk-${guardian.name}'),
+        padding: EdgeInsets.zero,
+        accent: guardian.color,
+        onTap: () => openGuardian(context, guardian: guardian),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(100),
+                  bottom: Radius.circular(12),
+                ),
+                child: AspectRatio(
+                  aspectRatio: 1.08,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      HeroMode(
+                        enabled: !FateMotion.reduced(context),
+                        child: Hero(
+                          tag: guardian.portraitTag,
+                          transitionOnUserGestures: true,
+                          child: Image(
+                            image: AssetImage(guardian.image),
+                            fit: BoxFit.cover,
+                            alignment: const Alignment(0, -.7),
+                            excludeFromSemantics: true,
+                          ),
+                        ),
+                      ),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, panelColor],
+                            stops: [.72, 1],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 10,
+                        top: 10,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: canvasColor.withValues(alpha: .55),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            guardian.icon,
+                            color: guardian.color,
+                            size: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 2, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    guardian.title(s),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    guardian.note(s),
+                    style: TextStyle(
+                      fontSize: 11,
+                      height: 1.5,
+                      color: guardian.color,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          s.startConversation,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: mutedColor,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.north_east, size: 14, color: guardian.color),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

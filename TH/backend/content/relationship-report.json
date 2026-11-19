@@ -1,0 +1,47 @@
+{
+  "zh": {
+    "title": "爱情人物影响解读报告",
+    "sections": {"judgment": "判断", "basis": "星盘依据"},
+    "unlock": "查看完整爱情人物解读"
+  },
+  "th": {
+    "title": "รายงานบุคคลที่มีอิทธิพลต่อความรัก",
+    "sections": {"judgment": "ข้อสรุป", "basis": "หลักฐานจากดวงกำเนิด"},
+    "unlock": "ดูรายงานความรักฉบับเต็ม"
+  },
+  "en": {
+    "title": "Who Is Influencing Your Love Life?",
+    "sections": {"judgment": "Judgment", "basis": "Natal chart basis"},
+    "unlock": "Read the full relationship report"
+  },
+  "vi": {
+    "title": "Báo cáo về người ảnh hưởng đến chuyện tình cảm của bạn",
+    "sections": {"judgment": "Nhận định", "basis": "Căn cứ từ bản đồ sao"},
+    "unlock": "Xem báo cáo tình cảm đầy đủ"
+  },
+  "my": {
+    "title": "သင့်အချစ်ရေးကို သက်ရောက်နေသူအကြောင်း အစီရင်ခံစာ",
+    "sections": {"judgment": "သုံးသပ်ချက်", "basis": "မွေးဇာတာအခြေခံ"},
+    "unlock": "အချစ်ရေး အစီရင်ခံစာအပြည့်အစုံ ကြည့်ရန်"
+  },
+  "km": {
+    "title": "របាយការណ៍អំពីអ្នកដែលមានឥទ្ធិពលលើស្នេហារបស់អ្នក",
+    "sections": {"judgment": "ការវាយតម្លៃ", "basis": "មូលដ្ឋានពីផែនទីកំណើត"},
+    "unlock": "អានរបាយការណ៍ស្នេហាពេញលេញ"
+  },
+  "lo": {
+    "title": "ລາຍງານກ່ຽວກັບຄົນທີ່ມີອິດທິພົນຕໍ່ຄວາມຮັກຂອງເຈົ້າ",
+    "sections": {"judgment": "ຂໍ້ສະຫຼຸບ", "basis": "ພື້ນຖານຈາກດວງກຳເນີດ"},
+    "unlock": "ອ່ານລາຍງານຄວາມຮັກສະບັບເຕັມ"
+  },
+  "ms": {
+    "title": "Laporan individu yang mempengaruhi hubungan cinta anda",
+    "sections": {"judgment": "Penilaian", "basis": "Asas carta kelahiran"},
+    "unlock": "Baca laporan hubungan penuh"
+  },
+  "id": {
+    "title": "Laporan sosok yang memengaruhi hubungan cintamu",
+    "sections": {"judgment": "Penilaian", "basis": "Dasar bagan kelahiran"},
+    "unlock": "Baca laporan cinta lengkap"
+  }
+}

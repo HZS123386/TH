@@ -1,10 +1,11 @@
 import copy
 import json
 import re
-import sqlite3
 import time
 from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 import pytest
 from fastapi.testclient import TestClient
 
@@ -12,6 +13,7 @@ from backend.app.astrology import RoxyError, validate_natal
 from backend.app import thai
 from backend.app.config import ProviderConfig, Settings
 from backend.app.main import create_app
+from backend.app.storage import Storage
 from backend.app.western_app import NOTICE, TOPICS, WesternWriter, report_bundle, snapshot
 from backend.app.bazi_reports import InvalidBaziReport
 
@@ -41,8 +43,8 @@ def story(bundle):
 
 
 @pytest.fixture
-def app(tmp_path):
-    settings = Settings(database_path=str(tmp_path / "app.db"), roxy_enabled=True, roxy_api_key="test-not-a-real-key",
+def app(postgres_url):
+    settings = Settings(database_url=postgres_url, roxy_enabled=True, roxy_api_key="test-not-a-real-key",
                         providers={"qwen": ProviderConfig("test-key", "https://example.com/v1", "test-model")})
     return create_app(settings)
 
@@ -128,7 +130,7 @@ def test_cached_unknown_time_chart_and_report_use_the_current_display_without_an
         first = client.post("/api/calculations", headers=headers, json=request).json()
         old = {**first, "input_precision": "date_only", "facts": []}
         with app.state.store.connect() as db:
-            db.execute("UPDATE western_calculations SET payload=? WHERE id=?", (json.dumps(old), first["result_id"]))
+            db.execute("UPDATE western_calculations SET payload=%s WHERE id=%s", (json.dumps(old), first["result_id"]))
         cached = client.post("/api/calculations", headers=headers, json=request).json()
         assert cached == first and len(calls) == 1
         client.post("/api/privacy/consents", headers=headers, json={"purpose": "ai_reading", "notice_version": NOTICE, "granted": True})
@@ -218,34 +220,34 @@ def test_western_report_is_bound_to_consent_owner_revision_and_locale(app, monke
         assert historical["calculation"] == c  # A saved report keeps its original chart.
         assert historical["report_number"] == number
         with app.state.store.connect() as db:
-            db.execute("UPDATE western_reports SET state='running',started=? WHERE id=?", (time.time(), identifier))
+            db.execute("UPDATE western_reports SET state='running',started=%s WHERE id=%s", (time.time(), identifier))
         assert client.delete("/api/western/reports/" + identifier, headers=headers).status_code == 409
         with app.state.store.connect() as db:
-            db.execute("UPDATE western_reports SET state='ready' WHERE id=?", (identifier,))
+            db.execute("UPDATE western_reports SET state='ready' WHERE id=%s", (identifier,))
         assert client.delete("/api/western/reports/" + identifier, headers=headers).status_code == 204
         assert client.get("/api/western/reports/" + identifier, headers=headers).status_code == 404
         assert client.get("/api/western/reports", headers=headers, params=search).json()["items"] == []
         with app.state.store.connect() as db:
-            assert db.execute("SELECT 1 FROM western_calculations WHERE id=?", (c["result_id"],)).fetchone()
+            assert db.execute("SELECT 1 FROM western_calculations WHERE id=%s", (c["result_id"],)).fetchone()
 
 
-def test_report_numbers_migrate_existing_records_once_without_replacing_content(tmp_path):
-    path = tmp_path / "old-reports.db"
-    with sqlite3.connect(path) as db:
-        db.execute("CREATE TABLE western_reports(id TEXT PRIMARY KEY,owner TEXT NOT NULL,result_id TEXT NOT NULL,"
-                   "locale TEXT NOT NULL,state TEXT NOT NULL,payload TEXT,started REAL NOT NULL,version TEXT NOT NULL,"
-                   "UNIQUE(owner,result_id,locale,version))")
+def test_report_numbers_migrate_existing_records_once_without_replacing_content(postgres_url):
+    alembic = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    alembic.attributes["database_url"] = postgres_url
+    command.downgrade(alembic, "20261118_h5_app_login")
+    store = Storage(postgres_url)
+    with store.connect() as db:
         for i in range(2):
-            db.execute("INSERT INTO western_reports VALUES(?,?,?,?,?,?,?,?)",
+            db.execute("INSERT INTO western_reports VALUES(%s,%s,%s,%s,%s,%s,%s,%s)",
                        (f"r{i}", "owner", f"c{i}", "en", "ready", '{"summary":"keep me"}', 1, "old"))
-    create_app(Settings(database_path=str(path)))
-    with sqlite3.connect(path) as db:
+    command.upgrade(alembic, "head")
+    with store.connect() as db:
         first = db.execute("SELECT id,report_number,payload FROM western_reports ORDER BY id").fetchall()
-    assert len({row[1] for row in first}) == 2
-    assert all(re.fullmatch(r"FATE-[A-F0-9]{10}", row[1]) for row in first)
-    assert all(row[2] == '{"summary":"keep me"}' for row in first)
-    create_app(Settings(database_path=str(path)))
-    with sqlite3.connect(path) as db:
+    assert len({row["report_number"] for row in first}) == 2
+    assert all(re.fullmatch(r"FATE-[A-F0-9]{10}", row["report_number"]) for row in first)
+    assert all(row["payload"] == '{"summary":"keep me"}' for row in first)
+    command.upgrade(alembic, "head")
+    with store.connect() as db:
         assert db.execute("SELECT id,report_number,payload FROM western_reports ORDER BY id").fetchall() == first
 
 
@@ -276,7 +278,7 @@ def test_guest_can_read_own_report_and_explicit_registration_keeps_ownership(app
         headers = {"Authorization": "Bearer " + identity["token"]}
         assert client.get("/api/auth/me", headers=headers).json()["kind"] == "guest"
         with app.state.store.connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM accounts").fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) FROM accounts").fetchone()["count"] == 0
         profile = save(client, headers)
         result = client.post("/api/calculations", headers=headers, json={
             "system": "western_natal", "profile_id": profile["profile_id"], "profile_revision": 1}).json()

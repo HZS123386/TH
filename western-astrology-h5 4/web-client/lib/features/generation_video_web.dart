@@ -121,7 +121,7 @@ class _GenerationVideoState extends State<GenerationVideo>
     style
       ..width = '100%'
       ..height = '100%'
-      ..objectFit = 'fill'
+      ..objectFit = 'contain'
       ..pointerEvents = 'none'
       ..transform = 'scale(1.06)'
       ..background = 'transparent'

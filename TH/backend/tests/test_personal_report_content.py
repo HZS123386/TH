@@ -11,7 +11,7 @@ import pytest
 from backend.app.astrology import RoxyAstrology
 from backend.app.bazi_reports import InvalidBaziReport, report_usage_context
 from backend.app.config import ProviderConfig
-from backend.app.life_report_content import LifeWriter, personal_writing_progress, writing_progress
+from backend.app.life_report_content import PERSONAL_LOVE_FIELDS, LifeWriter, personal_writing_progress, writing_progress
 from backend.app.life_reports import LifeInput
 from backend.app.storage import Storage
 from backend.tests.test_roxy_astrology import GOLDEN, PROFILE, settings
@@ -63,41 +63,46 @@ def personal_draft(bundle):
             {"title": "回应需要", "text": "面对需要帮助的人，先问清最在意的问题，再用对方容易理解的方式回应，保留彼此选择的空间。"},
             {"title": "连接资源", "text": "当不同的人各有需要时，先整理哪些条件能够衔接，再确认双方是否愿意继续交流，避免替人答应未确定的安排。"},
             {"title": "传递信息", "text": "把复杂信息讲清楚时，先抓住一个重点，再用贴近日常的例子说明，让对方更容易理解并形成自己的判断。"},
-        ]}, "themes": {key: {"text": text, "evidence_ids": theme_ids[key]}
-            for key, text in {
-                "wealth": "对资源的安全感更容易来自清楚的使用边界，而不只是拥有多少。面对一项支出时，留意它是满足长期需要，还是为了缓解当下的不安；共同承担费用前，把各自能接受的范围说清楚。",
-                "love": "聊到见面安排时，试着问‘我们先定一个都方便的时间，好吗？’若对方愿意一起确认，临时有事也主动另约，关系就有继续磨合的空间。若几次商量都只得到模糊答复，先把时间留给自己的安排，等对方提出具体时间再回应。",
-                "risk": "当多个要求同时增加时，容易把完成速度当成衡量自己的唯一标准。若开始反复检查已经确认过的细节、却迟迟不愿交出结果，这就是负担过重的信号；先划清责任范围，比不断加码更能恢复稳定。",
-            }.items()}, "nodes": [
+        ]}, "themes": {
+            "wealth": {"text": "对资源的安全感更容易来自清楚的使用边界，而不只是拥有多少。面对一项支出时，留意它是满足长期需要，还是为了缓解当下的不安；共同承担费用前，把各自能接受的范围说清楚。",
+                       "evidence_ids": theme_ids["wealth"]},
+            "love": {"text": "聊到见面时，你既想把期待说清楚，也会体谅对方一时答不上来。听到体贴的话，容易先相信安排会落定，于是提前空出自己的时间，却没有确认彼此是否都愿意为这次见面作出安排。",
+                     "question": "“你愿意一起定下次见面的时间吗？”",
+                     "continue_when": "对方能提出具体时段，计划有变也主动另约，说明彼此愿意商量和调整，可以再约一次看能否兑现。",
+                     "slow_down_when": "说清期待后，若几次都由你催问，对方仍把决定往后推，就照常安排自己的行程，等有明确提议再决定要不要见。",
+                     "evidence_ids": theme_ids["love"]},
+            "risk": {"text": "当多个要求同时增加时，容易把完成速度当成衡量自己的唯一标准。若开始反复检查已经确认过的细节、却迟迟不愿交出结果，这就是负担过重的信号；先划清责任范围，比不断加码更能恢复稳定。",
+                     "evidence_ids": theme_ids["risk"]},
+        }, "nodes": [
             {"month": rule["month"], **copy,
              "evidence_ids": [rule["transit_id"], rule["supporting_natal_ids"][0]]}
             for rule, copy in zip(bundle["citation_rules"]["months"], node_copy)]}
 
 
-def personal_writer(tmp_path, provider):
-    config = settings(tmp_path)
+def personal_writer(postgres_url, provider):
+    config = settings(postgres_url)
     config.fortune_provider = provider
     config.providers.setdefault("openai", ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt"))
-    return LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    return LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
 
 
 @pytest.mark.parametrize("language", ["th", "en", "vi", "my", "km", "lo", "ms", "id"])
-def test_personal_free_localized_sign_names_keep_the_requested_language(tmp_path, language):
+def test_personal_free_localized_sign_names_keep_the_requested_language(postgres_url, language):
     writing = json.loads((Path(__file__).parent / "fixtures/personal-preview.json").read_text(encoding="utf-8"))[language]
     bundle = personal_fixture_bundle(language=language)
     signs = bundle["personal_signs"]
     value = {"language": language, "reading": "personal-preview", **writing}
     value["relationship"]["evidence_ids"] = bundle["citation_rules"]["relationship_ids"][:2]
     value["free_lines"][0] = signs["sun"]["label"] + " / " + signs["ascendant"]["label"] + ": " + value["free_lines"][0]
-    writer = personal_writer(tmp_path, "openai")
+    writer = personal_writer(postgres_url, "openai")
     assert len(writer.validate(json.dumps(value, ensure_ascii=False), bundle)["free_lines"]) == 3
     assert "language=" + language in writer.prompt(bundle)
 
 
 @pytest.mark.parametrize("provider", ["openai", "qwen"])
 @pytest.mark.parametrize("known", [True, False])
-def test_personal_free_three_lines_use_actual_signs_and_no_paid_timing(tmp_path, provider, known):
-    writer = personal_writer(tmp_path, provider)
+def test_personal_free_three_lines_use_actual_signs_and_no_paid_timing(postgres_url, provider, known):
+    writer = personal_writer(postgres_url, provider)
     bundle = personal_fixture_bundle(known=known)
     value = personal_draft(bundle)
     result = writer.validate(json.dumps(value, ensure_ascii=False), bundle)
@@ -120,8 +125,8 @@ def test_personal_free_three_lines_use_actual_signs_and_no_paid_timing(tmp_path,
 
 
 @pytest.mark.parametrize("target", ["overview", "trait", "action", "title", "missing_trait", "relationship"])
-def test_personal_free_sections_add_new_information(tmp_path, target):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_free_sections_add_new_information(postgres_url, target):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     if target == "overview":
@@ -141,8 +146,8 @@ def test_personal_free_sections_add_new_information(tmp_path, target):
         writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
-def test_personal_free_allows_short_shared_keywords_and_progress_includes_details(tmp_path):
-    writer = personal_writer(tmp_path, "qwen")
+def test_personal_free_allows_short_shared_keywords_and_progress_includes_details(postgres_url):
+    writer = personal_writer(postgres_url, "qwen")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     value["traits"][0]["text"] = "交流中愿意先提出想法，让大家有个共同的起点。"
@@ -154,8 +159,8 @@ def test_personal_free_allows_short_shared_keywords_and_progress_includes_detail
 
 
 @pytest.mark.parametrize("change", ["missing", "unrelated_evidence", "duplicate_evidence", "missing_aspect", "outsider", "decision", "partner_feelings", "over_combined_limit"])
-def test_free_love_preview_is_required_grounded_and_does_not_judge_third_parties(tmp_path, change):
-    writer = personal_writer(tmp_path, "openai")
+def test_free_love_preview_is_required_grounded_and_does_not_judge_third_parties(postgres_url, change):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     if change == "missing":
@@ -175,8 +180,8 @@ def test_free_love_preview_is_required_grounded_and_does_not_judge_third_parties
 
 
 @pytest.mark.parametrize("provider", ["openai", "qwen"])
-def test_personal_paid_template_schema_and_exact_month_citations(tmp_path, provider):
-    writer = personal_writer(tmp_path, provider)
+def test_personal_paid_template_schema_and_exact_month_citations(postgres_url, provider):
+    writer = personal_writer(postgres_url, provider)
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     result = writer.validate(json.dumps(value, ensure_ascii=False), bundle)
@@ -190,6 +195,8 @@ def test_personal_paid_template_schema_and_exact_month_citations(tmp_path, provi
     assert "translations" not in schema["properties"]
     assert "themes" in schema["required"]
     assert set(schema["$defs"]["PersonalThemes"]["required"]) == {"wealth", "love", "risk"}
+    assert set(schema["$defs"]["PersonalLove"]["required"]) == {"text", "evidence_ids", *PERSONAL_LOVE_FIELDS}
+    assert schema["$defs"]["PersonalLove"]["properties"]["evidence_ids"]["items"]["enum"] == bundle["citation_rules"]["themes"]["love"]
     assert schema["$defs"]["PersonalNode"]["properties"]["month"]["enum"] == ["2026-11", "2026-12", "2027-01"]
     assert 0 < writing_progress(json.dumps(value, ensure_ascii=False), "personal_full") < 100
     prompt = writer.prompt(bundle)
@@ -206,23 +213,29 @@ def test_personal_paid_template_schema_and_exact_month_citations(tmp_path, provi
 
 
 @pytest.mark.parametrize("language", ["zh", "en"])
-def test_personal_paid_natural_bounds_match_validator_and_provider_schema(tmp_path, language):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_paid_natural_bounds_match_validator_and_provider_schema(postgres_url, language):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(full=True, language=language)
     value = personal_draft(bundle)
-    bounds = ({"talent": (50, 160), "direction": (25, 75), "topic": (50, 140), "theme": (4, 14), "benefit": (35, 110), "caution": (10, 35), "action": (12, 45)} if language == "zh" else
-              {"talent": (150, 500), "direction": (75, 230), "topic": (150, 440), "theme": (4, 55), "benefit": (105, 340), "caution": (30, 110), "action": (36, 140)})
+    bounds = ({"talent": (50, 160), "direction": (25, 75), "topic": (50, 140), "theme": (4, 14),
+               "question": (8, 42), "continue_when": (20, 70), "slow_down_when": (20, 80),
+               "benefit": (35, 110), "caution": (10, 35), "action": (12, 45)} if language == "zh" else
+              {"talent": (150, 500), "direction": (75, 230), "topic": (150, 440), "theme": (4, 55),
+               "question": (20, 155), "continue_when": (60, 240), "slow_down_when": (60, 260),
+               "benefit": (105, 340), "caution": (30, 110), "action": (36, 140)})
     if language == "en":
         for part, title in zip(value["talent"]["directions"], ("Useful service", "Resource links", "Clear information")):
             part["title"] = title
     fields = [(value["talent"], "text", "talent")]
     fields += [(part, "text", "direction") for part in value["talent"]["directions"]]
     fields += [(part, "text", "topic") for part in value["themes"].values()]
+    fields += [(value["themes"]["love"], field, field) for field in PERSONAL_LOVE_FIELDS]
     fields += [(part, field, field) for part in value["nodes"] for field in ("theme", "benefit", "caution", "action")]
-    alphabet = "稳清明宽真静细亮柔暖实简恰诚顺敏和安定善勤" if language == "zh" else "abcdefghijklmnopqrstuvwxyz"
+    alphabet = "稳清明宽真静细亮柔暖实简恰诚顺敏和安定善勤谦信" if language == "zh" else "abcdefghijklmnopqrstuvwxyz"
     def sample(index, field, length):
         prefix = ("写下" if language == "zh" else "Write ") if field == "action" else ""
-        return prefix + alphabet[index] * (length - len(prefix))
+        suffix = "?" if field == "question" else ""
+        return prefix + alphabet[index] * (length - len(prefix) - (len(suffix) if language != "zh" else 0)) + suffix
     for endpoint in (0, 1):
         for index, (part, field, key) in enumerate(fields):
             part[field] = sample(index, key, bounds[key][endpoint])
@@ -235,18 +248,22 @@ def test_personal_paid_natural_bounds_match_validator_and_provider_schema(tmp_pa
                 writer.validate(json.dumps(value, ensure_ascii=False), bundle)
         part[field] = original
     definitions = writer.response_format(bundle)["json_schema"]["schema"]["$defs"]
-    for name, key in (("PersonalTalent", "talent"), ("PersonalDirection", "direction"), ("PersonalTopic", "topic")):
+    for name, key in (("PersonalTalent", "talent"), ("PersonalDirection", "direction"),
+                      ("PersonalTopic", "topic"), ("PersonalLove", "topic")):
         schema = definitions[name]["properties"]["text"]
         assert (schema["minLength"], schema["maxLength"]) == (bounds[key][0], bounds[key][1] + (30 if language == "zh" else 0))
+    for key in PERSONAL_LOVE_FIELDS:
+        schema = definitions["PersonalLove"]["properties"][key]
+        assert (schema["minLength"], schema["maxLength"]) == (bounds[key][0], bounds[key][1] + (18 if language == "zh" else 0))
     for key in ("theme", "benefit", "caution", "action"):
         schema = definitions["PersonalNode"]["properties"][key]
         assert (schema["minLength"], schema["maxLength"]) == (bounds[key][0], bounds[key][1] + (20 if language == "zh" else 0))
 
 
 @pytest.mark.parametrize("key", ["wealth", "love", "risk"])
-def test_personal_full_requires_each_promised_subject_and_its_own_evidence(tmp_path, key):
+def test_personal_full_requires_each_promised_subject_and_its_own_evidence(postgres_url, key):
     bundle = personal_fixture_bundle(full=True)
-    writer = personal_writer(tmp_path, "openai")
+    writer = personal_writer(postgres_url, "openai")
     value = personal_draft(bundle)
     missing = deepcopy(value)
     del missing["themes"][key]
@@ -258,10 +275,19 @@ def test_personal_full_requires_each_promised_subject_and_its_own_evidence(tmp_p
         writer.validate(json.dumps(wrong, ensure_ascii=False), bundle)
 
 
-@pytest.mark.parametrize("paraphrase", [False, True])
-def test_personal_full_rejects_repeated_ideas_across_different_subjects(tmp_path, paraphrase):
+@pytest.mark.parametrize("field", PERSONAL_LOVE_FIELDS)
+def test_personal_full_requires_each_relationship_answer(field):
     bundle = personal_fixture_bundle(full=True)
-    writer = personal_writer(tmp_path, "openai")
+    value = personal_draft(bundle)
+    del value["themes"]["love"][field]
+    with pytest.raises(InvalidBaziReport, match=rf"personal schema.*themes\.love\.{field}"):
+        LifeWriter.validate(json.dumps(value, ensure_ascii=False), bundle)
+
+
+@pytest.mark.parametrize("paraphrase", [False, True])
+def test_personal_full_rejects_repeated_ideas_across_different_subjects(postgres_url, paraphrase):
+    bundle = personal_fixture_bundle(full=True)
+    writer = personal_writer(postgres_url, "openai")
     value = personal_draft(bundle)
     copied = value["themes"]["wealth"]["text"]
     if paraphrase:
@@ -272,9 +298,9 @@ def test_personal_full_rejects_repeated_ideas_across_different_subjects(tmp_path
         writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
-def test_personal_full_does_not_copy_the_saved_free_action(tmp_path):
+def test_personal_full_does_not_copy_the_saved_free_action(postgres_url):
     bundle = personal_fixture_bundle(full=True)
-    writer = personal_writer(tmp_path, "openai")
+    writer = personal_writer(postgres_url, "openai")
     value = personal_draft(bundle)
     saved = personal_draft(personal_fixture_bundle())["opportunity_action"]
     value["nodes"][0]["action"] = saved
@@ -285,8 +311,8 @@ def test_personal_full_does_not_copy_the_saved_free_action(tmp_path):
 
 
 @pytest.mark.parametrize("field", ["benefit", "caution", "action"])
-def test_personal_paid_months_cannot_repeat_complete_sentences(tmp_path, field):
-    writer = personal_writer(tmp_path, "qwen")
+def test_personal_paid_months_cannot_repeat_complete_sentences(postgres_url, field):
+    writer = personal_writer(postgres_url, "qwen")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     value["nodes"][1][field] = value["nodes"][0][field]
@@ -295,8 +321,8 @@ def test_personal_paid_months_cannot_repeat_complete_sentences(tmp_path, field):
 
 
 @pytest.mark.parametrize("sentences", [2, 3])
-def test_personal_benefit_allows_two_connected_sentences_but_not_three(tmp_path, sentences):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_benefit_allows_two_connected_sentences_but_not_three(postgres_url, sentences):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     ending = "。也为后续了解彼此的想法打开交流空间。" if sentences == 3 else "，也为后续了解彼此的想法打开交流空间。"
@@ -308,8 +334,8 @@ def test_personal_benefit_allows_two_connected_sentences_but_not_three(tmp_path,
             writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
-def test_personal_paid_rejects_long_reused_clause_but_accepts_shared_short_words(tmp_path):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_paid_rejects_long_reused_clause_but_accepts_shared_short_words(postgres_url):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     value["nodes"][0]["caution"] = "交流过快时，也给对方留下回应的空间。"
@@ -327,8 +353,8 @@ def test_personal_paid_rejects_long_reused_clause_but_accepts_shared_short_words
     "保持耐心并等待合适的回应和机会。",
     "让自己慢慢调整状态并保持开放的心态。",
 ])
-def test_personal_action_needs_an_observable_step_not_generic_patience(tmp_path, action):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_action_needs_an_observable_step_not_generic_patience(postgres_url, action):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     value["nodes"][0]["action"] = action
@@ -337,8 +363,8 @@ def test_personal_action_needs_an_observable_step_not_generic_patience(tmp_path,
 
 
 @pytest.mark.parametrize("change", ["wrong_sign", "date_in_free", "past_identity", "occupation", "guarantee", "four_lines"])
-def test_personal_free_rejects_fabricated_or_private_claims(tmp_path, change):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_free_rejects_fabricated_or_private_claims(postgres_url, change):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     if change == "wrong_sign":
@@ -358,8 +384,8 @@ def test_personal_free_rejects_fabricated_or_private_claims(tmp_path, change):
         writer.validate(json.dumps(value, ensure_ascii=False), bundle)
 
 
-def test_unknown_birth_time_cannot_assign_ascendant_traits(tmp_path):
-    writer = personal_writer(tmp_path, "openai")
+def test_unknown_birth_time_cannot_assign_ascendant_traits(postgres_url):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle(known=False)
     value = personal_draft(bundle)
     value["free_lines"][0] = "太阳" + bundle["personal_signs"]["sun"]["label"] + "让你主动表达，上升也带来照顾他人感受的倾向。"
@@ -372,8 +398,8 @@ def test_unknown_birth_time_cannot_assign_ascendant_traits(tmp_path):
     "近期或有被理解的机会，合适的人也可能愿意继续交流。",
     "近期你的表达或能被关键人物看见，也值得保持清楚。",
 ])
-def test_personal_free_third_line_requires_a_near_term_visibility_opportunity(tmp_path, line):
-    writer = personal_writer(tmp_path, "openai")
+def test_personal_free_third_line_requires_a_near_term_visibility_opportunity(postgres_url, line):
+    writer = personal_writer(postgres_url, "openai")
     bundle = personal_fixture_bundle()
     value = personal_draft(bundle)
     value["free_lines"][2] = line
@@ -382,8 +408,8 @@ def test_personal_free_third_line_requires_a_near_term_visibility_opportunity(tm
 
 
 @pytest.mark.parametrize("change", ["wrong_month", "wrong_transit", "wrong_natal", "duplicate_month", "missing_node", "specific_job"])
-def test_personal_full_rejects_unsupported_node_or_talent_claims(tmp_path, change):
-    writer = personal_writer(tmp_path, "qwen")
+def test_personal_full_rejects_unsupported_node_or_talent_claims(postgres_url, change):
+    writer = personal_writer(postgres_url, "qwen")
     bundle = personal_fixture_bundle(full=True)
     value = personal_draft(bundle)
     if change == "wrong_month":
@@ -403,11 +429,11 @@ def test_personal_full_rejects_unsupported_node_or_talent_claims(tmp_path, chang
 
 
 @pytest.mark.parametrize("primary_unavailable", [False, True])
-def test_personal_writer_keeps_provider_fallback_usage_and_cache(tmp_path, monkeypatch, primary_unavailable):
-    config = settings(tmp_path)
+def test_personal_writer_keeps_provider_fallback_usage_and_cache(postgres_url, monkeypatch, primary_unavailable):
+    config = settings(postgres_url)
     config.fortune_provider, config.fortune_fallback_provider = "openai", "qwen"
     config.providers["openai"] = ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt")
-    store = Storage(config.database_path)
+    store = Storage(config.database_url)
     writer = LifeWriter(store, config, asyncio.Semaphore(2))
     original_client, calls = httpx.AsyncClient, []
     def respond(request):
@@ -438,7 +464,7 @@ def test_personal_writer_keeps_provider_fallback_usage_and_cache(tmp_path, monke
     assert all(result["state"] == "ready" for result in results)
     assert not any("private-account-metadata" in str(result) for result in results)
     with store.connect() as db:
-        rows = db.execute("SELECT provider,phase,stage,validated FROM report_model_usage WHERE report_id=? ORDER BY id", ("synthetic-personal-flow",)).fetchall()
+        rows = db.execute("SELECT provider,phase,stage,validated FROM report_model_usage WHERE report_id=%s ORDER BY id", ("synthetic-personal-flow",)).fetchall()
     ready = [row for row in rows if row["validated"]]
     assert len(ready) == 2
     assert [row["stage"] for row in ready] == ["personal_preview", "personal_full"]

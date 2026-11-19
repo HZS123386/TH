@@ -14,8 +14,8 @@ from backend.tests.test_app import PROFILE, login
 
 
 @pytest.fixture
-def client(tmp_path):
-    with TestClient(create_app(Settings(database_path=str(tmp_path / "thai.db")))) as client:
+def client(postgres_url):
+    with TestClient(create_app(Settings(database_url=postgres_url))) as client:
         yield client
 
 

@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,8 +12,15 @@ import 'package:fate_app/app/fate_app.dart';
 import 'package:fate_app/core/models/birth_profile.dart';
 import 'package:fate_app/core/network/api_client.dart';
 import 'package:fate_app/core/storage/session_store.dart';
+import 'package:fate_app/features/actions/action_ledger.dart';
+import 'package:fate_app/features/actions/action_page.dart';
+import 'package:fate_app/features/reports/h5_report_page.dart';
+import 'package:fate_app/features/reports/reports_page.dart';
+import 'package:fate_app/l10n/generated/app_localizations.dart';
 import 'package:fate_app/l10n/generated/app_localizations_en.dart';
 import 'package:fate_app/features/home/home_page.dart';
+import 'package:fate_app/data/configuration_repository.dart';
+import 'package:fate_app/ui/theme.dart';
 
 class DelayedHeroBundle extends CachingAssetBundle {
   final requested = Completer<void>();
@@ -52,6 +57,218 @@ class MemorySessionStore implements SessionStore {
 }
 
 void main() {
+  for (final locale in [const Locale('zh'), const Locale('th')]) {
+    testWidgets(
+      'H5 unlocked report shows its generation state in ${locale.languageCode}',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 820);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        SharedPreferences.setMockInitialValues({
+          'fate.locale': locale.languageCode,
+        });
+        var state = 'limited';
+        final d = AppDependencies(
+          await SharedPreferences.getInstance(),
+          secureStore: MemorySessionStore(),
+          client: ApiClient(
+            'https://api.example.test',
+            client: MockClient((request) async {
+              final report = {
+                'id': 'report-1',
+                'title': 'H5 fixture',
+                'access': 'full',
+                'preview_state': 'ready',
+                'full_state': state,
+                'chapters': [
+                  {'key': 'annual', 'title': 'Saved chapter'},
+                ],
+              };
+              final data = switch (request.url.path) {
+                '/api/auth/h5-code' => {
+                  'token': 'web-session',
+                  'user_id': 'web-user',
+                  'account': {'user_id': 'web-user', 'kind': 'h5'},
+                },
+                '/api/app/h5-reports' => {
+                  'items': [report],
+                  'next_cursor': null,
+                },
+                '/api/app/h5-reports/report-1' => report,
+                _ => null,
+              };
+              return http.Response(jsonEncode(data), 200);
+            }),
+          ),
+        );
+        addTearDown(d.dispose);
+        await d.auth.signInH5Code('A2B3C4');
+        final s = await AppLocalizations.delegate.load(locale);
+
+        Future<void> show(Widget page) async {
+          await tester.pumpWidget(
+            DependencyScope(
+              dependencies: d,
+              child: MaterialApp(
+                locale: locale,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: Scaffold(body: page),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+        }
+
+        await show(const ReportsPage());
+        expect(find.textContaining(s.h5ReportLimited), findsOneWidget);
+        expect(find.text(s.fullReport), findsNothing);
+
+        await show(const H5ReportPage(id: 'report-1'));
+        expect(find.text(s.h5ReportLimited), findsOneWidget);
+        expect(find.text(s.h5ReportLimitedHelp), findsOneWidget);
+        expect(find.text('Saved chapter'), findsOneWidget);
+        state = 'ready';
+        await tester.tap(find.byTooltip(s.h5Refresh));
+        await tester.pumpAndSettle();
+        expect(find.text(s.fullReport), findsOneWidget);
+        expect(find.text(s.h5ReportLimitedHelp), findsNothing);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
+
+  testWidgets(
+    'motion preserves the draft, chat feedback, and iOS back gesture',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+        SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
+        final reply = Completer<http.Response>();
+        final d = AppDependencies(
+          await SharedPreferences.getInstance(),
+          secureStore: MemorySessionStore(),
+          client: ApiClient(
+            'https://api.example.test',
+            client: MockClient((request) async {
+              return switch (request.url.path) {
+                '/api/auth/guest' => http.Response('{"token":"fixture"}', 201),
+                '/api/auth/me' => http.Response(
+                  '{"user_id":"motion-test","kind":"guest"}',
+                  200,
+                ),
+                '/api/profile' => http.Response('null', 200),
+                '/api/history' || '/api/memories' => http.Response('[]', 200),
+                '/api/chat' => reply.future,
+                _ => http.Response('{}', 404),
+              };
+            }),
+          ),
+        );
+        await d.auth.ensureGuest();
+        d.session.capabilities = const AppCapabilities(
+          companionProvider: 'companion',
+        );
+        d.session.profile = const BirthProfile(
+          date: '1995-02-03',
+          timezone: 'Asia/Bangkok',
+          place: 'Bangkok',
+        );
+        d.session.notifyListeners();
+        await d.companion.load();
+        await tester.pumpWidget(
+          DependencyScope(
+            dependencies: d,
+            child: FateApp(dependencies: d),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('guardian-talk-love')),
+        );
+        await tester.tap(find.byKey(const ValueKey('guardian-talk-love')));
+        await tester.pumpAndSettle();
+        final s = AppLocalizationsEn();
+        await tester.enterText(find.byType(TextField), 'Keep this draft');
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+        addTearDown(tester.view.resetViewInsets);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getBottomRight(find.byType(TextField)).dy,
+          lessThanOrEqualTo(360),
+        );
+        expect(tester.takeException(), isNull);
+        tester.view.resetViewInsets();
+        tester.view.physicalSize = const Size(390, 844);
+        await tester.pumpAndSettle();
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(reduceMotion: true);
+        await tester.pumpAndSettle();
+        expect(find.text('Keep this draft'), findsOneWidget);
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures();
+        await tester.pumpAndSettle();
+        expect(find.text('Keep this draft'), findsOneWidget);
+        await tester.tap(find.byTooltip(s.sendMessage));
+        await tester.pumpAndSettle();
+        expect(find.text(s.aiPermission), findsOneWidget);
+        await tester.tap(find.text(s.decline));
+        await tester.pumpAndSettle();
+        expect(d.companion.sending, isFalse);
+        expect(find.text('Keep this draft'), findsOneWidget);
+        await tester.tap(find.byTooltip(s.sendMessage));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(s.aiAllow));
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.text(s.assistantListening), findsOneWidget);
+        expect(d.companion.sending, isTrue);
+        reply.complete(
+          http.Response(
+            'event: token\ndata: {"text":"A thoughtful reply."}\n\n'
+            'event: done\ndata: {"message_id":"motion-reply"}\n\n',
+            200,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('A thoughtful reply.'), findsOneWidget);
+        expect(find.text(s.assistantListening), findsNothing);
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          isEmpty,
+        );
+        await tester.dragFrom(const Offset(4, 300), const Offset(350, 0));
+        await tester.pumpAndSettle();
+        expect(find.byType(NavigationBar), findsOneWidget);
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('guardian-talk-career')),
+        );
+        await tester.tap(find.byKey(const ValueKey('guardian-talk-career')));
+        await tester.pumpAndSettle();
+        expect(d.companion.selected.name, 'career');
+        await tester.tap(find.byType(BackButton));
+        await tester.pumpAndSettle();
+        expect(find.byType(NavigationBar), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        d.dispose();
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
+
   testWidgets('the first visible frame includes the decoded home artwork', (
     tester,
   ) async {
@@ -116,7 +333,7 @@ void main() {
     }
   });
   testWidgets(
-    'home hides upcoming tools while horoscope, saved tool routes, and chart work',
+    'five-tab navigation keeps companions, tools, and existing readings reachable',
     (tester) async {
       tester.view.physicalSize = const Size(430, 932);
       tester.view.devicePixelRatio = 1;
@@ -200,14 +417,47 @@ void main() {
       );
       await d.session.initialize();
       await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('app-bottom-navigation')),
-        findsOneWidget,
-      );
+      expect(find.byType(NavigationDestination), findsNWidgets(5));
       final s = AppLocalizationsEn();
-      final router = GoRouter.of(tester.element(find.byType(HomePage)));
-      expect(find.text(s.tarot), findsNothing);
-      expect(find.text(s.luckyNumbers), findsNothing);
+      expect(find.text(s.todayQuestion), findsOneWidget);
+      expect(find.text(s.thaiGuide), findsWidgets);
+      expect(find.text(s.loveGuardian), findsOneWidget);
+      expect(find.text(s.careerGuardian), findsOneWidget);
+      expect(find.text(s.wealthGuardian), findsOneWidget);
+      expect(find.text(s.wellbeingGuardian), findsOneWidget);
+      await tester.ensureVisible(find.text(s.dailyHoroscopeTitle));
+      expect(find.text(s.dailyHoroscopeTitle).hitTestable(), findsOneWidget);
+      expect(find.widgetWithText(ListTile, s.reports), findsOneWidget);
+      for (final title in [
+        s.thaiCalendarTitle,
+        s.chart,
+        s.fullReport,
+        s.birth,
+        s.luckyNumbers,
+        s.start,
+      ]) {
+        expect(find.text(title), findsOneWidget);
+      }
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('guardian-talk-wealth')),
+      );
+      await tester.tap(find.byKey(const ValueKey('guardian-talk-wealth')));
+      await tester.pumpAndSettle();
+      expect(d.companion.selected.name, 'wealth');
+      expect(find.text(s.chatProfileNeeded), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(NavigationDestination).at(4));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(s.bondNav));
+      await tester.tap(find.text(s.bondNav));
+      await tester.pumpAndSettle();
+      expect(find.text(s.bondTitle), findsOneWidget);
+      expect(find.text(s.bondNew), findsNWidgets(4));
+      await tester.tap(find.byType(NavigationDestination).at(0));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(s.thaiCalendarMixed));
       expect(find.text(s.thaiCalendarWaning(14)), findsOneWidget);
       expect(find.text(s.thaiCalendarMixed), findsOneWidget);
       expect(find.textContaining('08:24–10:48'), findsOneWidget);
@@ -219,7 +469,7 @@ void main() {
       await tester.tap(horoscope);
       await tester.pumpAndSettle();
       expect(find.text(s.dailyHoroscopeTitle), findsOneWidget);
-      expect(find.byKey(const ValueKey('app-bottom-navigation')), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
       expect(find.text('80'), findsNothing);
       await tester.tap(find.byKey(const ValueKey('daily-zodiac-1')));
       await tester.pumpAndSettle();
@@ -233,6 +483,13 @@ void main() {
         (await SharedPreferences.getInstance()).getInt('fate.daily_zodiac'),
         1,
       );
+      await tester.tap(find.byType(NavigationDestination).at(4));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(s.fortunePeriods));
+      await tester.tap(find.text(s.fortunePeriods));
+      await tester.pumpAndSettle();
+      expect(find.text(s.dailyHoroscopeToday(s.zTaurus)), findsOneWidget);
+      expect(find.text('81'), findsOneWidget);
 
       await d.session.saveProfile(
         const BirthProfile(
@@ -265,7 +522,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(s.dailyHoroscopeToday(s.zTaurus)), findsOneWidget);
 
-      router.go('/fortune/tarot');
+      final tarot = find.text(s.tarot);
+      await tester.ensureVisible(tarot);
+      await tester.tap(tarot);
       await tester.pumpAndSettle();
       expect(find.text(s.tarotDrawHint), findsOneWidget);
       final tarotLabels = {for (var i = 1; i <= 30; i++) s.tarotChooseCard(i)};
@@ -291,16 +550,22 @@ void main() {
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
 
-      expect(find.text(s.tarot), findsNothing);
-      expect(find.text(s.luckyNumbers), findsNothing);
-      router.go('/fortune/lucky-numbers');
+      final luckyNumbers = find.text(s.luckyNumbers);
+      await tester.ensureVisible(luckyNumbers);
+      await tester.tap(luckyNumbers);
       await tester.pumpAndSettle();
       expect(find.text(s.todayLuckyNumber), findsOneWidget);
       final today = DateTime.now();
       final number = (today.year + today.month + today.day - 1) % 9 + 1;
       expect(find.text('$number'), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('app-nav/chart')));
+      await tester.tap(find.byType(NavigationDestination).at(4));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(s.fortunePeriods));
+      await tester.tap(find.text(s.fortunePeriods));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(s.chart));
+      await tester.tap(find.text(s.chart));
       await tester.pumpAndSettle();
       expect(find.text(AppLocalizationsEn().birthIntro), findsOneWidget);
       expect(find.text(AppLocalizationsEn().birthStorage), findsOneWidget);
@@ -312,24 +577,15 @@ void main() {
         find.textContaining('not calculated from your birth details'),
         findsOneWidget,
       );
-      final read = find.widgetWithText(
-        FilledButton,
-        AppLocalizationsEn().chartRead,
-      );
+      final read = find.widgetWithText(FilledButton, s.chartRead);
       await tester.ensureVisible(read);
       await tester.tap(read);
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('reading-chart')), findsOneWidget);
-      expect(find.byKey(const ValueKey('reading-back')), findsOneWidget);
-      expect(find.byKey(const ValueKey('app-bottom-navigation')), findsNothing);
       final unlock = find.byKey(const ValueKey('unlock-report'));
       expect(unlock, findsOneWidget);
       await tester.tap(unlock);
       await tester.pumpAndSettle();
-      final nativeBuy = find.widgetWithText(
-        FilledButton,
-        'Purchase in the iOS app',
-      );
+      final nativeBuy = find.widgetWithText(FilledButton, s.storeBuy);
       expect(tester.widget<FilledButton>(nativeBuy).onPressed, isNull);
       final preview = find.textContaining(AppLocalizationsEn().previewFull);
       expect(preview, findsOneWidget);
@@ -340,42 +596,21 @@ void main() {
       expect(d.reports.report, isNull);
       expect(d.purchaseRepository.intent, isNull);
       expect(
-        requests,
-        containsAll([
+        requests.toSet(),
+        unorderedEquals([
           '/api/config',
           '/api/thai-calendar/today',
           '/api/daily-horoscope/today',
         ]),
       );
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('app-bottom-navigation')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('standalone-chart-reading')),
-        findsNothing,
-      );
-      await tester.tap(find.byKey(const ValueKey('app-nav/profile')));
-      await tester.pumpAndSettle();
-      final history = find.byKey(const ValueKey('profile-reading-history'));
-      await tester.ensureVisible(history);
-      await tester.tap(history);
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('standalone-chart-reading')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const ValueKey('app-bottom-navigation')), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
       d.dispose();
     },
   );
   testWidgets(
-    'account language row opens a dialog and saves the selected language',
+    'action suggestions and custom tasks fill an offering once per completion',
     (tester) async {
-      tester.view.physicalSize = const Size(360, 640);
+      tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -385,46 +620,112 @@ void main() {
         preferences,
         client: ApiClient(
           'https://api.example.test',
-          client: MockClient((_) async => http.Response('{"modules":[]}', 200)),
+          client: MockClient((_) async => http.Response('{}', 404)),
         ),
         secureStore: MemorySessionStore(),
       );
+      final s = AppLocalizationsEn();
       await tester.pumpWidget(
         DependencyScope(
           dependencies: d,
-          child: FateApp(dependencies: d),
+          child: MaterialApp(
+            theme: fateTheme(),
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(body: ActionPage()),
+          ),
         ),
       );
-      await d.session.initialize();
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('app-nav/profile')));
+      expect(find.text(s.offeringJasmine), findsOneWidget);
+      expect(find.text('0 / 100'), findsOneWidget);
+
+      await tester.tap(find.text(s.actionDailySuggestion));
       await tester.pumpAndSettle();
-      final language = find.byKey(const ValueKey('profile-language'));
-      await tester.ensureVisible(language);
-      await tester.tap(language);
+      final done = find.widgetWithText(CheckboxListTile, s.actionCompleted);
+      await tester.ensureVisible(done);
+      await tester.tap(done);
       await tester.pumpAndSettle();
-      expect(find.byType(SimpleDialog), findsOneWidget);
-      for (final code in ['th', 'en', 'zh', 'vi']) {
-        expect(find.byKey(ValueKey('language-option-$code')), findsOneWidget);
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      final owner = d.session.owner;
+      final plan = d.actions.plans(owner).single;
+      expect(plan.id, startsWith('daily-'));
+      expect(plan.done, isTrue);
+      expect(plan.readyOn(DateUtils.dateOnly(DateTime.now())), isTrue);
+      expect(find.text('20 / 100'), findsOneWidget);
+
+      await tester.tap(find.text(s.actionCustomPlan));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), 'Water the basil');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      final custom = d.actions.plans(owner).first;
+      expect(custom.title, 'Water the basil');
+      expect(custom.done, isFalse);
+      expect(d.actions.energyFor(owner), 20);
+
+      for (var i = 0; i < 3; i++) {
+        await d.actions.save(
+          owner,
+          ActionPlan(
+            id: 'completed-fixture-$i',
+            title: 'Completed action $i',
+            category: 0,
+            beneficiary: 0,
+            date: plan.date,
+            reviewDate: plan.reviewDate,
+            notes: '',
+            reflection: '',
+            done: true,
+            reviewed: false,
+          ),
+        );
       }
-      await tester.tap(find.byKey(const ValueKey('language-option-zh')));
       await tester.pumpAndSettle();
-      expect(find.byType(SimpleDialog), findsNothing);
-      expect(d.session.locale.languageCode, 'zh');
-      expect(preferences.getString('fate.locale'), 'zh');
-      await tester.tap(language);
-      await tester.pumpAndSettle();
-      expect(
-        find.descendant(
-          of: find.byKey(const ValueKey('language-option-zh')),
-          matching: find.byIcon(Icons.check),
-        ),
-        findsOneWidget,
+      expect(find.text('80 / 100'), findsOneWidget);
+      final completeButton = find.widgetWithText(
+        FilledButton,
+        s.actionCompleteNow,
       );
-      await tester.tap(find.widgetWithText(TextButton, '取消'));
+      await tester.scrollUntilVisible(completeButton.hitTestable(), 155);
       await tester.pumpAndSettle();
-      expect(find.byType(SimpleDialog), findsNothing);
-      expect(d.session.locale.languageCode, 'zh');
+      await tester.tap(completeButton.hitTestable());
+      await tester.pump();
+      expect(d.actions.energyFor(owner), 100);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 820));
+      final fill = find.byWidgetPredicate(
+        (widget) =>
+            widget is LinearProgressIndicator &&
+            widget.semanticsLabel == s.offeringEnergy,
+      );
+      expect(
+        tester.widget<LinearProgressIndicator>(fill).value,
+        inExclusiveRange(.8, 1.0),
+      );
+      await tester.pump(const Duration(milliseconds: 680));
+      expect(find.text('100 / 100'), findsOneWidget);
+      expect(find.text(s.offeringPresenting), findsOneWidget);
+      expect(find.text(s.offeringBlessing), findsNothing);
+      await tester.pumpAndSettle();
+      expect(find.text('100 / 100'), findsOneWidget);
+      expect(find.text(s.offeringComplete), findsOneWidget);
+      expect(find.text(s.offeringBlessing), findsOneWidget);
+
+      await d.actions.complete(owner, custom.id);
+      final reloaded = ActionLedger(LocalDraftStore(preferences));
+      expect(reloaded.energyFor(owner), 100);
+      expect(reloaded.energyFor('another-owner'), 0);
+      reloaded.dispose();
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       d.dispose();
@@ -456,7 +757,9 @@ void main() {
       );
       await d.session.initialize();
       await tester.pumpAndSettle();
-      final start = find.widgetWithText(OutlinedButton, s.start);
+      await tester.tap(find.byType(NavigationDestination).at(4));
+      await tester.pumpAndSettle();
+      final start = find.widgetWithText(TextButton, s.birth);
       await tester.ensureVisible(start);
       await tester.tap(start);
       await tester.pumpAndSettle();

@@ -20,7 +20,7 @@ class ProviderConfig:
 
 @dataclass
 class Settings:
-    database_path: str = "data/sabai.db"
+    database_url: str = field(default="", repr=False)
     app_env: str = "development"
     thai_landing_dir: str = ""
     session_hours: int = 168
@@ -40,6 +40,9 @@ class Settings:
     roxy_api_key: str = field(default="", repr=False)
     roxy_enabled: bool = False
     life_astrology_provider: str = "thai"
+    life_requests_per_minute: int = 30
+    life_generation_concurrency: int = 4
+    life_chart_concurrency: int = 4
     bazi_provider: str = "github"
     roxy_per_minute: int = 12
     roxy_per_day: int = 80
@@ -67,13 +70,15 @@ class Settings:
     sunlands_province_id: str = ""
     sunlands_merchant_notify_uri: str = ""
     support_email: str = ""
+    admin_username: str = ""
+    admin_password_hash: str = field(default="", repr=False)
 
     @classmethod
     def from_env(cls):
         load_dotenv()
         defaults = {"openai": "https://api.openai.com/v1", "deepseek": "https://api.deepseek.com", "qwen": "", "kimi": "https://api.moonshot.cn/v1"}
         return cls(
-            database_path=os.getenv("DATABASE_PATH", "data/sabai.db"),
+            database_url=os.getenv("DATABASE_URL", ""),
             app_env=os.getenv("APP_ENV", "development"),
             thai_landing_dir=os.getenv("THAI_LANDING_DIR", str(Path(__file__).resolve().parents[3] / "western-astrology-h5 4" / "site")),
             session_hours=int(os.getenv("SESSION_HOURS", "168")),
@@ -102,6 +107,9 @@ class Settings:
             roxy_api_key=os.getenv("ROXY_API_KEY", ""),
             roxy_enabled=os.getenv("ROXY_ENABLED", "false").lower() == "true",
             life_astrology_provider=os.getenv("LIFE_ASTROLOGY_PROVIDER", "thai").lower(),
+            life_requests_per_minute=max(1, int(os.getenv("LIFE_REQUESTS_PER_MINUTE", "30"))),
+            life_generation_concurrency=max(1, min(128, int(os.getenv("LIFE_GENERATION_CONCURRENCY", "4")))),
+            life_chart_concurrency=max(1, min(32, int(os.getenv("LIFE_CHART_CONCURRENCY", "4")))),
             bazi_provider=os.getenv("BAZI_PROVIDER", "github"),
             roxy_per_minute=max(0, int(os.getenv("ROXY_REQUESTS_PER_MINUTE", "12"))),
             roxy_per_day=max(0, int(os.getenv("ROXY_REQUESTS_PER_DAY", "80"))),
@@ -129,4 +137,6 @@ class Settings:
             sunlands_province_id=os.getenv("SUNLANDS_PROVINCE_ID", ""),
             sunlands_merchant_notify_uri=os.getenv("SUNLANDS_MERCHANT_NOTIFY_URI", ""),
             support_email=os.getenv("FATE_SUPPORT_EMAIL", ""),
+            admin_username=os.getenv("ADMIN_USERNAME", ""),
+            admin_password_hash=os.getenv("ADMIN_PASSWORD_HASH", ""),
         )

@@ -6,11 +6,24 @@ import informationCopy from "../content/jy.json";
 export type CareerStage = "unspecified" | "considering" | "searching" | "offer";
 export type CareerFocus = "decision" | "stay" | "move" | "next";
 type CareerQuestion = { stage: CareerStage; start: string; focus?: CareerFocus | null };
-export type LifeInput = Omit<ReadingInput, "reading"> & { report_kind?: "life" | "fortune"; career?: CareerQuestion; career_question?: CareerQuestion; user_question?: string };
+type RelationshipContext = {
+  status: "unspecified" | "single" | "dating" | "partnered" | "separated" | "other";
+  source: "unspecified" | "direct" | "told" | "reported" | "guess";
+  roles?: string | null;
+  event?: string | null;
+};
+export type LifeInput = Omit<ReadingInput, "reading"> & { report_kind?: "life" | "fortune" | "marriage"; career?: CareerQuestion; career_question?: CareerQuestion; user_question?: string; relationship?: RelationshipContext };
 export const westernTopicKeys = ["natal", "career", "wealth", "love", "risk"] as const;
 export const personalTopicKeys = [...westernTopicKeys, "plan"] as const;
 export const legacyPersonalTopicKeys = ["talent", "node-1", "node-2", "node-3"] as const;
-export type ReportTopic = Reading | FortuneTopicKey | typeof westernTopicKeys[number] | typeof personalTopicKeys[number] | typeof legacyPersonalTopicKeys[number];
+export const relationshipTopicKeys = ["judgment", "basis"] as const;
+type RelationshipTopic = typeof relationshipTopicKeys[number];
+export const marriagePreviewKeys = ["birth_details", "relationship_style", "current_relationship", "relationship_snapshot", "unlock_offer"] as const;
+export const marriageTopicKeys = ["how_to_read", "long_term_relationship", "relationship_chart", "relationship_timing",
+  "other_areas", "relationship_actions", "traditional_support", "relationship_takeaway"] as const;
+type MarriageTopic = typeof marriagePreviewKeys[number] | typeof marriageTopicKeys[number];
+export type ReportTopic = Reading | FortuneTopicKey | typeof personalTopicKeys[number] | typeof legacyPersonalTopicKeys[number] | RelationshipTopic | MarriageTopic;
+export interface MarriageSection { key: MarriageTopic; title: string; paragraphs: string[] }
 export type LifeState = "not_started" | "pending" | "generating" | "ready" | "limited" | "unavailable" | "unconfigured";
 export type Feedback = "close" | "partly" | "different";
 export interface LifeEvidence { id: string; title: string; detail: string }
@@ -26,6 +39,8 @@ export interface PersonalReading {
   availability: { full_report: boolean; reason: "not_started" | "ready" | "time_unknown" | "unavailable" | "insufficient_periods" };
   talent: PersonalTalent | null; nodes: PersonalNode[];
   themes?: Record<"wealth" | "love" | "risk", PersonalTopic> | null;
+  relationship_preview_sections?: Record<RelationshipTopic, string[]> | null;
+  relationship_sections?: Record<RelationshipTopic, string[]> | null;
 }
 export interface LifePoint extends ReadingItem { evidence: LifeEvidence[]; window?: LifeWindow }
 export interface LifeChapter {
@@ -39,8 +54,9 @@ export interface LifeChapter {
 export interface LifeReport {
   id: string;
   version: string;
-  format?: "western-compact" | "western-personal" | "legacy";
+  format?: "western-compact" | "western-personal" | "thai-marriage" | "legacy";
   personal?: PersonalReading | null;
+  marriage?: { preview: MarriageSection[] | null; full: MarriageSection[] | null };
   title: string;
   input: LifeInput;
   reference_period?: { start: string; end: string };
@@ -82,7 +98,9 @@ export const lifeCopy = {
     benefits: ["工作风格与发展建议", "金钱态度与规划参考", "关系需求与沟通建议", "近期关注与具体行动"], unlock: "解锁完整人生报告", direct: "当前为支付演示，不会扣款。", once: "一份完整报告 · 对应本次出生资料与年份",
     backgroundGenerating: "完整版正在后台生成，你可以先阅读免费试读。", backgroundReady: "完整版已生成，解锁后即可查看。", backgroundRetry: "选择 APP 免费解读，或购买网页版完整解析。",
     unlocking: "正在打开完整报告…", full: "完整报告已解锁", progress: "正在生成你的完整报告", progressHint: "完整内容正在后台生成，每完成一章就会显示在这里。你也可以稍后从“我的报告”继续查看。", pausedHint: "点击继续生成，只补齐未完成的内容。已完成的章节会保留，也可以稍后从“我的报告”继续。", progressUnit: "项已完成",
-    retry: "继续生成报告", retryPreview: "重新生成免费试读", previewStates: { not_started: "免费试读尚未生成，你可以使用当前资料重新生成。", pending: "相同资料的免费试读正在生成，请稍后重新打开。", generating: "正在生成你的免费试读…", ready: "免费试读已生成。", limited: "免费试读服务暂时达到限额，请稍后重试。出生资料已保留。", unavailable: "免费试读暂未生成成功。出生资料已保留，请点击下方按钮重新生成。", unconfigured: "出生资料已计算完成，免费试读服务暂不可用。" }, states: { not_started: "点击解锁后开始生成完整内容。", pending: "相同资料正在整理，请稍后再试。", generating: "完整报告正在后台生成。", ready: "完整报告已生成。", limited: "解读服务暂时达到限额，已完成的内容已保留，请稍后继续。", unavailable: "这次生成未完成，已完成的章节已保留，可以继续生成。", unconfigured: "星盘已计算完成，解读服务尚未配置。" },
+    retry: "继续生成报告", retryPreview: "重新生成免费试读", viewProgress: "查看生成进度",
+    previewStates: { not_started: "免费试读尚未生成，你可以使用当前资料重新生成。", queued: "免费试读已排队，轮到后会自动开始。", pending: "相同资料的免费试读正在生成，请稍后重新打开。", generating: "正在生成你的免费试读…", ready: "免费试读已生成。", limited: "免费试读服务暂时达到限额，请稍后重试。出生资料已保留。", unavailable: "免费试读暂未生成成功。出生资料已保留，请点击下方按钮重新生成。", unconfigured: "出生资料已计算完成，免费试读服务暂不可用。" },
+    states: { not_started: "点击解锁后开始生成完整内容。", queued: "完整报告已排队，稍后可回来查看。", pending: "相同资料正在整理，请稍后再试。", generating: "完整报告正在后台生成。", ready: "完整报告已生成。", limited: "解读服务暂时达到限额，已完成的内容已保留，请稍后继续。", unavailable: "这次生成未完成，已完成的章节已保留，可以继续生成。", unconfigured: "星盘已计算完成，解读服务尚未配置。" },
     plan: "总结建议", viewAction: "回到对应主题", navigation: "报告目录", save: "保存完整报告（网页）", savePreview: "保存免费试读（网页）", exportPdf: "保存为 PDF", pdfPreparing: "正在生成 PDF…", pdfSaved: "PDF 已保存到所选位置。", pdfDownloaded: "PDF 已交给浏览器保存，位置由浏览器或系统的下载设置决定。", pdfError: "PDF 暂未保存成功，请重试。",
     htmlPreparing: "正在保存网页报告…", htmlDownloaded: "网页报告已交给浏览器保存。", htmlError: "网页报告暂未保存成功，请重试。",
     history: "我的报告", historyHint: "本设备生成的报告会保留在这里。", emptyHistory: "还没有保存的报告。", close: "关闭", open: "继续阅读", historyError: "暂时无法读取报告列表，请重试。", previewVersion: "免费试读", fullVersion: "已解锁", loading: "正在打开报告…", printHint: "未解锁时只保存免费部分；完整报告解锁并生成后，保存免费与完整内容。", chapterCount: "八个报告部分", source: "依据说明", sourceVersion: "计算与报告版本", done: "完整报告已生成", resume: "已完成的内容会保留在本设备的报告列表中。",
@@ -102,7 +120,9 @@ export const lifeCopy = {
     benefits: ["รูปแบบการทำงานและแนวทางพัฒนา", "ทัศนคติต่อเงินและการวางแผน", "ความต้องการและแนวทางสื่อสาร", "ประเด็นช่วงนี้และการลงมือทำ"], unlock: "เปิดรายงานชีวิตฉบับเต็ม", direct: "เป็นการทดลองชำระเงิน ไม่มีการเรียกเก็บเงินจริง", once: "รายงานฉบับเดียว · สำหรับข้อมูลเกิดและปีที่ยืนยันครั้งนี้",
     backgroundGenerating: "กำลังสร้างฉบับเต็มระหว่างที่คุณอ่านคำอ่านเบื้องต้น", backgroundReady: "ฉบับเต็มพร้อมแล้ว เปิดอ่านได้ทันทีหลังปลดล็อก", backgroundRetry: "เลือกอ่านฟรีในแอป หรือซื้อคำอ่านฉบับเต็มบนเว็บ",
     unlocking: "กำลังเปิดรายงานฉบับเต็ม…", full: "เปิดรายงานฉบับเต็มแล้ว", progress: "กำลังสร้างรายงานฉบับเต็ม", progressHint: "หัวข้อที่เสร็จแล้วจะแสดงที่นี่ คุณกลับมาอ่านต่อจากรายงานของฉันได้", pausedHint: "กดจัดทำรายงานต่อเพื่อเติมเฉพาะส่วนที่ยังไม่เสร็จ ส่วนที่เสร็จแล้วถูกบันทึกไว้ คุณกลับมาทำต่อจากรายงานของฉันได้", progressUnit: "ส่วนที่เสร็จแล้ว",
-    retry: "จัดทำรายงานต่อ", retryPreview: "สร้างคำอ่านเบื้องต้นอีกครั้ง", previewStates: { not_started: "ยังไม่ได้สร้างคำอ่านเบื้องต้น คุณสร้างใหม่ด้วยข้อมูลเดิมได้", pending: "กำลังสร้างคำอ่านเบื้องต้นสำหรับข้อมูลเดียวกัน โปรดลองเปิดอีกครั้งภายหลัง", generating: "กำลังสร้างคำอ่านเบื้องต้น…", ready: "สร้างคำอ่านเบื้องต้นแล้ว", limited: "บริการคำอ่านเบื้องต้นถึงขีดจำกัดชั่วคราว ข้อมูลเกิดยังอยู่ โปรดลองภายหลัง", unavailable: "ยังสร้างคำอ่านเบื้องต้นไม่สำเร็จ ข้อมูลเกิดยังอยู่ กดปุ่มด้านล่างเพื่อลองอีกครั้ง", unconfigured: "คำนวณข้อมูลเกิดแล้ว แต่บริการคำอ่านเบื้องต้นยังไม่พร้อม" }, states: { not_started: "กดเปิดฉบับเต็มเพื่อเริ่มสร้างเนื้อหา", pending: "ข้อมูลเดียวกันกำลังจัดทำ โปรดลองอีกครั้งภายหลัง", generating: "กำลังจัดทำรายงาน", ready: "รายงานฉบับเต็มจัดทำเสร็จแล้ว", limited: "บริการคำอ่านถึงขีดจำกัดชั่วคราว ส่วนที่เสร็จแล้วถูกบันทึกไว้ ลองทำต่อภายหลัง", unavailable: "ยังจัดทำไม่ครบ ส่วนที่เสร็จแล้วถูกบันทึกไว้ คุณลองใหม่ได้", unconfigured: "คำนวณดวงแล้ว แต่ยังไม่ได้ตั้งค่าบริการคำอ่าน" },
+    retry: "จัดทำรายงานต่อ", retryPreview: "สร้างคำอ่านเบื้องต้นอีกครั้ง", viewProgress: "ดูความคืบหน้า",
+    previewStates: { not_started: "ยังไม่ได้สร้างคำอ่านเบื้องต้น คุณสร้างใหม่ด้วยข้อมูลเดิมได้", queued: "คำอ่านเบื้องต้นอยู่ในคิว ระบบจะเริ่มให้อัตโนมัติเมื่อถึงคิว", pending: "กำลังสร้างคำอ่านเบื้องต้นสำหรับข้อมูลเดียวกัน โปรดลองเปิดอีกครั้งภายหลัง", generating: "กำลังสร้างคำอ่านเบื้องต้น…", ready: "สร้างคำอ่านเบื้องต้นแล้ว", limited: "บริการคำอ่านเบื้องต้นถึงขีดจำกัดชั่วคราว ข้อมูลเกิดยังอยู่ โปรดลองภายหลัง", unavailable: "ยังสร้างคำอ่านเบื้องต้นไม่สำเร็จ ข้อมูลเกิดยังอยู่ กดปุ่มด้านล่างเพื่อลองอีกครั้ง", unconfigured: "คำนวณข้อมูลเกิดแล้ว แต่บริการคำอ่านเบื้องต้นยังไม่พร้อม" },
+    states: { not_started: "กดเปิดฉบับเต็มเพื่อเริ่มสร้างเนื้อหา", queued: "รายงานฉบับเต็มอยู่ในคิว กลับมาดูภายหลังได้", pending: "ข้อมูลเดียวกันกำลังจัดทำ โปรดลองอีกครั้งภายหลัง", generating: "กำลังจัดทำรายงาน", ready: "รายงานฉบับเต็มจัดทำเสร็จแล้ว", limited: "บริการคำอ่านถึงขีดจำกัดชั่วคราว ส่วนที่เสร็จแล้วถูกบันทึกไว้ ลองทำต่อภายหลัง", unavailable: "ยังจัดทำไม่ครบ ส่วนที่เสร็จแล้วถูกบันทึกไว้ คุณลองใหม่ได้", unconfigured: "คำนวณดวงแล้ว แต่ยังไม่ได้ตั้งค่าบริการคำอ่าน" },
     plan: "ข้อเสนอแนะโดยรวม", viewAction: "กลับไปดูหัวข้อที่เกี่ยวข้อง", navigation: "สารบัญรายงาน", save: "บันทึกฉบับเต็ม (เว็บ)", savePreview: "บันทึกคำอ่านฟรี (เว็บ)", exportPdf: "บันทึกเป็น PDF", pdfPreparing: "กำลังสร้าง PDF…", pdfSaved: "บันทึก PDF ไปยังตำแหน่งที่เลือกแล้ว", pdfDownloaded: "ส่ง PDF ให้เบราว์เซอร์บันทึกแล้ว ตำแหน่งขึ้นอยู่กับการตั้งค่าดาวน์โหลดของเบราว์เซอร์หรือระบบ", pdfError: "ยังบันทึก PDF ไม่สำเร็จ โปรดลองใหม่",
     htmlPreparing: "กำลังบันทึกรายงานเว็บ…", htmlDownloaded: "ส่งรายงานเว็บให้เบราว์เซอร์บันทึกแล้ว", htmlError: "ยังบันทึกรายงานเว็บไม่สำเร็จ โปรดลองใหม่",
     history: "รายงานของฉัน", historyHint: "รายงานที่สร้างในอุปกรณ์นี้จะอยู่ที่นี่", emptyHistory: "ยังไม่มีรายงานที่บันทึกไว้", close: "ปิด", open: "อ่านต่อ", historyError: "ยังโหลดรายการรายงานไม่ได้ โปรดลองใหม่", previewVersion: "คำอ่านเบื้องต้น", fullVersion: "เปิดอ่านแล้ว", loading: "กำลังเปิดรายงาน…", printHint: "ก่อนเปิดฉบับเต็มจะบันทึกเฉพาะส่วนฟรี เมื่อสร้างและเปิดฉบับเต็มแล้วจึงรวมเนื้อหาทั้งหมด", chapterCount: "รายงานแปดส่วน", source: "ข้อมูลประกอบคำอ่าน", sourceVersion: "รุ่นการคำนวณและรายงาน", done: "รายงานฉบับเต็มจัดทำเสร็จแล้ว", resume: "ส่วนที่เสร็จแล้วจะอยู่ในรายการรายงานของอุปกรณ์นี้",
@@ -209,7 +229,11 @@ export function lifeLabels(report: LifeReport): LifeLabels {
       ? informationCopy.jy[language].chart.western
       : additionalCopy("jy")[language].chart.western;
   }
-  if (report.format === "western-personal") labels.title = language === "zh" || language === "th" ? informationCopy.jy[language].personal.title : additionalCopy("jy")[language].personal.title;
+  if (report.format === "western-personal") {
+    labels.title = report.input.relationship ? report.title
+      : language === "zh" || language === "th" ? informationCopy.jy[language].personal.title : additionalCopy("jy")[language].personal.title;
+  }
+  if (report.format === "thai-marriage") labels.title = report.title;
   const question = report.input.career_question;
   if (question) {
     const situation = careerCopy[language].situations[question.stage];
@@ -253,7 +277,9 @@ export async function lifeApi<T>(path: string, language: Language, signal: Abort
 export function lifeSignature(input: LifeInput): string {
   const p = input.profile;
   const question = input.career_question;
-  return JSON.stringify([p.birth_date, p.birth_time, p.birthplace, p.timezone, p.language, p.country_code, p.location_id, p.latitude, p.longitude, input.year, input.career?.stage, input.career?.start, input.career?.focus, question?.stage, question?.start, question?.focus, input.user_question, input.report_kind]);
+  const context = input.relationship;
+  return JSON.stringify([p.birth_date, p.birth_time, p.birthplace, p.timezone, p.language, p.country_code, p.location_id, p.latitude, p.longitude, input.year, input.career?.stage, input.career?.start, input.career?.focus, question?.stage, question?.start, question?.focus, input.user_question,
+    ...(context ? [[context.status, context.source, context.roles ?? null, context.event ?? null]] : []), input.report_kind]);
 }
 const fullProgressKeys = ["work", "money", "relationships", "annual", "plan"];
 const fortuneProgressKeys = [...fortuneTopicKeys, "plan"];
@@ -272,10 +298,16 @@ export function isLifeReport(value: unknown): value is LifeReport {
   if (!value || typeof value !== "object") return false;
   const report = value as LifeReport;
   const personal = report.format === "western-personal";
+  const marriage = report.format === "thai-marriage";
   const personalKeys = personalProgressKeys(report);
   const nonempty = (value: unknown): value is string => typeof value === "string" && !!value.trim();
+  if (marriage && (report.input?.report_kind !== "marriage" || report.preview !== null
+      || report.chapters?.length !== 0 || report.plan !== null
+      || report.preview_state === "ready" && !hasLifePreview(report)
+      || report.access === "full" && report.full_state === "ready" && !validMarriageSections(report.marriage?.full, marriageTopicKeys))) return false;
   if (personal) {
     const p = report.personal;
+    const relationshipReport = !!report.input?.relationship;
     const relationship = p?.relationship;
     const requiresRelationship = Number(report.version?.match(/^western-personal-(\d+)$/)?.[1] || 0) >= 8;
     if (relationship != null || requiresRelationship && report.preview_state === 'ready') {
@@ -291,7 +323,9 @@ export function isLifeReport(value: unknown): value is LifeReport {
       p.opportunity_action !== undefined && typeof p.opportunity_action !== "string")) return false;
     if (report.preview_state === "ready" && (!hasLifePreview(report) || typeof p?.sun_sign !== "string" || !p.sun_sign.trim() || p.ascendant_sign !== null && typeof p.ascendant_sign !== "string")) return false;
     if (!report.input?.profile?.birth_time && p?.ascendant_sign != null) return false;
-    if (report.access === "full" && report.full_state === "ready") {
+    if (report.access === "full" && report.full_state === "ready" && relationshipReport) {
+      if (!hasRelationshipSections(p?.relationship_sections)) return false;
+    } else if (report.access === "full" && report.full_state === "ready") {
       if (personalKeys.length === personalTopicKeys.length) {
         const themes = p?.themes;
         if (!themes || Object.keys(themes).length !== 3 || (["wealth", "love", "risk"] as const).some(key => {
@@ -308,21 +342,45 @@ export function isLifeReport(value: unknown): value is LifeReport {
     }
   }
   return typeof report.id === "string" && !!report.input?.profile && languages.includes(report.input.profile.language)
-    && Array.isArray(report.catalog) && report.catalog.length === (personal ? personalKeys.length : report.input.career ? 1 : report.format === "western-compact" ? 5 : report.input.report_kind === "fortune" ? 7 : 5) && Array.isArray(report.chapters)
+    && Array.isArray(report.catalog) && report.catalog.length === (marriage ? marriageTopicKeys.length : personal ? personalKeys.length : report.input.career ? 1 : report.format === "western-compact" ? 5 : report.input.report_kind === "fortune" ? 7 : 5) && Array.isArray(report.chapters)
     && (personal ? new Set(report.catalog.map(item => item.key)).size === personalKeys.length && report.catalog.every(item => personalKeys.includes(item.key)) : report.format === "western-compact" ? new Set(report.catalog.map(item => item.key)).size === 5 && report.catalog.every(item => (westernTopicKeys as readonly string[]).includes(item.key)) : report.input.report_kind !== "fortune" || new Set(report.catalog.map(item => item.key)).size === 7 && report.catalog.every(item => fortuneTopicKeys.includes(item.key as FortuneTopicKey)))
+    && (!marriage || report.catalog.every((item, index) => item?.key === marriageTopicKeys[index]))
     && (!report.preview || Array.isArray(report.preview.traits) && report.preview.traits.length === 3)
     && ["preview", "full"].includes(report.access) && Number.isInteger(report.progress?.completed)
     && Number.isInteger(report.progress?.total) && report.progress.total > 0 && report.progress.completed >= 0 && report.progress.completed <= report.progress.total
-    && (!report.generation_progress || isContentProgress(report.generation_progress, personal ? personalKeys : report.input.career ? careerProgressKeys : report.format === "western-compact" ? westernProgressKeys : report.input.report_kind === "fortune" ? fortuneProgressKeys : fullProgressKeys))
+    && (!report.generation_progress || isContentProgress(report.generation_progress, marriage ? marriageTopicKeys : personal ? personalKeys : report.input.career ? careerProgressKeys : report.format === "western-compact" ? westernProgressKeys : report.input.report_kind === "fortune" ? fortuneProgressKeys : fullProgressKeys))
     && (!report.preview_generation_progress || isContentProgress(report.preview_generation_progress, previewProgressKeys));
 }
 
-export function personalProgressKeys(report: Pick<LifeReport, "catalog">): readonly string[] {
+export function personalProgressKeys(report: Pick<LifeReport, "catalog" | "input">): readonly string[] {
+  if (report.input?.relationship) return relationshipTopicKeys;
   return report.catalog?.length === personalTopicKeys.length ? personalTopicKeys : legacyPersonalTopicKeys;
 }
 
+function hasRelationshipSections(sections: PersonalReading["relationship_sections"]): boolean {
+  return !!sections && Object.keys(sections).length === relationshipTopicKeys.length
+    && relationshipTopicKeys.every(key => Array.isArray(sections[key]) && sections[key].length > 0
+      && sections[key].every(line => typeof line === "string" && !!line.trim()));
+}
+
+function validMarriageSections(sections: MarriageSection[] | null | undefined, keys: readonly string[]): boolean {
+  return Array.isArray(sections) && sections.length === keys.length && sections.every((section, index) =>
+    section?.key === keys[index] && typeof section.title === "string" && !!section.title.trim()
+    && Array.isArray(section.paragraphs) && section.paragraphs.length > 0
+    && section.paragraphs.every(line => typeof line === "string" && !!line.trim()));
+}
+
+export function marriageSections(report: LifeReport): MarriageSection[] {
+  const full = report.access === "full" && report.full_state === "ready";
+  return (full ? report.marriage?.full : report.marriage?.preview) ?? [];
+}
+
 export function hasLifePreview(report: LifeReport): boolean {
-  return report.format === "western-personal" ? Array.isArray(report.personal?.free_lines) && report.personal.free_lines.length === 3 && report.personal.free_lines.every(line => typeof line === "string" && !!line.trim()) : report.preview != null;
+  if (report.format === "thai-marriage") return validMarriageSections(report.marriage?.preview, marriagePreviewKeys);
+  if (report.format !== "western-personal") return report.preview != null;
+  if (report.input.relationship) return hasRelationshipSections(report.personal?.relationship_preview_sections);
+  return Array.isArray(report.personal?.free_lines) && report.personal.free_lines.length === 3
+    && report.personal.free_lines.every(line => typeof line === "string" && !!line.trim());
 }
 
 export interface GenerationProgress {

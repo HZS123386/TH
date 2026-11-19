@@ -128,8 +128,8 @@ def transport(monkeypatch):
     return calls, mode
 
 
-def settings(tmp_path):
-    return Settings(database_path=str(tmp_path / "roxy.db"), life_astrology_provider="roxy", roxy_enabled=True,
+def settings(postgres_url):
+    return Settings(database_url=postgres_url, life_astrology_provider="roxy", roxy_enabled=True,
                     roxy_api_key="roxy-server-test-key", providers={"qwen": ProviderConfig("writer-test-key", "https://model.example/v1", "qwen3.7-plus")},
                     bazi_reports_per_minute=100, bazi_reports_per_day=100)
 
@@ -191,8 +191,8 @@ def openai_transport(monkeypatch):
     return calls, calculations, mode
 
 
-def test_openai_stream_writes_free_preview_and_all_six_roxy_topics_with_usage(tmp_path, openai_transport):
-    config = settings(tmp_path)
+def test_openai_stream_writes_free_preview_and_all_six_roxy_topics_with_usage(postgres_url, openai_transport):
+    config = settings(postgres_url)
     config.fortune_provider = "openai"
     config.providers["openai"] = ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt",
                                                 reasoning_effort="low", proxy_url="http://synthetic-user:synthetic-password@127.0.0.1:18080")
@@ -225,7 +225,7 @@ def test_openai_stream_writes_free_preview_and_all_six_roxy_topics_with_usage(tm
         assert "synthetic-openai-key" not in repr(config.providers["openai"])
         assert "synthetic-password" not in repr(config.providers["openai"])
         with client.app.state.store.connect() as db:
-            usage = db.execute("SELECT * FROM report_model_usage WHERE report_id=? ORDER BY id", (preview["id"],)).fetchall()
+            usage = db.execute("SELECT * FROM report_model_usage WHERE report_id=%s ORDER BY id", (preview["id"],)).fetchall()
         assert len(usage) == 7
         assert [row["phase"] for row in usage] == ["preview"] + ["full"] * 6
         assert all(row["provider"] == "openai" and row["model"] == "test-gpt" and row["validated"] for row in usage)
@@ -236,8 +236,8 @@ def test_openai_stream_writes_free_preview_and_all_six_roxy_topics_with_usage(tm
         assert len(calls) == 7
 
 
-def test_openai_auth_failure_keeps_report_unavailable_without_qwen_fallback(tmp_path, openai_transport):
-    config = settings(tmp_path)
+def test_openai_auth_failure_keeps_report_unavailable_without_qwen_fallback(postgres_url, openai_transport):
+    config = settings(postgres_url)
     config.fortune_provider = "openai"
     config.providers["openai"] = ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt",
                                                 reasoning_effort="low")
@@ -254,9 +254,9 @@ def test_openai_auth_failure_keeps_report_unavailable_without_qwen_fallback(tmp_
 
 
 @pytest.mark.parametrize("known", [True, False])
-def test_natal_contract_is_reused_and_unknown_time_excludes_sensitive_factors(tmp_path, transport, known):
-    config = settings(tmp_path)
-    adapter = RoxyAstrology(config, Storage(config.database_path))
+def test_natal_contract_is_reused_and_unknown_time_excludes_sensitive_factors(postgres_url, transport, known):
+    config = settings(postgres_url)
+    adapter = RoxyAstrology(config, Storage(config.database_url))
     profile = {**PROFILE, "birth_time": PROFILE["birth_time"] if known else None}
     body = LifeInput.model_validate({"profile": profile, "year": 2026, "report_kind": "fortune"})
     async def calculate():
@@ -284,9 +284,9 @@ def test_natal_contract_is_reused_and_unknown_time_excludes_sensitive_factors(tm
     ("CN", "geonames:1816670", "Asia/Shanghai", 39.9075, 116.39723),
     ("TH", "geonames:1609350", "Asia/Bangkok", 13.75398, 100.50144),
 ])
-def test_selected_city_supplies_coordinates_and_original_local_timezone(tmp_path, transport, country, identifier, zone, latitude, longitude):
-    config = settings(tmp_path)
-    adapter = RoxyAstrology(config, Storage(config.database_path))
+def test_selected_city_supplies_coordinates_and_original_local_timezone(postgres_url, transport, country, identifier, zone, latitude, longitude):
+    config = settings(postgres_url)
+    adapter = RoxyAstrology(config, Storage(config.database_url))
     profile = {key: value for key, value in PROFILE.items() if key not in ("latitude", "longitude")}
     profile.update(country_code=country, location_id=identifier, timezone=zone)
     body = LifeInput.model_validate({"profile": profile, "year": 2026})
@@ -312,13 +312,13 @@ def test_natal_response_rejects_mismatched_or_invalid_calculations(change):
         validate_natal("natal", result, body)
 
 
-def test_report_unlock_contains_all_six_topics_without_recalculating(tmp_path, monkeypatch, transport):
+def test_report_unlock_contains_all_six_topics_without_recalculating(postgres_url, monkeypatch, transport):
     calls = []
     async def write(self, bundle, **kwargs):
         calls.append(deepcopy(bundle))
         return self.validate(json.dumps(draft(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
-    config = settings(tmp_path)
+    config = settings(postgres_url)
     with TestClient(create_app(config)) as client:
         body = {"profile": PROFILE, "year": 2026, "report_kind": "fortune"}
         response = client.post("/api/life-reports", json=body, headers=HEADERS)
@@ -354,18 +354,18 @@ def test_report_unlock_contains_all_six_topics_without_recalculating(tmp_path, m
                 assert 90 <= writing_progress(json.dumps(draft(b), ensure_ascii=False), "chapter", compact=True) < 100
 
 
-def test_roxy_failure_does_not_fall_back_to_thai_or_call_writer(tmp_path, monkeypatch, transport):
+def test_roxy_failure_does_not_fall_back_to_thai_or_call_writer(postgres_url, monkeypatch, transport):
     transport[1]["status"] = 503
     async def forbidden(*args, **kwargs):
         pytest.fail("the writer must not run without calculated evidence")
     monkeypatch.setattr(LifeWriter, "write", forbidden)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         response = client.post("/api/life-reports", json={"profile": PROFILE, "year": 2026}, headers=HEADERS)
         assert response.status_code == 503 and "roxy_unavailable" in response.text
 
 
 @pytest.mark.parametrize("language", ["en", "vi", "my", "km", "lo", "ms", "id"])
-def test_landing_languages_generate_and_restore_complete_western_reports(tmp_path, monkeypatch, transport, language):
+def test_landing_languages_generate_and_restore_complete_western_reports(postgres_url, monkeypatch, transport, language):
     regional = json.loads((Path(__file__).parent / "fixtures/regional-writing.json").read_text(encoding="utf-8"))
     detail = {
         "en": "Ask what matters most to each person, then choose one small change you can comfortably try.",
@@ -423,7 +423,7 @@ def test_landing_languages_generate_and_restore_complete_western_reports(tmp_pat
         return self.validate(json.dumps(story, ensure_ascii=False), bundle)
 
     monkeypatch.setattr(LifeWriter, "write", write)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         body = {"profile": {**PROFILE, "language": language}, "year": 2026, "report_kind": "fortune"}
         response = client.post("/api/life-reports", json=body, headers=HEADERS)
         assert response.status_code == 200, response.text
@@ -447,7 +447,7 @@ def test_landing_languages_generate_and_restore_complete_western_reports(tmp_pat
         assert client.get(path, headers={"X-Report-Key": "another-synthetic-language-owner"}).status_code == 404
 
 
-def test_writing_revision_creates_fresh_content_and_preserves_saved_reports(tmp_path, monkeypatch, transport):
+def test_writing_revision_creates_fresh_content_and_preserves_saved_reports(postgres_url, monkeypatch, transport):
     writes = []
 
     async def write(self, bundle, **kwargs):
@@ -458,7 +458,7 @@ def test_writing_revision_creates_fresh_content_and_preserves_saved_reports(tmp_
         return self.validate(json.dumps(story, ensure_ascii=False), bundle)
 
     monkeypatch.setattr(LifeWriter, "write", write)
-    with TestClient(create_app(settings(tmp_path))) as client:
+    with TestClient(create_app(settings(postgres_url))) as client:
         body = {"profile": PROFILE, "year": 2026, "report_kind": "fortune"}
         original = client.post("/api/life-reports", json=body, headers=HEADERS).json()
         assert original["preview_state"] == "ready"
@@ -480,8 +480,8 @@ def test_writing_revision_creates_fresh_content_and_preserves_saved_reports(tmp_
 
 
 @pytest.mark.parametrize("change", ["provider", "model", "base_url", "reasoning_effort"])
-def test_changing_writer_creates_new_report_without_rewriting_saved_preview(tmp_path, monkeypatch, transport, change):
-    config = settings(tmp_path)
+def test_changing_writer_creates_new_report_without_rewriting_saved_preview(postgres_url, monkeypatch, transport, change):
+    config = settings(postgres_url)
     config.providers["openai"] = ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt",
                                                 reasoning_effort="low")
     config.fortune_provider = "qwen" if change == "provider" else "openai"
@@ -519,12 +519,12 @@ def test_changing_writer_creates_new_report_without_rewriting_saved_preview(tmp_
 
 @pytest.mark.parametrize("provider", ["qwen", "openai"])
 @pytest.mark.parametrize("language", ["zh", "th"])
-def test_compact_provider_bounds_paragraphs_separately_from_summary(tmp_path, language, provider):
-    config = settings(tmp_path)
+def test_compact_provider_bounds_paragraphs_separately_from_summary(postgres_url, language, provider):
+    config = settings(postgres_url)
     config.fortune_provider = provider
     if provider == "openai":
         config.providers[provider] = ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt")
-    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    writer = LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
     body = LifeInput.model_validate({"profile": {**PROFILE, "language": language}, "year": 2026})
     chart = {"provider": "roxy", "domain": "astrology", "time_known": True, "raw": GOLDEN}
     bundle = RoxyAstrology.bundle(body, chart, "risk")
@@ -545,11 +545,11 @@ def test_compact_provider_bounds_paragraphs_separately_from_summary(tmp_path, la
 
 @pytest.mark.parametrize("provider", ["qwen", "openai"])
 @pytest.mark.parametrize("reading", ["love", "risk"])
-def test_actions_follow_their_assigned_timing_evidence_in_schema_prompt_and_correction(tmp_path, provider, reading):
-    config = settings(tmp_path)
+def test_actions_follow_their_assigned_timing_evidence_in_schema_prompt_and_correction(postgres_url, provider, reading):
+    config = settings(postgres_url)
     config.fortune_provider = provider
     config.providers.setdefault("openai", ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt"))
-    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    writer = LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
     body = LifeInput.model_validate({"profile": PROFILE, "year": 2026})
     forecast = forecast_fixture({"birthData": {"date": PROFILE["birth_date"], "time": PROFILE["birth_time"] + ":00", "timezone": PROFILE["timezone"]},
                                  "startDate": "2026-11-16", "endDate": "2027-02-13"})
@@ -580,11 +580,11 @@ def test_actions_follow_their_assigned_timing_evidence_in_schema_prompt_and_corr
 
 
 @pytest.mark.parametrize("provider", ["qwen", "openai"])
-def test_career_excerpt_schema_and_validation_preserve_exact_free_content(tmp_path, provider):
-    config = settings(tmp_path)
+def test_career_excerpt_schema_and_validation_preserve_exact_free_content(postgres_url, provider):
+    config = settings(postgres_url)
     config.fortune_provider = provider
     config.providers.setdefault("openai", ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt"))
-    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    writer = LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
     body = LifeInput.model_validate({"profile": PROFILE, "year": 2026})
     forecast = forecast_fixture({"birthData": {"date": PROFILE["birth_date"], "time": PROFILE["birth_time"] + ":00", "timezone": PROFILE["timezone"]},
                                  "startDate": "2026-11-16", "endDate": "2027-02-13"})
@@ -614,11 +614,11 @@ def test_career_excerpt_schema_and_validation_preserve_exact_free_content(tmp_pa
 @pytest.mark.parametrize("provider", ["qwen", "openai"])
 @pytest.mark.parametrize("language", ["zh", "th"])
 @pytest.mark.parametrize("timed", [True, False])
-def test_western_preview_has_three_complete_bounded_paragraphs(tmp_path, provider, language, timed):
-    config = settings(tmp_path)
+def test_western_preview_has_three_complete_bounded_paragraphs(postgres_url, provider, language, timed):
+    config = settings(postgres_url)
     config.fortune_provider = provider
     config.providers.setdefault("openai", ProviderConfig("synthetic-openai-key", "https://openai.example/v1", "test-gpt"))
-    writer = LifeWriter(Storage(config.database_path), config, asyncio.Semaphore(1))
+    writer = LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
     body = LifeInput.model_validate({"profile": {**PROFILE, "language": language}, "year": 2026})
     chart = {"provider": "roxy", "domain": "astrology", "time_known": True, "raw": GOLDEN}
     if timed:

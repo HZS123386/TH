@@ -13,6 +13,64 @@ Json fixture({String language = 'zh', bool full = false}) => object(
 Json translations() =>
     object(jsonDecode(File('assets/copy.json').readAsStringSync()));
 
+Json marriageFixture({Json? input, bool full = false}) {
+  final data = fixture();
+  final submitted =
+      input ?? {...object(data['input']), 'report_kind': 'marriage'};
+  final copy = Copy(
+    translations(),
+    text(object(submitted['profile'])['language']),
+  );
+  final titles = copy.list('marriage', 'full');
+  final freeTitles = copy.list('marriage', 'preview');
+  data.remove('generation_progress');
+  data.addAll({
+    'input': submitted,
+    'title': copy.t('marriage', 'title'),
+    'format': 'thai-marriage',
+    'version': 'thai-marriage-1',
+    'preview': null,
+    'chapters': <Json>[],
+    'plan': null,
+    'preview_state': 'ready',
+    'full_state': full ? 'ready' : 'not_started',
+    'access': full ? 'full' : 'preview',
+    'progress': {
+      'total': marriageKeys.length,
+      'completed': full ? marriageKeys.length : 0,
+    },
+    'catalog': [
+      for (var i = 0; i < marriageKeys.length; i++)
+        {'key': marriageKeys[i], 'title': titles[i], 'ready': full},
+    ],
+    'marriage': {
+      'preview': [
+        for (var i = 0; i < marriagePreviewKeys.length; i++)
+          {
+            'key': marriagePreviewKeys[i],
+            'title': freeTitles[i],
+            'paragraphs': ['Free marriage section ${i + 1}.'],
+          },
+      ],
+      'full': full
+          ? [
+              for (var i = 0; i < marriageKeys.length; i++)
+                {
+                  'key': marriageKeys[i],
+                  'title': titles[i],
+                  'paragraphs': ['Paid marriage section ${i + 1}.'],
+                },
+            ]
+          : null,
+    },
+    if (object(submitted['profile'])['birth_time'] == null) ...{
+      'chart': null,
+      'time_accuracy': {'mode': 'estimated', 'assumed_local_time': null},
+    },
+  });
+  return data;
+}
+
 Json personalFixture({String language = 'zh', bool full = false}) {
   final data = fixture(language: language);
   data.addAll({
@@ -122,11 +180,10 @@ Json personalFixture({String language = 'zh', bool full = false}) {
 class TestBrowser implements BrowserPort {
   final openedPages = <String>[];
   @override
+  Duration get welcomeAge => Duration.zero;
+  @override
   void openPage(String path) => openedPages.add(path);
-  final settings = <String, String>{
-    'session:fate-welcome-dismissed': '1',
-    'fate-data-use-version': 'h5-data-use-2',
-  };
+  final settings = <String, String>{'fate-data-use-version': 'h5-data-use-3'};
   Json visit = {};
   @override
   String? readSetting(String key, {bool session = false}) =>
@@ -136,6 +193,13 @@ class TestBrowser implements BrowserPort {
       settings[session ? 'session:$key' : key] = value;
   @override
   Json visitContext() => visit;
+  final activities = <Json>[];
+  @override
+  void trackActivity(String page, String action) =>
+      activities.add({'page': page, 'action': action});
+  @override
+  void trackFailure(String path, String code, String method) =>
+      activities.add({'path': path, 'code': code, 'method': method});
   String key = List.filled(48, 'a').join();
   String title = '', locale = '';
   Json? exported;

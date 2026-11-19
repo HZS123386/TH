@@ -4,6 +4,16 @@ import secrets
 
 # OWASP's 32 MiB scrypt configuration; password work runs off the event loop.
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**15, 8, 3
+H5_LOGIN_SECONDS = 600
+
+
+def new_h5_login_code() -> str:
+    letters = "ABCDEFGHJKMNPQRSTUVWXYZ"
+    digits = "23456789"
+    while True:
+        code = "".join(secrets.choice(letters + digits) for _ in range(6))
+        if any(char in letters for char in code) and any(char in digits for char in code):
+            return code
 
 
 def password_hash(password: str, salt: str | None = None) -> str:

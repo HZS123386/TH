@@ -20,8 +20,11 @@ describe("complete, distinct landing languages", () => {
   for (const [code, copy] of Object.entries(additionalLocales)) {
     const language = code as Language;
     it(`covers the existing landing page and exports a gated Western report in ${language}`, () => {
-      // The welcome portrait signature is optional and currently supplied in Chinese only.
-      const required = paths(original.jy.zh).filter(path => path !== ".welcome.guideName" && path !== ".welcome.guideTitle");
+      // The quick privacy summary ships in the original campaign languages.
+      // The full policy is tested separately in all nine languages.
+      const required = paths(original.jy.zh).filter(path =>
+        ![".welcome.guideName", ".welcome.guideTitle"].includes(path) && !path.startsWith(".privacyDetails[")
+      );
       expect(paths(copy.jy)).toEqual(expect.arrayContaining(required));
       expect(paths(copy)).toEqual(paths(english));
       expect(JSON.stringify(copy)).not.toMatch(/[\u3400-\u9fff\u0e00-\u0e7f]/u);

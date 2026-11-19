@@ -15,6 +15,7 @@ COPY TH/backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY TH/backend ./backend
+COPY TH/h5_admin ./h5_admin
 COPY TH/scripts ./scripts
 COPY TH/src ./src
 COPY TH/package.json ./package.json

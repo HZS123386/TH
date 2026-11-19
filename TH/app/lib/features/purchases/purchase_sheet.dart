@@ -10,6 +10,7 @@ Future<void> showPurchaseSheet(
   VoidCallback? previewExample,
 }) => showModalBottomSheet<void>(
   context: context,
+  sheetAnimationStyle: FateMotion.dialog(context),
   isScrollControlled: true,
   useRootNavigator: true,
   useSafeArea: true,
@@ -28,7 +29,7 @@ class _PurchaseSheet extends StatefulWidget {
 }
 
 class _PurchaseSheetState extends State<_PurchaseSheet> {
-  bool restored = false, initialized = false;
+  bool initialized = false;
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -37,7 +38,7 @@ class _PurchaseSheetState extends State<_PurchaseSheet> {
     final d = DependencyScope.of(context);
     if (widget.reportId != null &&
         widget.previewExample == null &&
-        d.session.capabilities.applePurchase &&
+        d.purchases.storeEnabled &&
         d.auth.signedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) d.purchases.prepare(widget.reportId!);
@@ -79,9 +80,9 @@ class _PurchaseSheetState extends State<_PurchaseSheet> {
               gold: true,
               child: Row(
                 children: [
-                  const Icon(
+                  const FateEmblem(
                     Icons.workspace_premium_outlined,
-                    size: 35,
+                    size: 52,
                     color: goldColor,
                   ),
                   const SizedBox(width: 16),
@@ -142,11 +143,15 @@ class _PurchaseSheetState extends State<_PurchaseSheet> {
                   ? d.purchases.buy
                   : null,
               icon: const Icon(Icons.lock_outline, size: 18),
-              label: Text(d.purchases.busy ? s.purchaseVerifying : s.appleBuy),
+              label: Text(d.purchases.busy ? s.purchaseVerifying : s.storeBuy),
             ),
             const SizedBox(height: 12),
             Text(
-              kIsWeb ? s.purchasePreview : s.nativeSetup,
+              kIsWeb
+                  ? s.purchasePreview
+                  : d.purchases.storeEnabled
+                  ? s.offerText
+                  : s.purchaseUnavailable,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             if (!d.auth.signedIn)
@@ -159,26 +164,30 @@ class _PurchaseSheetState extends State<_PurchaseSheet> {
               ),
             Center(
               child: TextButton(
-                onPressed: () async {
-                  setState(() => restored = true);
-                  await d.purchases.restore();
-                },
-                child: Text(s.restore),
+                onPressed: d.purchases.canRestore ? d.purchases.restore : null,
+                child: Text(d.purchases.restoring ? s.restoreCheck : s.restore),
               ),
             ),
-            if (restored)
+            if (d.purchases.restoreChecked)
               Text(
-                kIsWeb
-                    ? s.restoreNote
-                    : d.purchases.status == null
-                    ? s.purchaseVerifying
-                    : s.serviceSetup,
+                s.restoreChecked,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-            if (d.purchases.status != null && !restored)
+            if (d.purchases.status != null)
               Text(
                 s.serviceSetup,
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (widget.reportId != null &&
+                widget.previewExample == null &&
+                d.auth.signedIn &&
+                d.purchases.storeEnabled &&
+                !d.purchases.busy &&
+                d.purchases.price == null &&
+                !d.purchases.needsVerification)
+              TextButton(
+                onPressed: () => d.purchases.prepare(widget.reportId!),
+                child: Text(s.serviceRetry),
               ),
             if (d.purchases.needsVerification)
               OutlinedButton(

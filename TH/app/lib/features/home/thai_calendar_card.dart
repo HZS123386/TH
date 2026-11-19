@@ -1,15 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/thai_calendar_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
 
 class ThaiCalendarCard extends StatefulWidget {
-  const ThaiCalendarCard({required this.repository, super.key});
+  const ThaiCalendarCard({required this.repository, this.footer, super.key});
 
   final ThaiCalendarRepository repository;
+  final Widget? footer;
 
   @override
   State<ThaiCalendarCard> createState() => _ThaiCalendarCardState();
@@ -97,9 +99,19 @@ class _ThaiCalendarCardState extends State<ThaiCalendarCard>
                   ),
                 ),
               ),
-              Text(
-                s.thaiCalendarTimezone,
-                style: const TextStyle(fontSize: 10, color: mutedColor),
+              TextButton(
+                onPressed: () => context.push('/fortune/calendar'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  textStyle: const TextStyle(fontSize: 11),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(s.calendarOpen),
+                    const Icon(Icons.chevron_right_rounded, size: 16),
+                  ],
+                ),
               ),
             ],
           ),
@@ -144,6 +156,10 @@ class _ThaiCalendarCardState extends State<ThaiCalendarCard>
               return _CalendarDetails(day: day);
             },
           ),
+          if (widget.footer != null) ...[
+            const Divider(height: 18, color: Color(0x55463655)),
+            widget.footer!,
+          ],
         ],
       ),
     );
@@ -188,10 +204,10 @@ class _CalendarDetails extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          s.thaiCalendarCivilDate(civilDate, day.buddhistYear),
-          style: const TextStyle(fontSize: 12, color: mutedColor),
+          '${s.thaiCalendarCivilDate(civilDate, day.buddhistYear)} · ${s.thaiCalendarTimezone}',
+          style: const TextStyle(fontSize: 11, color: mutedColor),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         if (lunar == null)
           Text(
             s.thaiCalendarLunarUnavailable,
@@ -208,7 +224,7 @@ class _CalendarDetails extends StatelessWidget {
                     ? s.thaiCalendarWaxing(lunar.day)
                     : s.thaiCalendarWaning(lunar.day),
                 style: const TextStyle(
-                  fontSize: 23,
+                  fontSize: 21,
                   fontWeight: FontWeight.w600,
                   color: inkColor,
                 ),
@@ -221,7 +237,7 @@ class _CalendarDetails extends StatelessWidget {
               ),
             ],
           ),
-        const SizedBox(height: 9),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 7,
           runSpacing: 6,
