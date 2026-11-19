@@ -5,6 +5,7 @@ import time
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+import httpx
 import pytest
 
 from backend.app.accounts import password_hash
@@ -51,6 +52,8 @@ def seed(app):
         ], 1):
             receipt = {"state": "UNKNOWN" if index == 2 else "CREATED", "gateway": gateway, "paymentStatus": status,
                        "createdAt": now - 80, "failureStage": "business" if index == 2 else "", "payDirectUrl": "https://secret.invalid/checkout"}
+            if status == "PAID":
+                receipt["paidAt"] = now - 40
             platform_number = f"platform-{index}"
             if provider and gateway:
                 provider = gateway + "/" + platform_number
@@ -204,6 +207,70 @@ def test_metrics_separate_real_receipts_simulation_permissions_and_failed_attemp
     assert issues["total"] == 4
     assert next(row for row in issues["items"] if row["category"] == "model")["attribution"] == "tagged"
     assert next(row for row in issues["items"] if row["report_id"] == "report-6")["attribution"] == "unattributed"
+
+
+def test_verified_revenue_and_its_detail_use_the_verification_date(admin):
+    http, app = admin
+    login(http)
+    now = time.time()
+    with app.state.store.connect() as db:
+        db.execute("""UPDATE life_card_payments SET sunlands_order=(
+            sunlands_order::jsonb || jsonb_build_object('createdAt',%s::double precision,'paidAt',%s::double precision)
+        )::text WHERE report_id='report-1'""", (now - 8 * 86400, now - 60))
+    metrics = http.get("/api/admin/overview?days=7").json()["metrics"]
+    assert (metrics["orders"], metrics["paid"], metrics["revenue"]) == (3, 1, 3000)
+    assert http.get("/api/admin/records/orders?days=7").json()["total"] == 3
+    paid = http.get("/api/admin/records/orders?days=7&time_basis=verified").json()
+    assert paid["total"] == 1
+    assert (paid["items"][0]["report_id"], paid["items"][0]["paid_at"]) == ("report-1", now - 60)
+    assert paid["items"][0]["source"] == "" and paid["items"][0]["attribution"] == "unattributed"
+    assert paid["items"][0]["report_source"] == "facebook"
+
+    with app.state.store.connect() as db:
+        db.execute("""UPDATE life_card_payments SET sunlands_order=(sunlands_order::jsonb - 'paidAt')::text
+                   WHERE report_id='report-1'""")
+    assert http.get("/api/admin/overview?days=7").json()["metrics"]["revenue"] == 0
+    assert http.get("/api/admin/overview?days=0").json()["metrics"]["revenue"] == 3000
+    historical = http.get("/api/admin/records/orders?days=0&time_basis=verified").json()["items"]
+    assert len(historical) == 1 and historical[0]["paid_at"] is None
+
+
+@pytest.mark.parametrize("same_owner", [True, False], ids=["same-browser", "foreign-visit"])
+def test_sunlands_order_saves_its_owned_visit_at_creation(client, monkeypatch, sunlands_phone_response, same_owner):
+    http, app, _, _ = client
+    calls = []
+
+    def gateway(request):
+        assert request.url.path == "/tradeApi/trade/externalCreateOrder"
+        calls.append(request.url.path)
+        return httpx.Response(200, content=sunlands_phone_response)
+
+    life_fixtures.sunlands_order_only(app, monkeypatch, gateway)
+    headers = life_fixtures.HEADERS
+    first = {"id": str(uuid4()), "source": "facebook", "campaign": "initial", "region": "TH"}
+    later = {"id": str(uuid4()), "source": "tiktok", "campaign": "return", "region": "VN"}
+    created = http.post("/api/life-reports", headers=headers,
+                        json={"profile": PROFILE, "year": 2027, "landing_visit": first})
+    assert created.status_code == 200 and created.json()["preview_state"] == "ready"
+    report_id = created.json()["id"]
+    visitor = headers if same_owner else {**headers, "X-Report-Key": "z" * 48}
+    assert http.post("/api/landing/visits", headers=visitor, json=later).status_code == 200
+    payment_path = f"/api/life-reports/{report_id}/payment"
+    contact = {"mobile": "13000000000", "nationCode": "86"}
+    order = http.post(payment_path, headers={**headers, "X-Visit-Id": later["id"]}, json=contact)
+    assert order.status_code == 200 and order.json()["amount"] == 3000
+    repeat = http.post(payment_path, headers={**headers, "X-Visit-Id": first["id"]}, json=contact)
+    assert repeat.json() == order.json()
+    assert len(calls) == 1
+    with app.state.store.connect() as db:
+        db.execute("DELETE FROM landing_visits WHERE id=%s", (later["id"],))
+    shown = app.state.h5_admin.detail(report_id)["payment"][0]
+    assert shown["report_source"] == "facebook"
+    if same_owner:
+        assert (shown["landing_visit_id"], shown["source"], shown["campaign"], shown["region_code"]) == (
+            later["id"], "tiktok", "return", "VN")
+    else:
+        assert shown["landing_visit_id"] is None and shown["attribution"] == "unattributed"
 
 
 def test_next_day_returns_use_beijing_visit_days_and_count_each_browser_once(postgres_url):

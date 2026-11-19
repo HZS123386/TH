@@ -25,6 +25,7 @@ COOKIE = "fate_admin"
 ASSETS = Path(__file__).resolve().parent / "web"
 logger = logging.getLogger(__name__)
 FAILURES = "('unavailable','unconfigured','limited')"
+VERIFIED_LIVE = "environment='live' AND status='paid'"
 # Report attribution comes from the snapshot stored at creation.
 BASE = f"""WITH active_visits AS (
  SELECT * FROM landing_visits
@@ -54,7 +55,11 @@ BASE = f"""WITH active_visits AS (
  FROM life_reports r LEFT JOIN active_visitors n ON n.owner=r.owner LEFT JOIN admin_cases c ON c.report_id=r.id
 ), orders AS (
  SELECT p.reference id,p.report_id,COALESCE((p.sunlands_order::jsonb ->> 'createdAt')::double precision,r.created) created,
- r.name,r.visitor,r.visitor_number,r.source,r.campaign,r.region_code,r.attribution,r.case_status,p.amount,'THB' currency,
+ r.name,r.visitor,r.visitor_number,p.landing_visit_id,
+ COALESCE(p.landing_source,'') source,COALESCE(p.landing_campaign,'') campaign,p.landing_region region_code,
+ CASE WHEN p.landing_source IS NULL THEN 'unattributed' WHEN p.landing_source='' THEN 'untagged' ELSE 'tagged' END attribution,
+ r.source report_source,r.campaign report_campaign,r.region_code report_region_code,r.attribution report_attribution,
+ r.case_status,p.amount,'THB' currency,
  p.sunlands_order_number order_number,
  CASE WHEN p.merchant='local_demo' THEN 'simulation'
  WHEN NOT starts_with(lower(p.merchant),'sunlands:') THEN 'sandbox'
@@ -122,8 +127,8 @@ BASE = f"""WITH active_visits AS (
 ) """
 
 SOURCES = [
-    {"name": "访问与渠道", "table": "landing_visits / landing_visitors / landing_visit_reports", "origin": "H5 首次访问埋点及提交、查看预览事件",
-     "rule": "同一匿名浏览器使用一个访客编号，首次日期按北京时间。访问记录保留最近 30 天，编号在 30 天未访问后过期。每次访问保存该链接提供的渠道、活动和投放地区。"},
+    {"name": "访问与渠道", "table": "landing_visits / landing_visitors / landing_visit_reports", "origin": "H5 欢迎页访问埋点及提交、查看预览事件",
+     "rule": "欢迎页可见时开始上报。重新打开入口按本次链接标签记为新访问，刷新和返回恢复原访问。访客按匿名浏览器去重，首次日期按北京时间。访问记录保留最近 30 天，编号在 30 天未访问后过期。"},
     {"name": "次日回访人数", "table": "landing_visits / landing_visit_activity", "origin": "新访问、打开页面或恢复前台的记录",
      "rule": "按北京时间自然日计算。同一浏览器连续两天有访问记录，第二天算回访。按回访日期筛选，范围内每个浏览器计一次。"
              "轨迹按发生时间归日，历史无轨迹使用访问记录时间。"},
@@ -138,7 +143,9 @@ SOURCES = [
     {"name": "报告与权限", "table": "life_reports", "origin": "现有报告创建与生成服务",
      "rule": "按报告创建时间筛选，展示当前状态；同一浏览器的相同输入可能复用报告。已解锁不等于实收；过期生成租约标记为中断待核查。"},
     {"name": "订单与到账", "table": "life_card_payments.sunlands_order / provider_order", "origin": "官方建单回执及服务端核验结果",
-     "rule": "实收仅累计正式网关、PAID 且服务端凭据与本单网关及单号一致的订单；模拟和沙箱单分开。按订单创建时间筛选，无旧时间则使用报告创建时间。未核验不视为已付或未付。"},
+     "rule": "建单量按订单创建时间统计，历史缺少建单时间时使用报告创建时间。核验实收按服务端核验通过的时间统计，只计凭据与本单匹配的正式到账订单。历史缺少核验时间的已核验实收可在全部记录中查看。"},
+    {"name": "建单来源", "table": "landing_visits → life_card_payments.landing_*", "origin": "建单请求关联的同一浏览器访问",
+     "rule": "首次写入订单时保存本次访问编号、渠道、活动和投放地区。未取得有效访问时显示未归因。报告首次来源单独展示。"},
     {"name": "模型调用", "table": "report_model_usage", "origin": "原模型请求链的用量、校验结果和耗时",
      "rule": "仅展示关联 H5 报告的调用；失败的单次调用可能后来修复成功。历史未记录的原因和耗时显示未知。Token 来自上游返回，不估算金额；未返回用量不代表零消耗。"},
     {"name": "报告首次归因", "table": "landing_visitors → life_reports.landing_*", "origin": "创建报告时保存访客编号及该编号首次入站的渠道、活动和投放地区",
@@ -295,13 +302,16 @@ class H5Admin:
                 ON prior.owner=returned.owner AND prior.visit_day=returned.visit_day-1
             WHERE %s=0 OR returned.visit_day>(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Shanghai')::date-%s
         """, (VISIT_RETENTION_SECONDS, days, days))[0]["value"]
+        metrics.update(self.rows(
+            f"SELECT COUNT(*) paid,COALESCE(SUM(amount),0) revenue FROM orders "
+            f"WHERE {VERIFIED_LIVE} AND (%s=0 OR paid_at>=%s)",
+            (days, since),
+        )[0])
         for name, sql in {
             "reports": "SELECT COUNT(*) value FROM reports WHERE created>=%s",
             "report_failures": "SELECT COUNT(*) value FROM reports WHERE created>=%s AND status IN ('failed','stalled')",
             "unlocked": "SELECT COUNT(*) value FROM reports WHERE created>=%s AND unlocked=1",
             "orders": "SELECT COUNT(*) value FROM orders WHERE created>=%s",
-            "paid": "SELECT COUNT(*) value FROM orders WHERE created>=%s AND environment='live' AND status='paid'",
-            "revenue": "SELECT COALESCE(SUM(amount),0) value FROM orders WHERE created>=%s AND environment='live' AND status='paid'",
             "order_issues": "SELECT COUNT(*) value FROM orders WHERE created>=%s AND status IN ('check_failed','create_failed','needs_review')",
             "calls": "SELECT COUNT(*) value FROM calls WHERE created>=%s",
             "failed_calls": "SELECT COUNT(*) value FROM calls WHERE created>=%s AND status='failed'",
@@ -318,15 +328,20 @@ class H5Admin:
         return {"metrics": metrics, "channels": channels, "trend": trend, "generated_at": time.time(),
                 "environment": self.settings.app_env, "database": self.store.database_name, "timezone": "Asia/Shanghai"}
 
-    def records(self, kind, days, q, status, source, page, page_size, category="", case_status=""):
+    def records(self, kind, days, q, status, source, page, page_size, category="", case_status="", time_basis="created"):
         columns = {
-            "reports": "id,name,visitor_number,visitor,code", "orders": "id,report_id,visitor_number,name,order_number,code",
+            "reports": "id,name,visitor_number,visitor,code", "orders": "id,report_id,visitor_number,name,order_number,code,landing_visit_id",
             "visits": "id,visitor,visitor_number,campaign", "calls": "id,report_id,visitor_number,request_id,code,model,reading",
             "issues": "id,report_id,visitor_number,visit_id,name,code,category,path", "audit": "id,report_id,visitor_number,actor,note,action,code",
         }
         if kind not in columns:
             raise HTTPException(404, "admin_category_not_found")
-        where, params = ["created>=%s"], [self.cutoff(days)]
+        since = self.cutoff(days)
+        verified = kind == "orders" and time_basis == "verified"
+        time_column = "paid_at" if verified else "created"
+        time_filter = f"{VERIFIED_LIVE} AND (%s=0 OR paid_at>=%s)" if verified else "created>=%s"
+        time_params = [days, since] if verified else [since]
+        where, params = [time_filter], [*time_params]
         if category and kind == "issues":
             where.append("category=%s")
             params.append(category)
@@ -345,9 +360,9 @@ class H5Admin:
             clause += " AND status=%s"
             params.append(status)
         total = self.rows(f"SELECT COUNT(*) total FROM {kind} WHERE {clause}", params)[0]["total"]
-        items = self.rows(f"SELECT * FROM {kind} WHERE {clause} ORDER BY created DESC,id DESC LIMIT %s OFFSET %s",
+        items = self.rows(f"SELECT * FROM {kind} WHERE {clause} ORDER BY {time_column} DESC NULLS LAST,id DESC LIMIT %s OFFSET %s",
                           [*params, page_size, (page - 1) * page_size])
-        sources = self.rows(f"SELECT DISTINCT source FROM {kind} WHERE created>=%s ORDER BY source", (params[0],)) if kind != "audit" else []
+        sources = self.rows(f"SELECT DISTINCT source FROM {kind} WHERE {time_filter} ORDER BY source", time_params) if kind != "audit" else []
         return {"items": items, "total": total, "page": page, "page_size": page_size,
                 "facets": facets, "source_options": [row["source"] for row in sources]}
 
@@ -508,8 +523,9 @@ def admin_router(service):
     def records(kind: str, days: int = Query(30, ge=0, le=365), q: str = Query("", max_length=100),
                 status: str = Query("", max_length=40), source: str = Query("", max_length=64),
                 category: str = Query("", max_length=20), case_status: str = Query("", max_length=20),
+                time_basis: Literal["created", "verified"] = "created",
                 page: int = Query(1, ge=1, le=10000), page_size: int = Query(25, ge=1, le=100), current=Depends(service.session)):
-        return service.records(kind, days, q, status, source, page, page_size, category, case_status)
+        return service.records(kind, days, q, status, source, page, page_size, category, case_status, time_basis)
 
     @router.get("/reports/{report_id}")
     def detail(report_id: str, current=Depends(service.session)):

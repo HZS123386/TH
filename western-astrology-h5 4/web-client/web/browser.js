@@ -1,18 +1,49 @@
+const fateOwnerName = 'astro-life-report-key';
+const fateValidOwner = value => typeof value === 'string' && /^[A-Za-z0-9_-]{32,128}$/.test(value);
+const fateHex = bytes => Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+function fateOwnerStores() {
+  const stores = [];
+  for (const read of [() => window.localStorage, () => window.sessionStorage]) {
+    try { stores.push(read()); } catch {}
+  }
+  return stores;
+}
+function fateSavedOwner(stores) {
+  for (const store of stores) {
+    try {
+      const value = store.getItem(fateOwnerName);
+      if (fateValidOwner(value)) return value;
+    } catch {}
+  }
+  return null;
+}
+let fateOwner;
+function fateOwnerKey() {
+  const stores = fateOwnerStores();
+  const key = fateOwner ?? fateSavedOwner(stores) ?? fateHex(crypto.getRandomValues(new Uint8Array(24)));
+  let persisted = false;
+  for (const store of stores) {
+    try {
+      if (store.getItem(fateOwnerName) !== key) store.setItem(fateOwnerName, key);
+      persisted = store.getItem(fateOwnerName) === key || persisted;
+    } catch {}
+  }
+  fateOwner = persisted ? key : null;
+  return fateOwner;
+}
+
 // Upgrade only the deployed IP site; local previews keep their existing origin.
 // The short-lived host cookie avoids putting report credentials in URLs or logs.
 const fateHttpsUpgrading=(()=>{
   if(location.host!=='129.226.126.212'||!location.pathname.startsWith('/thai-landing/'))return false;
   if(new URLSearchParams(location.search).get('legacy_http')==='1')return false;
-  const ownerName='astro-life-report-key',bridgeName='fate-https-owner',upgradeName='_fate_https';
-  const valid=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{32,128}$/.test(value);
-  const stores=[];
-  for(const read of [()=>window.localStorage,()=>window.sessionStorage]){try{stores.push(read());}catch{}}
-  const saved=()=>{for(const store of stores){try{const value=store.getItem(ownerName);if(valid(value))return value;}catch{}}return null;};
+  const bridgeName='fate-https-owner',upgradeName='_fate_https';
+  const stores=fateOwnerStores();
   const cookie=()=>{try{return document.cookie.split(';').map(value=>value.trim()).find(value=>value.startsWith(bridgeName+'='))?.slice(bridgeName.length+1)||null;}catch{return null;}};
   const clearBridge=()=>{try{document.cookie=`${bridgeName}=; Path=/thai-landing/; Max-Age=0; SameSite=Lax; Secure`;}catch{}};
   const redirect=(protocol,legacy=false,migrating=false)=>{const target=new URL(location.href);target.protocol=protocol;target.searchParams.delete(upgradeName);if(migrating)target.searchParams.set(upgradeName,'1');if(legacy)target.searchParams.set('legacy_http','1');location.replace(target.href);return true;};
   if(location.protocol==='http:'){
-    const owner=saved();
+    const owner=fateSavedOwner(stores);
     if(owner){
       try{document.cookie=`${bridgeName}=${owner}; Path=/thai-landing/; Max-Age=60; SameSite=Lax`;}catch{return false;}
       if(cookie()!==owner)return false;
@@ -22,17 +53,17 @@ const fateHttpsUpgrading=(()=>{
   if(location.protocol!=='https:')return false;
   const incoming=cookie();
   const upgrading=new URLSearchParams(location.search).get(upgradeName)==='1';
-  if(!valid(incoming))return upgrading?redirect('http:',true):false;
-  const current=saved();
+  if(!fateValidOwner(incoming))return upgrading?redirect('http:',true):false;
+  const current=fateSavedOwner(stores);
   if(current&&current!==incoming){
     // Keep both owners recoverable, and let the old HTTP link retain its reports.
     let preserved=false;
-    for(const store of stores){try{store.setItem(ownerName+'-http',incoming);preserved=store.getItem(ownerName+'-http')===incoming||preserved;}catch{}}
+    for(const store of stores){try{store.setItem(fateOwnerName+'-http',incoming);preserved=store.getItem(fateOwnerName+'-http')===incoming||preserved;}catch{}}
     if(preserved)clearBridge();
     return redirect('http:',true);
   }
   let persisted=false;
-  for(const store of stores){try{store.setItem(ownerName,incoming);persisted=store.getItem(ownerName)===incoming||persisted;}catch{}}
+  for(const store of stores){try{store.setItem(fateOwnerName,incoming);persisted=store.getItem(fateOwnerName)===incoming||persisted;}catch{}}
   if(!persisted)return redirect('http:',true);
   clearBridge();
   if(upgrading){const target=new URL(location.href);target.searchParams.delete(upgradeName);history.replaceState(null,'',target.href);}
@@ -119,6 +150,52 @@ let fateSending = 0, fateRetryAt = 0, fateRetryCount = 0, fateSendTimer, fateDwe
 const fateTrackingAllowed = () => window.navigator?.globalPrivacyControl !== true && window.navigator?.doNotTrack !== '1';
 const fateState = () => document.visibilityState === 'hidden' ? 'hidden' : 'visible';
 const fateEventKey = item => `${item.visit.id}:${item.event.sequence}`;
+const fateEntryParams = new URLSearchParams(location.search);
+const fateVisitStorageKey = 'fate-visit-context';
+let fateVisit;
+function fateUuid() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = fateHex(bytes);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+function rememberFateVisit() {
+  if (!fateVisit || !fateTrackingAllowed()) return;
+  try { sessionStorage.setItem(fateVisitStorageKey, JSON.stringify(fateVisit)); } catch {}
+  try {
+    const state = history.state;
+    if (state == null || (typeof state === 'object' && !Array.isArray(state))) {
+      history.replaceState({ ...state, fateVisit }, '');
+    }
+  } catch {}
+}
+function restoreFateVisit(value) {
+  if (typeof value?.id !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value.id)) return null;
+  const tag = field => typeof value[field] === 'string' && /^[A-Za-z0-9_.~-]{0,64}$/.test(value[field]) ? value[field] : '';
+  const region = typeof value.region === 'string' && /^[A-Z]{2}$/.test(value.region) ? value.region : null;
+  return { id: value.id, source: tag('source'), campaign: tag('campaign'), ...(region ? { region } : {}) };
+}
+function fateVisitContext() {
+  if (!fateTrackingAllowed() || fateHttpsUpgrading) return null;
+  if (fateVisit) return fateVisit;
+  const type = performance.getEntriesByType?.('navigation')?.[0]?.type;
+  // A fresh document entry uses its own URL tags, even in a previously used tab.
+  if (type !== 'navigate') {
+    try { fateVisit = restoreFateVisit(history.state?.fateVisit); } catch {}
+    if (!fateVisit && type === 'reload') {
+      try { fateVisit = restoreFateVisit(JSON.parse(sessionStorage.getItem(fateVisitStorageKey) || 'null')); } catch {}
+    }
+  }
+  if (!fateVisit) {
+    const tag = name => (fateEntryParams.get(name) || '').replace(/[^A-Za-z0-9_.~-]/g, '').slice(0, 64);
+    const region = fateEntryParams.get('utm_region')?.trim().toUpperCase();
+    fateVisit = { id: fateUuid(), source: tag('utm_source'), campaign: tag('utm_campaign'),
+      ...(/^[A-Z]{2}$/.test(region || '') ? { region } : {}) };
+  }
+  rememberFateVisit();
+  return fateVisit;
+}
 function persistFateActivity(added, delivered = []) {
   if (!fateActivity) return false;
   if (added) fateUnstored.set(fateEventKey(added), added);
@@ -251,11 +328,23 @@ function fateVisibility(state) {
   scheduleFateDwell();
 }
 document.addEventListener('visibilitychange', () => fateVisibility(fateState()));
-window.addEventListener('pagehide', () => fateVisibility('pagehide'));
-window.addEventListener('pageshow', event => { if (event.persisted) fateVisibility(fateState()); });
+window.addEventListener('pagehide', () => {
+  rememberFateVisit();
+  fateVisibility('pagehide');
+});
+window.addEventListener('pageshow', event => {
+  if (event.persisted) {
+    rememberFateVisit();
+    fateVisibility(fateState());
+  }
+});
 window.addEventListener('online', () => { scheduleFateActivity(0); });
 let fateWelcomeStartedAt;
+// Capture the entry's state before Flutter manages browser history.
+try { fateVisitContext(); } catch {}
 window.fateH5 = {
+  ownerKey: fateOwnerKey,
+  visitContext() { return JSON.stringify(fateVisitContext() || {}); },
   welcomeAge(){return fateWelcomeStartedAt===undefined?0:performance.now()-fateWelcomeStartedAt;},
   trackFailure(path, code, method) {
     recordFateActivity('action', fateState(), 'request_failed', { failure_path: path, failure_code: code, failure_method: method });
@@ -265,6 +354,8 @@ window.fateH5 = {
     if (!fateTrackingAllowed()) { clearFateActivity(); return; }
     try {
       const { activity, ...visit } = JSON.parse(payload);
+      if (activity.page === 'welcome' && activity.action === 'view' && fateActivity?.key === key &&
+          fateActivity.visit.id === visit.id && fateActivity.activity.page === 'welcome' && fateActivity.activity.action === 'view') return;
       if (!fateActivity || fateActivity.key !== key) {
         clearFateActivity(false);
         try {
@@ -277,11 +368,8 @@ window.fateH5 = {
         fateActivity = undefined;
       }
       if (!fateActivity) {
-        const bytes = crypto.getRandomValues(new Uint8Array(16));
-        bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
-        const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
         fateActivity = { visit, activity, key, endpoint, visibleMs: 0, visibleSince: null,
-          pageViewId: `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}` };
+          pageViewId: fateUuid() };
       } else fateActivity.activity = activity;
       recordFateActivity();
       scheduleFateDwell();
@@ -307,7 +395,10 @@ window.fateH5 = {
     document.body.append(form);form.submit();form.remove();
   },
   pageReady(page) {
-    if(page==='app-ready')requestAnimationFrame(()=>requestAnimationFrame(()=>window.fateBoot.ready()));
+    if(page==='app-ready')requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      rememberFateVisit();
+      window.fateBoot.ready();
+    }));
     if(!fatePerfEnabled)return;
     requestAnimationFrame(()=>console.debug('[FATE H5 performance] '+JSON.stringify({page,readyMs:Math.round(performance.now()),resources:performance.getEntriesByType('resource').filter(e=>/api\/|main\.dart|skwasm|canvaskit|fonts\/|astrologer/.test(e.name)).map(e=>({name:new URL(e.name).pathname.replace(/(life-reports\/)\w{8,}/,'$1:id'),startMs:Math.round(e.startTime),endMs:Math.round(e.responseEnd),bytes:e.transferSize}))})));
   }
@@ -380,6 +471,21 @@ function mountFateWelcome(){
   if(welcome){
     fateWelcomeStartedAt=performance.now();
     writeWelcomeName(welcome);
+    const trackWelcome = () => {
+      if (document.visibilityState !== 'visible') return;
+      document.removeEventListener('visibilitychange', trackWelcome);
+      try {
+        const visit = fateVisitContext();
+        if (!visit) return;
+        const owner = fateOwnerKey();
+        if (!owner) return;
+        window.fateH5.trackActivity(JSON.stringify({ ...visit, activity: { page: 'welcome', action: 'view' } }),
+          owner, '/api/landing/visits');
+        void flushFateActivity();
+      } catch {}
+    };
+    if (document.visibilityState === 'visible') trackWelcome();
+    else document.addEventListener('visibilitychange', trackWelcome);
   }
   if(image){
     window.fateBoot.welcomePaint = new Promise(resolve => {

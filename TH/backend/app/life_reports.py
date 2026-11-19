@@ -872,11 +872,16 @@ class LifeReports:
         percent = min(percent, 100 if row["full_state"] == "ready" else 99)
         simulation = self.can_simulate_payment(career)
         amount = 9900 if career else CARD_AMOUNT
+        merchant = None
         if self.card_payments.order_only:
             amount = SUNLANDS_AMOUNT
-        if simulation:
-            order = self.card_payments.order_for(row["id"]) if preview and not row["unlocked"] else None
-            amount = order["amount"] if order and order["merchant"] == SIMULATED_MERCHANT else SIMULATED_AMOUNT
+            merchant = "sunlands:" + self.card_payments.settings.sunlands_app_key
+        elif simulation:
+            amount, merchant = SIMULATED_AMOUNT, SIMULATED_MERCHANT
+        if merchant and preview and not row["unlocked"]:
+            order = self.card_payments.order_for(row["id"])
+            if order and order["merchant"] == merchant:
+                amount = order["amount"]
         result = {
             "id": row["id"], "version": version, "title": title,
             "input": body, "created_at": stamp(row["created"]), "location": chart.get("location"),
@@ -1052,7 +1057,7 @@ class LifeReports:
     def can_simulate_payment(self, career):
         return not self.card_payments.order_only and self.development and (bool(career) or not self.card_payments.enabled)
 
-    async def create_card_order(self, report_id, owner, network, contact=None):
+    async def create_card_order(self, report_id, owner, network, contact=None, *, visit_id=None):
         row = self.row(report_id, owner)
         body = json.loads(row["input"])
         if row["unlocked"]:
@@ -1067,10 +1072,11 @@ class LifeReports:
             raise HTTPException(409, "life_payment_unavailable")
         if self.card_payments.order_only:
             return await self.card_payments.create_sunlands(
-                report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "")
+                report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "",
+                visit_id=visit_id)
         if self.can_simulate_payment(career):
-            return self.card_payments.create_simulated(report_id, network)
-        return self.card_payments.create(report_id, network, body["profile"]["language"])
+            return self.card_payments.create_simulated(report_id, network, visit_id=visit_id)
+        return self.card_payments.create(report_id, network, body["profile"]["language"], visit_id=visit_id)
 
     async def simulate_payment(self, report_id, owner, reference):
         row = self.row(report_id, owner)
@@ -1339,7 +1345,8 @@ def life_report_router(service):
 
     @router.post("/{report_id}/payment")
     async def create_payment(report_id: str, request: Request, key: key_header, body: PaymentContact | None = None):
-        return await service.create_card_order(report_id, *scopes(key, request), contact=body)
+        return await service.create_card_order(
+            report_id, *scopes(key, request), contact=body, visit_id=request.headers.get("X-Visit-Id"))
 
     @router.post("/{report_id}/payment/check")
     async def check_payment(report_id: str, request: Request, key: key_header):

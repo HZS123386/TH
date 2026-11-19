@@ -638,25 +638,34 @@ def test_sunlands_access_denied_allows_manual_retry_without_another_local_order(
 
 
 @pytest.fixture
-def sunlands_settlement(client, monkeypatch, sunlands_phone_response):
+def sunlands_settlement(client, monkeypatch, sunlands_phone_response, request):
     from dataclasses import replace
     from urllib.parse import parse_qs
+    from backend.app import life_card_payments
     from backend.app.life_card_payments import SUNLANDS_CREATE_ORDER, SUNLANDS_QUERY_ORDER
     http, app, _, _ = client
     calls = []
     number = "OFFLINE_PHONE_ORDER_001"
+    default_price = life_card_payments.SUNLANDS_AMOUNT // 100
+    price = getattr(request, "param", default_price)
+    amount = f"{price:.2f}"
+    phone_response = json.loads(sunlands_phone_response)
+    phone_response["data"]["totalAmount"] = price
+    phone_response["data"]["orderDetails"][0]["itemPrice"] = price
     row = {"orderSerialNo": number, "stuId": 12345, "channelCode": "sunlands_fb_fate", "currency": "THB",
-           "orderType": "OVERSEAS_NORMAL", "orderStatus": "PAID", "totalAmount": "30.00",
-           "paidAmount": "30.00", "unpaidAmount": "0.00", "paymentDate": "2026-11-13 12:00:00",
+           "orderType": "OVERSEAS_NORMAL", "orderStatus": "PAID", "totalAmount": amount,
+           "paidAmount": amount, "unpaidAmount": "0.00", "paymentDate": "2026-11-13 12:00:00",
            "orderDetails": [{"subOrderSerialNo": number + "_1", "subOrderStatus": "PAID",
-                             "itemNo": "193261112000101", "totalAmount": "30.00",
-                             "payInfo": {"currency": "THB", "paidAmount": "30.00", "totalAmount": "30.00"}}]}
+                             "itemNo": "193261112000101", "totalAmount": amount,
+                             "payInfo": {"currency": "THB", "paidAmount": amount, "totalAmount": amount}}]}
     state = {"response": {"retCode": "0", "data": [row]}, "status": 200, "error": None}
     def upstream(request):
         calls.append(request.url.path)
         if request.url.path == SUNLANDS_CREATE_ORDER:
-            assert parse_qs(request.content.decode())["merchantNotifyUrl"] == ["/api/life-reports/payment/sunlands/notify"]
-            return httpx.Response(200, content=sunlands_phone_response)
+            form = parse_qs(request.content.decode())
+            assert form["merchantNotifyUrl"] == ["/api/life-reports/payment/sunlands/notify"]
+            assert form["itemPrice"] == form["totalAmount"] == [amount]
+            return httpx.Response(200, json=phone_response)
         assert request.url.path == SUNLANDS_QUERY_ORDER
         assert parse_qs(request.content.decode()) == {"orderSerialNos": [json.dumps([number])], "orderContent": ['["PAY","ITEM"]']}
         assert request.headers["proxy-authorization"].startswith('hmac username="sunlands_fb_fate",')
@@ -668,9 +677,13 @@ def sunlands_settlement(client, monkeypatch, sunlands_phone_response):
         sunlands_merchant_notify_uri="/api/life-reports/payment/sunlands/notify"))
     report = preview(http)
     path = f"/api/life-reports/{report['id']}"
-    assert http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).status_code == 200
+    with monkeypatch.context() as previous_pricing:
+        if price != default_price:
+            previous_pricing.setattr(life_card_payments, "SUNLANDS_AMOUNT", price * 100)
+        created = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"})
+    assert created.status_code == 200 and created.json()["amount"] == price * 100
     notice = {"callBackType": "pay", "subOrderStatusCode": "PAID", "subOrderNumber": number + "_1",
-              "orderNumber": number, "userId": "12345", "itemNo": "193261112000101", "amount": "30.00",
+              "orderNumber": number, "userId": "12345", "itemNo": "193261112000101", "amount": amount,
               "orderType": "OVERSEAS_NORMAL", "currency": "THB", "eventTime": "2026-11-13 12:00:00"}
     return http, app, payments, report, path, state, calls, notice
 
@@ -692,15 +705,21 @@ def test_sunlands_denial_with_a_platform_number_never_allows_manual_reordering(c
     assert payments.order_for(report["id"])["sunlands_order_number"] == "EXISTING_ORDER"
 
 
+@pytest.mark.parametrize("sunlands_settlement", [30, 10], indirect=True, ids=["current-price", "saved-price"])
 def test_sunlands_settlement_checks_pending_then_unlocks_atomically_and_survives_restart(sunlands_settlement):
     from backend.app.life_card_payments import LifeCardPayments, SUNLANDS_QUERY_ORDER
-    http, app, payments, report, path, state, calls, _ = sunlands_settlement
+    http, app, payments, report, path, state, calls, notice = sunlands_settlement
+    amount = notice["amount"].removesuffix(".00")
     paid_result = deepcopy(state["response"])
-    state["response"]["data"][0].update(orderStatus="UNPAID", paidAmount="0.00", unpaidAmount="30.00")
+    state["response"]["data"][0].update(orderStatus="UNPAID", paidAmount="0.00", unpaidAmount=notice["amount"])
     assert http.post(path + "/payment/check", headers={"X-Report-Key": "z" * 48}).status_code == 404
     assert http.post(path + "/payment/check", headers=HEADERS).json() == {"paid": False}
     assert http.post(path + "/unlock", headers=HEADERS).status_code == 402
-    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+    pending = http.get(path, headers=HEADERS).json()
+    existing = http.get(path + "/payment", headers=HEADERS).json()
+    assert pending["access"] == "preview"
+    assert pending["price"]["display"] == f"฿{amount}"
+    assert pending["price"]["amount"] == existing["amount"] == int(amount) * 100
     state["response"] = {"flag": "1", "data": paid_result}
     assert http.post(path + "/payment/check", headers=HEADERS).json() == {"paid": True}
     saved = payments.order_for(report["id"])
@@ -766,7 +785,7 @@ def test_sunlands_callback_cannot_unlock_without_server_confirmation_and_is_idem
     assert http.post(endpoint, data={**notice, "currency": "CNY"}).json()["code"] == 0
     assert len(calls) == 1
     paid = deepcopy(state["response"])
-    state["response"]["data"][0].update(orderStatus="UNPAID", paidAmount="0.00", unpaidAmount="30.00")
+    state["response"]["data"][0].update(orderStatus="UNPAID", paidAmount="0.00", unpaidAmount=notice["amount"])
     assert http.post(endpoint, data=notice).json()["code"] == 0
     assert http.get(path, headers=HEADERS).json()["access"] == "preview"
     state["response"] = paid
