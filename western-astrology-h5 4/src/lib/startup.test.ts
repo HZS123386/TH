@@ -8,7 +8,9 @@ const recoveryKey = "fate-startup-recovery-at";
 
 function openDocument(storage = new Map<string, string>(), storageBlocked = false, options: {
   url?: string; language?: string; local?: Map<string, string>; cookie?: { value: string }; cookieBlocked?: boolean; fetch?: ReturnType<typeof vi.fn>;
-  portrait?: EventTarget;
+  portrait?: EventTarget; welcome?: boolean; privateBrowsing?: boolean;
+  navigationType?: "navigate" | "reload" | "back_forward";
+  historyEntry?: { state: Record<string, unknown> | null };
 } = {}) {
   const status = { textContent: "" };
   const button = { hidden: true, addEventListener: vi.fn() };
@@ -18,6 +20,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
     ["fate-startup-status", status], ["fate-startup-retry", button], ["fate-startup", startup],
     ["fate-welcome-start", start], ["fate-welcome-portrait", options.portrait],
   ]);
+  if (options.welcome) nodes.set("fate-welcome", { querySelector: vi.fn(), addEventListener: vi.fn() });
   const window = { dispatchEvent: vi.fn(), addEventListener: vi.fn() } as any;
   const url = new URL(options.url ?? "http://127.0.0.1/thai-landing/?lang=zh&id=retained-report");
   const location = { href: url.href, host: url.host, hostname: url.hostname, pathname: url.pathname, protocol: url.protocol, search: url.search, reload: vi.fn(), replace: vi.fn() };
@@ -30,18 +33,24 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   });
   window.localStorage = makeStorage(local);
   window.sessionStorage = makeStorage(storage);
-  const document = { visibilityState: "visible", documentElement: { lang: options.language ?? "zh", dataset: { welcome: String(!/(report|privacy|support)\.html$/.test(url.pathname)) } }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn() };
+  const document = { visibilityState: "visible", documentElement: { lang: options.language ?? "zh", dataset: { welcome: String(!/(report|privacy|support)\.html$/.test(url.pathname)) } }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn(), removeEventListener: vi.fn() };
   const fetch = options.fetch ?? vi.fn().mockImplementation(async (_url, options) => ({
     ok: true, json: async () => ({ ok: true, accepted_sequences: JSON.parse(options.body).events.map((event: any) => event.sequence) }),
   }));
-  window.navigator = { doNotTrack: "0", globalPrivacyControl: false };
+  window.navigator = { doNotTrack: "0", globalPrivacyControl: options.privateBrowsing ?? false };
+  const historyEntry = options.historyEntry ?? { state: null };
+  const history = {
+    get state() { return historyEntry.state; },
+    replaceState: vi.fn((state: Record<string, unknown> | null) => { historyEntry.state = state; }),
+  };
   Object.defineProperty(document, "cookie", {
     get: () => options.cookieBlocked ? "" : cookie.value,
     set: (value: string) => { if (!options.cookieBlocked) cookie.value = value.includes("Max-Age=0") ? "" : value.split(";")[0]; },
   });
   runInNewContext(source, {
-    window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history: { replaceState: vi.fn() },
-    performance: { mark: vi.fn(), now: () => Date.now() }, crypto: webcrypto, AbortController,
+    window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history,
+    performance: { mark: vi.fn(), now: () => Date.now(), getEntriesByType: () => [{ type: options.navigationType ?? "navigate" }] },
+    crypto: webcrypto, AbortController,
     sessionStorage: window.sessionStorage, fetch,
   });
   return { boot: window.fateBoot, h5: window.fateH5, window, document, fetch, location, status, button, start, startup, storage, local, cookie };
@@ -49,6 +58,54 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-11T06:00:00Z")); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
+
+it.each(["zh", "th"])("records the %s welcome before Flutter and shares its identity", async (language) => {
+  const page = openDocument(new Map(), false, { language, welcome: true });
+  const visit = JSON.parse(page.h5.visitContext());
+  const owner = page.h5.ownerKey();
+  expect(page.fetch).toHaveBeenCalledTimes(1);
+  const [url, request] = page.fetch.mock.calls[0];
+  expect(url).toBe("/api/landing/visits");
+  expect(request.headers["X-Report-Key"]).toBe(owner);
+  expect(request.headers["X-Visit-Id"]).toBe(visit.id);
+  expect(JSON.parse(request.body)).toMatchObject({
+    id: visit.id, events: [{ page: "welcome", action: "view", state: "visible" }],
+  });
+  page.h5.trackActivity(JSON.stringify({ ...visit, activity: { page: "welcome", action: "view" } }),
+    owner, "/api/landing/visits");
+  await vi.advanceTimersByTimeAsync(300);
+  expect(page.fetch).toHaveBeenCalledTimes(1);
+});
+
+it("does not record the HTML welcome when tracking is disabled", () => {
+  const page = openDocument(new Map(), false, { welcome: true, privateBrowsing: true });
+  expect(page.fetch).not.toHaveBeenCalled();
+  expect(page.h5.visitContext()).toBe("{}");
+  expect(page.local.has("astro-life-report-key")).toBe(false);
+});
+
+it("uses fresh tags on re-entry and keeps the corresponding visit through reload and history", () => {
+  const storage = new Map<string, string>();
+  const local = new Map<string, string>();
+  const entry = { state: { router: 1 } as Record<string, unknown> | null };
+  const url = "http://127.0.0.1/thai-landing/?utm_source=facebook&utm_campaign=story&utm_region=th";
+  const original = openDocument(storage, false, { local, url, historyEntry: entry });
+  const first = JSON.parse(original.h5.visitContext());
+  expect(first).toMatchObject({ source: "facebook", campaign: "story", region: "TH" });
+  expect(entry.state?.router).toBe(1);
+  entry.state = { router: 2 };
+  original.window.addEventListener.mock.calls.find(([name]: string[]) => name === "pagehide")![1]();
+  expect(entry.state?.router).toBe(2);
+  const direct = openDocument(storage, false, { local });
+  const next = JSON.parse(direct.h5.visitContext());
+  expect(next.id).not.toBe(first.id);
+  expect(next).toMatchObject({ source: "", campaign: "" });
+  expect(direct.h5.ownerKey()).toBe(original.h5.ownerKey());
+  const reload = openDocument(storage, false, { local, navigationType: "reload" });
+  expect(JSON.parse(reload.h5.visitContext())).toEqual(next);
+  const back = openDocument(storage, false, { local, url, historyEntry: entry, navigationType: "back_forward" });
+  expect(JSON.parse(back.h5.visitContext())).toEqual(first);
+});
 
 it("retains the last page through hiding, leaving and restoring without losing ownership", async () => {
   const page = openDocument();

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:js_interop';
-import 'dart:math';
 import 'package:web/web.dart' as web;
 import 'browser_port.dart';
 import 'models.dart';
@@ -24,15 +23,12 @@ external void _failure(JSString path, JSString code, JSString method);
 external void _startupFailed();
 @JS('fateBoot.connectWelcome')
 external void _connectWelcome(JSFunction enter);
-@JS('navigator.globalPrivacyControl')
-external JSBoolean? get _privacyControl;
-@JS('navigator.doNotTrack')
-external JSString? get _doNotTrack;
+@JS('fateH5.ownerKey')
+external JSString? _ownerKey();
+@JS('fateH5.visitContext')
+external JSString _visitContext();
 
 class WebBrowserPort implements BrowserPort {
-  final _entryUrl = Uri.base;
-  Json? _visitContext;
-
   void startupFailed() => _startupFailed();
   void connectWelcome(void Function() enter) => _connectWelcome(enter.toJS);
 
@@ -46,45 +42,11 @@ class WebBrowserPort implements BrowserPort {
     '_blank',
     'noopener,noreferrer',
   );
-  String? _key;
   @override
   String ownerKey() {
-    const name = 'astro-life-report-key';
-    final stores = <web.Storage>[];
-    for (final read in [
-      () => web.window.localStorage,
-      () => web.window.sessionStorage,
-    ]) {
-      try {
-        final store = read(), saved = store.getItem(name);
-        stores.add(store);
-        if (_key == null &&
-            saved != null &&
-            RegExp(r'^[A-Za-z0-9_-]{32,128}$').hasMatch(saved)) {
-          _key = saved;
-        }
-      } catch (_) {
-        /* Another browser store may still be writable. */
-      }
-    }
-    _key ??= List.generate(
-      24,
-      (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
-    ).join();
-    var persisted = false;
-    for (final store in stores) {
-      try {
-        if (store.getItem(name) != _key) store.setItem(name, _key!);
-        persisted |= store.getItem(name) == _key;
-      } catch (_) {
-        /* Preserve a readable existing key. */
-      }
-    }
-    if (!persisted) {
-      _key = null;
-      throw const ApiFailure('storage');
-    }
-    return _key!;
+    final key = _ownerKey()?.toDart;
+    if (key == null) throw const ApiFailure('storage');
+    return key;
   }
 
   @override
@@ -157,59 +119,5 @@ class WebBrowserPort implements BrowserPort {
   }
 
   @override
-  Json visitContext() {
-    if (_privacyControl?.toDart == true || _doNotTrack?.toDart == '1') {
-      return {};
-    }
-    if (_visitContext != null) return _visitContext!;
-    String tag(String name) => (_entryUrl.queryParameters[name] ?? '')
-        .replaceAll(RegExp(r'[^A-Za-z0-9_.~-]'), '')
-        .split('')
-        .take(64)
-        .join();
-    final source = tag('utm_source');
-    final campaign = tag('utm_campaign');
-    final regionTag = _entryUrl.queryParameters['utm_region']
-        ?.trim()
-        .toUpperCase();
-    final region =
-        regionTag != null && RegExp(r'^[A-Z]{2}$').hasMatch(regionTag)
-        ? regionTag
-        : null;
-    final tagged = source.isNotEmpty || campaign.isNotEmpty || region != null;
-    const storageKey = 'fate-visit-context';
-    Json previous = {};
-    try {
-      previous = object(
-        jsonDecode(readSetting(storageKey, session: true) ?? '{}'),
-      );
-    } on FormatException {
-      // A corrupted session setting must not interrupt the report flow.
-    }
-    if (text(previous['id']).isNotEmpty &&
-        (!tagged ||
-            (previous['source'] == source &&
-                previous['campaign'] == campaign &&
-                previous['region'] == region))) {
-      return _visitContext = previous;
-    }
-    // A different tagged entry in the same tab is a separate visit.
-    var id = tagged ? null : readSetting('fate-visit', session: true);
-    if (id == null) {
-      final bytes = List.generate(16, (_) => Random.secure().nextInt(256));
-      bytes[6] = (bytes[6] & 15) | 64;
-      bytes[8] = (bytes[8] & 63) | 128;
-      final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
-      id =
-          '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
-    }
-    final context = <String, dynamic>{
-      'id': id,
-      'source': source,
-      'campaign': campaign,
-      if (region != null) 'region': region,
-    };
-    writeSetting(storageKey, jsonEncode(context), session: true);
-    return _visitContext = context;
-  }
+  Json visitContext() => object(jsonDecode(_visitContext().toDart));
 }

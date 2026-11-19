@@ -150,9 +150,13 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     }
     setState(() => _paying = true);
     try {
+      final latest = await _model.load(background: true);
+      if (!mounted || latest == null || !latest.canPay || latest.full) {
+        return;
+      }
       final paid = await showDialog<bool>(
         context: context,
-        builder: (_) => ReportPaymentDialog(h5: widget.h5, report: report),
+        builder: (_) => ReportPaymentDialog(h5: widget.h5, report: latest),
       );
       if (mounted) {
         widget.h5.trackActivity(_model.report?.ready == true ? 'full_report' : 'preview_report', 'close_payment');

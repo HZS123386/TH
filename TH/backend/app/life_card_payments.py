@@ -10,17 +10,20 @@ import re
 import secrets
 import time
 from urllib.parse import parse_qs, urlencode, urlsplit
+from uuid import UUID
 
 import httpx
+import psycopg
 from fastapi import HTTPException
 
+from .landing_features import VISIT_RETENTION_SECONDS
 
 CARD_AMOUNT = 5000
 SIMULATED_AMOUNT = 3000
 CHECKOUT_URL = "https://www.thaiepay.com/epaylink/payment.aspx"
 INQUIRY_URL = "https://apis.paysolutions.asia/order/orderdetailpost"
 SIMULATED_MERCHANT = "local_demo"
-SUNLANDS_AMOUNT = 3000
+SUNLANDS_AMOUNT = 1000
 SUNLANDS_CREATE_ORDER = "/tradeApi/trade/externalCreateOrder"
 SUNLANDS_QUERY_ORDER = "/tradeApi/trade/queryOrderDetailInfo"
 
@@ -168,7 +171,7 @@ class LifeCardPayments:
             raise HTTPException(409, "life_payment_unavailable")
         return self._sunlands_view(order)
 
-    async def create_sunlands(self, report_id, network, mobile, nation_code):
+    async def create_sunlands(self, report_id, network, mobile, nation_code, *, visit_id=None):
         if not self.order_only or not self.sunlands_ready:
             raise HTTPException(503, "life_order_configuration_required")
         s = self.settings
@@ -189,6 +192,7 @@ class LifeCardPayments:
         with self.store.connect() as db:
             db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
             order = db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
+            order_amount = order["amount"] if order else SUNLANDS_AMOUNT
             if order:
                 saved = json.loads(order["sunlands_order"])
                 if order["merchant"] != merchant or saved.get("gateway") != s.sunlands_base_url:
@@ -206,13 +210,15 @@ class LifeCardPayments:
             else:
                 number = db.execute("UPDATE life_simulated_payment_sequence SET number=number+1 RETURNING number").fetchone()["number"]
                 reference = f"{number:012d}"
-                db.execute("INSERT INTO life_card_payments(reference,report_id,network,merchant,amount,sunlands_order) "
-                           "VALUES(%s,%s,%s,%s,%s,%s)", (reference, report_id, network, merchant, SUNLANDS_AMOUNT, json.dumps(details)))
+                self._insert_order(db, reference, report_id, network, merchant, order_amount,
+                                   details=details, visit_id=visit_id)
+        expected_amount = Decimal(order_amount) / 100
+        amount_text = f"{expected_amount:.2f}"
         # Use the phone-order contract; overseas enum values were documented only for the old endpoint.
         form = {"orderType": "NORMAL", "termType": "mobile",
                 "nationCode": nation_code, "mobile": mobile,
                 "itemNo": s.sunlands_item_no, "itemTitle": s.sunlands_item_title,
-                "itemPrice": "30.00", "totalAmount": "30.00", "provinceId": s.sunlands_province_id,
+                "itemPrice": amount_text, "totalAmount": amount_text, "provinceId": s.sunlands_province_id,
                 "deposit": "0.00", "depositAmount": "0.00"}
         # Omit the optional channel unless configured so the gateway supplies its documented default.
         if s.sunlands_channel_code:
@@ -289,7 +295,7 @@ class LifeCardPayments:
                           "orderDetails.itemNo": line.get("itemNo") == s.sunlands_item_no}
                 for key, amount in (("totalAmount", result.get("totalAmount")), ("orderDetails.itemPrice", line.get("itemPrice"))):
                     try:
-                        checks[key] = Decimal(str(amount)) == Decimal("30.00")
+                        checks[key] = Decimal(str(amount)) == expected_amount
                     except InvalidOperation:
                         checks[key] = False
                 errors = [key for key, valid in checks.items() if not valid]
@@ -463,18 +469,39 @@ class LifeCardPayments:
         with self.store.connect() as db:
             return db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
 
-    def _create_order(self, report_id, network, merchant, amount):
+    def _insert_order(self, db, reference, report_id, network, merchant, amount, *, details=None, visit_id=None):
+        visit = {}
+        if visit_id:
+            try:
+                identifier = str(UUID(visit_id))
+                with db.transaction():
+                    visit = db.execute("""
+                        SELECT v.id, v.source, v.campaign, v.region_code FROM landing_visits v
+                        WHERE v.id=%s AND v.visited_at>=%s AND EXISTS (
+                            SELECT 1 FROM life_reports r WHERE r.id=%s AND r.owner=v.owner
+                        )
+                    """, (identifier, time.time() - VISIT_RETENTION_SECONDS, report_id)).fetchone() or {}
+            except (ValueError, psycopg.Error):
+                # Optional attribution must not prevent building the order.
+                pass
+        db.execute("""
+            INSERT INTO life_card_payments(reference,report_id,network,merchant,amount,sunlands_order,
+                landing_visit_id,landing_source,landing_campaign,landing_region)
+            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(report_id) DO NOTHING
+        """, (reference, report_id, network, merchant, amount, json.dumps(details or {}),
+              visit.get("id"), visit.get("source"), visit.get("campaign"), visit.get("region_code")))
+
+    def _create_order(self, report_id, network, merchant, amount, *, visit_id=None):
         with self.store.connect() as db:
-            db.execute("INSERT INTO life_card_payments(reference,report_id,network,merchant,amount) "
-                       "VALUES(%s,%s,%s,%s,%s) ON CONFLICT(report_id) DO NOTHING",
-                       (str(100000000000 + secrets.randbelow(900000000000)), report_id, network, merchant, amount))
+            reference = str(100000000000 + secrets.randbelow(900000000000))
+            self._insert_order(db, reference, report_id, network, merchant, amount, visit_id=visit_id)
             order = db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
         if not order or order["merchant"] != merchant:
             raise HTTPException(409, "life_payment_unavailable")
         return order
 
-    def create(self, report_id, network, language):
-        order = self._create_order(report_id, network, self.merchant, CARD_AMOUNT)
+    def create(self, report_id, network, language, *, visit_id=None):
+        order = self._create_order(report_id, network, self.merchant, CARD_AMOUNT, visit_id=visit_id)
         return {"action": CHECKOUT_URL, "fields": {
             "merchantid": order["merchant"], "refno": order["reference"],
             "customeremail": "test@example.com", "productdetail": "FATE Online Reading Demo",
@@ -482,15 +509,15 @@ class LifeCardPayments:
             "total": f"{Decimal(order['amount']) / 100:.2f}",
         }}
 
-    def create_simulated(self, report_id, network):
+    def create_simulated(self, report_id, network, *, visit_id=None):
         with self.store.connect() as db:
             # Reserve the next number only when a report has no order yet.
             db.execute("LOCK TABLE life_card_payments IN SHARE ROW EXCLUSIVE MODE")
             order = db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
             if order is None:
                 number = db.execute("UPDATE life_simulated_payment_sequence SET number=number+1 RETURNING number").fetchone()["number"]
-                db.execute("INSERT INTO life_card_payments(reference,report_id,network,merchant,amount) VALUES(%s,%s,%s,%s,%s)",
-                           (f"{number:012d}", report_id, network, SIMULATED_MERCHANT, SIMULATED_AMOUNT))
+                self._insert_order(db, f"{number:012d}", report_id, network, SIMULATED_MERCHANT,
+                                   SIMULATED_AMOUNT, visit_id=visit_id)
                 order = db.execute("SELECT * FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
         if order["merchant"] != SIMULATED_MERCHANT:
             raise HTTPException(409, "life_payment_unavailable")
