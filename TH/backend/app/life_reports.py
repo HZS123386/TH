@@ -18,7 +18,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import Field, model_validator
 
-from . import thai
+from . import marriage_report, thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, FORECAST_VERSION, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
 from .bazi_reports import report_progress_context, report_usage_context
 from .roxy import RoxyError
@@ -28,8 +28,7 @@ from .life_report_content import (
     CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION,
     PERSONAL_LOVE_FIELDS, PERSONAL_WRITING_VERSION, QUESTIONS, RELATIONSHIP_COPY, RELATIONSHIP_KEYS,
     RELATIONSHIP_WRITING_VERSION, TITLES, TRAIT_HOUSES, VERSION, WESTERN_WRITING_VERSION,
-    LifeWriter, career_report_content, personal_writing_progress,
-    preview_writing_progress, writing_progress,
+    LifeWriter, career_report_content, preview_writing_progress, writing_progress,
 )
 from .schemas import Input, ProfileInput, ThaiReadingInput
 from .report_languages import REGIONAL_LANGUAGES
@@ -90,7 +89,7 @@ class RelationshipInput(Input):
 class LifeInput(Input):
     profile: LifeProfile
     year: int = Field(ge=1901, le=2100)
-    report_kind: Literal["life", "fortune"] = "life"
+    report_kind: Literal["life", "fortune", "marriage"] = "life"
     career: CareerInput | None = None
     career_question: CareerInput | None = None
     user_question: str | None = Field(default=None, min_length=1, max_length=120, pattern=r"^[^\x00-\x1f\x7f]+$")
@@ -106,6 +105,8 @@ class LifeInput(Input):
             raise ValueError("career_input_conflict")
         if (self.career and self.report_kind == "fortune") or (self.relationship and (self.career or self.career_question)):
             raise ValueError("career_input_conflict")
+        if self.report_kind == "marriage" and (self.career or self.career_question or self.user_question or self.relationship):
+            raise ValueError("marriage_input_conflict")
         career = self.career_question or self.career
         if career and career.start.year != self.year:
             raise ValueError("career_year_mismatch")
@@ -354,17 +355,22 @@ class LifeReports:
             snapshot.pop("relationship")
         if body.career and body.career.focus is None:
             snapshot["career"].pop("focus")
-        use_roxy = self.settings.life_astrology_provider == "roxy" and not body.career
+        is_marriage = body.report_kind == "marriage"
+        use_roxy = self.settings.life_astrology_provider == "roxy" and not body.career and not is_marriage
+        marriage_date = datetime.now(ZoneInfo("Asia/Bangkok")).date().isoformat() if is_marriage else None
         if body.relationship and not use_roxy:
             raise HTTPException(503, "life_astrology_unavailable")
         # New writing settings create a fresh report; saved report IDs retain their original content.
         writing = RELATIONSHIP_WRITING_VERSION if body.relationship else PERSONAL_WRITING_VERSION
-        version = f"{WESTERN_VERSION}:{writing}" if use_roxy else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION
+        version = (marriage_report.PREVIEW_VERSION if is_marriage else f"{WESTERN_VERSION}:{writing}" if use_roxy
+                   else CAREER_VERSION if body.career else FORTUNE_VERSION if body.report_kind == "fortune" else VERSION)
         identity = [version, snapshot]
+        if is_marriage:
+            identity.extend([thai.ENGINE_VERSION, marriage_date])
         if use_roxy:
             identity.append(["forecast", FORECAST_VERSION, datetime.now(timezone.utc).date().isoformat()])
         if not body.career:
-            writer = self.preview_writer_for(body.profile.language) if use_roxy else self.writer
+            writer = self.preview_writer_for(body.profile.language) if use_roxy or is_marriage else self.writer
             config = writer.config
             identity.append([writer.provider, config.base_url if config else None, config.model if config else None,
                              config.reasoning_effort if config else None])
@@ -395,6 +401,8 @@ class LifeReports:
                 # Save the job before any external calculation; no chart positions are fabricated.
                 chart = {"status": "queued", "provider": "roxy" if use_roxy else "thai",
                          "domain": "astrology", "version": version}
+                if is_marriage:
+                    chart["reference_date"] = marriage_date
                 report_id = secrets.token_hex(16)
                 db.execute("""
                     INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview_state,preview_network,
@@ -534,9 +542,18 @@ class LifeReports:
         usage_token = report_usage_context.set((row["id"], "preview"))
         chart = json.loads(row["chart"])
         four_questions = western(chart)
+        is_marriage = body.report_kind == "marriage"
+        last_progress = 0
+
         def record_preview(raw):
-            if personal_chart(chart):
-                percent = personal_writing_progress(raw, "personal_preview")
+            nonlocal last_progress
+            if is_marriage or personal_chart(chart):
+                stage = ("marriage_preview" if is_marriage else
+                         "relationship_preview" if relationship_chart(chart) else "personal_preview")
+                percent = writing_progress(raw, stage)
+                if is_marriage and percent <= last_progress:
+                    return
+                last_progress = percent
                 changes = {key: percent for key in ("preview_summary", "preview_strength", "preview_decisions", "preview_relationships")}
             else:
                 changes = preview_writing_progress(raw, body.profile.language, four_questions=four_questions)
@@ -547,18 +564,24 @@ class LifeReports:
                 profile = body.profile.model_dump(mode="json")
                 use_roxy = western(chart)
                 async with self.chart_slots if use_roxy else self.calculation_slots:
-                    chart = (await self.adapters["astrology"].calculate(body.profile, owner, network) if use_roxy else
-                             await asyncio.to_thread(thai.natal, {**profile, "birth_time": profile["birth_time"] or "12:00"}))
+                    if is_marriage:
+                        reference = date.fromisoformat(chart["reference_date"])
+                        chart = await asyncio.to_thread(thai.marriage_preview_chart, profile, reference)
+                    else:
+                        chart = (await self.adapters["astrology"].calculate(body.profile, owner, network) if use_roxy else
+                                 await asyncio.to_thread(thai.natal, {**profile, "birth_time": profile["birth_time"] or "12:00"}))
                 if chart["status"] != "ready":
                     if not use_roxy:
                         incomplete = {"status": "invalid", "provider": "thai", "version": chart.get("version", VERSION)}
+                        if is_marriage:
+                            incomplete["reference_date"] = reference.isoformat()
                         self.update(row["id"], expected_lease=lease, chart=encoded(incomplete),
                                     preview_state="unavailable", lease="", lease_until=0)
                         return
                     raise ValueError("chart_unavailable")
                 if use_roxy:
                     chart["presentation"] = "western-relationship" if body.relationship else "western-personal"
-                if not profile["birth_time"] and not use_roxy:
+                if not profile["birth_time"] and not use_roxy and not is_marriage:
                     chart["time_known"] = False
                     chart["calculation_input"]["time_precision"] = "estimated-noon"
                 row["chart"] = encoded(chart)
@@ -605,13 +628,26 @@ class LifeReports:
             self.update(row["id"], expected_lease=lease, preview=encoded(preview),
                         preview_state="ready", lease="", lease_until=0)
             return
+        if body.report_kind == "marriage":
+            bundle = marriage_report.bundle(body, chart)
+            result = await self.preview_writer_for(body.profile.language).generate(bundle, owner, network)
+            values = {"preview_state": result["state"], "lease": "", "lease_until": 0}
+            if result["state"] == "pending":
+                values.update(preview_state="queued", lease_until=time.time() + 2)
+            if result.get("story"):
+                values["preview"] = encoded({
+                    "version": bundle["writing_version"], "story": result["story"], "evidence": bundle["evidence"],
+                })
+            self.update(row["id"], expected_lease=lease, **values)
+            return
         if personal_chart(chart):
             bundle = self.adapters["astrology"].personal_bundle(body, chart)
             if body.user_question:
                 bundle["user_question"] = body.user_question
             if relationship_chart(chart):
-                bundle["relationship_context"] = body.relationship.model_dump(mode="json")
-                bundle["relationship_aspect_label"] = ""
+                bundle.update(stage="relationship_preview", reading="relationship-preview",
+                              relationship_context=body.relationship.model_dump(mode="json"))
+                bundle["citation_rules"]["topic_ids"] = bundle["citation_rules"]["relationship_ids"]
             generated = await self.preview_writer_for(body.profile.language).generate(bundle, owner, network)
             values = {"preview_state": generated["state"], "lease": "", "lease_until": 0}
             if generated["state"] == "ready" and generated.get("story"):
@@ -714,28 +750,29 @@ class LifeReports:
             report_progress_context.reset(token)
 
     @staticmethod
-    def relationship_sections(story, evidence, context, language):
-        copy = RELATIONSHIP_COPY[language]
-        source = copy["sources"][context["source"]]
-        who = [paragraph for person in story["people"] for paragraph in (
-            f"{person['role']} · {person['explanation']}", f"{source} · “{person['event_excerpt']}”",
-        )]
-        if not who:
-            portrait = story.get("portrait")
-            who = [portrait["text"] if portrait else story["uncertainty"]]
-        patterns = []
-        for pattern in story["patterns"]:
-            identifier = pattern["evidence_id"]
+    def relationship_sections(story, evidence, language):
+        if "judgments" in story:
+            judgments = [item["text"] for item in story["judgments"]]
+            factors = [(item["evidence_id"], item["text"]) for item in story["basis"]]
+        elif "people" in story:
+            # Reuse the grounded parts of saved complete reports.
+            judgments = [f"{person['role']} · “{person['event_excerpt']}”\n{person['explanation']}"
+                         for person in story["people"]]
+            if not judgments:
+                portrait = story.get("portrait")
+                judgments = [portrait["text"] if portrait else story["uncertainty"]]
+            judgments.extend([story["impact"], story["assessment"]])
+            factors = [(item["evidence_id"], f"{item['symbolism']}\n{item['behavior']}") for item in story["patterns"]]
+        else:
+            love = story["relationship"]
+            judgments = [love["text"]]
+            factors = [(key, "") for key in love["evidence_ids"]]
+        basis = []
+        for identifier, interpretation in factors:
             fact = explain(identifier, evidence[identifier], language)
-            patterns.extend([f"{fact['title']} · {fact['detail']}", pattern["symbolism"], pattern["behavior"]])
-        return {
-            "who": who,
-            "impact": [story["impact"]],
-            "pattern": patterns,
-            "assessment": [story["assessment"]],
-            "decision": [story["continue_when"], story["reconsider_when"]],
-            "next_steps": [story["verify"], story["question"], story["observe"]],
-        }
+            label = f"{fact['title']} · {fact['detail']}"
+            basis.append(f"{label}\n{interpretation}" if interpretation else label)
+        return {"judgment": judgments, "basis": basis}
 
     def chart_view(self, chart, time_known, language="zh"):
         """Reuse this report's calculated positions for JY's native chart view."""
@@ -762,6 +799,7 @@ class LifeReports:
         language = body["profile"]["language"]
         career = body.get("career")
         fortune = body.get("report_kind") == "fortune"
+        is_marriage = body.get("report_kind") == "marriage"
         labels = CAREER_COPY[language] if career else None
         chart = json.loads(row["chart"])
         is_western = western(chart)
@@ -803,6 +841,16 @@ class LifeReports:
             titles = [FORTUNE_TOPICS[key][language]["title"] for key in chapter_keys]
             titles[0] = (REGIONAL_LANGUAGES[language]["annual_title"].replace("{year}", str(body["year"])) if language in REGIONAL_LANGUAGES else {"zh": f"{body['year']}年运程", "th": f"ดวงปี {body['year']}", "en": f"{body['year']} yearly themes", "vi": f"Chủ đề năm {body['year']}"}[language])
             questions = [FORTUNE_TOPICS[key][language]["questions"] for key in chapter_keys]
+        if is_marriage:
+            copy = marriage_report.COPY[language]
+            title = copy["title"]
+            version = preview.get("version", "thai-marriage-1") if preview else marriage_report.PREVIEW_VERSION
+            chapter_keys, titles = tuple(marriage_report.FULL), copy["full"]
+            questions = [[] for _ in chapter_keys]
+            ready = row["full_state"] == "ready" and "marriage" in records
+            completed = len(chapter_keys) if ready else 0
+            sections = [{"key": key, "percent": 100 if ready else min(99, marks.get("marriage-full", 0))}
+                        for key in chapter_keys]
         if is_personal:
             saved_personal = records.get("personal", {}).get("story", {})
             # Saved four-part reports remain readable; new writing always supplies all six subjects.
@@ -813,10 +861,6 @@ class LifeReports:
                 copy = RELATIONSHIP_COPY[language]
                 chapter_keys = RELATIONSHIP_KEYS
                 titles = [copy["sections"][key] for key in chapter_keys]
-                if row["unlocked"] and saved_personal.get("portrait"):
-                    titles[0] = copy["portrait"]
-                if body["relationship"]["status"] == "single":
-                    titles[chapter_keys.index("decision")] = copy["singleDecision"]
                 title = copy["title"]
             questions = [[] for _ in chapter_keys]
             ready = row["full_state"] == "ready" and "personal" in records
@@ -839,10 +883,12 @@ class LifeReports:
             "method": ({"name": "RoxyAPI Western Astrology", "house_system": "placidus", "version": "v2",
                         "zodiac": "tropical", "node_type": "true", "source": chart.get("source")} if is_western else
                        {"name": "Thai Suriyayatra", "house_system": "whole-sign", "version": thai.ENGINE_VERSION}),
-            "format": "western-personal" if is_personal else "western-compact" if is_western else "legacy",
-            "chart": self.chart_view(chart, bool(body["profile"].get("birth_time")), language) if chart.get("status") == "ready" else None,
+            "format": (marriage_report.FORMAT if is_marriage else "western-personal" if is_personal
+                       else "western-compact" if is_western else "legacy"),
+            "chart": (self.chart_view(chart, bool(body["profile"].get("birth_time")), language)
+                      if chart.get("status") == "ready" and (not is_marriage or chart["time_known"]) else None),
             "time_accuracy": {"mode": "exact" if body["profile"]["birth_time"] else "estimated",
-                              "assumed_local_time": None if body["profile"]["birth_time"] else "12:00"},
+                              "assumed_local_time": None if body["profile"]["birth_time"] or is_marriage else "12:00"},
             "price": {"amount": amount, "currency": "THB", "display": f"฿{amount // 100}",
                       "mode": "sunlands_order_only" if self.card_payments.order_only else
                       "payso_test" if self.card_payments.enabled and not career else "direct"},
@@ -854,10 +900,10 @@ class LifeReports:
             "preview_generation_progress": {"percent": int(sum(section["percent"] for section in preview_sections) / 4), "sections": preview_sections},
             "feedback": row["feedback"],
             "catalog": [{"key": key, "title": titles[index], "questions": questions[index],
-                         "houses": [] if is_western else FORTUNE_TOPICS[key]["houses"] if fortune else list(HOUSES[key]),
-                         "ready": bool(row["unlocked"] and row["full_state"] == "ready") if is_personal else key in records} for index, key in enumerate(chapter_keys)],
+                         "houses": [] if is_western or is_marriage else FORTUNE_TOPICS[key]["houses"] if fortune else list(HOUSES[key]),
+                         "ready": bool(row["unlocked"] and row["full_state"] == "ready") if is_personal or is_marriage else key in records} for index, key in enumerate(chapter_keys)],
             "preview": {"summary": public_point(preview["story"]["summary"], preview["evidence"], language),
-                        "traits": [public_point(item, preview["evidence"], language) for item in preview["story"]["traits"]]} if preview and not is_personal else None,
+                        "traits": [public_point(item, preview["evidence"], language) for item in preview["story"]["traits"]]} if preview and not is_personal and not is_marriage else None,
             "chapters": [], "plan": None,
         }
         position = 0
@@ -868,20 +914,27 @@ class LifeReports:
                                       (row["created"], row["created"], row["id"])).fetchone()["total"]
         result["generation_queue"] = {"state": "calculating" if row["preview_state"] == "generating" and chart.get("status") != "ready"
                                       else row["preview_state"], "position": position}
+        if is_marriage:
+            result["marriage"] = {
+                "preview": marriage_report.public_sections(preview, chart, body["profile"], explain) if preview else None,
+                "full": (marriage_report.public_sections(records["marriage"], chart, body["profile"], explain, full=True)
+                         if row["unlocked"] and ready else None),
+            }
+            return result
         if is_personal:
             signs = self.adapters["astrology"].personal_signs(chart, language)
             record = records.get("personal") if row["unlocked"] else None
             story = record["story"] if record else {}
             relationship = None
-            if preview and (love := preview["story"].get("relationship")):
+            if preview and not is_relationship and (love := preview["story"].get("relationship")):
                 relationship = {"text": love["text"] + preview.get("relationship_aspect_label", ""),
                                 "action": love["action"],
                                 "evidence": [explain(key, preview["evidence"][key], language) for key in love["evidence_ids"]]}
             result["outlook"] = {"state": chart.get("forecast", {}).get("state", "not_started" if chart.get("time_known") else "time_unknown")}
-            result["personal"] = {"free_lines": preview["story"]["free_lines"] if preview else [],
+            result["personal"] = {"free_lines": preview["story"]["free_lines"] if preview and not is_relationship else [],
                 "relationship": relationship,
-                "traits": preview["story"].get("traits", []) if preview else [],
-                "opportunity_action": preview["story"].get("opportunity_action", "") if preview else "",
+                "traits": preview["story"].get("traits", []) if preview and not is_relationship else [],
+                "opportunity_action": preview["story"].get("opportunity_action", "") if preview and not is_relationship else "",
                 "sun_sign": signs["sun"]["label"], "ascendant_sign": signs["ascendant"]["label"] if signs["ascendant"] else None,
                 "availability": self.personal_availability(chart),
                 "talent": story.get("talent"),
@@ -892,9 +945,10 @@ class LifeReports:
                            "evidence": [explain(key, record["evidence"][key], language) for key in item["evidence_ids"]]}
                           for item in story.get("nodes", [])]}
             if is_relationship:
+                result["personal"]["relationship_preview_sections"] = (
+                    self.relationship_sections(preview["story"], preview["evidence"], language) if preview else None)
                 result["personal"]["relationship_sections"] = (
-                    self.relationship_sections(story, record["evidence"], body["relationship"], language)
-                    if record and ready else None)
+                    self.relationship_sections(story, record["evidence"], language) if record and ready else None)
             return result
         if career:
             result["reference_period"] = {"start": career["start"], "end": (date.fromisoformat(career["start"]) + timedelta(days=29)).isoformat()}
@@ -984,8 +1038,10 @@ class LifeReports:
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
         if not row["unlocked"]:
-            career = json.loads(row["input"]).get("career")
-            if (self.card_payments.order_only or self.can_simulate_payment(career) or self.card_payments.order_for(report_id)
+            body = json.loads(row["input"])
+            career = body.get("career")
+            if (body.get("report_kind") == "marriage" or self.card_payments.order_only
+                    or self.can_simulate_payment(career) or self.card_payments.order_for(report_id)
                     or (self.card_payments.enabled and not career)):
                 raise HTTPException(402, "life_payment_required")
             await self.prepare_personal_full(row, owner, network)
@@ -1070,6 +1126,20 @@ class LifeReports:
                             full_state="ready", lease="", lease_until=0)
                 return
             chart, preview_record = json.loads(row["chart"]), json.loads(row["preview"])
+            if body.report_kind == "marriage":
+                if chart["time_known"] and "marriage_future" not in chart:
+                    async with self.calculation_slots:
+                        chart["marriage_future"] = await asyncio.to_thread(marriage_report.future_windows, chart)
+                    self.update(report_id, expected_lease=lease, chart=encoded(chart))
+                bundle = marriage_report.bundle(body, chart, full=True, free_story=preview_record["story"])
+                result = await self.write_part(report_id, lease, bundle, owner, network)
+                if result.get("story"):
+                    record = {"story": result["story"], "evidence": bundle["evidence"], "chart_basis": bundle["chart_basis"]}
+                    self.update(report_id, expected_lease=lease, chapters=encoded({"marriage": record}),
+                                full_state="ready", lease="", lease_until=0)
+                else:
+                    self.finish_full_attempt(report_id, lease, result["state"])
+                return
             if personal_chart(chart):
                 free_story = preview_record["story"]
                 if relationship_chart(chart):
@@ -1078,7 +1148,8 @@ class LifeReports:
                     bundle.update(stage="relationship_full", reading="relationship-full",
                                   relationship_context=body.relationship.model_dump(mode="json"),
                                   evidence={key: bundle["evidence"][key] for key in natal_ids},
-                                  citation_rules={"topic_ids": natal_ids})
+                                  citation_rules={"topic_ids": natal_ids},
+                                  free_judgment=[item["text"] for item in free_story.get("judgments", [])])
                     if body.user_question:
                         bundle["user_question"] = body.user_question
                 else:

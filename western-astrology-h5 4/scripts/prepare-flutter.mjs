@@ -17,6 +17,7 @@ copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checko
 copy.phoneCountries = JSON.parse(await readFile(path.join(root,'src','content','phone-countries.json'),'utf8')).countries;
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));
 copy.relationship = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','relationship-report.json'),'utf8'));
+copy.marriage = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','marriage-report.json'),'utf8'));
 const jy = JSON.parse(await readFile(path.join(root,'src','content','jy.json'),'utf8'));
 copy.jy = jy.jy;
 // Use key for identity: id is the supported Indonesian language code.

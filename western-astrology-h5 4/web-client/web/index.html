@@ -32,10 +32,9 @@
     }
     const preloadEngineAssets = () => {
       const switchFonts = {th:'NotoSansThai.ttf',zh:'FateChineseUI.otf',my:'NotoSansMyanmar-Regular.ttf',km:'NotoSansKhmer-Regular.ttf',lo:'NotoSansLao-Regular.ttf'};
-      for (const [language, file] of Object.entries(switchFonts)) {
-        const link = priorityPreload('assets/assets/fonts/' + file, 'fetch');
-        if (language !== document.documentElement.lang) link.fetchPriority = 'low';
-        document.head.append(link);
+      const selectedFont = switchFonts[document.documentElement.lang];
+      if (selectedFont) {
+        document.head.append(priorityPreload('assets/assets/fonts/' + selectedFont, 'fetch'));
       }
       document.head.append(document.getElementById('fate-engine-preloads').content);
     };

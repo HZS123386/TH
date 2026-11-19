@@ -27,8 +27,11 @@ void main() {
     expect(report.nodes, isEmpty);
   });
   testWidgets(
-    'landing presents six relationship sections in the existing theme boards',
+    'landing shows three labels next to each of the two illustrations',
     (tester) async {
+      tester.view.physicalSize = const Size(360, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(
@@ -56,31 +59,160 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump();
       final board = find.byType(ThemeBoards);
-      for (final key in relationshipKeys) {
-        final label = controller.copy.t('relationship', 'sections.$key');
-        expect(label, isNotEmpty);
+      for (final label in ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议']) {
         expect(
           find.descendant(of: board, matching: find.text(label)),
           findsOneWidget,
         );
       }
-      expect(find.text(controller.copy.t('jy', 'formCaption')), findsOneWidget);
-      for (final key in personalKeys) {
-        expect(
-          find.descendant(
-            of: board,
-            matching: find.text(
-              controller.copy.t('jy', 'report.westernSections.$key'),
-            ),
-          ),
-          findsNothing,
-        );
-      }
+      final artwork = find.descendant(
+        of: board,
+        matching: find.byType(FateImage),
+      );
+      expect(artwork, findsNWidgets(2));
+      Offset artworkCenter(Finder image) => tester.getCenter(
+        find.ancestor(of: image, matching: find.byType(ClipPath)).first,
+      );
+      final upperImage = artworkCenter(artwork.first);
+      final lowerImage = artworkCenter(artwork.last);
+      expect(upperImage.dy, lessThan(lowerImage.dy));
+      expect(upperImage.dx, lessThan(tester.getCenter(find.text('事业**')).dx));
+      expect(
+        lowerImage.dx,
+        greaterThan(tester.getCenter(find.text('***预警')).dx),
+      );
+      expect(
+        find.text(controller.copy.t('marriage', 'form_hint')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
     },
   );
+  for (final full in [false, true]) {
+    testWidgets(
+      'relationship ${full ? 'full' : 'free'} report displays and exports only the authorized reading',
+      (tester) async {
+        final freeReading = {
+          'judgment': ['反复改约的人让关系始终停在口头承诺上。'],
+          'basis': ['水星与金星合相\n你容易把善意的表达当成关系正在推进。'],
+        };
+        final paidReading = {
+          'judgment': ['前任两次取消约定。关系卡在计划一再变动。'],
+          'basis': ['水星与火星四分相\n对方改约时，解释越多越容易让你忽略原定安排。'],
+        };
+        final data = personalFixture(full: true)
+          ..['access'] = full ? 'full' : 'preview'
+          ..['version'] = 'western-relationship-3'
+          ..['catalog'] = [
+            {'key': 'judgment', 'title': '判断', 'ready': full},
+            {'key': 'basis', 'title': '星盘依据', 'ready': full},
+          ]
+          ..['progress'] = {'completed': full ? 2 : 0, 'total': 2};
+        data['input'] = {
+          ...object(data['input']),
+          'relationship': {'status': 'single', 'source': 'unspecified'},
+        };
+        data['personal'] = {
+          ...object(data['personal']),
+          'relationship_preview_sections': freeReading,
+          'relationship_sections': paidReading,
+        };
+        final browser = TestBrowser();
+        final controller = H5Controller(
+          translations(),
+          ReportRepository(
+            browser,
+            client: MockClient(
+              (request) async => http.Response(
+                jsonEncode(data),
+                200,
+                headers: {'content-type': 'application/json; charset=utf-8'},
+              ),
+            ),
+          ),
+          browser,
+          language: 'zh',
+        );
+        addTearDown(controller.dispose);
+        await tester.pumpWidget(
+          H5App(
+            controller: controller,
+            initialLocation: '/report.html?id=${data['id']}&lang=zh&checkout=1',
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('判断'), findsOneWidget);
+        expect(find.text('星盘依据'), findsOneWidget);
+        final shown = full ? paidReading : freeReading;
+        final hidden = full ? freeReading : paidReading;
+        for (final key in relationshipKeys) {
+          expect(find.text(shown[key]!.single), findsOneWidget);
+          expect(find.text(hidden[key]!.single), findsNothing);
+        }
+        expect(find.text('Synthetic personal talent.'), findsNothing);
+        expect(find.byKey(const ValueKey('personal-signs')), findsNothing);
+        final reportCopy = controller.copy.forReport(LifeReport.parse(data));
+        final pdf = full
+            ? find.byTooltip(reportCopy.t('report', 'exportPdf'))
+            : find.ancestor(
+                of: find.text(reportCopy.t('life', 'exportPdf')),
+                matching: find.bySubtype<OutlinedButton>(),
+              );
+        await tester.ensureVisible(pdf);
+        await tester.tap(pdf);
+        await tester.pumpAndSettle();
+        expect(browser.exportFormat, 'pdf');
+        final exported = object(browser.exported?['personal']);
+        expect(exported['relationship_preview_sections'], freeReading);
+        expect(exported['relationship_sections'], full ? paidReading : isNull);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
+  testWidgets('saved marriage report shows the paid outline in order', (
+    tester,
+  ) async {
+    final data = marriageFixture(full: true);
+    final browser = TestBrowser();
+    final controller = H5Controller(
+      translations(),
+      ReportRepository(
+        browser,
+        client: MockClient(
+          (request) async => http.Response(
+            jsonEncode(data),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          ),
+        ),
+      ),
+      browser,
+      language: 'zh',
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      H5App(
+        controller: controller,
+        initialLocation: '/report.html?id=${data['id']}&lang=zh',
+      ),
+    );
+    await tester.pumpAndSettle();
+    final titles = controller.copy.list('marriage', 'full');
+    for (var i = 0; i < titles.length; i++) {
+      expect(find.text(titles[i]), findsOneWidget);
+      expect(find.text('Paid marriage section ${i + 1}.'), findsOneWidget);
+    }
+    expect(
+      tester.getTopLeft(find.text(titles[1])).dy,
+      lessThan(tester.getTopLeft(find.text(titles[4])).dy),
+    );
+    expect(find.text('Free marriage section 3.'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   for (final language in ['zh', 'th']) {
     for (final full in [false, true]) {
       testWidgets(

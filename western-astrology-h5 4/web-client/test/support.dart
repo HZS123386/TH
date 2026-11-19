@@ -13,6 +13,64 @@ Json fixture({String language = 'zh', bool full = false}) => object(
 Json translations() =>
     object(jsonDecode(File('assets/copy.json').readAsStringSync()));
 
+Json marriageFixture({Json? input, bool full = false}) {
+  final data = fixture();
+  final submitted =
+      input ?? {...object(data['input']), 'report_kind': 'marriage'};
+  final copy = Copy(
+    translations(),
+    text(object(submitted['profile'])['language']),
+  );
+  final titles = copy.list('marriage', 'full');
+  final freeTitles = copy.list('marriage', 'preview');
+  data.remove('generation_progress');
+  data.addAll({
+    'input': submitted,
+    'title': copy.t('marriage', 'title'),
+    'format': 'thai-marriage',
+    'version': 'thai-marriage-1',
+    'preview': null,
+    'chapters': <Json>[],
+    'plan': null,
+    'preview_state': 'ready',
+    'full_state': full ? 'ready' : 'not_started',
+    'access': full ? 'full' : 'preview',
+    'progress': {
+      'total': marriageKeys.length,
+      'completed': full ? marriageKeys.length : 0,
+    },
+    'catalog': [
+      for (var i = 0; i < marriageKeys.length; i++)
+        {'key': marriageKeys[i], 'title': titles[i], 'ready': full},
+    ],
+    'marriage': {
+      'preview': [
+        for (var i = 0; i < marriagePreviewKeys.length; i++)
+          {
+            'key': marriagePreviewKeys[i],
+            'title': freeTitles[i],
+            'paragraphs': ['Free marriage section ${i + 1}.'],
+          },
+      ],
+      'full': full
+          ? [
+              for (var i = 0; i < marriageKeys.length; i++)
+                {
+                  'key': marriageKeys[i],
+                  'title': titles[i],
+                  'paragraphs': ['Paid marriage section ${i + 1}.'],
+                },
+            ]
+          : null,
+    },
+    if (object(submitted['profile'])['birth_time'] == null) ...{
+      'chart': null,
+      'time_accuracy': {'mode': 'estimated', 'assumed_local_time': null},
+    },
+  });
+  return data;
+}
+
 Json personalFixture({String language = 'zh', bool full = false}) {
   final data = fixture(language: language);
   data.addAll({

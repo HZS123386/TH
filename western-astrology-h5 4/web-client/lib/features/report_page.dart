@@ -545,7 +545,20 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!report.full) ...[
+        if (report.marriageReport) ...[
+          Text(
+            text(report.json['title']),
+            style: const TextStyle(
+              color: gold,
+              fontSize: 21,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (report.sectionedReport)
+          ..._readingSections(report.readingSections())
+        else if (!report.full) ...[
           Text(
             c.t(
               'jy',
@@ -571,7 +584,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ] else
             const SizedBox(height: 16),
         ],
-        if (report.personalReport && report.relationshipPreview.isNotEmpty) ...[
+        if (!report.sectionedReport &&
+            report.personalReport &&
+            report.relationshipPreview.isNotEmpty) ...[
           JYCard(
             key: const ValueKey('free-relationship-preview'),
             radius: 14,
@@ -637,44 +652,45 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         ],
         AppLoginCodePanel(h5: widget.h5, reportId: report.id),
         const SizedBox(height: 16),
-        if (report.personalReport)
-          ..._personalPreview(report, c)
-        else if (report.western)
-          ..._westernPreview(report, c)
-        else ...[
-          Text(
-            text(report.input['user_question']).isNotEmpty
-                ? text(report.input['user_question'])
-                : c.t('report', 'takeaway'),
-            style: const TextStyle(
-              color: cream,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _summary(object(report.preview['summary']), c),
-          if (report.preview['career_answer'] != null) ...[
-            const SizedBox(height: 16),
+        if (!report.sectionedReport)
+          if (report.personalReport)
+            ..._personalPreview(report, c)
+          else if (report.western)
+            ..._westernPreview(report, c)
+          else ...[
             Text(
-              c.t('report', 'careerQuestionTitle'),
-              style: const TextStyle(color: gold, fontSize: 15),
+              text(report.input['user_question']).isNotEmpty
+                  ? text(report.input['user_question'])
+                  : c.t('report', 'takeaway'),
+              style: const TextStyle(
+                color: cream,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            const SizedBox(height: 8),
-            _summary(object(report.preview['career_answer']), c),
+            const SizedBox(height: 12),
+            _summary(object(report.preview['summary']), c),
+            if (report.preview['career_answer'] != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                c.t('report', 'careerQuestionTitle'),
+                style: const TextStyle(color: gold, fontSize: 15),
+              ),
+              const SizedBox(height: 8),
+              _summary(object(report.preview['career_answer']), c),
+            ],
+            const SizedBox(height: 24),
+            Text(
+              c.t('report', 'traits'),
+              style: const TextStyle(
+                color: gold,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            for (final trait in objects(report.preview['traits']))
+              _point(trait, c),
           ],
-          const SizedBox(height: 24),
-          Text(
-            c.t('report', 'traits'),
-            style: const TextStyle(
-              color: gold,
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          for (final trait in objects(report.preview['traits']))
-            _point(trait, c),
-        ],
       ],
     ),
   );
@@ -706,12 +722,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  entry.$1 == 2 && report.relationshipReport
-                      ? c.t('relationship', 'observe')
-                      : c.t(
-                          'jy',
-                          'personal.${['keywords', 'traits', 'opportunity'][entry.$1]}',
-                        ),
+                  c.t(
+                    'jy',
+                    'personal.${['keywords', 'traits', 'opportunity'][entry.$1]}',
+                  ),
                   style: const TextStyle(
                     color: gold,
                     fontSize: 13,
@@ -1049,6 +1063,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           h5: widget.h5,
           report: r,
           freePreview: _freePreview(r, c),
+          onExportPdf: r.sectionedReport && !_model.exporting
+              ? () => _model.export('pdf')
+              : null,
+          exportStatus: r.sectionedReport ? _model.exportStatus : '',
           busy: _deleting || _generating || _paying,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
           onBack: _backHome,
@@ -1086,7 +1104,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
         );
       }
-      final groups = r.personalReport
+      final groups = r.personalReport || r.marriageReport
           ? <(String, List<String>)>[]
           : r.western
           ? [
@@ -1134,8 +1152,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               ],
             ),
             const SizedBox(height: 12),
-            AppLoginCodePanel(h5: widget.h5, reportId: r.id),
-            const SizedBox(height: 18),
+            if (!r.sectionedReport) ...[
+              AppLoginCodePanel(h5: widget.h5, reportId: r.id),
+              const SizedBox(height: 18),
+            ],
             JYCard(
               padding: const EdgeInsets.all(24),
               radius: 20,
@@ -1144,17 +1164,19 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'FATE / ${c.t('jy', 'topics.life.label')}',
-                    style: const TextStyle(
-                      color: gold,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                  if (!r.sectionedReport) ...[
+                    Text(
+                      'FATE / ${c.t('jy', 'topics.life.label')}',
+                      style: const TextStyle(
+                        color: gold,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 6),
+                  ],
                   Text(
-                    r.relationshipReport
+                    r.sectionedReport
                         ? text(r.json['title'])
                         : c.t(
                             'jy',
@@ -1178,89 +1200,79 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       style: const TextStyle(color: lavender, fontSize: 12),
                     ),
                   ],
-                  if (r.relationshipReport)
-                    ..._relationshipSections(r, r.catalog.take(1)),
                   const SizedBox(height: 18),
-                  if (r.western) ...[
-                    ExpansionTile(
-                      key: const ValueKey('saved-free-report'),
-                      tilePadding: EdgeInsets.zero,
-                      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-                      childrenPadding: const EdgeInsets.only(bottom: 16),
-                      title: Text(
-                        c.t('jy', 'report.freeTitle'),
-                        style: const TextStyle(
-                          color: gold,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      children: [_freePreview(r, c)],
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  JYCard(
-                    radius: 15,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          c.t('jy', 'report.contents'),
+                  if (r.sectionedReport)
+                    ..._readingSections(r.readingSections(complete: true))
+                  else ...[
+                    if (r.western) ...[
+                      ExpansionTile(
+                        key: const ValueKey('saved-free-report'),
+                        tilePadding: EdgeInsets.zero,
+                        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                        childrenPadding: const EdgeInsets.only(bottom: 16),
+                        title: Text(
+                          c.t('jy', 'report.freeTitle'),
                           style: const TextStyle(
-                            fontSize: 15,
                             color: gold,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        if (r.personalReport &&
-                            !r.sixPersonalThemes &&
-                            !r.relationshipReport)
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final key in r.progressKeys)
-                                ActionChip(
-                                  label: Text(c.t('jy', 'personal.$key')),
-                                  onPressed: () => _navigate('report-$key'),
-                                ),
-                            ],
-                          )
-                        else
-                          ReportBadges(
-                            copy: c,
-                            themes: r.relationshipReport
-                                ? [
-                                    for (final item in r.catalog)
-                                      {
-                                        'key': item['key'],
-                                        c.language: item['title'],
-                                      },
-                                  ]
-                                : null,
-                            locked: false,
-                            western: r.western,
-                            onTap: (key) => _navigate('report-$key'),
+                        children: [_freePreview(r, c)],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    JYCard(
+                      radius: 15,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            c.t('jy', 'report.contents'),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: gold,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                      ],
+                          const SizedBox(height: 12),
+                          if (r.personalReport && !r.sixPersonalThemes)
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final key in r.progressKeys)
+                                  ActionChip(
+                                    label: Text(c.t('jy', 'personal.$key')),
+                                    onPressed: () => _navigate('report-$key'),
+                                  ),
+                              ],
+                            )
+                          else
+                            ReportBadges(
+                              copy: c,
+                              locked: false,
+                              western: r.western,
+                              onTap: (key) => _navigate('report-$key'),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (r.relationshipReport)
-                    ..._relationshipSections(r, r.catalog.skip(1))
-                  else if (r.personalReport)
-                    ..._personalSections(r, c),
-                  if (!r.western)
+                    if (r.personalReport) ..._personalSections(r, c),
+                  ],
+                  if (!r.western && !r.marriageReport)
                     _sectionTitle(
                       'overall',
                       c.t('jy', 'report.sections.overall'),
                     ),
                   for (final key
-                      in r.western ? <String>[] : ['annual', 'overall'])
+                      in r.western || r.marriageReport
+                          ? <String>[]
+                          : ['annual', 'overall'])
                     for (final item in r.catalog.where(
                       (item) => item['key'] == key,
                     ))
@@ -1311,11 +1323,13 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 20),
-                  Text(
-                    c.t('jy', 'chart.note'),
-                    style: const TextStyle(fontSize: 12, color: lavender),
-                  ),
+                  if (!r.sectionedReport) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      c.t('jy', 'chart.note'),
+                      style: const TextStyle(fontSize: 12, color: lavender),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1330,6 +1344,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               icon: const Icon(Icons.download_outlined, size: 17),
               label: Text(c.t('report', 'save')),
             ),
+            if (r.sectionedReport) ...[
+              const SizedBox(height: 14),
+              AppLoginCodePanel(h5: widget.h5, reportId: r.id),
+            ],
             if (_model.exportStatus.isNotEmpty)
               Text(
                 _model.exportStatus,
@@ -1346,14 +1364,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       );
     },
   );
-  List<Widget> _relationshipSections(
-    LifeReport report,
-    Iterable<Json> sections,
-  ) => [
+  List<Widget> _readingSections(Iterable<Json> sections) => [
     for (final section in sections) ...[
       _sectionTitle(text(section['key']), text(section['title'])),
-      for (final paragraph
-          in (report.relationshipSections[section['key']] as List? ?? []))
+      for (final paragraph in (section['paragraphs'] as List? ?? []))
         Padding(
           padding: const EdgeInsets.only(bottom: 9),
           child: Text(

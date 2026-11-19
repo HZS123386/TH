@@ -56,11 +56,6 @@ Future<void> click(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> generateFromForm(WidgetTester tester) async {
-  await click(tester, find.byKey(const ValueKey('generate-report')));
-  await click(tester, find.byKey(const ValueKey('data-use-agree')));
-}
-
 void main() {
   for (final language in ['zh', 'th']) {
     testWidgets('$language history retries list and sign-in code timeouts', (
@@ -595,7 +590,7 @@ void main() {
 
   for (final full in [false, true]) {
     testWidgets(
-      '${full ? 'full' : 'free'} report back button restores editable birth details and question on home',
+      '${full ? 'full' : 'free'} report back button restores birth details for the active country',
       (tester) async {
         phone(tester);
         final language = full ? 'th' : 'zh';
@@ -692,9 +687,9 @@ void main() {
         expect(time.initialValue, full ? '' : '09:30');
         expect(time.enabled, !full);
         expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, full);
-        expect(field('birth-country'), h5.copy.t('jy', 'thailand'));
-        expect(field('birth-province'), full ? 'กรุงเทพมหานคร' : '曼谷');
-        expect(field('birth-city'), full ? 'กรุงเทพมหานคร' : 'Bangkok');
+        expect(find.byKey(const ValueKey('birth-country')), findsNothing);
+        expect(find.byKey(const ValueKey('birth-province')), findsNothing);
+        expect(field('birth-city'), full ? 'กรุงเทพมหานคร' : isEmpty);
         if (full) {
           expect(
             find.descendant(
@@ -704,22 +699,8 @@ void main() {
             findsOneWidget,
           );
         } else {
-          final question = find.byKey(const ValueKey('custom-question'));
-          expect(
-            tester.widget<TextField>(question).controller!.text,
-            '我想调整工作方向',
-          );
-          await tester.ensureVisible(question);
-          await tester.enterText(question, '想换一个发展方向');
-          expect(
-            tester.widget<TextField>(question).controller!.text,
-            '想换一个发展方向',
-          );
+          expect(find.byKey(const ValueKey('custom-question')), findsNothing);
         }
-        await click(tester, find.byKey(const ValueKey('birth-country')));
-        await click(tester, find.text(h5.copy.t('jy', 'china')));
-        expect(field('birth-province'), isEmpty);
-        expect(field('birth-city'), isEmpty);
         expect(posts, 0);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
@@ -734,10 +715,10 @@ void main() {
       (tester) async {
         phone(tester);
         final browser = TestBrowser();
-        final data = fixture();
+        final data = fixture(language: 'th');
         final city = {
           ...object(data['location']),
-          'nameChinese': '曼谷城区',
+          'nameThai': 'กรุงเทพฯ',
           'placeType': 'city',
           'coordinateKind': 'administrative-area',
         };
@@ -758,8 +739,7 @@ void main() {
                 'nameEnglish': profile['birthplace'],
                 'country': profile['country_code'],
               };
-        final queriedProvinces = <String>[];
-        var detailRequests = 0;
+        var detailRequests = 0, cityListings = 0;
         Json? submitted;
         final repo = ReportRepository(
           browser,
@@ -776,6 +756,7 @@ void main() {
             }
             if (request.url.path == '/api/thai-locations') {
               final query = request.url.queryParameters;
+              expect(query['country'], 'TH');
               if (query['level'] == 'detail') {
                 detailRequests++;
                 expect(query['query'], profile['location_id']);
@@ -786,11 +767,11 @@ void main() {
                   'total': 1,
                 });
               }
-              if (query['level'] == 'locality') {
-                queriedProvinces.add(query['province']!);
-              }
+              expect(query['level'], 'locality');
+              expect(query.containsKey('province'), isFalse);
+              cityListings++;
               return response({
-                'items': query['level'] == 'province' ? [province] : [city],
+                'items': [city],
                 'total': 1,
               });
             }
@@ -798,16 +779,16 @@ void main() {
                 request.url.path == '/api/life-reports') {
               submitted = object(jsonDecode(request.body));
             }
-            final returned = {...data};
-            if (submitted != null) returned['input'] = submitted;
-            return response(returned);
+            return response(
+              submitted == null ? data : marriageFixture(input: submitted),
+            );
           }),
         );
-        final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+        final h5 = H5Controller(translations(), repo, browser, language: 'th');
         await tester.pumpWidget(
           H5App(
             controller: h5,
-            initialLocation: '/report.html?id=${data['id']}&lang=zh',
+            initialLocation: '/report.html?id=${data['id']}&lang=th',
           ),
         );
         await tester.pumpAndSettle();
@@ -816,18 +797,15 @@ void main() {
             .widget<TextFormField>(find.byKey(ValueKey(key)))
             .controller!
             .text;
-        expect(field('birth-country'), '泰国');
         if (kind == 'city' || kind == 'slim') {
-          expect(field('birth-province'), '曼谷');
-          expect(field('birth-city'), '曼谷城区');
+          expect(field('birth-city'), city['nameThai']);
           await click(tester, find.byKey(const ValueKey('birth-city')));
-          expect(queriedProvinces, isNotEmpty);
-          expect(queriedProvinces.every((id) => id == province['id']), isTrue);
+          expect(cityListings, 1);
           await click(
             tester,
             find.descendant(
               of: find.byType(PlacePicker),
-              matching: find.text('曼谷城区'),
+              matching: find.text(text(city['nameThai'])),
             ),
           );
         } else {
@@ -835,7 +813,7 @@ void main() {
         }
         expect(detailRequests, kind == 'slim' || kind == 'offline' ? 1 : 0);
         expect(submitted, isNull);
-        await generateFromForm(tester);
+        await click(tester, find.byKey(const ValueKey('generate-report')));
         await tester.pump(const Duration(milliseconds: 300));
         await tester.pump(const Duration(milliseconds: 600));
         await tester.pumpAndSettle();
@@ -1749,7 +1727,7 @@ void main() {
       expect(route.queryParameters, containsPair('lang', 'zh'));
       expect(route.queryParameters, containsPair('topic', 'love'));
       expect(route.queryParameters, containsPair('startup', '1'));
-      expect(find.text(h5.copy.t('jy', 'formTitle')), findsOneWidget);
+      expect(find.text(h5.copy.t('marriage', 'title')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -1757,9 +1735,17 @@ void main() {
   );
 
   testWidgets(
-    'JY inline form confirms data use and creates a free report with unknown birth time',
+    'birth details alone start a free marriage report with one click',
     (tester) async {
       phone(tester);
+      const city = {
+        'id': 'geonames:1816670',
+        'countryCode': 'CN',
+        'nameEnglish': 'Beijing',
+        'nameChinese': '北京市',
+        'timeZone': 'Asia/Shanghai',
+        'placeType': 'city',
+      };
       final browser = TestBrowser()..settings.remove('fate-data-use-version');
       Json? input;
       var current = fixture();
@@ -1770,41 +1756,17 @@ void main() {
         client: MockClient((request) async {
           calls.add('${request.method} ${request.url.path}');
           if (request.url.path == '/api/thai-locations') {
+            expect(request.url.queryParameters['country'], 'CN');
+            expect(request.url.queryParameters['level'], 'locality');
             return response({
-              'items': [province],
+              'items': [city],
               'total': 1,
-            });
-          }
-          if (request.url.path == '/api/landing/config') {
-            return response({'notice_version': H5Controller.noticeVersion});
-          }
-          if (request.url.path == '/api/landing/consents') {
-            return response({
-              'accepted': true,
-              'notice_version': H5Controller.noticeVersion,
             });
           }
           if (request.method == 'POST' &&
               request.url.path == '/api/life-reports') {
             input = object(jsonDecode(request.body));
-            final chart = object(fixture()['chart']);
-            current = {
-              ...fixture(),
-              'input': input,
-              'time_accuracy': {
-                'mode': 'estimated',
-                'assumed_local_time': '12:00',
-              },
-              'chart': {
-                ...chart,
-                'precision': 'estimated',
-                'houses': [],
-                'planets': [
-                  for (final p in objects(chart['planets']))
-                    if (p['id'] != 'ascendant') {...p, 'house': null},
-                ],
-              },
-            };
+            current = marriageFixture(input: input);
           }
           return response(current);
         }),
@@ -1821,39 +1783,73 @@ void main() {
         find.widgetWithText(FilledButton, h5.copy.t('ui', 'confirm')),
       );
       await click(tester, find.byKey(const ValueKey('birth-time-unknown')));
-      await click(tester, find.byKey(const ValueKey('birth-country')));
-      await click(tester, find.text('泰国'));
-      await click(tester, find.byKey(const ValueKey('birth-province')));
+      await click(tester, find.byKey(const ValueKey('birth-city')));
       await click(
         tester,
         find.descendant(
           of: find.byType(PlacePicker),
-          matching: find.widgetWithText(InkWell, '曼谷'),
+          matching: find.widgetWithText(InkWell, '北京市'),
         ),
       );
       expect(find.byKey(const ValueKey('data-use-notice')), findsNothing);
+      for (final field in [
+        'relationship-status',
+        'custom-question',
+        'relationship-roles',
+        'relationship-event',
+        'relationship-source',
+      ]) {
+        expect(find.byKey(ValueKey(field)), findsNothing);
+      }
       expect(input, isNull);
       expect(calls, isNot(contains('POST /api/landing/consents')));
       await click(tester, find.byKey(const ValueKey('generate-report')));
-      expect(find.text('确认使用出生资料'), findsOneWidget);
-      expect(input, isNull);
-      await click(tester, find.byKey(const ValueKey('data-use-agree')));
+      expect(find.text('确认使用出生资料'), findsNothing);
+      expect(find.byKey(const ValueKey('data-use-agree')), findsNothing);
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 600));
       await tester.pumpAndSettle();
       expect(input, isNotNull);
       expect(object(input!['profile'])['birth_time'], isNull);
       expect(object(input!['profile'])['birth_date'], '1999-01-01');
-      expect(object(input!['profile'])['location_id'], province['id']);
-      expect(input!['report_kind'], 'fortune');
+      expect(object(input!['profile'])['location_id'], city['id']);
+      expect(object(input!['profile'])['country_code'], 'CN');
+      expect(object(input!['profile'])['timezone'], 'Asia/Shanghai');
+      expect(input!['report_kind'], 'marriage');
+      expect(input!.containsKey('relationship'), isFalse);
+      expect(input!.containsKey('user_question'), isFalse);
       expect(calls, contains('POST /api/life-reports'));
-      expect(calls, contains('POST /api/landing/consents'));
+      expect(calls, isNot(contains('POST /api/landing/consents')));
       expect(calls.any((value) => value.endsWith('/unlock')), isFalse);
       expect(find.byType(GenerationDialog), findsNothing);
       expect(find.byType(ReportCheckout), findsOneWidget);
-      expect(find.text('解锁您的运程'), findsOneWidget);
-      expect(find.text('฿39'), findsOneWidget);
-      expect(find.textContaining('先看清自己的判断习惯'), findsOneWidget);
+      expect(find.text('解锁后，深入查看六大主题'), findsOneWidget);
+      final themeBadges = find.byKey(const ValueKey('checkout-theme-badges'));
+      expect(themeBadges, findsOneWidget);
+      final labels = ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议'];
+      final centers = [
+        for (final title in labels)
+          tester.getCenter(
+            find.descendant(of: themeBadges, matching: find.text(title)),
+          ),
+      ];
+      for (final row in [centers.take(3).toList(), centers.skip(3).toList()]) {
+        expect(row[0].dy, closeTo(row[2].dy, 2));
+        expect(row[0].dx, lessThan(row[1].dx));
+        expect(row[1].dx, lessThan(row[2].dx));
+      }
+      expect(centers[0].dy, lessThan(centers[3].dy));
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('jy-payment-preview')),
+          matching: find.text('支付并解锁'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('泰式占星 · 婚姻关系报告'), findsOneWidget);
+      expect(find.text('当前感情能量判断'), findsOneWidget);
+      expect(find.text('Free marriage section 3.'), findsOneWidget);
+      expect(find.text('婚姻与长期关系完整解剖'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../app/controller.dart';
+import '../app/languages.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
 import '../ui/theme.dart';
@@ -12,7 +13,6 @@ import '../ui/site_header.dart';
 import 'birth_date_dialog.dart';
 import 'generation_dialog.dart';
 import 'history_dialog.dart';
-import 'information_page.dart';
 import 'place_picker.dart';
 
 enum _BirthFormProgress { empty, date, time, place, complete }
@@ -30,16 +30,11 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   bool _unknown = false,
       _custom = false,
       _restored = false,
-      _restoringCareer = false,
-      _confirming = false;
+      _restoringCareer = false;
   Place? _place;
   String? _question;
   final _questionText = TextEditingController();
-  final _rolesText = TextEditingController();
-  final _eventText = TextEditingController();
-  String _relationshipStatus = 'unspecified',
-      _relationshipSource = 'unspecified';
-  bool get _relationshipMode => widget.topic != 'career' && !_restoringCareer;
+  bool get _marriageMode => widget.topic != 'career' && !_restoringCareer;
   late final _questionPages = PageController(
     initialPage: _stages.indexOf(_question ?? '').clamp(0, _stages.length - 1),
   );
@@ -60,20 +55,16 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         _time = text(profile['birth_time']);
         _unknown = _time.isEmpty;
         _place = h5.landingPlace;
-        _questionText.text = text(input['user_question']);
-        _custom = _questionText.text.isNotEmpty;
-        final relationship = object(input['relationship']);
-        if (relationship.isNotEmpty) {
-          _relationshipStatus = text(relationship['status']);
-          _relationshipSource = text(relationship['source']);
-          _rolesText.text = text(relationship['roles']);
-          _eventText.text = text(relationship['event']);
-        }
         final stage = text(object(input['career_question'])['stage']);
         _question = _stages.contains(stage) ? stage : null;
         _restoringCareer = _question != null;
+        if (!_marriageMode) {
+          _questionText.text = text(input['user_question']);
+          _custom = _questionText.text.isNotEmpty;
+        }
       }
     }
+    if (_place?.country != h5BirthCountry(h5.language)) _place = null;
     if (!_resumeChecked) {
       _resumeChecked = true;
       final saved =
@@ -97,8 +88,6 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   void dispose() {
     _request?.cancel();
     _questionText.dispose();
-    _rolesText.dispose();
-    _eventText.dispose();
     _questionPages.dispose();
     super.dispose();
   }
@@ -159,7 +148,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       return _BirthFormProgress.date;
     }
     if (!_unknown && _time.isEmpty) return _BirthFormProgress.time;
-    if (_place == null) return _BirthFormProgress.place;
+    if (_place?.country != h5BirthCountry(h5.language)) {
+      return _BirthFormProgress.place;
+    }
     return _BirthFormProgress.complete;
   }
 
@@ -176,7 +167,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         _place!.id == h5.landingPlace!.id &&
         _place!.zone == h5.landingPlace!.zone;
     return {
-      'report_kind': 'fortune',
+      'report_kind': _marriageMode ? 'marriage' : 'fortune',
       'profile': {
         'display_name': '',
         'birth_date': _date,
@@ -192,101 +183,18 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         'latitude': samePlace ? previous['latitude'] : null,
         'longitude': samePlace ? previous['longitude'] : null,
       },
-      'year': !_relationshipMode && _question != null && !_custom
+      'year': !_marriageMode && _question != null && !_custom
           ? int.parse(start.substring(0, 4))
           : DateTime.now().year,
-      if (!_relationshipMode && _question != null && !_custom)
+      if (!_marriageMode && _question != null && !_custom)
         'career_question': {'stage': _question, 'start': start},
-      if ((_relationshipMode || _custom) &&
-          _questionText.text.trim().isNotEmpty)
+      if (!_marriageMode && _custom && _questionText.text.trim().isNotEmpty)
         'user_question': _questionText.text.trim(),
-      if (_relationshipMode)
-        'relationship': {
-          'status': _relationshipStatus,
-          'source': _relationshipSource,
-          if (_rolesText.text.trim().isNotEmpty)
-            'roles': _rolesText.text.trim(),
-          if (_eventText.text.trim().isNotEmpty)
-            'event': _eventText.text.trim(),
-        },
     };
   }
 
-  Widget _relationshipChoice(
-    Copy copy,
-    String label,
-    String choices,
-    String selected,
-    ValueChanged<String> change,
-  ) {
-    final options = object(copy.value('relationship', choices));
-    return DropdownButtonFormField<String>(
-      key: ValueKey('relationship-$label'),
-      initialValue: selected,
-      isExpanded: true,
-      style: const TextStyle(color: cream, fontSize: 13),
-      decoration: InputDecoration(labelText: copy.t('relationship', label)),
-      items: [
-        for (final option in options.entries)
-          DropdownMenuItem(value: option.key, child: Text(text(option.value))),
-      ],
-      onChanged: (value) {
-        if (value != null) setState(() => change(value));
-      },
-    );
-  }
-
-  List<Widget> _relationshipFields(Copy copy) => [
-    _relationshipChoice(copy, 'status', 'statuses', _relationshipStatus, (
-      value,
-    ) {
-      _relationshipStatus = value;
-    }),
-    const SizedBox(height: 12),
-    TextField(
-      key: const ValueKey('custom-question'),
-      controller: _questionText,
-      maxLength: 120,
-      inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
-      decoration: InputDecoration(
-        labelText: copy.t('relationship', 'question'),
-        counterText: '',
-      ),
-    ),
-    const SizedBox(height: 12),
-    TextField(
-      key: const ValueKey('relationship-roles'),
-      controller: _rolesText,
-      maxLength: 120,
-      inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
-      decoration: InputDecoration(
-        labelText: copy.t('relationship', 'roles'),
-        counterText: '',
-      ),
-    ),
-    const SizedBox(height: 12),
-    TextField(
-      key: const ValueKey('relationship-event'),
-      controller: _eventText,
-      maxLength: 900,
-      minLines: 2,
-      maxLines: 4,
-      decoration: InputDecoration(
-        labelText: copy.t('relationship', 'event'),
-        hintText: copy.t('relationship', 'eventHint'),
-        counterText: '',
-      ),
-    ),
-    const SizedBox(height: 12),
-    _relationshipChoice(copy, 'source', 'sources', _relationshipSource, (
-      value,
-    ) {
-      _relationshipSource = value;
-    }),
-  ];
-
   Future<void> _generate(H5Controller h5) async {
-    if (_generation != null || _confirming) return;
+    if (_generation != null) return;
     final c = h5.copy;
     final progress = _formProgress(h5);
     _recordFormProgress(h5, progress);
@@ -301,17 +209,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       h5.trackActivity('birth_form', 'invalid_form');
       return;
     }
-    setState(() {
-      _error = '';
-      _confirming = true;
-    });
-    var accepted = false;
-    try {
-      accepted = await confirmDataUse(context, h5);
-    } finally {
-      if (mounted) setState(() => _confirming = false);
-    }
-    if (!mounted || !accepted) return;
+    setState(() => _error = '');
     final input = _input(h5);
     final state = GenerationState();
     _generation = state;
@@ -527,7 +425,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      c.t('jy', 'formTitle'),
+                      _marriageMode
+                          ? c.t('marriage', 'title')
+                          : c.t('jy', 'formTitle'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -538,7 +438,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      c.t('jy', 'formCaption'),
+                      _marriageMode
+                          ? c.t('marriage', 'form_hint')
+                          : c.t('jy', 'formCaption'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 10,
@@ -671,7 +573,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 13),
                     BirthplaceFields(
+                      key: ValueKey('birthplace-${h5.language}'),
                       h5: h5,
+                      country: h5BirthCountry(h5.language),
                       initialPlace: _place,
                       onSelected: (place) {
                         if (place == null && _place == null) return;
@@ -679,10 +583,8 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                         _recordFormProgress(h5);
                       },
                     ),
-                    const SizedBox(height: 16),
-                    if (_relationshipMode)
-                      ..._relationshipFields(c)
-                    else ...[
+                    if (!_marriageMode) ...[
+                      const SizedBox(height: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Column(
@@ -835,12 +737,12 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       label: c.t('jy', 'topics.${widget.topic}.action'),
                       icon: 'book',
                       bounce: true,
-                      onPressed: h5.languageLoading || _confirming
+                      onPressed: h5.languageLoading
                           ? null
                           : () => _generate(h5),
                     ),
                     const SizedBox(height: 19),
-                    ThemeBoards(copy: c, relationship: _relationshipMode),
+                    ThemeBoards(copy: c),
                   ],
                 ),
               ),

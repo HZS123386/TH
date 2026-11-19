@@ -12,13 +12,18 @@ type RelationshipContext = {
   roles?: string | null;
   event?: string | null;
 };
-export type LifeInput = Omit<ReadingInput, "reading"> & { report_kind?: "life" | "fortune"; career?: CareerQuestion; career_question?: CareerQuestion; user_question?: string; relationship?: RelationshipContext };
+export type LifeInput = Omit<ReadingInput, "reading"> & { report_kind?: "life" | "fortune" | "marriage"; career?: CareerQuestion; career_question?: CareerQuestion; user_question?: string; relationship?: RelationshipContext };
 export const westernTopicKeys = ["natal", "career", "wealth", "love", "risk"] as const;
 export const personalTopicKeys = [...westernTopicKeys, "plan"] as const;
 export const legacyPersonalTopicKeys = ["talent", "node-1", "node-2", "node-3"] as const;
-export const relationshipTopicKeys = ["who", "impact", "pattern", "assessment", "decision", "next_steps"] as const;
+export const relationshipTopicKeys = ["judgment", "basis"] as const;
 type RelationshipTopic = typeof relationshipTopicKeys[number];
-export type ReportTopic = Reading | FortuneTopicKey | typeof personalTopicKeys[number] | typeof legacyPersonalTopicKeys[number] | RelationshipTopic;
+export const marriagePreviewKeys = ["birth_details", "relationship_style", "current_relationship", "relationship_snapshot", "unlock_offer"] as const;
+export const marriageTopicKeys = ["how_to_read", "long_term_relationship", "relationship_chart", "relationship_timing",
+  "other_areas", "relationship_actions", "traditional_support", "relationship_takeaway"] as const;
+type MarriageTopic = typeof marriagePreviewKeys[number] | typeof marriageTopicKeys[number];
+export type ReportTopic = Reading | FortuneTopicKey | typeof personalTopicKeys[number] | typeof legacyPersonalTopicKeys[number] | RelationshipTopic | MarriageTopic;
+export interface MarriageSection { key: MarriageTopic; title: string; paragraphs: string[] }
 export type LifeState = "not_started" | "pending" | "generating" | "ready" | "limited" | "unavailable" | "unconfigured";
 export type Feedback = "close" | "partly" | "different";
 export interface LifeEvidence { id: string; title: string; detail: string }
@@ -34,6 +39,7 @@ export interface PersonalReading {
   availability: { full_report: boolean; reason: "not_started" | "ready" | "time_unknown" | "unavailable" | "insufficient_periods" };
   talent: PersonalTalent | null; nodes: PersonalNode[];
   themes?: Record<"wealth" | "love" | "risk", PersonalTopic> | null;
+  relationship_preview_sections?: Record<RelationshipTopic, string[]> | null;
   relationship_sections?: Record<RelationshipTopic, string[]> | null;
 }
 export interface LifePoint extends ReadingItem { evidence: LifeEvidence[]; window?: LifeWindow }
@@ -48,8 +54,9 @@ export interface LifeChapter {
 export interface LifeReport {
   id: string;
   version: string;
-  format?: "western-compact" | "western-personal" | "legacy";
+  format?: "western-compact" | "western-personal" | "thai-marriage" | "legacy";
   personal?: PersonalReading | null;
+  marriage?: { preview: MarriageSection[] | null; full: MarriageSection[] | null };
   title: string;
   input: LifeInput;
   reference_period?: { start: string; end: string };
@@ -226,6 +233,7 @@ export function lifeLabels(report: LifeReport): LifeLabels {
     labels.title = report.input.relationship ? report.title
       : language === "zh" || language === "th" ? informationCopy.jy[language].personal.title : additionalCopy("jy")[language].personal.title;
   }
+  if (report.format === "thai-marriage") labels.title = report.title;
   const question = report.input.career_question;
   if (question) {
     const situation = careerCopy[language].situations[question.stage];
@@ -290,13 +298,18 @@ export function isLifeReport(value: unknown): value is LifeReport {
   if (!value || typeof value !== "object") return false;
   const report = value as LifeReport;
   const personal = report.format === "western-personal";
+  const marriage = report.format === "thai-marriage";
   const personalKeys = personalProgressKeys(report);
   const nonempty = (value: unknown): value is string => typeof value === "string" && !!value.trim();
+  if (marriage && (report.input?.report_kind !== "marriage" || report.preview !== null
+      || report.chapters?.length !== 0 || report.plan !== null
+      || report.preview_state === "ready" && !hasLifePreview(report)
+      || report.access === "full" && report.full_state === "ready" && !validMarriageSections(report.marriage?.full, marriageTopicKeys))) return false;
   if (personal) {
     const p = report.personal;
     const relationshipReport = !!report.input?.relationship;
     const relationship = p?.relationship;
-    const requiresRelationship = relationshipReport || Number(report.version?.match(/^western-personal-(\d+)$/)?.[1] || 0) >= 8;
+    const requiresRelationship = Number(report.version?.match(/^western-personal-(\d+)$/)?.[1] || 0) >= 8;
     if (relationship != null || requiresRelationship && report.preview_state === 'ready') {
       if (!relationship || !nonempty(relationship.text) || !nonempty(relationship.action) || !Array.isArray(relationship.evidence) ||
           relationship.evidence.length !== 2 || new Set(relationship.evidence.map(fact => fact?.id)).size !== 2 ||
@@ -311,9 +324,7 @@ export function isLifeReport(value: unknown): value is LifeReport {
     if (report.preview_state === "ready" && (!hasLifePreview(report) || typeof p?.sun_sign !== "string" || !p.sun_sign.trim() || p.ascendant_sign !== null && typeof p.ascendant_sign !== "string")) return false;
     if (!report.input?.profile?.birth_time && p?.ascendant_sign != null) return false;
     if (report.access === "full" && report.full_state === "ready" && relationshipReport) {
-      const sections = p?.relationship_sections;
-      if (!sections || Object.keys(sections).length !== relationshipTopicKeys.length ||
-          relationshipTopicKeys.some(key => !Array.isArray(sections[key]) || !sections[key].length || !sections[key].every(nonempty))) return false;
+      if (!hasRelationshipSections(p?.relationship_sections)) return false;
     } else if (report.access === "full" && report.full_state === "ready") {
       if (personalKeys.length === personalTopicKeys.length) {
         const themes = p?.themes;
@@ -331,12 +342,13 @@ export function isLifeReport(value: unknown): value is LifeReport {
     }
   }
   return typeof report.id === "string" && !!report.input?.profile && languages.includes(report.input.profile.language)
-    && Array.isArray(report.catalog) && report.catalog.length === (personal ? personalKeys.length : report.input.career ? 1 : report.format === "western-compact" ? 5 : report.input.report_kind === "fortune" ? 7 : 5) && Array.isArray(report.chapters)
+    && Array.isArray(report.catalog) && report.catalog.length === (marriage ? marriageTopicKeys.length : personal ? personalKeys.length : report.input.career ? 1 : report.format === "western-compact" ? 5 : report.input.report_kind === "fortune" ? 7 : 5) && Array.isArray(report.chapters)
     && (personal ? new Set(report.catalog.map(item => item.key)).size === personalKeys.length && report.catalog.every(item => personalKeys.includes(item.key)) : report.format === "western-compact" ? new Set(report.catalog.map(item => item.key)).size === 5 && report.catalog.every(item => (westernTopicKeys as readonly string[]).includes(item.key)) : report.input.report_kind !== "fortune" || new Set(report.catalog.map(item => item.key)).size === 7 && report.catalog.every(item => fortuneTopicKeys.includes(item.key as FortuneTopicKey)))
+    && (!marriage || report.catalog.every((item, index) => item?.key === marriageTopicKeys[index]))
     && (!report.preview || Array.isArray(report.preview.traits) && report.preview.traits.length === 3)
     && ["preview", "full"].includes(report.access) && Number.isInteger(report.progress?.completed)
     && Number.isInteger(report.progress?.total) && report.progress.total > 0 && report.progress.completed >= 0 && report.progress.completed <= report.progress.total
-    && (!report.generation_progress || isContentProgress(report.generation_progress, personal ? personalKeys : report.input.career ? careerProgressKeys : report.format === "western-compact" ? westernProgressKeys : report.input.report_kind === "fortune" ? fortuneProgressKeys : fullProgressKeys))
+    && (!report.generation_progress || isContentProgress(report.generation_progress, marriage ? marriageTopicKeys : personal ? personalKeys : report.input.career ? careerProgressKeys : report.format === "western-compact" ? westernProgressKeys : report.input.report_kind === "fortune" ? fortuneProgressKeys : fullProgressKeys))
     && (!report.preview_generation_progress || isContentProgress(report.preview_generation_progress, previewProgressKeys));
 }
 
@@ -345,8 +357,30 @@ export function personalProgressKeys(report: Pick<LifeReport, "catalog" | "input
   return report.catalog?.length === personalTopicKeys.length ? personalTopicKeys : legacyPersonalTopicKeys;
 }
 
+function hasRelationshipSections(sections: PersonalReading["relationship_sections"]): boolean {
+  return !!sections && Object.keys(sections).length === relationshipTopicKeys.length
+    && relationshipTopicKeys.every(key => Array.isArray(sections[key]) && sections[key].length > 0
+      && sections[key].every(line => typeof line === "string" && !!line.trim()));
+}
+
+function validMarriageSections(sections: MarriageSection[] | null | undefined, keys: readonly string[]): boolean {
+  return Array.isArray(sections) && sections.length === keys.length && sections.every((section, index) =>
+    section?.key === keys[index] && typeof section.title === "string" && !!section.title.trim()
+    && Array.isArray(section.paragraphs) && section.paragraphs.length > 0
+    && section.paragraphs.every(line => typeof line === "string" && !!line.trim()));
+}
+
+export function marriageSections(report: LifeReport): MarriageSection[] {
+  const full = report.access === "full" && report.full_state === "ready";
+  return (full ? report.marriage?.full : report.marriage?.preview) ?? [];
+}
+
 export function hasLifePreview(report: LifeReport): boolean {
-  return report.format === "western-personal" ? Array.isArray(report.personal?.free_lines) && report.personal.free_lines.length === 3 && report.personal.free_lines.every(line => typeof line === "string" && !!line.trim()) : report.preview != null;
+  if (report.format === "thai-marriage") return validMarriageSections(report.marriage?.preview, marriagePreviewKeys);
+  if (report.format !== "western-personal") return report.preview != null;
+  if (report.input.relationship) return hasRelationshipSections(report.personal?.relationship_preview_sections);
+  return Array.isArray(report.personal?.free_lines) && report.personal.free_lines.length === 3
+    && report.personal.free_lines.every(line => typeof line === "string" && !!line.trim());
 }
 
 export interface GenerationProgress {

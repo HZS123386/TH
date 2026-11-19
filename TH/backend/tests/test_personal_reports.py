@@ -11,7 +11,7 @@ import pytest
 from backend.app.astrology import RoxyAstrology
 from backend.app.bazi_reports import InvalidBaziReport
 from backend.app.life_report_content import PERSONAL_LOVE_FIELDS, LifeWriter
-from backend.app.life_reports import LifeInput
+from backend.app.life_reports import LifeInput, LifeReports
 from backend.app.main import create_app
 from backend.app.storage import Storage
 from backend.tests.test_personal_report_content import personal_draft, personal_fixture_bundle
@@ -37,7 +37,8 @@ def writer_stub(monkeypatch):
     return calls
 
 
-def test_relationship_report_uses_separate_observed_roles_without_requiring_birth_time_or_forecast(postgres_url, monkeypatch, transport):
+@pytest.mark.parametrize("known_time", [False, True])
+def test_relationship_report_only_shows_judgment_and_natal_basis(postgres_url, monkeypatch, transport, known_time):
     calls = []
     context = {
         "status": "single",
@@ -45,65 +46,67 @@ def test_relationship_report_uses_separate_observed_roles_without_requiring_birt
         "event": "前任两次取消约定又主动另约。朋友建议我给自己留出时间。",
         "source": "direct",
     }
+    free_judgment = "前任两次取消约定又主动另约。就是这些反复改约，让你一直给见面留着时间。"
+    paid_judgment = "前任两次取消约定又主动另约。愿意另约说明还有接触的意愿，关系一直卡在双方没落实安排。"
 
     async def write(self, bundle, *args):
         calls.append(deepcopy(bundle))
-        if bundle["stage"] == "personal_preview":
-            return self.validate(json.dumps(personal_draft(bundle), ensure_ascii=False), bundle)
-        value = {
-            "language": "zh", "reading": "relationship-full",
-            "people": [
-                {"role": "前任", "event_excerpt": "两次取消约定又主动另约", "explanation": "前任的改约让你需要重新考虑要为接触留出多少时间。"},
-                {"role": "朋友", "event_excerpt": "建议我给自己留出时间", "explanation": "朋友的建议提醒你把自己的日程也放进这次选择里。"},
+        preview = bundle["stage"] == "relationship_preview"
+        evidence_id = bundle["citation_rules"]["topic_ids"][0]
+        draft = {
+            "language": "zh", "reading": bundle["reading"],
+            "judgments": [
+                {"role": "前任", "event_excerpt": "两次取消约定又主动另约",
+                 "text": free_judgment if preview else paid_judgment},
             ],
-            "portrait": None,
-            "impact": "一次次调整相处安排会占用你的空闲时间，也容易让是否继续来往的决定迟迟定不下来。",
-            "patterns": [{
-                "evidence_id": bundle["citation_rules"]["topic_ids"][0],
-                "symbolism": "这项配置传统上与在交流中寻找亲切感有关。",
-                "behavior": "可以观察听到解释后，你是否立刻重新腾出时间。",
-            }],
-            "assessment": "主动另约显示还有协商空间，反复取消也有实际成本，尤其是你为未定的行程留出了大段时间。",
-            "continue_when": "选择新对象时，留意表达意愿后愿意一起安排时间的人。",
-            "reconsider_when": "如果一听到热络解释就接受长期的不确定，可以把守约和主动协调加进选择标准。",
-            "verify": "先确认第二次更改后双方有无落实新的约定。",
-            "question": "“我们能选一个都方便并且能落实的时间吗？”",
-            "observe": "看看下一次发生变动时，对方会不会提前提出替代安排。",
+            "basis": [
+                {"evidence_id": evidence_id, "text": "听到诚恳的解释时，你容易把再次提出见面理解成对方已经愿意落实。"},
+            ],
         }
-        rendered = json.dumps(value, ensure_ascii=False)
+        if not preview:
+            draft["judgments"].append({
+                "role": "朋友", "event_excerpt": "建议我给自己留出时间",
+                "text": "朋友建议我给自己留出时间。朋友的意见让你重新衡量为这段关系腾出的精力。",
+            })
         for source in ("reported", "guess"):
             uncertain = {**bundle, "relationship_context": {**context, "source": source}}
-            with pytest.raises(InvalidBaziReport, match="empty people list"):
-                self.validate(rendered, uncertain)
-        portrait = deepcopy(value)
-        portrait["people"] = []
-        portrait["portrait"] = {
-            "evidence_id": value["patterns"][0]["evidence_id"],
-            "text": "有一种相处风格值得留意。对方会耐心听你把话说完，你也因此愿意聊得更深。可以看看从聊天转到实际安排时，你是否依然觉得自在。",
-        }
-        assert self.validate(json.dumps(portrait, ensure_ascii=False), uncertain)["portrait"] == portrait["portrait"]
-        portrait["portrait"]["evidence_id"] = "fictional-factor"
-        with pytest.raises(InvalidBaziReport, match="portrait.*cited patterns"):
-            self.validate(json.dumps(portrait, ensure_ascii=False), uncertain)
-        invented = deepcopy(value)
-        invented["people"][0]["role"] = "对方家人"
-        with pytest.raises(InvalidBaziReport, match="exact behavior excerpts"):
+            with pytest.raises(InvalidBaziReport, match="exact described action"):
+                self.validate(json.dumps(draft, ensure_ascii=False), uncertain)
+            conditional = {**draft, "judgments": [
+                {"role": None, "event_excerpt": None,
+                 "text": "反复表示想见面、实际却迟迟定不下来的人，会把关系拖在口头承诺上。"},
+            ]}
+            assert self.validate(json.dumps(conditional, ensure_ascii=False), uncertain)["judgments"][0]["role"] is None
+        invented = deepcopy(draft)
+        invented["judgments"][0]["event_excerpt"] = "失联了整整一个月"
+        with pytest.raises(InvalidBaziReport, match="exact described action"):
             self.validate(json.dumps(invented, ensure_ascii=False), bundle)
-        return self.validate(rendered, bundle)
+        invented = deepcopy(draft)
+        invented["basis"][0]["evidence_id"] = "fictional-factor"
+        with pytest.raises(InvalidBaziReport, match="distinct supplied natal factors"):
+            self.validate(json.dumps(invented, ensure_ascii=False), bundle)
+        return self.validate(json.dumps(draft, ensure_ascii=False), bundle)
 
     monkeypatch.setattr(LifeWriter, "write", write)
     with TestClient(create_app(settings(postgres_url))) as client:
         async def forbidden_forecast(*args, **kwargs):
-            pytest.fail("The relationship report must accept an absent forecast.")
+            pytest.fail("The relationship report only needs natal evidence.")
         monkeypatch.setattr(client.app.state.life_reports.adapters["astrology"], "forecast", forbidden_forecast)
-        request = {"profile": {**PROFILE, "birth_time": None}, "year": 2026, "relationship": context}
-        response = client.post("/api/life-reports", json=request, headers=HEADERS)
+        profile = {**PROFILE, "birth_time": PROFILE["birth_time"] if known_time else None}
+        response = client.post("/api/life-reports", json={"profile": profile, "year": 2026, "relationship": context}, headers=HEADERS)
         assert response.status_code == 200, response.text
         free = response.json()
-        assert free["personal"]["ascendant_sign"] is None
+        assert free["preview_state"] == "ready", free
+        assert bool(free["personal"]["ascendant_sign"]) == known_time
         assert free["personal"]["relationship_sections"] is None
         assert free["personal"]["availability"]["full_report"]
-        assert [bundle["stage"] for bundle in calls] == ["personal_preview"]
+        assert free["personal"]["free_lines"] == []
+        assert free["personal"]["traits"] == []
+        sections = free["personal"]["relationship_preview_sections"]
+        assert [item["title"] for item in free["catalog"]] == ["判断", "星盘依据"]
+        assert sections["judgment"] == [free_judgment] and len(sections["basis"]) == 1
+        assert "对分相" in sections["basis"][0] if known_time else "上升" not in sections["basis"][0]
+        assert [bundle["stage"] for bundle in calls] == ["relationship_preview"]
         path = "/api/life-reports/" + free["id"]
         assert client.post(path + "/unlock", headers=HEADERS).status_code == 402
         order = client.post(path + "/payment", json={}, headers=HEADERS)
@@ -115,14 +118,38 @@ def test_relationship_report_uses_separate_observed_roles_without_requiring_birt
         client.portal.call(finish)
         full = client.get(path, headers=HEADERS).json()
         assert full["full_state"] == "ready", full
-        assert [bundle["stage"] for bundle in calls] == ["personal_preview", "relationship_full"]
+        assert [bundle["stage"] for bundle in calls] == ["relationship_preview", "relationship_full"]
         assert calls[1]["relationship_context"] == context
+        assert calls[1]["free_judgment"] == [free_judgment]
         assert all(fact["type"] != "transit" for fact in calls[1]["evidence"].values())
-        assert [item["key"] for item in full["catalog"]] == ["who", "impact", "pattern", "assessment", "decision", "next_steps"]
-        assert "选择" in full["catalog"][4]["title"]
+        assert [item["key"] for item in full["catalog"]] == ["judgment", "basis"]
+        assert full["progress"] == {"completed": 2, "total": 2}
         sections = full["personal"]["relationship_sections"]
-        assert [paragraph.split(" · ")[0] for paragraph in sections["who"]] == ["前任", "亲身经历", "朋友", "亲身经历"]
-        assert len(sections["next_steps"]) == 3
+        assert set(sections) == {"judgment", "basis"}
+        assert sections["judgment"][0] == paid_judgment
+        assert sections["judgment"][1].startswith("朋友建议")
+        assert full["personal"]["relationship_preview_sections"]["judgment"] == [free_judgment]
+
+
+def test_saved_relationship_reports_keep_their_judgments_and_natal_references():
+    bundle = personal_fixture_bundle()
+    identifier = bundle["citation_rules"]["relationship_ids"][0]
+    free = {"relationship": {"text": "反复改约让关系卡在见面这一步。", "evidence_ids": [identifier],
+                             "action": "先试着问对方一个具体时间。"}}
+    paid = {
+        "people": [{"role": "前任", "event_excerpt": "两次取消约定", "explanation": "这件事一直占着你留给见面的时间。"}],
+        "impact": "见面计划一再推迟。",
+        "assessment": "约定的时间始终无法落实。",
+        "patterns": [{"evidence_id": identifier, "symbolism": "这是表达方式的象征。", "behavior": "你容易把再次邀约理解成已经确认安排。"}],
+        "question": "你愿意定个具体时间吗？",
+    }
+    preview = LifeReports.relationship_sections(free, bundle["evidence"], "zh")
+    complete = LifeReports.relationship_sections(paid, bundle["evidence"], "zh")
+    assert preview["judgment"] == [free["relationship"]["text"]]
+    assert complete["judgment"][0].startswith("前任 · “两次取消约定”")
+    assert complete["basis"][0].startswith(preview["basis"][0] + "\n")
+    assert "已经确认安排" in complete["basis"][0]
+    assert set(complete) == set(preview) == {"judgment", "basis"}
 
 
 def test_new_personal_report_shares_two_model_calls_and_never_exposes_paid_data_before_payment(postgres_url, monkeypatch, transport):

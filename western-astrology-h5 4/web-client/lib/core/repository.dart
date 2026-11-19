@@ -421,20 +421,8 @@ class ReportRepository {
     }
   }
 
-  Future<List<Place>> provinces(String country, CancelToken token) async =>
-      objects(
-        object(
-          await request(
-            '/api/thai-locations?country=$country&level=province',
-            token,
-            owned: false,
-          ),
-        )['items'],
-      ).map(Place.new).toList();
-
   Future<Json> cities(
     String country,
-    String province,
     String query,
     int offset,
     CancelToken token,
@@ -442,8 +430,7 @@ class ReportRepository {
     final params = Uri(
       queryParameters: {
         'country': country,
-        'province': province,
-        'level': province.isEmpty ? 'city' : 'locality',
+        'level': country == 'CN' || country == 'TH' ? 'locality' : 'city',
         'query': query,
         'offset': '$offset',
       },

@@ -17,6 +17,8 @@ class ReportCheckout extends StatefulWidget {
     required this.onBack,
     required this.onErase,
     this.onPay,
+    this.onExportPdf,
+    this.exportStatus = '',
     this.busy = false,
     this.error = '',
     this.showAppDownload = false,
@@ -25,7 +27,8 @@ class ReportCheckout extends StatefulWidget {
   final H5Controller h5;
   final LifeReport report;
   final VoidCallback onBack, onErase;
-  final VoidCallback? onPay;
+  final VoidCallback? onPay, onExportPdf;
+  final String exportStatus;
   final Widget freePreview;
   final bool busy;
   final String error;
@@ -74,12 +77,18 @@ class _ReportCheckoutState extends State<ReportCheckout> {
   @override
   Widget build(BuildContext context) {
     final c = widget.h5.copy;
-    final relationship = widget.report.relationshipReport;
-    final hasRelationshipPreview = widget.report.relationshipPreview.isNotEmpty;
+    final marriage = widget.report.marriageReport;
+    final relationship = widget.report.sectionedReport;
+    final themeHeading = c.t('jy', 'checkout.contents');
+    final compactHeading = MediaQuery.sizeOf(context).width < 380;
+    final hasRelationshipPreview = relationship
+        ? widget.report.hasPreview
+        : widget.report.relationshipPreview.isNotEmpty;
     final about = widget.report.sixPersonalThemes && hasRelationshipPreview
         ? 'checkout.relationshipAbout'
         : 'checkout.about';
-    final relationshipUnlock = widget.report.canPay && hasRelationshipPreview
+    final relationshipUnlock =
+        !marriage && widget.report.canPay && hasRelationshipPreview
         ? (relationship
               ? c.t('relationship', 'unlock')
               : c.t('jy', 'personal.relationshipUnlock'))
@@ -114,58 +123,95 @@ class _ReportCheckoutState extends State<ReportCheckout> {
               ),
               const SizedBox(height: 20),
               widget.freePreview,
+              if (relationship) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: widget.onExportPdf,
+                  icon: const Icon(Icons.picture_as_pdf_outlined, size: 17),
+                  label: Text(c.t('life', 'exportPdf')),
+                ),
+                if (widget.exportStatus.isNotEmpty)
+                  Text(
+                    widget.exportStatus,
+                    style: const TextStyle(color: gold, fontSize: 12),
+                  ),
+              ],
               const SizedBox(height: 28),
-              Text(
-                c.t('jy', 'checkout.eyebrow'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: gold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                relationship
-                    ? text(widget.report.json['title'])
-                    : c.t('jy', 'checkout.title'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 26,
-                  height: 1.25,
-                  color: Color(0xFFFFEDCC),
-                  fontWeight: FontWeight.w700,
+              if (!relationship) ...[
+                Text(
+                  c.t('jy', 'checkout.eyebrow'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: gold),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 4),
+                Text(
+                  c.t('jy', 'checkout.title'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    height: 1.25,
+                    color: Color(0xFFFFEDCC),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
               JYCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 16,
+                padding: EdgeInsets.symmetric(
+                  horizontal: marriage ? 15 : 12,
+                  vertical: marriage ? 20 : 16,
                 ),
-                radius: 18,
+                radius: marriage ? 22 : 18,
                 borderColor: const Color(0xFFDFB675),
                 colors: const [Color(0xFF4C3263), Color(0xFF241732)],
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0x70E4BC78)),
-                        borderRadius: BorderRadius.circular(24),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF67435C), Color(0xFF51335D)],
+                    if (!relationship || marriage) ...[
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: marriage ? 12 : 8,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0x70E4BC78)),
+                          borderRadius: BorderRadius.circular(24),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF67435C), Color(0xFF51335D)],
+                          ),
+                        ),
+                        child: DefaultTextStyle.merge(
+                          style: TextStyle(
+                            fontSize: marriage
+                                ? (compactHeading ? 17 : 19)
+                                : 15,
+                            height: marriage ? 1.4 : null,
+                            color: const Color(0xFFFFE3AA),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          child: marriage
+                              ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const ExcludeSemantics(child: Text('✧')),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        themeHeading,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const ExcludeSemantics(child: Text('✧')),
+                                  ],
+                                )
+                              : Text(
+                                  '✧  $themeHeading  ✧',
+                                  textAlign: TextAlign.center,
+                                ),
                         ),
                       ),
-                      child: Text(
-                        '✧  ${c.t('jy', 'checkout.contents')}  ✧',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          color: Color(0xFFFFE3AA),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (!relationship)
+                      SizedBox(height: marriage ? 20 : 16),
                       Wrap(
                         alignment: WrapAlignment.center,
                         spacing: 12,
@@ -174,33 +220,32 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                           for (final detail in c.list('jy', 'checkout.details'))
                             Text(
                               detail,
-                              style: const TextStyle(color: gold, fontSize: 12),
+                              style: TextStyle(
+                                color: gold,
+                                fontSize: marriage ? 14 : 12,
+                              ),
                             ),
                         ],
                       ),
-                    const SizedBox(height: 12),
-                    ReportBadges(
-                      key: const ValueKey('checkout-theme-badges'),
-                      copy: c,
-                      themes: relationship
-                          ? [
-                              for (final item in widget.report.catalog)
-                                {'key': item['key'], c.language: item['title']},
-                            ]
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1, color: Color(0x40E4BC78)),
-                    const SizedBox(height: 10),
+                      SizedBox(height: marriage ? 14 : 12),
+                      ReportBadges(
+                        key: const ValueKey('checkout-theme-badges'),
+                        copy: c,
+                        labelsInside: marriage,
+                      ),
+                      SizedBox(height: marriage ? 20 : 16),
+                      const Divider(height: 1, color: Color(0x40E4BC78)),
+                    ],
+                    SizedBox(height: marriage ? 12 : 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
                           c.t('jy', 'checkout.samplePrice'),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFFF7D69E),
+                          style: TextStyle(
+                            fontSize: marriage ? 15 : 13,
+                            color: const Color(0xFFF7D69E),
                           ),
                         ),
                         const Spacer(),
@@ -208,27 +253,28 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                           widget.report.canPay
                               ? widget.report.priceLabel
                               : '฿39',
-                          style: const TextStyle(
-                            fontSize: 27,
-                            color: Color(0xFFF7D69E),
+                          style: TextStyle(
+                            fontSize: marriage ? 31 : 27,
+                            color: const Color(0xFFF7D69E),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: marriage ? 12 : 8),
                     JYButton(
                       key: const ValueKey('jy-payment-preview'),
                       label: relationshipUnlock.isNotEmpty
                           ? relationshipUnlock
-                          : widget.report.orderOnly
+                          : widget.report.orderOnly && !marriage
                           ? c.t('checkout', 'title')
                           : c.t('jy', 'checkout.pay'),
                       icon: 'lock',
                       onPressed: widget.busy ? null : widget.onPay,
                       dimDisabled: false,
+                      large: marriage,
                     ),
-                    const SizedBox(height: 9),
+                    SizedBox(height: marriage ? 12 : 9),
                     Text(
                       widget.report.canPay
                           ? c.t(
@@ -241,7 +287,10 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                             )
                           : c.t('jy', 'checkout.preview'),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 12, color: lavender),
+                      style: TextStyle(
+                        fontSize: marriage ? 13 : 12,
+                        color: lavender,
+                      ),
                     ),
                     if (widget.showAppDownload) ...[
                       const SizedBox(height: 14),
@@ -258,56 +307,53 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
-              JYCard(
-                padding: const EdgeInsets.fromLTRB(13, 17, 13, 15),
-                radius: 16,
-                borderColor: const Color(0x70E4BC78),
-                colors: const [Color(0xFF624162), Color(0xFF261733)],
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final line
-                        in relationship
-                            ? [c.t('relationship', 'sections.who')]
-                            : c.list('jy', '${about}Title'))
-                      Text(
-                        line,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFFFE1A1),
-                          fontSize: 15,
-                          height: 1.5,
-                          fontWeight: FontWeight.w700,
+              if (!relationship) ...[
+                const SizedBox(height: 18),
+                JYCard(
+                  padding: const EdgeInsets.fromLTRB(13, 17, 13, 15),
+                  radius: 16,
+                  borderColor: const Color(0x70E4BC78),
+                  colors: const [Color(0xFF624162), Color(0xFF261733)],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final line in c.list('jy', '${about}Title'))
+                        Text(
+                          line,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFFFFE1A1),
+                            fontSize: 15,
+                            height: 1.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 13,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFF4D9A8)),
+                          borderRadius: BorderRadius.circular(11),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFF1D5), Color(0xFFF3DAB6)],
+                          ),
+                        ),
+                        child: Text(
+                          c.t('jy', about),
+                          style: const TextStyle(
+                            color: Color(0xFF44283E),
+                            fontSize: 14,
+                            height: 1.65,
+                          ),
                         ),
                       ),
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 13,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFF4D9A8)),
-                        borderRadius: BorderRadius.circular(11),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFFF1D5), Color(0xFFF3DAB6)],
-                        ),
-                      ),
-                      child: Text(
-                        relationship
-                            ? c.t('relationship', 'checkout')
-                            : c.t('jy', about),
-                        style: const TextStyle(
-                          color: Color(0xFF44283E),
-                          fontSize: 14,
-                          height: 1.65,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 12),
               Wrap(
                 alignment: WrapAlignment.spaceBetween,

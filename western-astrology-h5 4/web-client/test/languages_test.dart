@@ -18,7 +18,7 @@ void main() {
   });
 
   testWidgets(
-    'nine unique menu languages preserve the question and entry parameters',
+    'the language menu has nine unique choices and preserves the entry parameters',
     (tester) async {
       tester.view.physicalSize = const Size(360, 740);
       tester.view.devicePixelRatio = 1;
@@ -36,15 +36,6 @@ void main() {
       await tester.pumpWidget(
         H5App(controller: h5, initialLocation: '/?topic=love&startup=1'),
       );
-      await tester.pumpAndSettle();
-      final questionField = find.byKey(const ValueKey('custom-question'));
-      await tester.ensureVisible(questionField);
-      const question = 'How can I communicate more clearly?';
-      await tester.enterText(questionField, question);
-      final eventField = find.byKey(const ValueKey('relationship-event'));
-      await tester.ensureVisible(eventField);
-      const event = 'We agreed to talk after work and both followed through.';
-      await tester.enterText(eventField, event);
       await tester.pumpAndSettle();
       expect(h5Languages.map((option) => option.$1).toSet(), hasLength(9));
       expect(h5Languages.map((option) => option.$2).toSet(), hasLength(9));
@@ -74,14 +65,6 @@ void main() {
         await tester.pumpAndSettle();
         expect(h5.language, language);
         expect(repo.language, language);
-        expect(
-          tester
-              .widget<TextField>(find.byKey(const ValueKey('custom-question')))
-              .controller!
-              .text,
-          question,
-        );
-        expect(tester.widget<TextField>(eventField).controller!.text, event);
         final uri = GoRouter.of(
           tester.element(find.byType(LandingPage)),
         ).routeInformationProvider.value.uri;

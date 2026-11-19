@@ -123,6 +123,23 @@ class _H5ReportPageState extends State<H5ReportPage>
     final relationship = _object(personal['relationship']);
     final full = report['access'] == 'full';
     final fullState = report['full_state'];
+    final relationshipReport =
+        report['format'] == 'western-personal' && input['relationship'] is Map;
+    final marriageReport = report['format'] == 'thai-marriage';
+    final fullReading = full && fullState == 'ready';
+    final relationshipReading = _object(
+      personal[fullReading
+          ? 'relationship_sections'
+          : 'relationship_preview_sections'],
+    );
+    final readingSections = marriageReport
+        ? _objects(
+            _object(report['marriage'])[fullReading ? 'full' : 'preview'],
+          )
+        : [
+            for (final section in _objects(report['catalog']))
+              {...section, 'paragraphs': relationshipReading[section['key']]},
+          ];
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -172,76 +189,90 @@ class _H5ReportPageState extends State<H5ReportPage>
           const LinearProgressIndicator(),
           if (!full) ...[const SizedBox(height: 6), Text(s.reportPending)],
         ],
-        if (preview.isNotEmpty || _lines(personal['free_lines']).isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: FateCard(
-              gold: true,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        if (relationshipReport || marriageReport) ...[
+          for (final section in readingSections)
+            if (_lines(section['paragraphs']).isNotEmpty)
+              _ReportSection(
+                key: ValueKey(section['key']),
+                title: _text(section['title']),
+                initiallyExpanded: true,
                 children: [
-                  if (_text(input['user_question']).isNotEmpty)
-                    Text(
-                      _text(input['user_question']),
-                      style: const TextStyle(color: goldColor),
-                    ),
-                  if (preview.isNotEmpty)
-                    _ReportPoint(_object(preview['summary'])),
-                  if (relationship.isNotEmpty) ...[
-                    _ReportPoint(relationship),
-                    if (_text(relationship['action']).isNotEmpty)
-                      Text(_text(relationship['action'])),
-                  ],
-                  for (final line in _lines(personal['free_lines']))
-                    _ReportPoint({'text': line}),
-                  for (final trait in _objects(personal['traits']))
-                    _ReportPoint(trait),
-                  if (_text(personal['opportunity_action']).isNotEmpty)
-                    Text(_text(personal['opportunity_action'])),
-                  if (preview['career_answer'] is Map)
-                    _ReportPoint(_object(preview['career_answer'])),
-                  for (final trait in _objects(preview['traits']))
-                    _ReportPoint(trait),
+                  for (final paragraph in _lines(section['paragraphs']))
+                    _ReportPoint({'text': paragraph}),
                 ],
               ),
-            ),
-          ),
-        if (_object(report['chart']).isNotEmpty)
-          _H5Chart(id: widget.id, chart: _object(report['chart'])),
-        if (full) ...[
-          ..._personalSections(personal, _objects(report['catalog'])),
-          for (final chapter in _objects(report['chapters']))
-            _ReportSection(
-              key: ValueKey(chapter['key']),
-              title: _text(chapter['title']),
-              children: [
-                _ReportPoint(_object(chapter['summary'])),
-                for (final group in [
-                  ('insights', s.h5Insight),
-                  ('watchpoints', s.h5Watchpoint),
-                  ('actions', s.myActions),
-                ])
-                  if (_objects(chapter[group.$1]).isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    Text(group.$2, style: const TextStyle(color: goldColor)),
-                    for (final point in _objects(chapter[group.$1]))
-                      _ReportPoint(point),
+        ] else ...[
+          if (preview.isNotEmpty || _lines(personal['free_lines']).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: FateCard(
+                gold: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_text(input['user_question']).isNotEmpty)
+                      Text(
+                        _text(input['user_question']),
+                        style: const TextStyle(color: goldColor),
+                      ),
+                    if (preview.isNotEmpty)
+                      _ReportPoint(_object(preview['summary'])),
+                    if (relationship.isNotEmpty) ...[
+                      _ReportPoint(relationship),
+                      if (_text(relationship['action']).isNotEmpty)
+                        Text(_text(relationship['action'])),
+                    ],
+                    for (final line in _lines(personal['free_lines']))
+                      _ReportPoint({'text': line}),
+                    for (final trait in _objects(personal['traits']))
+                      _ReportPoint(trait),
+                    if (_text(personal['opportunity_action']).isNotEmpty)
+                      Text(_text(personal['opportunity_action'])),
+                    if (preview['career_answer'] is Map)
+                      _ReportPoint(_object(preview['career_answer'])),
+                    for (final trait in _objects(preview['traits']))
+                      _ReportPoint(trait),
                   ],
-              ],
+                ),
+              ),
             ),
-          if (report['plan'] is Map)
-            _ReportSection(
-              title: s.h5Plan,
-              children: [
-                for (final phase in _objects(
-                  _object(report['plan'])['phases'],
-                )) ...[
-                  _ReportPoint(phase),
-                  for (final action in _objects(phase['actions']))
-                    _ReportPoint(action),
+          if (_object(report['chart']).isNotEmpty)
+            _H5Chart(id: widget.id, chart: _object(report['chart'])),
+          if (full) ...[
+            ..._personalSections(personal, _objects(report['catalog'])),
+            for (final chapter in _objects(report['chapters']))
+              _ReportSection(
+                key: ValueKey(chapter['key']),
+                title: _text(chapter['title']),
+                children: [
+                  _ReportPoint(_object(chapter['summary'])),
+                  for (final group in [
+                    ('insights', s.h5Insight),
+                    ('watchpoints', s.h5Watchpoint),
+                    ('actions', s.myActions),
+                  ])
+                    if (_objects(chapter[group.$1]).isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Text(group.$2, style: const TextStyle(color: goldColor)),
+                      for (final point in _objects(chapter[group.$1]))
+                        _ReportPoint(point),
+                    ],
                 ],
-              ],
-            ),
+              ),
+            if (report['plan'] is Map)
+              _ReportSection(
+                title: s.h5Plan,
+                children: [
+                  for (final phase in _objects(
+                    _object(report['plan'])['phases'],
+                  )) ...[
+                    _ReportPoint(phase),
+                    for (final action in _objects(phase['actions']))
+                      _ReportPoint(action),
+                  ],
+                ],
+              ),
+          ],
         ],
       ],
     );
@@ -256,16 +287,13 @@ Iterable<Widget> _personalSections(
   Map<String, dynamic> personal,
   Iterable<Map<String, dynamic>> catalog,
 ) sync* {
-  final relationship = _object(personal['relationship_sections']);
   final talent = _object(personal['talent']);
   final themes = _object(personal['themes']);
   final nodes = _objects(personal['nodes']).toList();
   for (final section in catalog) {
     final key = _text(section['key']);
-    final paragraphs = _lines(relationship[key]);
     final theme = _object(themes[key]);
     final children = <Widget>[
-      for (final paragraph in paragraphs) _ReportPoint({'text': paragraph}),
       if (theme.isNotEmpty) _ReportPoint(theme),
       if (talent.isNotEmpty && ['talent', 'natal'].contains(key))
         _ReportPoint(talent),
@@ -312,17 +340,20 @@ class _ReportSection extends StatelessWidget {
   const _ReportSection({
     required this.title,
     required this.children,
+    this.initiallyExpanded = false,
     super.key,
   });
 
   final String title;
   final List<Widget> children;
+  final bool initiallyExpanded;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: 14),
     child: FateCard(
       child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
         tilePadding: EdgeInsets.zero,
         expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
         title: Text(title),

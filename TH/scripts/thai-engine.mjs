@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { calculateDailyHoroscope, calculateFortune } from './thai-fortune.mjs';
+import { calculateBirthSunWindow, calculateDailyHoroscope, calculateFortune } from './thai-fortune.mjs';
 import { indexedLocation, recognizeBirthplace, searchBirthCities } from './birth-locations.mjs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -202,7 +202,7 @@ function transitSample(date, ascendant, keys) {
   });
   return keys.map((key) => {
     const sign = chart.points[key].sign;
-    return { key, sign, house: ((sign - ascendant + 12) % 12) + 1 };
+    return { key, sign, house: ascendant == null ? null : ((sign - ascendant + 12) % 12) + 1 };
   });
 }
 
@@ -223,11 +223,10 @@ export function calculateAnnual(year, ascendant) {
   });
 }
 
-function calculateCareerWindow(start, ascendant) {
+function calculateTransitWindows(start, ascendant, days, keys) {
   const date = new Date(`${start}T00:00:00Z`);
-  const keys = ['mercury', 'jupiter', 'saturn'];
   const windows = Object.fromEntries(keys.map((key) => [key, []]));
-  for (let day = 0; day < 30; day++, date.setUTCDate(date.getUTCDate() + 1)) {
+  for (let day = 0; day < days; day++, date.setUTCDate(date.getUTCDate() + 1)) {
     const sampleDate = date.toISOString().slice(0, 10);
     for (const { key, sign, house } of transitSample(sampleDate, ascendant, keys)) {
       const prior = windows[key].at(-1);
@@ -238,11 +237,37 @@ function calculateCareerWindow(start, ascendant) {
   return windows;
 }
 
+const marriagePreviewPlanets = ['venus', 'jupiter', 'saturn'];
+
+function calculateMarriagePreview(request) {
+  const { profile, offset_seconds, start } = request;
+  const result = profile.birth_time
+    ? calculateProfile(profile, offset_seconds)
+    : {
+        status: 'ready',
+        time_known: false,
+        sun_signs: calculateBirthSunWindow(profile.birth_date, request.birth_window, ENGINE.planetaryFrameSeconds).signs,
+      };
+  if (result.status !== 'ready') return result;
+  const ascendant = result.chart?.points.ascendant.sign ?? null;
+  return {
+    ...result, provider: 'thai', reference_date: start,
+    marriage_recent: calculateTransitWindows(start, ascendant, 30, marriagePreviewPlanets),
+  };
+}
+
 export function dispatch(request) {
   if (request.operation === 'daily-calendar') return calculateDailyCalendar(request.date);
   if (request.operation === 'daily-horoscope') return calculateDailyHoroscope(request.date);
   if (request.operation === 'annual') return calculateAnnual(request.year, request.ascendant);
-  if (request.operation === 'career-window') return calculateCareerWindow(request.start, request.ascendant);
+  if (request.operation === 'career-window') {
+    return calculateTransitWindows(request.start, request.ascendant, 30, ['mercury', 'jupiter', 'saturn']);
+  }
+  if (request.operation === 'marriage-preview') return calculateMarriagePreview(request);
+  if (request.operation === 'marriage-windows') {
+    const keys = request.days === 30 ? marriagePreviewPlanets : ['jupiter', 'saturn'];
+    return calculateTransitWindows(request.start, request.ascendant, request.days, keys);
+  }
   if (request.operation === 'fortune') {
     const natal =
       request.profile.birth_time && request.birth_window.length === 1
@@ -252,7 +277,9 @@ export function dispatch(request) {
   }
   if (request.operation === 'locations') {
     if (request.level === 'detail') {
-      const place = indexedLocation(request.query, request.country);
+      const place = indexedLocation(request.query, request.country)
+        ?? (request.country ? catalog(request.country).find(row => row.id === request.query) : null)
+        ?? null;
       return { items: place ? [place] : [], total: place ? 1 : 0, resolved: place };
     }
     if (request.level === 'locality') return searchBirthCities(request.country, request.province, request.query, request.offset);

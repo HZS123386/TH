@@ -380,7 +380,7 @@ void main() {
   );
 
   test(
-    'location queries preserve country/province scope without sending an owner key',
+    'city queries use the country directory without sending an owner key',
     () async {
       late http.Request request;
       final repo = ReportRepository(
@@ -391,15 +391,20 @@ void main() {
           return http.Response('{"items":[],"total":0}', 200);
         }),
       );
-      await repo.cities('TH', 'geonames:1609348', 'Bangkok', 20, CancelToken());
-      expect(request.url.queryParameters, {
-        'country': 'TH',
-        'province': 'geonames:1609348',
-        'level': 'locality',
-        'query': 'Bangkok',
-        'offset': '20',
-      });
-      expect(request.headers.containsKey('X-Report-Key'), isFalse);
+      for (final (country, level, query) in [
+        ('CN', 'locality', '邯郸'),
+        ('TH', 'locality', 'เชียงใหม่'),
+        ('SG', 'city', 'Singapore'),
+      ]) {
+        await repo.cities(country, query, 100, CancelToken());
+        expect(request.url.queryParameters, {
+          'country': country,
+          'level': level,
+          'query': query,
+          'offset': '100',
+        });
+        expect(request.headers.containsKey('X-Report-Key'), isFalse);
+      }
     },
   );
 

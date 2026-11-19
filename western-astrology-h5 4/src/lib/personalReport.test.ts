@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { inputFor, reportFixture } from "../../tests/fixtures/lifeReport";
-import { hasLifePreview, isLifeReport, lifeLabels, personalTopicKeys, legacyPersonalTopicKeys, relationshipTopicKeys, previewGenerationProgress, reportGenerationProgress, type LifeReport } from "./lifeReport";
+import { hasLifePreview, isLifeReport, lifeLabels, personalTopicKeys, legacyPersonalTopicKeys, marriagePreviewKeys, marriageTopicKeys, relationshipTopicKeys, previewGenerationProgress, reportGenerationProgress, type LifeReport } from "./lifeReport";
 import { reportContent } from "./reportContent";
 import { reportHtml } from "./reading";
 import { languages } from "./locales";
@@ -25,28 +25,70 @@ function personalFixture(language: typeof languages[number] = "zh", full = false
   };
 }
 
+it("exports the Thai marriage outline for the authorized edition", () => {
+  const report: LifeReport = {
+    ...reportFixture({ ...inputFor("zh"), report_kind: "marriage" }),
+    format: "thai-marriage", version: "thai-marriage-1", title: "泰式占星 · 婚姻关系报告",
+    preview: null, chapters: [], plan: null, generation_progress: undefined,
+    preview_state: "ready", access: "preview", full_state: "not_started",
+    progress: { completed: 0, total: marriageTopicKeys.length },
+    catalog: marriageTopicKeys.map(key => ({ key, title: key, questions: [], houses: [], ready: false })),
+    marriage: {
+      preview: marriagePreviewKeys.map(key => ({ key, title: key, paragraphs: ["FREE_" + key] })),
+      full: marriageTopicKeys.map(key => ({ key, title: key, paragraphs: ["PRIVATE_" + key] })),
+    },
+  };
+  expect(isLifeReport(report)).toBe(true);
+  expect(reportContent(report).map(section => section.key)).toEqual(marriagePreviewKeys);
+  expect(reportHtml(report, lifeLabels(report))).toContain("<p>FREE_unlock_offer</p>");
+  expect(reportHtml(report, lifeLabels(report))).not.toContain("PRIVATE_");
+  report.access = "full";
+  report.full_state = "generating";
+  expect(reportHtml(report, lifeLabels(report))).not.toContain("PRIVATE_");
+  report.full_state = "ready";
+  report.progress.completed = marriageTopicKeys.length;
+  expect(isLifeReport(report)).toBe(true);
+  expect(reportContent(report).map(section => section.key)).toEqual(marriageTopicKeys);
+  const document = reportHtml(report, lifeLabels(report));
+  expect(document.match(/<h2>.*?<\/h2>/g)).toEqual(marriageTopicKeys.map(key => "<h2>" + key + "</h2>"));
+  expect(document).not.toContain("FREE_");
+});
+
 describe("personal Western report contract and export", () => {
-  it("keeps the original preview layout before the complete relationship chapters and gates all six sections", () => {
+  it("exports exactly the judgment and chart basis for the authorized edition", () => {
     const report = personalFixture("zh", true);
     report.title = "爱情人物影响解读报告";
-    report.input.relationship = {status: "single", source: "unspecified"};
-    report.version = "western-relationship-1";
-    report.catalog = relationshipTopicKeys.map(key => ({key, title: key, houses: [], questions: [], ready: true}));
+    report.input.relationship = { status: "single", source: "unspecified" };
+    report.version = "western-relationship-3";
+    report.catalog = relationshipTopicKeys.map((key, index) => ({
+      key, title: ["判断", "星盘依据"][index], houses: [], questions: [], ready: true,
+    }));
+    report.progress = { completed: 2, total: 2 };
+    report.personal!.free_lines = [];
+    report.personal!.relationship = null;
     report.personal!.talent = null;
     report.personal!.themes = null;
     report.personal!.nodes = [];
-    report.personal!.relationship_sections = Object.fromEntries(
-      relationshipTopicKeys.map(key => [key, ['RELATIONSHIP_PRIVATE_' + key]]),
-    ) as NonNullable<NonNullable<LifeReport["personal"]>["relationship_sections"]>;
+    report.personal!.relationship_preview_sections = { judgment: ["FREE_JUDGMENT"], basis: ["水星 · 金星\nFREE_BASIS"] };
+    report.personal!.relationship_sections = { judgment: ["PAID_JUDGMENT"], basis: ["月亮 · 水星\nPAID_BASIS"] };
     expect(isLifeReport(report)).toBe(true);
+    expect(hasLifePreview(report)).toBe(true);
     const complete = reportHtml(report, lifeLabels(report));
     expect(complete).toContain("<h1>爱情人物影响解读报告</h1>");
-    expect(complete).toContain("<h2>who</h2><p>RELATIONSHIP_PRIVATE_who</p>");
-    expect(complete.indexOf("FREE_RELATIONSHIP_TEXT")).toBeLessThan(complete.indexOf("RELATIONSHIP_PRIVATE_who"));
-    expect(complete.indexOf("RELATIONSHIP_PRIVATE_who")).toBeLessThan(complete.indexOf("RELATIONSHIP_PRIVATE_impact"));
-    expect(complete).toContain("RELATIONSHIP_PRIVATE_next_steps");
+    expect(complete.match(/<h2>.*?<\/h2>/g)).toEqual(["<h2>判断</h2>", "<h2>星盘依据</h2>"]);
+    expect(complete).toContain("<h2>判断</h2><p>PAID_JUDGMENT</p>");
+    expect(complete).toContain("<h2>星盘依据</h2><p>月亮 · 水星</p><p>PAID_BASIS</p>");
+    expect(complete).not.toContain("FREE_JUDGMENT");
     report.access = "preview";
-    expect(reportHtml(report, lifeLabels(report))).not.toContain("RELATIONSHIP_PRIVATE_");
+    const free = reportHtml(report, lifeLabels(report));
+    expect(free.match(/<h2>.*?<\/h2>/g)).toEqual(["<h2>判断</h2>", "<h2>星盘依据</h2>"]);
+    expect(free).toContain("<p>FREE_JUDGMENT</p>");
+    expect(free).toContain("<p>水星 · 金星</p><p>FREE_BASIS</p>");
+    expect(free).not.toContain("PAID_");
+    report.access = "full";
+    report.full_state = "generating";
+    expect(reportHtml(report, lifeLabels(report))).not.toContain("PAID_");
+    expect(reportHtml(report, lifeLabels(report))).toContain("FREE_JUDGMENT");
   });
   it("accepts free content while paid calculations are deferred", () => {
     const report = personalFixture();

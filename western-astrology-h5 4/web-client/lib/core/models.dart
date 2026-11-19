@@ -20,14 +20,50 @@ const fortuneKeys = [
 const westernKeys = ['natal', 'career', 'wealth', 'love', 'risk'];
 const personalKeys = [...westernKeys, 'plan'];
 const legacyPersonalKeys = ['talent', 'node-1', 'node-2', 'node-3'];
-const relationshipKeys = [
-  'who',
-  'impact',
-  'pattern',
-  'assessment',
-  'decision',
-  'next_steps',
+const relationshipKeys = ['judgment', 'basis'];
+const marriagePreviewKeys = [
+  'birth_details',
+  'relationship_style',
+  'current_relationship',
+  'relationship_snapshot',
+  'unlock_offer',
 ];
+const marriageKeys = [
+  'how_to_read',
+  'long_term_relationship',
+  'relationship_chart',
+  'relationship_timing',
+  'other_areas',
+  'relationship_actions',
+  'traditional_support',
+  'relationship_takeaway',
+];
+
+bool _validRelationshipSections(Json sections) =>
+    sections.length == relationshipKeys.length &&
+    relationshipKeys.every((key) {
+      final paragraphs = sections[key];
+      return paragraphs is List &&
+          paragraphs.isNotEmpty &&
+          paragraphs.every((paragraph) => text(paragraph).trim().isNotEmpty);
+    });
+
+bool _validMarriageSections(dynamic value, List<String> keys) {
+  final sections = objects(value);
+  return sections.length == keys.length &&
+      sections.asMap().entries.every((entry) {
+        final section = entry.value;
+        final paragraphs = section['paragraphs'];
+        return section['key'] == keys[entry.key] &&
+            text(section['title']).trim().isNotEmpty &&
+            paragraphs is List &&
+            paragraphs.isNotEmpty &&
+            paragraphs.every(
+              (line) => line is String && line.trim().isNotEmpty,
+            );
+      });
+}
+
 const previewKeys = [
   'preview_summary',
   'preview_strength',
@@ -119,7 +155,6 @@ class Place {
   String get country => text(json['countryCode']);
   String get zone => text(json['timeZone']);
   String get english => text(json['nameEnglish']);
-  String get provinceId => text(json['provinceId']);
   String name(String language) {
     final preferred = language == 'zh'
         ? 'nameChinese'
@@ -143,12 +178,6 @@ class Place {
       : text(json[language == 'zh' ? 'nameChinese' : 'nameThai']).isNotEmpty
       ? text(json[language == 'zh' ? 'nameChinese' : 'nameThai'])
       : english;
-  bool matches(String query) => [
-    json['nameEnglish'],
-    json['nameChinese'],
-    json['nameThai'],
-    ...(json['aliases'] as List? ?? []),
-  ].any((v) => '$v'.toLowerCase().contains(query.trim().toLowerCase()));
 }
 
 String inputSignature(Json input) {
@@ -208,14 +237,23 @@ class LifeReport {
   bool get career => input['career'] != null;
   bool get personalReport => json['format'] == 'western-personal';
   bool get relationshipReport => personalReport && input['relationship'] is Map;
+  bool get marriageReport => json['format'] == 'thai-marriage';
+  bool get sectionedReport => marriageReport || relationshipReport;
+  Json get marriage => object(json['marriage']);
   bool get western => personalReport || json['format'] == 'western-compact';
   Json get personal => object(json['personal']);
   Json get relationshipPreview => object(personal['relationship']);
+  Json get relationshipPreviewSections =>
+      object(personal['relationship_preview_sections']);
   List<String> get freeLines =>
       (personal['free_lines'] as List? ?? []).map(text).toList();
   List<Json> get freeTraits => objects(personal['traits']);
   String get opportunityAction => text(personal['opportunity_action']);
-  bool get hasPreview => personalReport
+  bool get hasPreview => marriageReport
+      ? _validMarriageSections(marriage['preview'], marriagePreviewKeys)
+      : relationshipReport
+      ? _validRelationshipSections(relationshipPreviewSections)
+      : personalReport
       ? freeLines.length == 3 &&
             freeLines.every((line) => line.trim().isNotEmpty)
       : preview.isNotEmpty;
@@ -223,6 +261,18 @@ class LifeReport {
   Json get personalThemes => full ? object(personal['themes']) : {};
   Json get relationshipSections =>
       full ? object(personal['relationship_sections']) : {};
+  List<Json> readingSections({bool complete = false}) {
+    final showFull = complete && ready;
+    if (marriageReport) return objects(marriage[showFull ? 'full' : 'preview']);
+    final content = showFull
+        ? relationshipSections
+        : relationshipPreviewSections;
+    return [
+      for (final section in catalog)
+        {...section, 'paragraphs': content[section['key']]},
+    ];
+  }
+
   bool get sixPersonalThemes =>
       personalReport &&
       !relationshipReport &&
@@ -245,6 +295,8 @@ class LifeReport {
   bool get estimated => object(json['time_accuracy'])['mode'] == 'estimated';
   List<String> get progressKeys => career
       ? ['work']
+      : marriageReport
+      ? marriageKeys
       : relationshipReport
       ? relationshipKeys
       : personalReport
@@ -263,6 +315,7 @@ class LifeReport {
     final price = object(row['price']);
     final isPersonal = row['format'] == 'western-personal';
     final isRelationship = isPersonal && input['relationship'] is Map;
+    final isMarriage = row['format'] == 'thai-marriage';
     final personalCatalog = isRelationship
         ? relationshipKeys
         : catalog.length == legacyPersonalKeys.length
@@ -270,6 +323,8 @@ class LifeReport {
         : personalKeys;
     final expectedCount = input['career'] != null
         ? 1
+        : isMarriage
+        ? marriageKeys.length
         : isPersonal
         ? personalCatalog.length
         : row['format'] == 'western-compact'
@@ -326,6 +381,23 @@ class LifeReport {
       throw const FormatException('invalid_preview');
     }
     final report = LifeReport._(row);
+    if (isMarriage &&
+        (input['report_kind'] != 'marriage' ||
+            !catalog.asMap().entries.every(
+              (entry) => entry.value['key'] == marriageKeys[entry.key],
+            ) ||
+            row['preview'] != null ||
+            report.chapters.isNotEmpty ||
+            row['plan'] != null ||
+            row['preview_state'] == 'ready' && !report.hasPreview ||
+            report.full &&
+                row['full_state'] == 'ready' &&
+                !_validMarriageSections(
+                  report.marriage['full'],
+                  marriageKeys,
+                ))) {
+      throw const FormatException('invalid_marriage_report');
+    }
     if (isPersonal) {
       final personal = report.personal;
       final lines = personal['free_lines'];
@@ -336,7 +408,6 @@ class LifeReport {
         r'^western-personal-(\d+)$',
       ).firstMatch(text(row['version']));
       final requiresRelationship =
-          isRelationship ||
           (int.tryParse(relationshipVersion?.group(1) ?? '') ?? 0) >= 8;
       if (personal['relationship'] != null ||
           requiresRelationship && row['preview_state'] == 'ready') {
@@ -396,14 +467,7 @@ class LifeReport {
         throw const FormatException('invalid_personal_report');
       }
       if (row['full_state'] == 'ready' && report.full && isRelationship) {
-        final sections = report.relationshipSections;
-        if (sections.length != relationshipKeys.length ||
-            relationshipKeys.any((key) {
-              final paragraphs = sections[key];
-              return paragraphs is! List ||
-                  paragraphs.isEmpty ||
-                  paragraphs.any((paragraph) => text(paragraph).trim().isEmpty);
-            })) {
+        if (!_validRelationshipSections(report.relationshipSections)) {
           throw const FormatException('invalid_relationship_report');
         }
       } else if (row['full_state'] == 'ready' && report.full) {
@@ -543,12 +607,14 @@ class LifeReport {
     if (!ready) 'access': 'preview',
     if (!ready) 'chapters': <Json>[],
     if (!ready) 'plan': null,
+    if (marriageReport && !ready) 'marriage': {...marriage, 'full': null},
     if (personalReport && !ready)
       'personal': {
         ...personal,
         'talent': null,
         'themes': null,
         'nodes': <Json>[],
+        if (relationshipReport) 'relationship_sections': null,
       },
   };
 }
