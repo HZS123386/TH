@@ -28,21 +28,35 @@ class ReportReference {
         : createdAt!.millisecondsSinceEpoch / 1000,
     'state': state,
   };
-  factory ReportReference.fromJson(Map<String, dynamic> json) =>
-      ReportReference(
-        json['report_id'] as String,
-        json['result_id'] as String,
-        json['locale'] as String,
-        profileRevision: json['profile_revision'] as int?,
-        number: json['report_number'] as String?,
-        createdAt: json['created_at'] == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(
-                ((json['created_at'] as num) * 1000).round(),
-                isUtc: true,
-              ),
-        state: json['state'] as String? ?? 'ready',
-      );
+  factory ReportReference.fromJson(Map<String, dynamic> json) {
+    final id = json['report_id'];
+    final resultId = json['calculation_result_id'] ?? json['result_id'];
+    final locale = json['locale'];
+    final revision = json['profile_revision'];
+    if (id is! String ||
+        id.isEmpty ||
+        resultId is! String ||
+        resultId.isEmpty ||
+        locale is! String ||
+        locale.isEmpty ||
+        (revision != null && (revision is! int || revision < 1))) {
+      throw const FormatException('invalid_report_reference');
+    }
+    return ReportReference(
+      id,
+      resultId,
+      locale,
+      profileRevision: revision as int?,
+      number: json['report_number'] as String?,
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              ((json['created_at'] as num) * 1000).round(),
+              isUtc: true,
+            ),
+      state: json['state'] as String? ?? 'ready',
+    );
+  }
 }
 
 class H5ReportReference {
@@ -89,14 +103,18 @@ class ReportsRepository {
   final ApiClient api;
   final LocalDraftStore drafts;
   bool exampleSaved(String owner) =>
-      drafts.read(owner, 'example-bookmark') != null;
+      drafts.read(owner, LocalDraftStore.exampleBookmark) != null ||
+      drafts.read(owner, LocalDraftStore.legacyExampleBookmark) != null;
   Future<void> saveExample(String owner) => drafts.write(
     owner,
-    'example-bookmark',
+    LocalDraftStore.exampleBookmark,
     {'saved_at': DateTime.now().toUtc().toIso8601String()},
   );
-  Future<void> removeExample(String owner) =>
-      drafts.remove(owner, 'example-bookmark');
+  Future<void> removeExample(String owner) async {
+    await drafts.remove(owner, LocalDraftStore.exampleBookmark);
+    await drafts.remove(owner, LocalDraftStore.legacyExampleBookmark);
+  }
+
   Future<ReportReference> create(
     String owner,
     String resultId,
@@ -115,11 +133,18 @@ class ReportsRepository {
         'locale': locale,
       },
     );
-    if (response['report_id'] is! String) {
+    final reportId = response['report_id'];
+    final returnedResultId =
+        response['calculation_result_id'] ?? response['result_id'];
+    if (reportId is! String ||
+        reportId.isEmpty ||
+        (returnedResultId != null && returnedResultId != resultId) ||
+        (response['locale'] ?? locale) != locale ||
+        (response['profile_revision'] ?? revision) != revision) {
       throw const ApiFailure('invalid_report_reference');
     }
     final ref = ReportReference(
-      response['report_id'] as String,
+      reportId,
       resultId,
       locale,
       profileRevision: revision,
@@ -132,12 +157,20 @@ class ReportsRepository {
   Future<void> remember(String owner, ReportReference ref) =>
       drafts.write(owner, 'active-report', ref.toJson());
 
-  Future<ReportSnapshot> read(ReportReference ref) async =>
-      ReportSnapshot.fromJson(
-        await api.get('/api/western/reports/${Uri.encodeComponent(ref.id)}'),
-        resultId: ref.resultId,
-        locale: ref.locale,
-      );
+  Future<ReportSnapshot> read(ReportReference ref) async {
+    final value = await api.get(
+      '/api/western/reports/${Uri.encodeComponent(ref.id)}',
+    );
+    if (value['report_id'] != ref.id) {
+      throw const FormatException('invalid_report_reference');
+    }
+    return ReportSnapshot.fromJson(
+      value,
+      resultId: ref.resultId,
+      locale: ref.locale,
+    );
+  }
+
   ReportReference? active(String owner) {
     final value = drafts.read(owner, 'active-report');
     try {
@@ -176,6 +209,7 @@ class ReportsRepository {
         )
         .toList(growable: false);
   }
+
   Future<H5HistoryPage> listH5([Map<String, String>? cursor]) async {
     final value = await api.get(
       Uri(path: '/api/app/h5-reports', queryParameters: cursor).toString(),

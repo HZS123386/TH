@@ -34,6 +34,82 @@ void main() {
   setUp(() => debugDefaultTargetPlatformOverride = TargetPlatform.windows);
   tearDown(() => debugDefaultTargetPlatformOverride = null);
 
+  test('JY example bookmarks and active reports survive an upgrade', () async {
+    SharedPreferences.setMockInitialValues({
+      'fate.example-report.jy-owner': '{"saved":true}',
+      'fate.example-bookmark.local-owner': '{"saved_at":"2026-11-19"}',
+      'fate.active-report.jy-owner': jsonEncode({
+        'report_id': 'r1',
+        'calculation_result_id': 'c1',
+        'locale': 'en',
+        'profile_revision': 1,
+      }),
+    });
+    var responseId = 'r1';
+    final repository = ReportsRepository(
+      ApiClient(
+        'https://api.example.test',
+        client: MockClient((request) async {
+          expect(request.url.path, '/api/western/reports/r1');
+          return http.Response(
+            jsonEncode({
+              'system': 'western_natal',
+              'report_id': responseId,
+              'calculation_result_id': 'c1',
+              'locale': 'en',
+              'access': 'preview',
+              'preview': [],
+              'sections': [],
+            }),
+            200,
+          );
+        }),
+      ),
+      LocalDraftStore(await SharedPreferences.getInstance()),
+    );
+
+    expect(repository.exampleSaved('jy-owner'), isTrue);
+    final reference = repository.active('jy-owner');
+    expect(reference?.resultId, 'c1');
+    expect((await repository.read(reference!)).id, 'r1');
+    responseId = 'another-report';
+    await expectLater(repository.read(reference), throwsFormatException);
+
+    await repository.removeExample('jy-owner');
+    expect(repository.exampleSaved('jy-owner'), isFalse);
+    expect(repository.exampleSaved('local-owner'), isTrue);
+  });
+
+  test('creating a report validates any returned chart reference', () async {
+    SharedPreferences.setMockInitialValues({});
+    var response = {'report_id': 'r1', 'calculation_result_id': 'other-chart'};
+    final repository = ReportsRepository(
+      ApiClient(
+        'https://api.example.test',
+        client: MockClient(
+          (_) async => http.Response(jsonEncode(response), 202),
+        ),
+      ),
+      LocalDraftStore(await SharedPreferences.getInstance()),
+    );
+
+    await expectLater(
+      repository.create('owner', 'c1', 1, 'en', 'request-key'),
+      throwsA(isA<ApiFailure>()),
+    );
+    expect(repository.active('owner'), isNull);
+    response = {'report_id': 'r1', 'report_number': 'FATE-EXAMPLE'};
+    final saved = await repository.create(
+      'owner',
+      'c1',
+      1,
+      'en',
+      'request-key',
+    );
+    expect(saved.number, 'FATE-EXAMPLE');
+    expect(repository.active('owner')?.resultId, 'c1');
+  });
+
   test(
     'late searches cannot replace newer results or restore a deleted record',
     () async {
