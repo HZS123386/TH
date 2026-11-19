@@ -1140,7 +1140,8 @@ class LifeReports:
                 bundle = marriage_report.bundle(body, chart, full=True, free_story=preview_record["story"])
                 result = await self.write_part(report_id, lease, bundle, owner, network)
                 if result.get("story"):
-                    record = {"story": result["story"], "evidence": bundle["evidence"], "chart_basis": bundle["chart_basis"]}
+                    record = {"version": bundle["writing_version"], "story": result["story"],
+                              "evidence": bundle["evidence"], "chart_basis": bundle["chart_basis"]}
                     self.update(report_id, expected_lease=lease, chapters=encoded({"marriage": record}),
                                 full_state="ready", lease="", lease_until=0)
                 else:

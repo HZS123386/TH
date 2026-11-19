@@ -14,8 +14,8 @@ from .schemas import ThaiReadingInput
 from .thai_readings import copy_for, grounding
 
 FORMAT = "thai-marriage"
-PREVIEW_VERSION = "thai-marriage-7"
-FULL_VERSION = "thai-marriage-2"
+PREVIEW_VERSION = "thai-marriage-9"
+FULL_VERSION = "thai-marriage-3"
 COPY = json.loads((Path(__file__).resolve().parents[1] / "content" / "marriage-report.json").read_text(encoding="utf-8"))
 PREVIEW = {
     "birth_details": (),
@@ -25,9 +25,9 @@ PREVIEW = {
     "unlock_offer": (),
 }
 FULL = {
-    "how_to_read": (),
+    "how_to_read": ("contrast",),
     "long_term_relationship": ("fit", "conflict", "supportive", "draining", "key_window"),
-    "relationship_chart": ("contrast", "planet_pattern"),
+    "relationship_chart": ("planet_pattern",),
     "relationship_timing": ("present", "period_one", "period_two", "period_three"),
     "other_areas": ("career", "money", "wellbeing"),
     "relationship_actions": ("selection", "communication", "boundaries", "other_action"),
@@ -76,12 +76,12 @@ class MarriagePreview(MarriageDraft):
 
 
 class MarriageFull(MarriageDraft):
+    contrast: MarriagePoint
     fit: MarriagePoint
     conflict: MarriagePoint
     supportive: MarriagePoint
     draining: MarriagePoint
     key_window: MarriagePoint
-    contrast: MarriagePoint
     planet_pattern: MarriagePoint
     present: MarriagePoint
     period_one: MarriagePoint
@@ -246,11 +246,13 @@ def preview_prompt(bundle):
         "Also return current.state from current_states. Use only the supplied facts. "
         "The app adds exact chart placements and dates to the prose. Use short, direct second-person statements "
         "without technical terms, dates, rhetorical questions or assumed real events, partners or outcomes. "
-        "needs: name the concrete answer or action the reader wants, based on the bound Ascendant or Sun. "
-        "reaction: say what they do if it does not happen. "
-        "trap: give one observable mismatch between words and action, and what it stalls. "
-        "current: give a judgment grounded in the cited recent positions and one behavior to check. "
-        "When the available state is observe, keep it general and infer no personal timing. "
+        "needs: open with the main mistake in how the reader tries to get a relationship need met. "
+        "Name the need in everyday words, based on the bound Ascendant or Sun. "
+        "reaction: say what the reader does when unsure and what the other person sees or hears as a result. "
+        "trap: describe one distinct pattern the reader can recognize and say where it leaves the relationship. "
+        "current.state is the verdict based on the cited recent positions. In current.text give the one concrete "
+        "condition for taking someone seriously, changing the pattern, or holding back. The app prints the verdict first. "
+        "When the available state is observe, give an observable check and infer no personal timing. "
         "attracts: describe an observable quality that draws them in. "
         "drains: show the behavior that costs them time or effort. "
         "Give each point a distinct idea in one or two sentences, around 30–72 Chinese characters "
@@ -258,8 +260,13 @@ def preview_prompt(bundle):
     )
     if bundle["language"] == "zh":
         prompt += (
-            "用陈述句直接说谁做什么、你怎么反应。比如“问了几次还没答复，你就不再主动发消息”。"
-            "仅参考表达力度，具体判断和动作根据引用的依据重写。"
+            "免费正文要接住首页「该断该续？」和「揪出搅局的人」的话术。"
+            "needs 直接点出关系卡在哪。trap 用「搅局」点题，点出哪类人容易拖住关系，写清一个可辨认的行为和具体后果。"
+            "语气示例「你最容易在这类搅局者身上耗时间。对方每次都说想见你，一谈具体哪天就说再看看，关系就一直停在聊天」。"
+            "current 接上当下判断，给一个现实中能核对的断续标准。"
+            "比如「再改约时，先看对方会不会主动定个新时间。反复只说改天，就该放慢投入」。"
+            "drains 说清另一种投入代价，同一种行为警示只讲一次。"
+            "例句只示范语气。人物类型、行为和判断都以各段引用的实际盘面为依据。"
         )
     return prompt
 
@@ -271,7 +278,8 @@ def prompt(bundle):
         f"Write {bundle['writing_version']}, in language={bundle['language']} and reading={bundle['reading']}. "
         "You interpret the calculated evidence in this request as Thai Suriyayatra astrology (whole-sign houses; H7 is partnership). "
         "Sign indexes are zero-based, Aries through Pisces. Marriage and sustained partnership come first. "
-        "Use a sharp, direct voice in both editions and throughout the other areas. Lead each paragraph with the verdict, then "
+        "Use a sharp, direct voice. Open with the central relationship verdict, develop it with concrete examples, "
+        "and end with the first action to take. Lead each paragraph with the verdict, then "
         "give the observable behavior and its practical cost or consequence. Put the relationship need into something the reader "
         "can see someone do. Show what gets stuck when that need is unmet. Use short sentences and specific verbs. "
         "Base the verdict on the supplied factors. If a situation is uncertain, give a single checkable condition. "
@@ -290,11 +298,14 @@ def prompt(bundle):
     )
     if bundle["language"] == "zh":
         base += (
-            "简体中文要直接、具体。语气示例：你需要对方在计划有变时主动另约。每次都要你追问，见面就一直定不下来。"
+            "简体中文按总分总来写。开头两句直说你最容易做错什么、关系因此卡在哪。"
+            "例如“你习惯用分析挡住需求。对方听懂了你的道理，还是不知道你想怎么走”。"
             "只参考句式和力度。人物特征、行为和结论要根据实际依据重新写。"
         )
     return base + (
         "FULL. Develop the free conclusions into observable choices for living together. "
+        "contrast: this is the opening verdict. In one or two sentences name the central habit and the cost it creates "
+        "in a long-term relationship. Base the judgment on N0 and H7 if available. "
         "fit: name who is worth taking seriously and how the pair handles a real long-term decision. "
         "conflict: name the recurring trigger, the reader's response and what it costs once responsibilities are shared. "
         "supportive: identify the partner's behavior that makes the reader's strengths useful. "
@@ -302,8 +313,6 @@ def prompt(bundle):
         "key_window: give a direct judgment about the cited window for meeting someone or moving toward commitment. "
         "Give a condition the reader can verify and say what should cause them to slow down. Give the judgment here; the window dates "
         "are displayed from the citation. Avoid promises to supply timing later. "
-        "contrast: using N0 and H7 if available, spell out how the reader can act decisively elsewhere and respond differently in closeness, "
-        "or describe a different specific tension supported by the actual chart. "
         "planet_pattern: use a partner-house ruler or relevant Moon/Venus factor to add one new consequence of that tension. "
         "present: state the immediate priority and where to hold back, using the recent evidence. "
         "period_one, period_two, period_three: decide for each assigned window whether to advance, adjust a recurring pattern, or "
@@ -318,8 +327,8 @@ def prompt(bundle):
         "other_action: give one brief concrete action each for work, finances and one's own state, in that order. "
         "Use the corresponding evidence for each action if available. "
         "support: make the traditional symbol printed by the app an optional reminder for one real decision or conversation. "
-        "takeaway: close with one memorable sentence linking the central need to the reader's first change in behavior. "
-        "Aim for 60–130 Chinese characters in fit, conflict, contrast and the window sections and 25–100 elsewhere, "
+        "takeaway: name one immediate change the reader can make, then close with a short sentence showing what that changes. "
+        "Aim for 60–130 Chinese characters in fit, conflict and the window sections and 25–100 elsewhere, "
         "with natural equivalents in other languages. The full edition adds consequences, choices and follow-through to the free reading."
     )
 
@@ -417,12 +426,15 @@ def public_sections(record, chart, profile, explain, *, full=False):
                           birthplace, show("N0" if known else "P_sun"), *([] if known else [copy["precision"]])],
         "unlock_offer": copy["offer"].splitlines(),
     } if not full else {
-        "how_to_read": [copy["guide"]],
         "relationship_chart": [show(identifier) for identifier in record["chart_basis"]] if known else [show("P_sun"), copy["precision"]],
         "relationship_timing": [] if known else [copy["timing_limit"]],
         # Cultural reference: Thailand Cultural Encyclopedia, entry 26733 (Venus).
         "traditional_support": [copy["symbol"]],
     }
+    if full and "version" not in record:
+        # Earlier paid stories used the contrast inside the chart section.
+        layout = {**FULL, "how_to_read": (), "relationship_chart": ("contrast", "planet_pattern")}
+        extras["how_to_read"] = [copy["guide"]]
     sections = []
     for index, (section, keys) in enumerate(layout.items()):
         paragraphs = list(extras.get(section, []))

@@ -261,9 +261,24 @@ class LifeReport {
   Json get personalThemes => full ? object(personal['themes']) : {};
   Json get relationshipSections =>
       full ? object(personal['relationship_sections']) : {};
-  List<Json> readingSections({bool complete = false}) {
+  List<Json> readingSections({bool complete = false, Copy? copy}) {
     final showFull = complete && ready;
-    if (marriageReport) return objects(marriage[showFull ? 'full' : 'preview']);
+    if (marriageReport) {
+      final sections = objects(marriage[showFull ? 'full' : 'preview']);
+      if (showFull || language != 'zh' || copy == null) return sections;
+      // A saved preview can carry headings from an older server release.
+      final titles = copy.forLanguage(language).list('marriage', 'preview');
+      if (titles.length != sections.length) return sections;
+      return [
+        for (final (index, section) in sections.indexed)
+          if (index > 0 &&
+              (section['key'] != 'relationship_style' ||
+                  text(profile['birth_time']).isNotEmpty))
+            {...section, 'title': titles[index]}
+          else
+            section,
+      ];
+    }
     final content = showFull
         ? relationshipSections
         : relationshipPreviewSections;

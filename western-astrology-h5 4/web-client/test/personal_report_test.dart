@@ -172,6 +172,54 @@ void main() {
       },
     );
   }
+  testWidgets('saved Chinese marriage preview shows current headings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final data = marriageFixture();
+    final marriage = object(data['marriage']);
+    final preview = objects(marriage['preview']);
+    const oldTitles = ['上升在感情里的真实样子', '当前感情能量判断', '感情模式快照', '解锁完整婚姻关系报告'];
+    for (var i = 0; i < oldTitles.length; i++) {
+      preview[i + 1]['title'] = oldTitles[i];
+    }
+    data['marriage'] = {...marriage, 'preview': preview};
+    final browser = TestBrowser();
+    final controller = H5Controller(
+      translations(),
+      ReportRepository(
+        browser,
+        client: MockClient(
+          (request) async => http.Response(
+            jsonEncode(data),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          ),
+        ),
+      ),
+      browser,
+      language: 'zh',
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      H5App(
+        controller: controller,
+        initialLocation: '/report.html?id=${data['id']}&lang=zh',
+      ),
+    );
+    await tester.pumpAndSettle();
+    for (final title in controller.copy.list('marriage', 'preview')) {
+      expect(find.text(title), findsOneWidget);
+    }
+    for (final title in oldTitles) {
+      expect(find.text(title), findsNothing);
+    }
+    expect(find.text('Free marriage section 3.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('saved marriage report shows the paid outline in order', (
     tester,
   ) async {

@@ -561,7 +561,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           const SizedBox(height: 12),
         ],
         if (report.sectionedReport)
-          ..._readingSections(report.readingSections())
+          ..._readingSections(report.readingSections(copy: c))
         else if (!report.full) ...[
           Text(
             c.t(

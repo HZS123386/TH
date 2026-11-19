@@ -312,7 +312,10 @@ async function ensureRegionalPdfFonts(pdf: PdfEngine, report: LifeReport, labels
 export async function saveReportPdf(report: LifeReport, labels: LifeLabels, signal: AbortSignal): Promise<"saved" | "downloaded" | "cancelled"> {
   const full = report.access === "full" && report.full_state === "ready";
   const id = report.id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48) || "report";
-  const filename = `Life-Report-${id}-${full ? "full" : "preview"}.pdf`;
+  const fullFilename = report.format === "thai-marriage" && report.input.profile.language === "zh"
+    ? "FATE完整婚姻关系报告.pdf"
+    : `FATE-${edition(report, labels)}.pdf`;
+  const filename = full ? fullFilename : `Life-Report-${id}-preview.pdf`;
   let handle: FileSystemFileHandle | undefined;
   const picker = (window as SaveWindow).showSaveFilePicker;
   if (picker) {

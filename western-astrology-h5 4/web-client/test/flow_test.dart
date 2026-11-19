@@ -1963,7 +1963,14 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('泰式占星 · 婚姻关系报告'), findsOneWidget);
-      expect(find.text('当前感情能量判断'), findsOneWidget);
+      for (final title in [
+        '你的感情里，藏着一个你没发现的“隐形卡点”',
+        '接下来的30天，你的感情搅局者正在发力',
+        '你一直在被“隐形搅局者”偷偷消耗精力',
+        '解锁完整报告，让你不再受搅局者的困扰',
+      ]) {
+        expect(find.text(title), findsOneWidget);
+      }
       expect(find.text('Free marriage section 3.'), findsOneWidget);
       expect(find.text('婚姻与长期关系完整解剖'), findsNothing);
       expect(tester.takeException(), isNull);

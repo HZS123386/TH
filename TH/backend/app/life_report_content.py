@@ -1273,7 +1273,7 @@ class LifeWriter(BaziReports):
         self.fallback_writer = None
         if settings.fortune_fallback_provider not in ("", "qwen"):
             raise ValueError("invalid FORTUNE_FALLBACK_PROVIDER")
-        if self.provider == "openai" and settings.fortune_fallback_provider == "qwen":
+        if self.provider in ("openai", "deepseek") and settings.fortune_fallback_provider == "qwen":
             fallback_settings = replace(settings, fortune_provider="qwen", fortune_fallback_provider="")
             self.fallback_writer = LifeWriter(store, fallback_settings, slots, charge=charge)
             if self.fallback_writer.enabled:
@@ -1290,7 +1290,7 @@ class LifeWriter(BaziReports):
 
     async def generate(self, bundle, owner, network):
         fallback = self.fallback_writer
-        if self.provider != "openai" or not fallback or not fallback.enabled:
+        if not fallback or not fallback.enabled:
             return await super().generate(bundle, owner, network)
         primary_called = False
         if not self.config or not self.config.enabled:
@@ -1365,7 +1365,7 @@ class LifeWriter(BaziReports):
         return context
 
     def response_format(self, bundle):
-        if self.provider != "openai" and (self.provider != "qwen" or not self.config.model.startswith("qwen3.7-plus")):
+        if self.provider not in ("openai", "deepseek") and (self.provider != "qwen" or not self.config.model.startswith("qwen3.7-plus")):
             return super().response_format(bundle)
         # Generate the provider contract from the same models used to validate and store the report.
         schema = story_schema(bundle).model_json_schema()

@@ -91,6 +91,7 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert prompt.startswith(f"Write {writing_version},")
         assert ("field_sources" in prompt) == is_free
         assert ("rhetorical questions" in prompt) == is_free
+        assert ("揪出搅局的人" in prompt) == is_free
         contract = self.response_format(bundle)["json_schema"]["schema"]
         paragraphs = FREE_TEXT if is_free else FULL_TEXT
         draft = {"language": "zh", "reading": bundle["reading"]}
@@ -166,7 +167,10 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert current[1].endswith(f"。{FREE_TEXT['current']}")
         if not known:
             assert "本命第" not in current[1]
-        assert len(free["marriage"]["preview"][-1]["paragraphs"]) == 5
+        offer = free["marriage"]["preview"][-1]["paragraphs"]
+        assert offer == marriage_report.COPY["zh"]["offer"].splitlines()
+        assert len(offer) == 2
+        assert offer[0] == "该断该续，先认清什么行为在搅局。"
         assert free["method"]["name"] == "Thai Suriyayatra"
         assert bool(free["chart"]) == known and free["time_accuracy"]["assumed_local_time"] is None
         assert free["marriage"]["full"] is None
@@ -202,7 +206,9 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert complete["progress"] == {"total": 8, "completed": 8}
         sections = complete["marriage"]["full"]
         assert [section["key"] for section in sections] == list(marriage_report.FULL)
+        assert sections[0]["paragraphs"] == [FULL_TEXT["contrast"]]
         assert FULL_TEXT["fit"] in sections[1]["paragraphs"]
+        assert FULL_TEXT["contrast"] not in sections[2]["paragraphs"]
         assert FULL_TEXT["takeaway"] == sections[-1]["paragraphs"][-1]
         timing = sections[3]["paragraphs"]
         if known:
@@ -228,6 +234,15 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         earlier_style = earlier["marriage"]["preview"][1]["paragraphs"]
         assert earlier_style == [f"根据你的星盘，{needs_position}。{opening}", *style[1:]]
         assert earlier["marriage"]["full"] == complete["marriage"]["full"]
+
+        with app.store.connect() as db:
+            row = db.execute("SELECT chapters FROM life_reports WHERE id=%s", (free["id"],)).fetchone()
+            chapters = json.loads(row["chapters"])
+            del chapters["marriage"]["version"]
+            db.execute("UPDATE life_reports SET chapters=%s WHERE id=%s", (json.dumps(chapters), free["id"]))
+        earlier_full = client.get(report_path, headers=HEADERS).json()["marriage"]["full"]
+        assert earlier_full[0]["paragraphs"] == [marriage_report.COPY["zh"]["guide"]]
+        assert FULL_TEXT["contrast"] in earlier_full[2]["paragraphs"]
 
 
 def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch):
