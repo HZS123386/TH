@@ -23,7 +23,7 @@ export const marriageTopicKeys = ["how_to_read", "long_term_relationship", "rela
   "other_areas", "relationship_actions", "traditional_support", "relationship_takeaway"] as const;
 type MarriageTopic = typeof marriagePreviewKeys[number] | typeof marriageTopicKeys[number];
 export type ReportTopic = Reading | FortuneTopicKey | typeof personalTopicKeys[number] | typeof legacyPersonalTopicKeys[number] | RelationshipTopic | MarriageTopic;
-export interface MarriageSection { key: MarriageTopic; title: string; paragraphs: string[] }
+export interface MarriageSection { key: MarriageTopic; title: string; paragraphs: string[]; visible?: boolean }
 export type LifeState = "not_started" | "pending" | "generating" | "ready" | "limited" | "unavailable" | "unconfigured";
 export type Feedback = "close" | "partly" | "different";
 export interface LifeEvidence { id: string; title: string; detail: string }
@@ -372,7 +372,8 @@ function validMarriageSections(sections: MarriageSection[] | null | undefined, k
 
 export function marriageSections(report: LifeReport): MarriageSection[] {
   const full = report.access === "full" && report.full_state === "ready";
-  return (full ? report.marriage?.full : report.marriage?.preview) ?? [];
+  const sections = (full ? report.marriage?.full : report.marriage?.preview) ?? [];
+  return sections.filter(section => section.visible !== false);
 }
 
 export function hasLifePreview(report: LifeReport): boolean {

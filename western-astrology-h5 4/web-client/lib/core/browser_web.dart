@@ -22,7 +22,11 @@ external void _failure(JSString path, JSString code, JSString method);
 @JS('fateBoot.fail')
 external void _startupFailed();
 @JS('fateBoot.connectWelcome')
-external void _connectWelcome(JSFunction enter);
+external void _connectWelcome(
+  JSFunction enter,
+  JSFunction changeLanguage,
+  JSString language,
+);
 @JS('fateH5.ownerKey')
 external JSString? _ownerKey();
 @JS('fateH5.visitContext')
@@ -30,7 +34,18 @@ external JSString _visitContext();
 
 class WebBrowserPort implements BrowserPort {
   void startupFailed() => _startupFailed();
-  void connectWelcome(void Function() enter) => _connectWelcome(enter.toJS);
+  String? get startupLanguage =>
+      web.document.documentElement?.getAttribute('lang');
+
+  void connectWelcome(
+    void Function() enter,
+    Future<bool> Function(String) changeLanguage,
+    String language,
+  ) {
+    final change = (JSString next) =>
+        changeLanguage(next.toDart).then((changed) => changed.toJS).toJS;
+    _connectWelcome(enter.toJS, change.toJS, language.toJS);
+  }
 
   @override
   Duration get welcomeAge =>

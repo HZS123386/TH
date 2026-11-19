@@ -17,10 +17,13 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   const status = { textContent: "" };
   const button = { hidden: true, addEventListener: vi.fn() };
   const startup = { remove: vi.fn(), dataset: {} as Record<string, string> };
-  const start = { setAttribute: vi.fn(), addEventListener: vi.fn() };
+  const start = { setAttribute: vi.fn() };
+  const progress = { textContent: "" };
+  const select = { id: "fate-welcome-language", value: options.language ?? "zh" };
   const nodes = new Map<string, unknown>([
     ["fate-startup-status", status], ["fate-startup-retry", button], ["fate-startup", startup],
     ["fate-welcome-start", start], ["fate-welcome-portrait", options.portrait],
+    ["fate-welcome-progress", progress], ["fate-welcome-language", select],
   ]);
   if (options.welcome) nodes.set("fate-welcome", { querySelector: vi.fn(), addEventListener: vi.fn() });
   const listeners = new Map<string, ((event: any) => void)[]>();
@@ -46,7 +49,13 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   const historyEntry = options.historyEntry ?? { state: null };
   const history = {
     get state() { return historyEntry.state; },
-    replaceState: vi.fn((state: Record<string, unknown> | null) => { historyEntry.state = state; }),
+    replaceState: vi.fn((state: Record<string, unknown> | null, _title?: string, next?: URL | string) => {
+      historyEntry.state = state;
+      if (next) {
+        const address = new URL(next, location.href);
+        Object.assign(location, { href: address.href, pathname: address.pathname, search: address.search });
+      }
+    }),
   };
   Object.defineProperty(document, "cookie", {
     get: () => options.cookieBlocked ? "" : cookie.value,
@@ -56,6 +65,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
     window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history,
     performance: { mark: vi.fn(), now: () => Date.now(), getEntriesByType: () => [{ type: options.navigationType ?? "navigate" }] },
     crypto: webcrypto, AbortController, fetch, console: { error: vi.fn() },
+    requestAnimationFrame: (callback: (now: number) => void) => setTimeout(() => callback(Date.now()), 16),
     sessionStorage: window.sessionStorage,
     _flutter: { buildConfig: { engineRevision: "test-engine" }, loader: { load: vi.fn(async (_options: any) => {}) } },
   };
@@ -68,8 +78,25 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
     return load;
   };
   const emit = (type: string, event = {}) => { for (const listener of listeners.get(type) ?? []) listener(event); };
-  const clickRetry = () => document.addEventListener.mock.calls.find(([type]) => type === "click")?.[1]({ target: { closest: () => button } });
-  return { boot: window.fateBoot, h5: window.fateH5, window, document, fetch, location, status, button, start, startup, storage, local, cookie, startFlutter, emit, clickRetry };
+  const dispatch = (name: string, target: unknown) => document.addEventListener.mock.calls.find(([type]) => type === name)?.[1]({ target });
+  const clickRetry = () => dispatch("click", { closest: (selector: string) => selector === "#fate-startup-retry" ? button : null });
+  const clickStart = () => dispatch("click", { closest: (selector: string) => selector === "#fate-welcome-start" ? start : null });
+  const selectLanguage = (language: string) => { select.value = language; dispatch("change", select); };
+  const preloadWasm = ({ graphics = true, gc = true } = {}) => {
+    Object.assign(window.navigator, { vendor: "Google Inc.", userAgent: "Chrome/136" });
+    const append = vi.fn();
+    const graphicsContext = graphics ? { getExtension: () => null } : null;
+    Object.assign(document, { head: { append }, createElement: () => ({ getContext: () => graphicsContext }) });
+    Object.assign(context, {
+      WebAssembly: { validate: () => gc },
+      ImageDecoder: class {},
+      Intl: { v8BreakIterator: class {}, Segmenter: class {} },
+      priorityPreload: (href: string, as: string) => ({ href, as }),
+    });
+    runInNewContext("preloadFateWasm('test-engine')", context);
+    return append.mock.calls.flat();
+  };
+  return { boot: window.fateBoot, h5: window.fateH5, window, document, fetch, location, status, button, start, progress, startup, storage, local, cookie, startFlutter, emit, clickRetry, clickStart, selectLanguage, preloadWasm };
 }
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-11T06:00:00Z")); });
@@ -382,33 +409,64 @@ it('does not let a cached former owner overwrite the current owner queue', async
   expect(pendingItems(storage).every(item => item.visit.id === 'other-visit')).toBe(true);
 });
 
-it.each(["zh", "th"])("keeps an early %s welcome click until Flutter is ready and enters only once", (language) => {
-  const page = openDocument(new Map(), false, { language });
+it.each(["zh", "th"])("accepts a streamed %s welcome click and enters before the first Flutter frame", (language) => {
+  const page = openDocument(new Map(), false, { language, streamingHtml: true });
   const enter = vi.fn();
-  const click = page.start.addEventListener.mock.calls.find(([name]) => name === "click")![1];
-  click();
-  click();
+  page.clickStart();
+  page.clickStart();
+  expect(page.start.setAttribute).toHaveBeenCalledWith("aria-busy", "true");
+  expect(page.progress.textContent).not.toBe("");
   page.boot.stage("engine");
   page.boot.connectWelcome(enter);
-  expect(enter).not.toHaveBeenCalled();
+  expect(enter).toHaveBeenCalledTimes(1);
   expect(page.startup.dataset.state).toBe("waiting");
-  expect(page.start.setAttribute).toHaveBeenCalledWith("aria-busy", "true");
   page.boot.ready();
   page.boot.ready();
   expect(enter).toHaveBeenCalledTimes(1);
 });
 
-it.each(["click", "error", "timeout"])("releases Flutter startup on a welcome portrait %s", async (reason) => {
+it("starts Flutter while the welcome portrait is still loading", () => {
   const portrait = new EventTarget();
   const page = openDocument(new Map(), false, { portrait });
-  const released = vi.fn();
-  page.boot.welcomePaint.then(released);
-  await vi.advanceTimersByTimeAsync(0);
-  expect(released).not.toHaveBeenCalled();
-  if (reason === "click") page.boot.enterWelcome();
-  if (reason === "error") portrait.dispatchEvent(new Event("error"));
-  await vi.advanceTimersByTimeAsync(reason === "timeout" ? 800 : 0);
-  expect(released).toHaveBeenCalledOnce();
+  expect(page.startFlutter()).toHaveBeenCalledOnce();
+});
+
+it("starts the same Flutter Wasm downloads early without spending bandwidth on incompatible browsers", () => {
+  expect(openDocument().preloadWasm()).toEqual([
+    { href: "main.dart.mjs", as: "script", rel: "modulepreload" },
+    { href: "main.dart.wasm", as: "fetch" },
+    { href: "engine/test-engine/skwasm.wasm", as: "fetch" },
+  ]);
+  expect(openDocument().preloadWasm({ graphics: false })).toEqual([]);
+  expect(openDocument().preloadWasm({ gc: false })).toEqual([]);
+  const first = openDocument();
+  first.boot.fail();
+  expect(openDocument(first.storage).preloadWasm()).toEqual([]);
+});
+
+it("keeps early language choices and waits for the latest choice before handing off", async () => {
+  const page = openDocument(new Map(), false, {
+    language: "th",
+    url: "http://127.0.0.1/thai-landing/?lang=th&utm_source=story#start",
+    streamingHtml: true,
+  });
+  page.selectLanguage("zh");
+  expect(page.document.documentElement.lang).toBe("zh");
+  expect(page.location.href).toContain("lang=zh&utm_source=story#start");
+  const enter = vi.fn();
+  const change = vi.fn(async (_language: string) => true);
+  page.boot.connectWelcome(enter, change, "th");
+  const ready = page.boot.ready();
+  expect(page.startup.remove).not.toHaveBeenCalled();
+  page.selectLanguage("vi");
+  page.clickStart();
+  await vi.advanceTimersByTimeAsync(80);
+  await ready;
+  expect(change.mock.calls).toEqual([["zh"], ["vi"]]);
+  expect(enter).toHaveBeenCalledOnce();
+  expect(page.document.documentElement.lang).toBe("vi");
+  expect(page.location.href).toContain("lang=vi&utm_source=story#start");
+  expect(page.startup.remove).toHaveBeenCalledOnce();
 });
 
 it("keeps the welcome open without a click and leaves deep links on their original route", () => {

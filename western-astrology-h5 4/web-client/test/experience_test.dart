@@ -217,6 +217,20 @@ void main() {
       );
       expect(tester.widget<Opacity>(shimmer).opacity, lessThan(bright));
       expect(find.byType(LandingPage), findsNothing);
+      final languageMenu = find.byKey(const ValueKey('language-menu'));
+      expect(
+        tester.getTopRight(languageMenu).dx,
+        greaterThan(tester.getTopRight(find.byType(WelcomePage)).dx - 32),
+      );
+      expect(tester.getCenter(languageMenu).dy, lessThan(90));
+      await tester.tap(languageMenu);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      await tester.tap(find.byKey(const ValueKey('language-option-th')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(h5.language, 'th');
+      expect(find.byType(WelcomePage), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('welcome-start')));
       await tester.pump();
       final landingState = tester.state(find.byType(LandingPage));
@@ -227,6 +241,7 @@ void main() {
       final uri = GoRouter.of(
         tester.element(find.byType(LandingPage)),
       ).routeInformationProvider.value.uri;
+      expect(uri.queryParameters['lang'], 'th');
       expect(uri.queryParameters['topic'], 'love');
       expect(uri.queryParameters['utm_source'], 'facebook');
       expect(tester.takeException(), isNull);

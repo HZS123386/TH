@@ -511,7 +511,8 @@ class LifeReports:
                        "WHERE unlocked=1 AND preview IS NOT NULL AND full_state='generating' "
                        "AND lease_until<%s AND id<>ALL(%s)", (now, active))
             rows = db.execute("""
-                SELECT r.id,r.owner,r.input,r.full_state,COALESCE(p.network,NULLIF(r.preview_network,''),r.owner) network
+                SELECT r.id,r.owner,r.input,r.full_state,r.generation_progress,
+                       COALESCE(p.network,NULLIF(r.preview_network,''),r.owner) network
                 FROM life_reports r LEFT JOIN life_card_payments p ON p.report_id=r.id
                 WHERE r.unlocked=1 AND r.preview IS NOT NULL AND r.lease_until<%s AND r.id<>ALL(%s)
                   AND (r.full_state IN ('queued','pending') OR (
@@ -528,8 +529,10 @@ class LifeReports:
                     db.execute("UPDATE life_reports SET full_state='limited',lease='',lease_until=0 WHERE id=%s", (row["id"],))
                     continue
                 lease = secrets.token_hex(16)
-                db.execute("UPDATE life_reports SET full_state='generating',lease=%s,lease_until=%s WHERE id=%s",
-                           (lease, time.time() + self.lease_seconds, row["id"]))
+                marks = json.loads(row["generation_progress"])
+                marks.pop("marriage-full", None)
+                db.execute("UPDATE life_reports SET full_state='generating',lease=%s,lease_until=%s,generation_progress=%s WHERE id=%s",
+                           (lease, time.time() + self.lease_seconds, encoded(marks), row["id"]))
                 claimed.append((row, lease))
         for row, lease in claimed:
             report_id = row["id"]
@@ -849,8 +852,9 @@ class LifeReports:
             questions = [[] for _ in chapter_keys]
             ready = row["full_state"] == "ready" and "marriage" in records
             completed = len(chapter_keys) if ready else 0
-            sections = [{"key": key, "percent": 100 if ready else min(99, marks.get("marriage-full", 0))}
-                        for key in chapter_keys]
+            # The full marriage report is saved as one unit after validation.
+            draft_percent = min(99, marks.get("marriage-full", 0)) if row["full_state"] == "generating" else 0
+            sections = [{"key": key, "percent": 100 if ready else draft_percent} for key in chapter_keys]
         if is_personal:
             saved_personal = records.get("personal", {}).get("story", {})
             # Saved four-part reports remain readable; new writing always supplies all six subjects.

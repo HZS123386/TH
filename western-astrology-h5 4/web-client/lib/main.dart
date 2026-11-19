@@ -41,13 +41,20 @@ Future<Json> _loadTranslations() async {
 
 Future<void> _startApp(WebBrowserPort browser) async {
   usePathUrlStrategy();
-  final language = h5Language(Uri.base.queryParameters['lang']);
+  var language = h5Language(browser.startupLanguage);
   final fonts = LanguageFonts();
   // Both are required before runApp, but neither depends on the other's result.
   final (translations, _) = await (
     _loadTranslations(),
     fonts.ensure(language),
   ).wait;
+  // The browser picker is active while the engine and first font are loading.
+  var selected = h5Language(browser.startupLanguage);
+  while (selected != language) {
+    language = selected;
+    await fonts.ensure(language);
+    selected = h5Language(browser.startupLanguage);
+  }
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([
       'libphonenumber',
@@ -85,7 +92,11 @@ Future<void> _startApp(WebBrowserPort browser) async {
     ensureReportFont: fonts.ensureCommon,
   );
   browser.setLanguage(language, controller.copy.t('jy', 'title'));
-  browser.connectWelcome(controller.enterLanding);
+  browser.connectWelcome(
+    controller.enterLanding,
+    controller.changeLanguage,
+    language,
+  );
   runApp(H5App(controller: controller));
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(

@@ -425,9 +425,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      _marriageMode
-                          ? c.t('marriage', 'title')
-                          : c.t('jy', 'formTitle'),
+                      c.t('jy', 'formTitle'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -438,9 +436,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _marriageMode
-                          ? c.t('marriage', 'form_hint')
-                          : c.t('jy', 'formCaption'),
+                      c.t('jy', 'formCaption'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 10,

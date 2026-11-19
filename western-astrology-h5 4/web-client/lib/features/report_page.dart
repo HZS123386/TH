@@ -1309,14 +1309,17 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   if (!r.ready) ...[
                     const SizedBox(height: 16),
                     Text(
-                      c.t('report', 'states.${r.json['full_state']}'),
+                      r.marriageFullFailed
+                          ? c.t('jy', 'interpretation.interrupted')
+                          : c.t('report', 'states.${r.json['full_state']}'),
                       style: const TextStyle(fontSize: 12, color: lavender),
                     ),
-                    ReadingProgress(
-                      percent: r.percent(true),
-                      reduced: MediaQuery.disableAnimationsOf(context),
-                      label: c.t('jy', 'progress'),
-                    ),
+                    if (!r.marriageFullFailed)
+                      ReadingProgress(
+                        percent: r.percent(true),
+                        reduced: MediaQuery.disableAnimationsOf(context),
+                        label: c.t('jy', 'progress'),
+                      ),
                     OutlinedButton(
                       onPressed: _generating ? null : () => _generate(true),
                       child: Text(

@@ -1762,6 +1762,56 @@ void main() {
     },
   );
 
+  testWidgets(
+    'failed marriage generation offers retry without draft progress',
+    (tester) async {
+      phone(tester);
+      final browser = TestBrowser();
+      final h5 = H5Controller(
+        translations(),
+        ReportRepository(browser),
+        browser,
+        language: 'zh',
+      );
+      final report = LifeReport.parse(
+        marriageFixture()
+          ..['access'] = 'full'
+          ..['full_state'] = 'unavailable',
+      );
+      const savedDraftHint = '这次生成未完成，已完成的章节已保留，可以继续生成。';
+      final state = GenerationState()
+        ..update(report, 95, 'full')
+        ..fail(savedDraftHint);
+      var retries = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GenerationDialog(
+            h5: h5,
+            state: state,
+            full: true,
+            onCancel: () {},
+            onRetry: () => retries++,
+            onComplete: (_) {},
+          ),
+        ),
+      );
+      expect(
+        find.text(h5.copy.t('jy', 'interpretation.interrupted')),
+        findsOneWidget,
+      );
+      expect(find.text(savedDraftHint), findsNothing);
+      expect(find.byType(ReadingProgress), findsNothing);
+      await click(
+        tester,
+        find.text(h5.copy.t('jy', 'interpretation.retryFull')),
+      );
+      expect(retries, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+      state.dispose();
+      h5.dispose();
+    },
+  );
+
   for (final wait in [Duration.zero, const Duration(seconds: 20)]) {
     testWidgets(
       'free report opens on readiness without waiting for the wheel: $wait',
@@ -1843,7 +1893,8 @@ void main() {
       expect(route.queryParameters, containsPair('lang', 'zh'));
       expect(route.queryParameters, containsPair('topic', 'love'));
       expect(route.queryParameters, containsPair('startup', '1'));
-      expect(find.text(h5.copy.t('marriage', 'title')), findsOneWidget);
+      expect(find.text(h5.copy.t('jy', 'formTitle')), findsOneWidget);
+      expect(find.text(h5.copy.t('jy', 'formCaption')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -1963,14 +2014,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('泰式占星 · 婚姻关系报告'), findsOneWidget);
-      for (final title in [
-        '你的感情里，藏着一个你没发现的“隐形卡点”',
-        '接下来的30天，你的感情搅局者正在发力',
-        '你一直在被“隐形搅局者”偷偷消耗精力',
-        '解锁完整报告，让你不再受搅局者的困扰',
-      ]) {
+      for (final title in ['上升在感情里的真实样子', '当前感情能量', '付费引导']) {
         expect(find.text(title), findsOneWidget);
       }
+      expect(find.text('感情模式快照'), findsNothing);
       expect(find.text('Free marriage section 3.'), findsOneWidget);
       expect(find.text('婚姻与长期关系完整解剖'), findsNothing);
       expect(tester.takeException(), isNull);

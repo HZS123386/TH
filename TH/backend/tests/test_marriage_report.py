@@ -14,8 +14,9 @@ from backend.app import marriage_report, thai
 from backend.app.bazi_reports import InvalidBaziReport
 from backend.app.config import ProviderConfig
 from backend.app.life_report_content import LifeWriter
+from backend.app.life_reports import LifeInput
 from backend.app.main import create_app
-from backend.app.thai_readings import copy_for
+from backend.app.storage import Storage
 from backend.tests.test_roxy_astrology import HEADERS, PROFILE, settings
 
 
@@ -92,6 +93,7 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert ("field_sources" in prompt) == is_free
         assert ("rhetorical questions" in prompt) == is_free
         assert ("揪出搅局的人" in prompt) == is_free
+        assert ("你习惯……" if is_free else "值得认真对待的人，会……") in prompt
         contract = self.response_format(bundle)["json_schema"]["schema"]
         paragraphs = FREE_TEXT if is_free else FULL_TEXT
         draft = {"language": "zh", "reading": bundle["reading"]}
@@ -145,28 +147,13 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         free = response.json()
         assert free["preview_state"] == "ready", free
         assert free["version"] == marriage_report.PREVIEW_VERSION
-        _, style, current, _, _ = (section["paragraphs"] for section in free["marriage"]["preview"])
-        evidence = calls[0]["evidence"]
-        signs = copy_for("zh")["signs"]
-        if known:
-            venus = evidence["P_venus"]
-            needs_position = f"上升落在{signs[evidence['N0']['sign']]}"
-            trap_position = f"金星落在{signs[venus['sign']]}第{venus['house']}宫"
-        else:
-            sun_signs = evidence["P_sun"]["signs"]
-            uncertainty = "可能" if len(sun_signs) > 1 else ""
-            needs_position = trap_position = f"太阳{uncertainty}落在" + "或".join(signs[index] for index in sun_signs)
-        assert style == [
-            f"根据你的星盘，{needs_position}，可以看出{FREE_TEXT['needs']}",
-            FREE_TEXT["reaction"],
-            f"根据你的星盘，{trap_position}，可以看出{FREE_TEXT['trap']}",
+        preview_sections = free["marriage"]["preview"]
+        style, current = (section["paragraphs"] for section in preview_sections[1:3])
+        assert [section["title"] for section in preview_sections if section.get("visible", True)] == [
+            "基础信息", "上升在感情里的真实样子" if known else "你在感情里的相处倾向", "当前感情能量", "付费引导",
         ]
-        recent = evidence[calls[0]["required_evidence"]["current"][0][0]]
-        assert len(current) == 2
-        assert current[1].startswith(f"从近期行运看，{recent['start']}至{recent['end']}，")
-        assert current[1].endswith(f"。{FREE_TEXT['current']}")
-        if not known:
-            assert "本命第" not in current[1]
+        assert style == [FREE_TEXT[key] for key in ("needs", "reaction", "trap")]
+        assert current == ["现在具备认真看人的条件。" if known else "先观察实际相处。", FREE_TEXT["current"]]
         offer = free["marriage"]["preview"][-1]["paragraphs"]
         assert offer == marriage_report.COPY["zh"]["offer"].splitlines()
         assert len(offer) == 2
@@ -204,12 +191,22 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert [call["stage"] for call in calls] == ["marriage_preview", "marriage_full"]
         assert len(long_windows) == int(known)
         assert complete["progress"] == {"total": 8, "completed": 8}
+        with app.store.connect() as db:
+            row = db.execute("SELECT * FROM life_reports WHERE id=%s", (free["id"],)).fetchone()
+        failed = app.public({**row, "full_state": "unavailable", "chapters": "{}",
+                             "generation_progress": '{"marriage-full":95}'})
+        assert failed["progress"] == {"total": 8, "completed": 0}
+        assert failed["generation_progress"]["percent"] == 0
+        assert failed["marriage"]["full"] is None
         sections = complete["marriage"]["full"]
         assert [section["key"] for section in sections] == list(marriage_report.FULL)
         assert sections[0]["paragraphs"] == [FULL_TEXT["contrast"]]
         assert FULL_TEXT["fit"] in sections[1]["paragraphs"]
         assert FULL_TEXT["contrast"] not in sections[2]["paragraphs"]
         assert FULL_TEXT["takeaway"] == sections[-1]["paragraphs"][-1]
+        assert sections[4]["paragraphs"][:7] == [
+            "工作 / 事业", FULL_TEXT["career"], "财运 / 资源", FULL_TEXT["money"], "自身状态", FULL_TEXT["wellbeing"], "预警信号",
+        ]
         timing = sections[3]["paragraphs"]
         if known:
             for index, field in enumerate(marriage_report.FUTURE_FIELDS, 1):
@@ -232,7 +229,7 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         earlier = client.get(report_path, headers=HEADERS).json()
         assert earlier["version"] == "thai-marriage-1"
         earlier_style = earlier["marriage"]["preview"][1]["paragraphs"]
-        assert earlier_style == [f"根据你的星盘，{needs_position}。{opening}", *style[1:]]
+        assert earlier_style == [opening, *style[1:]]
         assert earlier["marriage"]["full"] == complete["marriage"]["full"]
 
         with app.store.connect() as db:
@@ -288,3 +285,64 @@ def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch):
         assert requests == ["life_marriage_preview", "life_marriage_preview_repair"]
         assert report["marriage"]["preview"][1]["paragraphs"][0].endswith(FREE_TEXT["needs"])
         assert report["marriage"]["full"] is None
+
+
+def test_paid_marriage_repairs_failed_fields_after_an_incomplete_reply(postgres_url, monkeypatch):
+    body = LifeInput.model_validate({"report_kind": "marriage", "profile": PROFILE, "year": 2026})
+    chart = thai.marriage_preview_chart(PROFILE, datetime(2026, 11, 19).date())
+    chart["marriage_future"] = marriage_report.future_windows(chart)
+    bundle = marriage_report.bundle(body, chart, full=True)
+    valid = {"language": "zh", "reading": "marriage-full"}
+    for key, text in FULL_TEXT.items():
+        groups = bundle["required_evidence"].get(key, [])
+        valid[key] = {"text": text, "evidence_ids": [group[0] for group in groups] or bundle["allowed_evidence"][key][:1]}
+
+    requests = []
+    client_class = httpx.AsyncClient
+
+    def respond(request):
+        payload = json.loads(request.content)
+        contract = payload["response_format"]["json_schema"]
+        requests.append(contract["name"])
+        properties = contract["schema"]["properties"]
+        if len(requests) == 1:
+            citations = properties["other_action"]["properties"]["evidence_ids"]
+            assert citations["minItems"] == 3
+            assert set(citations["items"]["enum"]) == {"H6", "H2", "H10", "H12"}
+            draft = deepcopy(valid)
+            draft["other_action"]["evidence_ids"] = ["H10"]
+            draft["period_two"]["text"] += "到了2027年再核对。"
+            draft["planet_pattern"]["text"] = "水星影响你向对方开口时的表达方式。"
+            draft["takeaway"]["text"] = valid["fit"]["text"]
+        else:
+            context = json.loads(payload["messages"][1]["content"])
+            correction = context["correction"]
+            paths = ({"takeaway.text": ["takeaway", "text"]} if len(requests) == 4 else {
+                "planet_pattern.text": ["planet_pattern", "text"],
+                "period_two.text": ["period_two", "text"],
+                "other_action.evidence_ids": ["other_action", "evidence_ids"],
+            })
+            assert set(properties) == set(paths)
+            assert correction["fields"] == paths
+            retained = json.loads(correction["draft"])
+            assert retained["fit"] == valid["fit"]
+            assert retained["planet_pattern"]["evidence_ids"] == valid["planet_pattern"]["evidence_ids"]
+            assert retained["other_action"]["text"] == valid["other_action"]["text"]
+            for section, field in paths.values():
+                assert retained[section][field] is None
+            draft = {key: valid[section][field] for key, (section, field) in paths.items()}
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(draft, ensure_ascii=False)},
+                                                       "finish_reason": "length" if len(requests) == 2 else "stop"}]})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: client_class(transport=httpx.MockTransport(respond), **kwargs))
+    config = replace(settings(postgres_url), fortune_provider="openai", fortune_fallback_provider="",
+                     providers={"openai": ProviderConfig("test-key", "https://marriage-model.example/v1", "test-model")})
+
+    async def generate():
+        writer = LifeWriter(Storage(postgres_url), config, asyncio.Semaphore(1), charge=False)
+        return await writer.generate(bundle, "marriage-owner", "test-client")
+
+    result = asyncio.run(generate())
+    assert result["state"] == "ready", result
+    assert requests == ["life_marriage_full", *(["life_marriage_full_repair"] * 3)]
+    assert result["story"] == {**valid, "translations": {}}

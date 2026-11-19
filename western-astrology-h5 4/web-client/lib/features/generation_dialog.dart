@@ -361,6 +361,10 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     report = state.report,
                                     input = widget.input ?? report?.input ?? {};
                                 final complete = state.complete;
+                                final marriageFailed =
+                                    widget.full &&
+                                    report?.marriageFullFailed == true &&
+                                    state.error.isNotEmpty;
                                 final waiting =
                                     !complete &&
                                     state.error.isEmpty &&
@@ -599,16 +603,17 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                             ),
                                           ),
                                           const SizedBox(height: 10),
-                                          ReadingProgress(
-                                            percent: state.percent,
-                                            reduced: _reduced,
-                                            label: c.t('jy', 'progress'),
-                                            waiting: waiting,
-                                            waitingLabel: c.t(
-                                              'jy',
-                                              'interpretation.waitLabel',
+                                          if (!marriageFailed)
+                                            ReadingProgress(
+                                              percent: state.percent,
+                                              reduced: _reduced,
+                                              label: c.t('jy', 'progress'),
+                                              waiting: waiting,
+                                              waitingLabel: c.t(
+                                                'jy',
+                                                'interpretation.waitLabel',
+                                              ),
                                             ),
-                                          ),
                                           if (!complete && state.error.isEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(
@@ -622,7 +627,8 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                                 ),
                                               ),
                                             ),
-                                          errorMessage(state.error),
+                                          if (!marriageFailed)
+                                            errorMessage(state.error),
                                           if (state.error.isNotEmpty)
                                             OutlinedButton(
                                               onPressed: widget.onRetry,

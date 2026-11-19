@@ -238,6 +238,8 @@ class LifeReport {
   bool get personalReport => json['format'] == 'western-personal';
   bool get relationshipReport => personalReport && input['relationship'] is Map;
   bool get marriageReport => json['format'] == 'thai-marriage';
+  bool get marriageFullFailed =>
+      marriageReport && json['full_state'] == 'unavailable';
   bool get sectionedReport => marriageReport || relationshipReport;
   Json get marriage => object(json['marriage']);
   bool get western => personalReport || json['format'] == 'western-compact';
@@ -265,18 +267,20 @@ class LifeReport {
     final showFull = complete && ready;
     if (marriageReport) {
       final sections = objects(marriage[showFull ? 'full' : 'preview']);
-      if (showFull || language != 'zh' || copy == null) return sections;
       // A saved preview can carry headings from an older server release.
-      final titles = copy.forLanguage(language).list('marriage', 'preview');
-      if (titles.length != sections.length) return sections;
+      final titles = !showFull && language == 'zh' && copy != null
+          ? copy.forLanguage(language).list('marriage', 'preview')
+          : const <String>[];
       return [
         for (final (index, section) in sections.indexed)
-          if (index > 0 &&
-              (section['key'] != 'relationship_style' ||
-                  text(profile['birth_time']).isNotEmpty))
-            {...section, 'title': titles[index]}
-          else
-            section,
+          if (section['visible'] != false)
+            if (titles.length == sections.length &&
+                index > 0 &&
+                (section['key'] != 'relationship_style' ||
+                    text(profile['birth_time']).isNotEmpty))
+              {...section, 'title': titles[index]}
+            else
+              section,
       ];
     }
     final content = showFull
