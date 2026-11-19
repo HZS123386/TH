@@ -11,10 +11,10 @@
   <meta property="og:description" content="อ่านลักษณะส่วนตัวฟรี แล้วเปิดอ่านดวงเจ็ดหัวข้อ">
   <title>FATE</title>
   <template id="fate-engine-preloads">
+    <link rel="preload" href="assets/FontManifest.json" as="fetch" fetchpriority="high" crossorigin>
+    <link rel="preload" href="assets/assets/copy.json" as="fetch" fetchpriority="high" crossorigin>
     <!-- FATE_FONT_PRELOADS -->
-    <link rel="preload" href="assets/FontManifest.json" as="fetch" fetchpriority="low" crossorigin>
     <link rel="preload" href="assets/AssetManifest.bin.json" as="fetch" fetchpriority="low" crossorigin>
-    <link rel="preload" href="assets/assets/copy.json" as="fetch" fetchpriority="low" crossorigin>
   </template>
   <script>
     const requestedLanguage=new URLSearchParams(location.search).get('lang');
@@ -30,23 +30,20 @@
       link.fetchPriority = 'high';
       return link;
     }
-    const preloadEngineAssets = () => {
-      const switchFonts = {th:'NotoSansThai.ttf',zh:'FateChineseUI.otf',my:'NotoSansMyanmar-Regular.ttf',km:'NotoSansKhmer-Regular.ttf',lo:'NotoSansLao-Regular.ttf'};
-      const selectedFont = switchFonts[document.documentElement.lang];
-      if (selectedFont) {
-        document.head.append(priorityPreload('assets/assets/fonts/' + selectedFont, 'fetch'));
-      }
-      document.head.append(document.getElementById('fate-engine-preloads').content);
+    const switchFonts = {zh:'FateChineseUI.otf',my:'NotoSansMyanmar-Regular.ttf',km:'NotoSansKhmer-Regular.ttf',lo:'NotoSansLao-Regular.ttf'};
+    const preloadedFonts = new Set();
+    const preloadFateLanguage = language => {
+      const file = switchFonts[language];
+      if (!file || preloadedFonts.has(file)) return;
+      preloadedFonts.add(file);
+      document.head.append(priorityPreload('assets/assets/fonts/' + file, 'fetch'));
     };
     if (document.documentElement.dataset.welcome === 'true') {
-      const portrait = priorityPreload('assets/assets/images/astrologer-900.webp', 'image');
-      // Give the visible portrait bandwidth before warming Flutter's supporting assets.
-      portrait.addEventListener('load', preloadEngineAssets, {once: true});
-      portrait.addEventListener('error', preloadEngineAssets, {once: true});
-      document.head.append(portrait);
-    } else {
-      preloadEngineAssets();
+      document.head.append(priorityPreload('assets/assets/images/astrologer-900.webp', 'image'));
     }
+    // The portrait keeps high priority while Flutter's dependencies load in parallel.
+    preloadFateLanguage(document.documentElement.lang);
+    document.head.append(document.getElementById('fate-engine-preloads').content);
   </script>
   <script src="browser.js"></script>
   <!-- FATE_WASM_RUNTIME_PRELOAD -->
@@ -70,6 +67,10 @@
     #fate-welcome #fate-welcome-portrait{position:absolute;top:0;left:50%;transform:translateX(-50%);width:var(--fate-portrait-width);height:auto;max-width:none}
     .fate-welcome-shade{position:absolute;inset:0;background:linear-gradient(transparent 34%,#11071d22 49%,#120820b5 66%,#100717 83%);pointer-events:none}
     .fate-welcome-star{position:absolute;top:25px;left:23px;font-size:22px;color:#f8da9d;text-shadow:0 0 16px #ffa3fb}
+    .fate-welcome-language{position:absolute;z-index:1;top:16px;right:16px;display:flex;align-items:center;gap:6px;padding:0 8px 0 10px;color:#f8da9d}
+    #fate-welcome-language{min-height:42px;max-width:150px;padding:4px 0;border:0;border-radius:8px;background:transparent;color:inherit;font:600 13px system-ui,sans-serif;cursor:pointer}
+    #fate-welcome-language option{color:#f8da9d;background:#211630}
+    #fate-welcome-language:focus-visible{outline:2px solid #f8da9d;outline-offset:2px}
     .fate-welcome-content{position:absolute;left:20px;right:20px;bottom:22px;max-height:calc(100% - 44px);overflow-y:auto;text-align:center}
     .fate-welcome-signature{position:absolute;right:max(var(--fate-signature-edge,13px),calc((100cqw - var(--fate-portrait-width))/2 + var(--fate-portrait-width)*var(--fate-signature-inset,.1)));top:min(calc(var(--fate-portrait-width)*var(--fate-signature-top,.33)),max(18px,calc(100cqh - 245px)));width:clamp(124px,32cqw,164px);padding:9px 6px;box-sizing:border-box;text-align:center;transform:rotate(-2deg);transform-origin:right center;pointer-events:none}
     html:lang(th) .fate-welcome-signature{--fate-signature-edge:10px;--fate-signature-inset:.075;--fate-signature-top:.3;width:clamp(112px,29cqw,144px)}
@@ -92,15 +93,19 @@
     #fate-welcome-start{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:410px;min-height:55px;box-sizing:border-box;margin:clamp(18px,4cqh,32px) auto 0;padding:8px 16px;border:1px solid #fca4ff6b;border-radius:999px;color:#fff8ff;background:linear-gradient(90deg,#7b14e8,#ca0af1,#e900ce);box-shadow:0 7px 30px #b900f34d;font-family:inherit;font-weight:700;font-size:16px;line-height:1.55;cursor:pointer;touch-action:manipulation}
     #fate-welcome-start>span:first-child{font-size:22px}
     #fate-welcome-start:focus-visible{outline:2px solid #fff8ff;outline-offset:3px}
-    #fate-welcome-start[aria-busy=true]{opacity:.8}
+    #fate-welcome-start .fate-welcome-progress{display:none}
+    #fate-welcome-start[aria-busy=true]>span{display:none}
+    #fate-welcome-start[aria-busy=true] .fate-welcome-progress{display:flex;align-items:center;gap:9px}
+    .fate-welcome-progress:before{content:"";width:14px;height:14px;border:2px solid #fff8ff;border-right-color:transparent;border-radius:50%;animation:fate-welcome-spin .8s linear infinite}
+    @keyframes fate-welcome-spin{to{transform:rotate(360deg)}}
     .fate-welcome-swipe{margin:10px 0 0;color:#d5b7e0;font-size:11.5px;line-height:1.55}
     html[data-welcome=true] #fate-startup-status{display:none;position:absolute;bottom:8px;left:16px;right:16px;padding:8px;border-radius:8px;background:#130c24ed}
-    html[data-welcome=true] #fate-startup[data-state=waiting] #fate-startup-status,html[data-welcome=true] #fate-startup[data-state=slow] #fate-startup-status,html[data-welcome=true] #fate-startup[data-state=retry] #fate-startup-status,html[data-welcome=true] #fate-startup[data-state=failed] #fate-startup-status{display:block}
-    html[data-welcome=true] #fate-startup-retry:not([hidden]){position:absolute;top:16px;right:16px;background:#130c24ed}
+    html[data-welcome=true] #fate-startup[data-state=slow] #fate-startup-status,html[data-welcome=true] #fate-startup[data-state=retry] #fate-startup-status,html[data-welcome=true] #fate-startup[data-state=failed] #fate-startup-status{display:block}
+    html[data-welcome=true] #fate-startup-retry:not([hidden]){position:absolute;top:68px;right:16px;background:#130c24ed}
     @media(min-width:700px){html[data-welcome=true] #fate-startup{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}}
     @media(min-width:700px) and (min-height:600px){html[data-welcome=true] #fate-startup{padding-top:calc(24px + env(safe-area-inset-top));padding-bottom:calc(24px + env(safe-area-inset-bottom))}}
     @keyframes fate-startup-motion{to{transform:translateX(150%)}}
-    @media(prefers-reduced-motion:reduce){.fate-startup-track:after{animation:none}}
+    @media(prefers-reduced-motion:reduce){.fate-startup-track:after,.fate-welcome-progress:before{animation:none}}
   </style>
 </head>
 <body>
@@ -109,6 +114,21 @@
       <img id="fate-welcome-portrait" width="1199" height="1312" alt="" fetchpriority="high" decoding="async" crossorigin="anonymous">
       <div class="fate-welcome-shade"></div>
       <span class="fate-welcome-star" aria-hidden="true">✦</span>
+      <div class="fate-welcome-language">
+        <span aria-hidden="true">◎</span>
+        <select id="fate-welcome-language" aria-label="Language">
+          <option value="th" lang="th">ภาษาไทย</option>
+          <option value="en" lang="en">English</option>
+          <option value="zh" lang="zh">简体中文</option>
+          <option value="vi" lang="vi">Tiếng Việt</option>
+          <option value="my" lang="my">မြန်မာဘာသာ</option>
+          <option value="km" lang="km">ខ្មែរ</option>
+          <option value="lo" lang="lo">ລາວ</option>
+          <option value="ms" lang="ms">Bahasa Melayu</option>
+          <option value="id" lang="id">Bahasa Indonesia</option>
+        </select>
+      </div>
+      <script>document.getElementById('fate-welcome-language').value=document.documentElement.lang;</script>
       <div class="fate-welcome-signature">
         <p class="fate-welcome-name"><!-- FATE_WELCOME_NAME --></p>
         <p class="fate-welcome-role"><!-- FATE_WELCOME_ROLE --></p>
@@ -116,7 +136,7 @@
       <div class="fate-welcome-content">
         <h1 class="fate-welcome-title"><!-- FATE_WELCOME_HEADLINE --></h1>
         <p class="fate-welcome-note"><!-- FATE_WELCOME_NOTE --></p>
-        <button id="fate-welcome-start" type="button"><span aria-hidden="true">✧</span><span><!-- FATE_WELCOME_START --></span></button>
+        <button id="fate-welcome-start" type="button"><span aria-hidden="true">✧</span><span><!-- FATE_WELCOME_START --></span><span class="fate-welcome-progress" id="fate-welcome-progress"></span></button>
         <p class="fate-welcome-swipe">↑ <!-- FATE_WELCOME_SWIPE --></p>
       </div>
     </div>

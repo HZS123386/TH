@@ -596,7 +596,8 @@ def validate_text(text, language, *, title=False, narrative=False):
                       rule="text_too_long")
 
 
-def validate_distinct_personal_text(points, language, *, shared_limit=None, previous_points=(), similarity_limit=None):
+def validate_distinct_personal_text(points, language, *, shared_limit=None, previous_points=(), similarity_limit=None,
+                                    repair_text=False):
     # Short shared keywords are useful; reject repeated sentences and long copied clauses.
     limit = shared_limit or (18 if language == "zh" else 45)
     normalized = {f"free preview[{index}]": re.sub(r"[\W_]+", "", text).casefold()
@@ -608,7 +609,13 @@ def validate_distinct_personal_text(points, language, *, shared_limit=None, prev
             if value == previous or (min(len(value), len(previous)) >= limit
                     and (comparison.find_longest_match().size >= limit
                          or similarity_limit is not None and comparison.ratio() >= similarity_limit)):
-                raise invalid(f"personal {path} repeats {previous_path}; add a distinct supported point, not a reused sentence")
+                reason = f"repeats {previous_path}; add a different supported point and use a new sentence"
+                error = invalid(f"personal {path} {reason}")
+                if repair_text:
+                    text_path = (path, "text")
+                    error.field_errors = [field_error(text_path, reason)]
+                    error.repair_fields = {".".join(text_path): list(text_path)}
+                raise error
         normalized[path] = value
 
 
@@ -1273,7 +1280,7 @@ class LifeWriter(BaziReports):
         self.fallback_writer = None
         if settings.fortune_fallback_provider not in ("", "qwen"):
             raise ValueError("invalid FORTUNE_FALLBACK_PROVIDER")
-        if self.provider == "openai" and settings.fortune_fallback_provider == "qwen":
+        if self.provider in ("openai", "deepseek") and settings.fortune_fallback_provider == "qwen":
             fallback_settings = replace(settings, fortune_provider="qwen", fortune_fallback_provider="")
             self.fallback_writer = LifeWriter(store, fallback_settings, slots, charge=charge)
             if self.fallback_writer.enabled:
@@ -1290,7 +1297,7 @@ class LifeWriter(BaziReports):
 
     async def generate(self, bundle, owner, network):
         fallback = self.fallback_writer
-        if self.provider != "openai" or not fallback or not fallback.enabled:
+        if not fallback or not fallback.enabled:
             return await super().generate(bundle, owner, network)
         primary_called = False
         if not self.config or not self.config.enabled:
@@ -1365,7 +1372,7 @@ class LifeWriter(BaziReports):
         return context
 
     def response_format(self, bundle):
-        if self.provider != "openai" and (self.provider != "qwen" or not self.config.model.startswith("qwen3.7-plus")):
+        if self.provider not in ("openai", "deepseek") and (self.provider != "qwen" or not self.config.model.startswith("qwen3.7-plus")):
             return super().response_format(bundle)
         # Generate the provider contract from the same models used to validate and store the report.
         schema = story_schema(bundle).model_json_schema()
@@ -1447,8 +1454,7 @@ class LifeWriter(BaziReports):
         if bundle["stage"] == "marriage_preview":
             marriage_report.bind_preview_schema(bundle, schema)
         elif bundle["stage"] == "marriage_full":
-            identifiers = list(bundle["evidence"])
-            schema["$defs"]["MarriagePoint"]["properties"]["evidence_ids"]["items"]["enum"] = identifiers
+            marriage_report.bind_full_schema(bundle, schema)
         if bundle["stage"] in ("relationship_preview", "relationship_full"):
             schema["$defs"]["RelationshipBasis"]["properties"]["evidence_id"]["enum"] = bundle["citation_rules"]["topic_ids"]
             if bundle["stage"] == "relationship_preview":

@@ -14,8 +14,8 @@ from .schemas import ThaiReadingInput
 from .thai_readings import copy_for, grounding
 
 FORMAT = "thai-marriage"
-PREVIEW_VERSION = "thai-marriage-7"
-FULL_VERSION = "thai-marriage-2"
+PREVIEW_VERSION = "thai-marriage-11"
+FULL_VERSION = "thai-marriage-4"
 COPY = json.loads((Path(__file__).resolve().parents[1] / "content" / "marriage-report.json").read_text(encoding="utf-8"))
 PREVIEW = {
     "birth_details": (),
@@ -25,9 +25,9 @@ PREVIEW = {
     "unlock_offer": (),
 }
 FULL = {
-    "how_to_read": (),
+    "how_to_read": ("contrast",),
     "long_term_relationship": ("fit", "conflict", "supportive", "draining", "key_window"),
-    "relationship_chart": ("contrast", "planet_pattern"),
+    "relationship_chart": ("planet_pattern",),
     "relationship_timing": ("present", "period_one", "period_two", "period_three"),
     "other_areas": ("career", "money", "wellbeing"),
     "relationship_actions": ("selection", "communication", "boundaries", "other_action"),
@@ -76,12 +76,12 @@ class MarriagePreview(MarriageDraft):
 
 
 class MarriageFull(MarriageDraft):
+    contrast: MarriagePoint
     fit: MarriagePoint
     conflict: MarriagePoint
     supportive: MarriagePoint
     draining: MarriagePoint
     key_window: MarriagePoint
-    contrast: MarriagePoint
     planet_pattern: MarriagePoint
     present: MarriagePoint
     period_one: MarriagePoint
@@ -236,6 +236,26 @@ def bind_preview_schema(bundle, contract):
         contract["properties"][key] = point
 
 
+def bind_full_schema(bundle, contract):
+    definition = contract.pop("$defs")["MarriagePoint"]
+    for key, identifiers in bundle["allowed_evidence"].items():
+        point = deepcopy(definition)
+        citations = point["properties"]["evidence_ids"]
+        groups = bundle["required_evidence"].get(key, [])
+        if groups:
+            citations["description"] = "Use at least one distinct ID from each group: " + json.dumps(groups)
+        if key == "other_action" and bundle["birth_time_known"]:
+            # The three actions each need their own evidence, within the three-ID limit.
+            identifiers = [identifier for group in groups for identifier in group]
+            citations["minItems"] = len(groups)
+        citations["items"] = {"type": "string", "enum": identifiers}
+        contract["properties"][key] = point
+    contract["properties"]["planet_pattern"]["properties"]["text"]["description"] = (
+        "A new, observable consequence in close relationships. Write only the behavior and its effect. "
+        "Leave the cited planet names, signs, and houses out of this paragraph."
+    )
+
+
 def preview_prompt(bundle):
     prompt = (
         f"Write {bundle['writing_version']}, a free Thai Suriyayatra marriage preview. "
@@ -246,11 +266,13 @@ def preview_prompt(bundle):
         "Also return current.state from current_states. Use only the supplied facts. "
         "The app adds exact chart placements and dates to the prose. Use short, direct second-person statements "
         "without technical terms, dates, rhetorical questions or assumed real events, partners or outcomes. "
-        "needs: name the concrete answer or action the reader wants, based on the bound Ascendant or Sun. "
-        "reaction: say what they do if it does not happen. "
-        "trap: give one observable mismatch between words and action, and what it stalls. "
-        "current: give a judgment grounded in the cited recent positions and one behavior to check. "
-        "When the available state is observe, keep it general and infer no personal timing. "
+        "needs: open with the main mistake in how the reader tries to get a relationship need met. "
+        "Name the need in everyday words, based on the bound Ascendant or Sun. "
+        "reaction: say what the reader does when unsure and what the other person sees or hears as a result. "
+        "trap: describe one distinct pattern the reader can recognize and say where it leaves the relationship. "
+        "current.state is the verdict based on the cited recent positions. In current.text give the one concrete "
+        "condition for taking someone seriously, changing the pattern, or holding back. The app prints the verdict first. "
+        "When the available state is observe, give an observable check and infer no personal timing. "
         "attracts: describe an observable quality that draws them in. "
         "drains: show the behavior that costs them time or effort. "
         "Give each point a distinct idea in one or two sentences, around 30–72 Chinese characters "
@@ -258,8 +280,13 @@ def preview_prompt(bundle):
     )
     if bundle["language"] == "zh":
         prompt += (
-            "用陈述句直接说谁做什么、你怎么反应。比如“问了几次还没答复，你就不再主动发消息”。"
-            "仅参考表达力度，具体判断和动作根据引用的依据重写。"
+            "免费正文承接首页「该断该续？」和「揪出搅局的人」。"
+            "needs、reaction、trap 连起来写成一段直接对你说的话，各用一句短句。"
+            "先写你习惯用什么实际动作确认关系，再写遇到哪个变化时你会怎么回应，最后用「搅局」点出哪类人的一个具体行为会拖住关系。"
+            "例如「每次都说想见你、一谈具体哪天就说再看看的人，最容易搅局，把关系拖在聊天里」。"
+            "可以用「你习惯……」开头，直接写生活情境，页面会单独展示盘面依据。current.text 给一个该断该续的可核对标准， "
+            "例如「再改约时，先看对方会不会主动定个新时间。反复只说改天，就该放慢投入」。"
+            "例句只示范语气。人物类型、行为和判断以各段引用的实际盘面为依据。"
         )
     return prompt
 
@@ -271,7 +298,8 @@ def prompt(bundle):
         f"Write {bundle['writing_version']}, in language={bundle['language']} and reading={bundle['reading']}. "
         "You interpret the calculated evidence in this request as Thai Suriyayatra astrology (whole-sign houses; H7 is partnership). "
         "Sign indexes are zero-based, Aries through Pisces. Marriage and sustained partnership come first. "
-        "Use a sharp, direct voice in both editions and throughout the other areas. Lead each paragraph with the verdict, then "
+        "Use a sharp, direct voice. Open with the central relationship verdict, develop it with concrete examples, "
+        "and end with the first action to take. Lead each paragraph with the verdict, then "
         "give the observable behavior and its practical cost or consequence. Put the relationship need into something the reader "
         "can see someone do. Show what gets stuck when that need is unmet. Use short sentences and specific verbs. "
         "Base the verdict on the supplied factors. If a situation is uncertain, give a single checkable condition. "
@@ -290,11 +318,18 @@ def prompt(bundle):
     )
     if bundle["language"] == "zh":
         base += (
-            "简体中文要直接、具体。语气示例：你需要对方在计划有变时主动另约。每次都要你追问，见面就一直定不下来。"
-            "只参考句式和力度。人物特征、行为和结论要根据实际依据重新写。"
+            "用简体中文直接对你说话。报告说明先写你最常做的动作，再写它对关系的具体代价。"
+            "fit 可用「值得认真对待的人，会……」起句，接一件双方要一起决定的事。"
+            "draining 可用「最消耗你的模式是……」起句，接一个反复发生、能被看见的行为。"
+            "时间段先落一句判断，再说对方做到哪一步，或你做了哪件事，才值得调整投入。"
+            "工作、财运、自身状态各用自己的生活情境。communication 给一句当场说得出口的话。"
+            "takeaway 用「立刻能做的改变是……」收束，再写这个动作会让什么变清楚。"
+            "这些句式只供参考。根据本人的实际盘面选择不同情境、判断和行动。"
         )
     return base + (
         "FULL. Develop the free conclusions into observable choices for living together. "
+        "contrast: this is the opening verdict. In one or two sentences name the central habit and the cost it creates "
+        "in a long-term relationship. Base the judgment on N0 and H7 if available. "
         "fit: name who is worth taking seriously and how the pair handles a real long-term decision. "
         "conflict: name the recurring trigger, the reader's response and what it costs once responsibilities are shared. "
         "supportive: identify the partner's behavior that makes the reader's strengths useful. "
@@ -302,9 +337,8 @@ def prompt(bundle):
         "key_window: give a direct judgment about the cited window for meeting someone or moving toward commitment. "
         "Give a condition the reader can verify and say what should cause them to slow down. Give the judgment here; the window dates "
         "are displayed from the citation. Avoid promises to supply timing later. "
-        "contrast: using N0 and H7 if available, spell out how the reader can act decisively elsewhere and respond differently in closeness, "
-        "or describe a different specific tension supported by the actual chart. "
-        "planet_pattern: use a partner-house ruler or relevant Moon/Venus factor to add one new consequence of that tension. "
+        "planet_pattern: add one new consequence of that tension. Begin with an ordinary situation and show what it changes "
+        "between the two people. Put the relevant chart factor only in evidence_ids; the app prints its name and placement. "
         "present: state the immediate priority and where to hold back, using the recent evidence. "
         "period_one, period_two, period_three: decide for each assigned window whether to advance, adjust a recurring pattern, or "
         "hold and observe. State the behavior that would change that verdict. Without birth time use three practical checkpoints "
@@ -316,63 +350,63 @@ def prompt(bundle):
         "one sentence the reader can actually say. boundaries: name one agreement and the action to take if it repeatedly falls through. "
         "Before suggesting a larger commitment, state what the reader should already have made explicit. "
         "other_action: give one brief concrete action each for work, finances and one's own state, in that order. "
-        "Use the corresponding evidence for each action if available. "
+        "With a known birth time cite H10 for work, H2 for finances and either H6 or H12 for one's state. "
         "support: make the traditional symbol printed by the app an optional reminder for one real decision or conversation. "
-        "takeaway: close with one memorable sentence linking the central need to the reader's first change in behavior. "
-        "Aim for 60–130 Chinese characters in fit, conflict, contrast and the window sections and 25–100 elsewhere, "
+        "takeaway: name one immediate change the reader can make, then close with a short sentence showing what that changes. "
+        "Aim for 60–130 Chinese characters in fit, conflict and the window sections and 25–100 elsewhere, "
         "with natural equivalents in other languages. The full edition adds consequences, choices and follow-through to the free reading."
     )
 
 
+def repair_failure(errors):
+    paths = {".".join(path): list(path) for path in errors}
+    details = [{"field": ".".join(path), "rule": rule} for path, rule in errors.items()]
+    first = details[0]
+    failure = InvalidBaziReport(f"{first['field']}: {first['rule']}")
+    failure.repair_fields = paths
+    failure.field_errors = details
+    return failure
+
+
 def validate(raw, bundle, validate_text, validate_distinct):
+    stage = bundle["stage"]
+    keys = fields(stage)
     try:
-        record = schema(bundle["stage"]).model_validate_json(raw, context=bundle)
+        record = schema(stage).model_validate_json(raw, context=bundle)
     except ValidationError as error:
-        paths = [".".join(map(str, item["loc"])) for item in error.errors(include_input=False, include_url=False)[:8]]
+        issues = error.errors(include_input=False, include_url=False)
+        if stage == "marriage_full" and all(item["loc"] and item["loc"][0] in keys for item in issues):
+            errors = {(item["loc"][0],): item["msg"] for item in issues}
+            raise repair_failure(errors) from None
+        paths = [".".join(map(str, item["loc"])) for item in issues[:8]]
         raise InvalidBaziReport("Marriage report is missing or has malformed fields: " + ", ".join(paths)) from None
     if record.language != bundle["language"] or record.reading != bundle["reading"] or record.translations:
         raise InvalidBaziReport("Use the requested marriage report stage and language")
     if isinstance(record, MarriagePreview) and (record.current.state == "observe") == bundle["birth_time_known"]:
         raise InvalidBaziReport("Match the current relationship state to the birth-time precision")
-    points = {}
-    for key in fields(bundle["stage"]):
+    points, errors = {}, {}
+    for key in keys:
         point = getattr(record, key)
+        identifiers = set(point.evidence_ids)
+        if (len(identifiers) != len(point.evidence_ids) or not identifiers <= set(bundle["allowed_evidence"][key])
+                or any(identifiers.isdisjoint(required) for required in bundle["required_evidence"].get(key, ()))):
+            errors[(key, "evidence_ids")] = "use distinct supplied evidence and meet the required factors for this field"
         try:
-            identifiers = set(point.evidence_ids)
-            if (len(identifiers) != len(point.evidence_ids) or not identifiers <= set(bundle["allowed_evidence"][key])
-                    or any(identifiers.isdisjoint(required) for required in bundle["required_evidence"].get(key, ()))):
-                raise InvalidBaziReport("use distinct supplied evidence and meet the required factors for this field")
             if re.search(r"(?<!\d)\d{4}(?!\d)", point.text):
-                raise InvalidBaziReport("dates and years must come from the displayed transit evidence")
+                raise InvalidBaziReport("omit dates and years from the paragraph; the app displays the cited windows")
             validate_text(point.text, record.language, narrative=True)
         except InvalidBaziReport as error:
-            failure = InvalidBaziReport(f"{key}: {error}")
-            if isinstance(record, MarriagePreview):
-                failure.repair_fields = {key: [key]}
-            raise failure from None
+            errors[(key, "text")] = str(error)
+        if isinstance(record, MarriagePreview) and errors:
+            failure = InvalidBaziReport(f"{key}: {next(iter(errors.values()))}")
+            failure.repair_fields = {key: [key]}
+            raise failure
         points[key] = point.text
+    if errors:
+        raise repair_failure(errors)
     validate_distinct(points, record.language, shared_limit=34 if record.language == "zh" else 96,
-                      previous_points=bundle.get("free_reading", {}).values())
+                      previous_points=bundle.get("free_reading", {}).values(), repair_text=stage == "marriage_full")
     return record.model_dump()
-
-
-def chinese_placement(fact, labels):
-    kind = fact["type"]
-    if kind == "sun_range":
-        signs = [labels["signs"][index] for index in fact["signs"]]
-        verb = "可能落在" if len(signs) > 1 else "落在"
-        return f"{labels['planets']['sun']}{verb}{'或'.join(signs)}"
-    sign = labels["signs"][fact["sign"]]
-    if kind == "ascendant":
-        return f"上升落在{sign}"
-    if kind == "house":
-        ruler = labels["planets"][fact["ruler"]]
-        return f"第{fact['number']}宫落在{sign}，宫主星{ruler}落在第{fact['ruler_house']}宫"
-    planet = labels["planets"][fact["key"]]
-    if kind == "marriage_window":
-        house = f"（本命第{fact['house']}宫）" if fact["house"] is not None else ""
-        return f"{fact['start']}至{fact['end']}，{planet}行经{sign}{house}"
-    return f"{planet}落在{sign}第{fact['house']}宫"
 
 
 def public_sections(record, chart, profile, explain, *, full=False):
@@ -394,19 +428,6 @@ def public_sections(record, chart, profile, explain, *, full=False):
         native = explain(identifier, fact, language)
         return f"{native['title']} · {native['detail']}"
 
-    def with_placement(point, *, recent=False):
-        text = point["text"]
-        identifiers = point["evidence_ids"]
-        if language != "zh":
-            positions = " / ".join(show(identifier) for identifier in identifiers)
-            return copy["basis"].format(positions=positions, text=text)
-        positions = "，".join(chinese_placement(evidence[identifier], labels) for identifier in identifiers)
-        first_sentence = re.split(r"[。！!]", text, maxsplit=1)[0]
-        # Saved readings may open with a question, so leave those as complete sentences.
-        joiner = "，可以看出" if first_sentence.startswith("你") and not re.search(r"[？?]", first_sentence) else "。"
-        template = copy["recent_basis"] if recent else copy["basis"]
-        return template.format(positions=positions, joiner=joiner, text=text)
-
     location = chart.get("location") or {}
     region_key = {"zh": "nameChinese", "th": "nameThai"}.get(language, "nameEnglish")
     birthplace = location.get(region_key) or location.get("nameEnglish") or profile["birthplace"]
@@ -417,12 +438,16 @@ def public_sections(record, chart, profile, explain, *, full=False):
                           birthplace, show("N0" if known else "P_sun"), *([] if known else [copy["precision"]])],
         "unlock_offer": copy["offer"].splitlines(),
     } if not full else {
-        "how_to_read": [copy["guide"]],
         "relationship_chart": [show(identifier) for identifier in record["chart_basis"]] if known else [show("P_sun"), copy["precision"]],
         "relationship_timing": [] if known else [copy["timing_limit"]],
         # Cultural reference: Thailand Cultural Encyclopedia, entry 26733 (Venus).
         "traditional_support": [copy["symbol"]],
     }
+    if full and "version" not in record:
+        # Earlier paid stories used the contrast inside the chart section.
+        layout = {**FULL, "how_to_read": (), "relationship_chart": ("contrast", "planet_pattern")}
+        extras["how_to_read"] = [copy["guide"]]
+    area_titles = copy.get("area_titles", {})
     sections = []
     for index, (section, keys) in enumerate(layout.items()):
         paragraphs = list(extras.get(section, []))
@@ -430,13 +455,22 @@ def public_sections(record, chart, profile, explain, *, full=False):
             point = story[key]
             if key == "current":
                 paragraphs.append(copy["states"][STATES.index(point["state"])])
+            if heading := area_titles.get(key):
+                paragraphs.append(heading)
             if key in ("present", "key_window", *FUTURE_FIELDS):
                 paragraphs.extend(show(identifier) for identifier in point["evidence_ids"]
                                   if evidence[identifier]["type"] == "marriage_window")
-            if not full and key in ("needs", "trap", "current"):
-                paragraphs.append(with_placement(point, recent=key == "current"))
+            if not full and language != "zh" and key in ("needs", "trap", "current"):
+                positions = " / ".join(show(identifier) for identifier in point["evidence_ids"])
+                paragraphs.append(copy["basis"].format(positions=positions, text=point["text"]))
             else:
                 paragraphs.append(point["text"])
+        if section == "other_areas":
+            paragraphs.extend(copy.get("warning_signals", []))
         title = copy["date_only_style"] if section == "relationship_style" and not known else titles[index]
-        sections.append({"key": section, "title": title, "paragraphs": paragraphs})
+        section_data = {"key": section, "title": title, "paragraphs": paragraphs}
+        if language == "zh" and section == "relationship_snapshot":
+            # Keep the API section for saved clients while the new free edition displays three readings.
+            section_data["visible"] = False
+        sections.append(section_data)
     return sections

@@ -42,10 +42,10 @@ export async function buildLanding({release=false,noPub=false}={}){
   const browserSource=await readFile(path.join(flutterRoot,'web','browser.js'),'utf8');
   const indexPath=path.join(generated,'index.html');
   let index=await readFile(indexPath,'utf8');
-  // Preload the small Dart module and let Flutter choose the compatible main binary.
+  // Warm the Wasm downloads before the Flutter loader reaches its dynamic import.
   const runtimeSlot='<!-- FATE_WASM_RUNTIME_PRELOAD -->';
   if(!index.includes(runtimeSlot))throw Error('Missing Wasm runtime preload slot');
-  index=index.replace(runtimeSlot,'<link rel="modulepreload" href="main.dart.mjs" crossorigin fetchpriority="high">');
+  index=index.replace(runtimeSlot,`<script>preloadFateWasm(${JSON.stringify(engineRevision)});</script>`);
   // The first paint and Flutter welcome use the same translated content.
   const copy=JSON.parse(await readFile(path.join(flutterRoot,'assets','copy.json'),'utf8'));
   const welcomeCopy=copy.jy;
@@ -61,8 +61,8 @@ export async function buildLanding({release=false,noPub=false}={}){
   // Discover engine fonts during the HTML request instead of after the Wasm download.
   const fontManifest=JSON.parse(await readFile(path.join(generated,'assets','FontManifest.json'),'utf8'));
   const fontAssets=new Set(fontManifest.flatMap(family=>family.fonts.map(font=>font.asset)));
-  for (const file of ['NotoSansThai.ttf','FateChineseUI.otf','NotoSansMyanmar-Regular.ttf','NotoSansKhmer-Regular.ttf','NotoSansLao-Regular.ttf']) {
-    fontAssets.delete('assets/fonts/'+file); // Scheduled after the welcome portrait.
+  for (const file of ['FateChineseUI.otf','NotoSansMyanmar-Regular.ttf','NotoSansKhmer-Regular.ttf','NotoSansLao-Regular.ttf']) {
+    fontAssets.delete('assets/fonts/'+file); // The HTML shell preloads the active language font.
   }
   const fallbackFont='fonts/fallback/Roboto-Regular.ttf';
   if(existsSync(path.join(generated,'assets',fallbackFont)))fontAssets.add(fallbackFont);

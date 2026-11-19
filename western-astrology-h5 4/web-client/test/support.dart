@@ -17,10 +17,8 @@ Json marriageFixture({Json? input, bool full = false}) {
   final data = fixture();
   final submitted =
       input ?? {...object(data['input']), 'report_kind': 'marriage'};
-  final copy = Copy(
-    translations(),
-    text(object(submitted['profile'])['language']),
-  );
+  final language = text(object(submitted['profile'])['language']);
+  final copy = Copy(translations(), language);
   final titles = copy.list('marriage', 'full');
   final freeTitles = copy.list('marriage', 'preview');
   data.remove('generation_progress');
@@ -49,6 +47,9 @@ Json marriageFixture({Json? input, bool full = false}) {
           {
             'key': marriagePreviewKeys[i],
             'title': freeTitles[i],
+            if (language == 'zh' &&
+                marriagePreviewKeys[i] == 'relationship_snapshot')
+              'visible': false,
             'paragraphs': ['Free marriage section ${i + 1}.'],
           },
       ],

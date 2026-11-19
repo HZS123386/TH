@@ -243,6 +243,8 @@ class FortuneReports:
             payload["enable_thinking"] = False
         if self.provider == "openai":
             payload["max_completion_tokens"] = payload.pop("max_tokens")
+        if self.provider == "deepseek" and config.reasoning_effort:
+            payload["reasoning_effort"] = config.reasoning_effort
         if self.provider == "kimi" and config.model.startswith("kimi-k"):
             payload["reasoning_effort"] = "low"
         async with httpx.AsyncClient(timeout=httpx.Timeout(27, connect=5)) as client:

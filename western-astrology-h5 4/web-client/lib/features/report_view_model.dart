@@ -18,7 +18,7 @@ class ReportViewModel extends ChangeNotifier {
       _active = true;
   CancelToken? _read, _feedback;
   Timer? _poll;
-  Future<void> load({bool background = false}) async {
+  Future<LifeReport?> load({bool background = false}) async {
     _poll?.cancel();
     _read?.cancel();
     final token = CancelToken();
@@ -30,19 +30,21 @@ class ReportViewModel extends ChangeNotifier {
     }
     try {
       final next = await h5.repository.load(id, token);
-      if (_disposed || token.cancelled) return;
+      if (_disposed || token.cancelled) return null;
       if (!await h5.changeLanguage(next.language)) {
         throw const ApiFailure('network');
       }
-      if (_disposed || token.cancelled) return;
+      if (_disposed || token.cancelled) return null;
       if (next.full || next.hasPreview) {
         await h5.prepareText(jsonEncode(next.json), language: next.language);
       }
-      if (_disposed || token.cancelled) return;
+      if (_disposed || token.cancelled) return null;
       report = next;
       error = '';
+      return next;
     } catch (cause) {
       if (!_disposed && !token.cancelled) error = h5.message(cause);
+      return null;
     } finally {
       if (!_disposed && !token.cancelled) {
         loading = false;

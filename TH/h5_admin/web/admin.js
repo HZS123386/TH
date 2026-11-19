@@ -71,13 +71,13 @@ const formProgress = {
   form_progress_empty: '尚无已确认的字段',
   form_progress_date: '未填完 · 需填写有效出生日期',
   form_progress_time: '未填完 · 还缺出生时间',
-  form_progress_place: '未填完 · 还缺出生府州',
+  form_progress_place: '未填完 · 还缺出生地',
   form_progress_complete: '资料已填完',
 };
 const visitActions = {
   ...formProgress,
   view: '打开页面', enter_form: '进入资料填写', edit_form: '修改资料', invalid_form: '提交资料未通过校验',
-  select_birth_date: '打开出生日期选择', select_birth_time: '打开出生时间选择', select_birthplace: '打开出生府州选择',
+  select_birth_date: '打开出生日期选择', select_birth_time: '打开出生时间选择', select_birthplace: '打开出生地选择',
   consent_accept: '确认数据使用', consent_cancel: '取消数据使用确认', generate: '开始生成报告',
   generation_failed: '报告生成失败', retry_generation: '重试生成', cancel_generation: '返回 / 取消生成',
   report_ready: '报告内容已显示', report_failed: '报告加载失败', open_payment: '打开支付', close_payment: '关闭支付弹窗',
@@ -174,9 +174,11 @@ const errors = {
   too_many_requests: '刷新过于频繁，请稍后再试。',
   request_failed: '请求失败，请稍后重试。',
 };
+const verifiedOrdersRoute = 'orders?time_basis=verified';
 const state = {
   session: null,
   view: 'overview',
+  timeBasis: 'created',
   days: 30,
   page: 1,
   q: '',
@@ -260,7 +262,9 @@ function showLogin() {
   $('#workspace').hidden = true;
   $('#login-view').hidden = false;
 }
-function navigate(view) {
+function navigate(view, { refresh = false } = {}) {
+  state.timeBasis = view === verifiedOrdersRoute ? 'verified' : 'created';
+  if (state.timeBasis === 'verified') view = 'orders';
   if (!views[view]) view = 'overview';
   state.view = view;
   state.page = 1;
@@ -269,7 +273,7 @@ function navigate(view) {
   state.source = '';
   state.category = '';
   state.caseStatus = '';
-  loadView();
+  return loadView({ refresh });
 }
 function nav() {
   $('#navigation').innerHTML = Object.keys(views)
@@ -283,8 +287,7 @@ async function openWorkspace() {
   $('#login-view').hidden = true;
   $('#workspace').hidden = false;
   $('#actor-name').textContent = state.session.username;
-  state.view = views[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';
-  await loadView({ refresh: true });
+  await navigate(location.hash.slice(1), { refresh: true });
 }
 function showPageError(error) {
   $('#page-error').textContent = error.message;
@@ -328,6 +331,7 @@ async function loadView({ refresh = false } = {}) {
             source: state.source,
             category: state.category,
             case_status: state.caseStatus,
+            time_basis: state.timeBasis,
           }),
       );
     if (revision !== state.revision || !state.session) return;
@@ -394,7 +398,7 @@ function renderOverview(reports) {
     ],
     [
       'orders', '核验实收', money(m.revenue), '泰铢',
-      '仅计正式渠道核验到账的订单', `已到账订单 ${number(m.paid)} 笔`, 'orders',
+      '按服务端核验通过时间统计正式到账', `已到账订单 ${number(m.paid)} 笔`, verifiedOrdersRoute,
     ],
     [
       'issues', '当前异常报告', number(m.report_failures), '份',
@@ -450,7 +454,7 @@ const notes = {
   visits: '每行是一次访问，保留最近 30 天。停留只累计页面在前台可见的时间。最后记录以服务器收到的上报为准。',
   reports: '按报告创建时间筛选。首次来源、活动和地区取创建时保存的值。',
   orders:
-    '按订单创建时间筛选；缺少旧订单时间时使用报告创建时间。只有正式网关且服务端核验到账才计实收。',
+    '按建单时间筛选。历史缺少建单时间时使用报告创建时间。来源筛选使用建单来源。',
   calls: '按调用时间筛选；只展示 H5 关联调用。历史未记录的原因、耗时显示未知。',
   issues: '报告/订单按创建时间、模型尝试按调用时间筛选；“异常记录”与“异常报告数”是不同口径。',
   audit: '按管理员操作时间筛选；“已处理”仅表示内部跟进进度，不代表付款或生成成功。',
@@ -460,12 +464,19 @@ const recordUnits = {
 };
 function renderRecords(data) {
   const kind = state.view;
+  const verified = kind === 'orders' && state.timeBasis === 'verified';
+  const note = verified
+    ? '只查看正式渠道核验到账的订单，按核验时间筛选。历史缺核验时间的订单可在全部记录中查看。'
+    : notes[kind];
+  const orderTimeLink = kind === 'orders'
+    ? `<a href="#${verified ? 'orders' : verifiedOrdersRoute}">${verified ? '按建单时间' : '按核验时间'} ↗</a> `
+    : '';
   const sources = [...data.source_options];
   const selectedSource = state.source === '__untagged' ? '' : state.source;
   if (state.source && !sources.includes(selectedSource)) sources.push(selectedSource);
   const headers = {
     visits: ['访客与访问时间', '本次访问来源', '填写与转化', '前台停留', '最后记录', '关联报告'],
-    orders: ['订单 / 报告', '来源渠道', '金额', '环境', '支付状态', '创建时间'],
+    orders: ['订单 / 报告', '报告首次来源', '建单来源', '金额', '环境', '支付状态', '建单时间', '核验时间'],
     calls: ['请求 / 报告', '阶段 / 内容', '模型', '校验', 'Token 输入 / 输出', '耗时', '调用时间'],
     issues: ['异常分类', '关联报告', '来源渠道', '状态 / 原因', '记录时间'],
     audit: ['操作 / 管理员', '关联报告', '结果', '处理原因', '操作时间'],
@@ -490,8 +501,13 @@ function renderRecords(data) {
         <td>${row.reports ? `${number(row.reports)} 份` : '未关联'}${reports}</td>
       </tr>`;
     }
-    if (kind === 'orders')
-      return `<tr><td><strong class="mono">${esc(row.id)}</strong>${reportLink(row)}${visitorId(row)}<small>${esc(row.order_number || '尚无平台单号')}</small></td><td>${sourceCell(row)}</td><td><strong>฿ ${money(row.amount)}</strong></td><td>${badge(row.environment)}</td><td>${badge(row.status)}</td><td>${date(row.created)}</td></tr>`;
+    if (kind === 'orders') {
+      const firstSource = sourceCell({
+        source: row.report_source, campaign: row.report_campaign,
+        region_code: row.report_region_code, attribution: row.report_attribution,
+      });
+      return `<tr><td><strong class="mono">${esc(row.id)}</strong>${reportLink(row)}${visitorId(row)}<small>${esc(row.order_number || '尚无平台单号')}</small></td><td>${firstSource}</td><td>${sourceCell(row)}</td><td><strong>฿ ${money(row.amount)}</strong></td><td>${badge(row.environment)}</td><td>${badge(row.status)}</td><td>${date(row.created)}</td><td>${date(row.paid_at)}</td></tr>`;
+    }
     if (kind === 'calls')
       return `<tr><td><span class="mono" title="${esc(row.request_id)}">${esc(short(row.request_id) || '未返回请求号')}</span>${reportLink(row)}${visitorId(row)}</td><td>${esc(label(row.phase))}<small>${esc(row.reading)}</small></td><td>${esc(row.provider)}<small>${esc(row.model)}</small></td><td>${badge(row.status)}<small title="${esc(row.code)}">${esc(label(row.code))}</small></td><td>${row.usage_received ? number(row.prompt_tokens) + ' / ' + number(row.completion_tokens) : '未返回用量'}<small>缓存命中 ${number(row.cached_tokens)}</small></td><td>${row.duration_ms == null ? '历史未记录' : (row.duration_ms / 1000).toFixed(1) + ' 秒'}</td><td>${date(row.created)}</td></tr>`;
     if (kind === 'issues')
@@ -500,7 +516,7 @@ function renderRecords(data) {
   };
   const pages = Math.max(1, Math.ceil(data.total / data.page_size));
   $('#content').innerHTML =
-    `<p class="data-note">${esc(notes[kind])} <a href="#sources">查看来源 ↗</a></p><section class="panel table-panel${kind === 'visits' ? ' visit-records' : ''}"><form id="filters" class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search-input" aria-label="搜索记录" placeholder="搜索访客编号、报告、订单号或关键词…" value="${esc(state.q)}" maxlength="100"></div><select id="status-filter" aria-label="状态筛选"><option value="">全部状态</option>${data.facets.map((row) => `<option value="${esc(row.status)}" ${row.status === state.status ? 'selected' : ''}>${esc(label(row.status))} (${row.count})</option>`).join('')}</select>${kind !== 'audit' ? `<select id="source-filter" aria-label="来源筛选"><option value="">全部来源</option>${sources.map((source) => `<option value="${esc(source || '__untagged')}" ${(source || '__untagged') === state.source ? 'selected' : ''}>${esc(source || '未标记 / 未归因')}</option>`).join('')}</select>` : ''}<button class="button" type="submit">查询</button><button class="button" id="clear-filters" type="button">重置</button><button id="export" type="button" class="button export">↓ 导出当前页</button></form><div class="summary-line"><span>筛选结果 <strong>${number(data.total)}</strong> ${recordUnits[kind]}</span>${kind === 'issues' ? '<span>模型尝试与当前业务异常分别标注</span>' : ''}</div>${kind === 'reports' ? reportTable(data.items) : data.items.length ? table(headers[kind], data.items.map(renderRow)) : empty('没有符合条件的记录')}<div class="table-footer"><span>每页 ${data.page_size} 条</span><div class="pagination"><button id="previous-page" class="button" ${state.page <= 1 ? 'disabled' : ''}>上一页</button><span>${state.page} / ${pages}</span><button id="next-page" class="button" ${state.page >= pages ? 'disabled' : ''}>下一页</button></div></div></section>`;
+    `<p class="data-note">${esc(note)} ${orderTimeLink}<a href="#sources">查看来源 ↗</a></p><section class="panel table-panel${kind === 'visits' ? ' visit-records' : ''}"><form id="filters" class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search-input" aria-label="搜索记录" placeholder="搜索访客编号、报告、订单号或关键词…" value="${esc(state.q)}" maxlength="100"></div><select id="status-filter" aria-label="状态筛选"><option value="">全部状态</option>${data.facets.map((row) => `<option value="${esc(row.status)}" ${row.status === state.status ? 'selected' : ''}>${esc(label(row.status))} (${row.count})</option>`).join('')}</select>${kind !== 'audit' ? `<select id="source-filter" aria-label="来源筛选"><option value="">全部来源</option>${sources.map((source) => `<option value="${esc(source || '__untagged')}" ${(source || '__untagged') === state.source ? 'selected' : ''}>${esc(source || '未标记 / 未归因')}</option>`).join('')}</select>` : ''}<button class="button" type="submit">查询</button><button class="button" id="clear-filters" type="button">重置</button><button id="export" type="button" class="button export">↓ 导出当前页</button></form><div class="summary-line"><span>筛选结果 <strong>${number(data.total)}</strong> ${recordUnits[kind]}</span>${kind === 'issues' ? '<span>模型尝试与当前业务异常分别标注</span>' : ''}</div>${kind === 'reports' ? reportTable(data.items) : data.items.length ? table(headers[kind], data.items.map(renderRow)) : empty('没有符合条件的记录')}<div class="table-footer"><span>每页 ${data.page_size} 条</span><div class="pagination"><button id="previous-page" class="button" ${state.page <= 1 ? 'disabled' : ''}>上一页</button><span>${state.page} / ${pages}</span><button id="next-page" class="button" ${state.page >= pages ? 'disabled' : ''}>下一页</button></div></div></section>`;
   if (kind === 'issues')
     $('#status-filter').insertAdjacentHTML(
       'afterend',
@@ -570,7 +586,12 @@ function exportPage() {
     visible_ms: '累计前台可见停留(毫秒)',
     dropped_events: '待发队列溢出条数',
     visit_id: '关联访问编号',
-    source: '来源渠道',
+    landing_visit_id: '建单访问编号',
+    source: state.view === 'orders' ? '建单来源' : '来源渠道',
+    report_source: '报告首次来源',
+    report_campaign: '报告首次活动',
+    report_region_code: '报告首次投放地区',
+    report_attribution: '报告首次来源状态',
     campaign: '活动标签',
     status: '业务状态代码',
     case_status: '内部处理进度',
@@ -692,7 +713,7 @@ function renderDetail(data) {
     `<p class="detail-id mono">${esc(r.id)}</p><div class="detail-actions"><button class="button" data-action="check_payment" ${order && order.environment !== 'simulation' ? '' : 'disabled'}>核对到账</button><button class="button" data-action="retry_report" ${canRetry ? '' : 'disabled'} title="已解锁的失败报告可重试；未解锁只可重试免费预览">重试失败报告</button><button class="primary" data-action="note">添加处理记录</button><button class="button" data-report="${esc(r.id)}">↻ 刷新详情</button></div>
     <section class="detail-section"><h3>报告状态与来源 ${badge(r.status)}</h3><div class="detail-fields">${field('预览状态', label(r.preview_state), 'life_reports.preview_state')}${field('完整报告', label(r.full_state), 'life_reports.full_state')}${field('权限', r.unlocked ? '已解锁（不等同于实收）' : '未解锁', 'life_reports.unlocked')}${field('访客编号', r.visitor_number || '暂无编号', 'landing_visitors.visitor_number')}${field('创建时间', fullDate(r.created), 'life_reports.created')}${field('首次来源', sourceName(r), '报告创建时记录')}${field('首次活动', r.campaign || '未记录', '报告创建时记录')}${field('首次投放地区', r.region_code || '未知', '首次链接的地区标签')}${field('已完成内容', `${data.completed_chapters.length} 个章节${data.has_plan ? ' + 行动计划' : ''}`, 'life_reports.chapters / plan')}${field('内部跟进', label(data.case.status), 'admin_cases.status')}</div><details><summary>查看当前生成进度记录</summary><pre>${esc(JSON.stringify(data.progress, null, 2))}</pre></details></section>
     <section class="detail-section"><h3>用户提交信息</h3><div class="detail-fields">${field('姓名', p.display_name || '未填写', 'input.profile.display_name')}${field('报告语言', label(p.language), 'input.profile.language')}${field('出生日期', p.birth_date || '未记录', 'input.profile.birth_date')}${field('出生时间', p.birth_time || '未知', 'input.profile.birth_time')}${field('出生地', p.birthplace || '未记录', 'input.profile.birthplace')}${field('时区', p.timezone || '未记录', 'input.profile.timezone')}</div></section>
-    <section class="detail-section"><h3>订单与服务端回执 ${order ? badge(order.status) : ''}</h3>${order ? `<div class="detail-fields">${field('订单编号', order.id, 'life_card_payments.reference')}${field('订单金额', 'THB ' + money(order.amount), 'life_card_payments.amount / 100')}${field('平台单号', order.order_number || '未返回', 'sunlands_order_number')}${field('运行环境', label(order.environment), '支付网关与商户类型')}${field('到账核验', label(order.status), 'paymentStatus + provider_order')}${field('核验到账时间', fullDate(order.paid_at), 'sunlands_order.paidAt')}</div><details><summary>查看已脱敏的建单与查单回执</summary><pre>${esc(JSON.stringify(data.receipt, null, 2))}</pre></details>` : '<div class="panel-body muted">没有关联支付订单。报告解锁本身不能证明收款。</div>'}</section>
+    <section class="detail-section"><h3>订单与服务端回执 ${order ? badge(order.status) : ''}</h3>${order ? `<div class="detail-fields">${field('订单编号', order.id, 'life_card_payments.reference')}${field('订单金额', 'THB ' + money(order.amount), 'life_card_payments.amount / 100')}${field('建单来源', sourceName(order), 'life_card_payments.landing_source')}${field('建单访问编号', order.landing_visit_id || '未归因', 'life_card_payments.landing_visit_id')}${field('平台单号', order.order_number || '未返回', 'sunlands_order_number')}${field('运行环境', label(order.environment), '支付网关与商户类型')}${field('到账核验', label(order.status), 'paymentStatus + provider_order')}${field('核验到账时间', fullDate(order.paid_at), 'sunlands_order.paidAt')}</div><details><summary>查看已脱敏的建单与查单回执</summary><pre>${esc(JSON.stringify(data.receipt, null, 2))}</pre></details>` : '<div class="panel-body muted">没有关联支付订单。报告解锁本身不能证明收款。</div>'}</section>
     <section class="detail-section"><h3>模型调用 · 最近 ${data.calls.length} 条</h3>${calls.length ? table(['阶段', '校验 / 原因', '耗时', '时间'], calls, true) : '<div class="panel-body muted">暂无与该报告关联的调用记录。</div>'}</section>
     <section class="detail-section"><h3>管理员处理记录 · 最近 ${data.audit.length} 条</h3><div class="timeline">${data.audit.length ? data.audit.map((row) => `<div class="timeline-item"><strong>${esc(row.actor)} · ${esc(label(row.action))} ${badge(row.status)}</strong><p>${esc(row.note)}</p><p>结果：${esc(errors[row.code] || label(row.code))}</p><small>${fullDate(row.created)}</small></div>`).join('') : '<p class="muted">还没有处理记录。</p>'}</div></section>`;
 }

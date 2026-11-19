@@ -857,6 +857,7 @@ void main() {
       'plan': paid['plan'],
     };
     final calls = <String>[];
+    var quoteUnavailable = false;
     final repo = ReportRepository(
       browser,
       baseUrl: 'https://example.test',
@@ -864,6 +865,14 @@ void main() {
         calls.add('${request.method} ${request.url.path}');
         if (request.url.path.endsWith('/payment')) {
           return http.Response('', 204);
+        }
+        if (quoteUnavailable &&
+            request.url.path == '/api/life-reports/${data['id']}') {
+          return http.Response(
+            jsonEncode({'code': 'network'}),
+            503,
+            headers: {'content-type': 'application/json'},
+          );
         }
         return response(data);
       }),
@@ -887,7 +896,14 @@ void main() {
     expect(find.text(paidText), findsNothing);
     final appButton = find.byKey(const ValueKey('jy-app-download'));
     expect(appButton, findsNothing);
-    await click(tester, find.byKey(const ValueKey('jy-payment-preview')));
+    final payButton = find.byKey(const ValueKey('jy-payment-preview'));
+    quoteUnavailable = true;
+    await click(tester, payButton);
+    expect(find.byType(ReportPaymentDialog), findsNothing);
+    expect(find.text(h5.message(const ApiFailure('network'))), findsOneWidget);
+    expect(calls.where((call) => call.endsWith('/payment')), isEmpty);
+    quoteUnavailable = false;
+    await click(tester, payButton);
     expect(find.byKey(const ValueKey('order-mobile')), findsOneWidget);
     expect(browser.activities.last, {
       'page': 'payment',
@@ -919,6 +935,106 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     h5.dispose();
   });
+
+  for (final language in ['zh', 'th']) {
+    for (final existingOrder in [false, true]) {
+      final orderType = existingOrder ? 'existing order' : 'new order';
+      testWidgets(
+        'Sunlands refreshes the report price before checkout ($language, $orderType)',
+        (tester) async {
+          phone(tester);
+          final browser = TestBrowser();
+          final data = fixture(language: language);
+          final reportPath = '/api/life-reports/${data['id']}';
+          final calls = <String>[];
+          final currentAmount = existingOrder ? 3000 : 1000;
+          final staleAmount = existingOrder ? 1000 : 3000;
+          final order = {
+            'reference': '000000000001',
+            'amount': currentAmount,
+            'currency': 'THB',
+            'order_only': true,
+            'state': 'CREATED',
+            'order_number': 'OFFLINE_ORDER',
+          };
+          final repo = ReportRepository(
+            browser,
+            baseUrl: 'https://example.test',
+            client: MockClient((request) async {
+              final path = request.url.path;
+              if (path == reportPath) {
+                calls.add('${request.method} report');
+                final amount = calls.length == 1 ? staleAmount : currentAmount;
+                return response({
+                  ...data,
+                  'payment_simulation': false,
+                  'price': {
+                    'amount': amount,
+                    'currency': 'THB',
+                    'display': '฿${amount ~/ 100}',
+                    'mode': 'sunlands_order_only',
+                  },
+                });
+              }
+              if (path == '$reportPath/payment') {
+                calls.add('${request.method} payment');
+                return request.method == 'GET' && !existingOrder
+                    ? http.Response('', 204)
+                    : response(order);
+              }
+              return response({'paid': false});
+            }),
+          );
+          final h5 = H5Controller(
+            translations(),
+            repo,
+            browser,
+            language: language,
+          );
+          await tester.pumpWidget(
+            H5App(
+              controller: h5,
+              initialLocation:
+                  '/report.html?id=${data['id']}&lang=$language&checkout=1',
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(calls, ['GET report']);
+          await click(tester, find.byKey(const ValueKey('jy-payment-preview')));
+          expect(calls, ['GET report', 'GET report', 'GET payment']);
+          final dialog = find.byType(ReportPaymentDialog);
+          expect(
+            find.descendant(
+              of: dialog,
+              matching: find.text('฿${currentAmount ~/ 100}'),
+            ),
+            findsOneWidget,
+          );
+          final mobile = find.byKey(const ValueKey('order-mobile'));
+          if (existingOrder) {
+            expect(mobile, findsNothing);
+          } else {
+            await tester.enterText(mobile, '812345678');
+            await click(
+              tester,
+              find.widgetWithText(
+                FilledButton,
+                h5.copy.t('checkout', 'createOrderOnly'),
+              ),
+            );
+            expect(calls.last, 'POST payment');
+          }
+          expect(
+            find.text(h5.copy.t('checkout', 'pendingOrder')),
+            findsOneWidget,
+          );
+          expect(browser.openedPages, isEmpty);
+          await tester.pumpWidget(const SizedBox.shrink());
+          h5.dispose();
+        },
+      );
+    }
+  }
 
   for (final language in ['zh', 'th']) {
     testWidgets(
@@ -1646,6 +1762,56 @@ void main() {
     },
   );
 
+  testWidgets(
+    'failed marriage generation offers retry without draft progress',
+    (tester) async {
+      phone(tester);
+      final browser = TestBrowser();
+      final h5 = H5Controller(
+        translations(),
+        ReportRepository(browser),
+        browser,
+        language: 'zh',
+      );
+      final report = LifeReport.parse(
+        marriageFixture()
+          ..['access'] = 'full'
+          ..['full_state'] = 'unavailable',
+      );
+      const savedDraftHint = '这次生成未完成，已完成的章节已保留，可以继续生成。';
+      final state = GenerationState()
+        ..update(report, 95, 'full')
+        ..fail(savedDraftHint);
+      var retries = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GenerationDialog(
+            h5: h5,
+            state: state,
+            full: true,
+            onCancel: () {},
+            onRetry: () => retries++,
+            onComplete: (_) {},
+          ),
+        ),
+      );
+      expect(
+        find.text(h5.copy.t('jy', 'interpretation.interrupted')),
+        findsOneWidget,
+      );
+      expect(find.text(savedDraftHint), findsNothing);
+      expect(find.byType(ReadingProgress), findsNothing);
+      await click(
+        tester,
+        find.text(h5.copy.t('jy', 'interpretation.retryFull')),
+      );
+      expect(retries, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+      state.dispose();
+      h5.dispose();
+    },
+  );
+
   for (final wait in [Duration.zero, const Duration(seconds: 20)]) {
     testWidgets(
       'free report opens on readiness without waiting for the wheel: $wait',
@@ -1727,7 +1893,8 @@ void main() {
       expect(route.queryParameters, containsPair('lang', 'zh'));
       expect(route.queryParameters, containsPair('topic', 'love'));
       expect(route.queryParameters, containsPair('startup', '1'));
-      expect(find.text(h5.copy.t('marriage', 'title')), findsOneWidget);
+      expect(find.text(h5.copy.t('jy', 'formTitle')), findsOneWidget);
+      expect(find.text(h5.copy.t('jy', 'formCaption')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -1847,7 +2014,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('泰式占星 · 婚姻关系报告'), findsOneWidget);
-      expect(find.text('当前感情能量判断'), findsOneWidget);
+      for (final title in ['上升在感情里的真实样子', '当前感情能量', '付费引导']) {
+        expect(find.text(title), findsOneWidget);
+      }
+      expect(find.text('感情模式快照'), findsNothing);
       expect(find.text('Free marriage section 3.'), findsOneWidget);
       expect(find.text('婚姻与长期关系完整解剖'), findsNothing);
       expect(tester.takeException(), isNull);

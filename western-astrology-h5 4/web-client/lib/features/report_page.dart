@@ -168,9 +168,13 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     }
     setState(() => _paying = true);
     try {
+      final latest = await _model.load(background: true);
+      if (!mounted || latest == null || !latest.canPay || latest.full) {
+        return;
+      }
       final paid = await showDialog<bool>(
         context: context,
-        builder: (_) => ReportPaymentDialog(h5: widget.h5, report: report),
+        builder: (_) => ReportPaymentDialog(h5: widget.h5, report: latest),
       );
       if (mounted) {
         widget.h5.trackActivity(
@@ -557,7 +561,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           const SizedBox(height: 12),
         ],
         if (report.sectionedReport)
-          ..._readingSections(report.readingSections())
+          ..._readingSections(report.readingSections(copy: c))
         else if (!report.full) ...[
           Text(
             c.t(
@@ -1305,14 +1309,17 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   if (!r.ready) ...[
                     const SizedBox(height: 16),
                     Text(
-                      c.t('report', 'states.${r.json['full_state']}'),
+                      r.marriageFullFailed
+                          ? c.t('jy', 'interpretation.interrupted')
+                          : c.t('report', 'states.${r.json['full_state']}'),
                       style: const TextStyle(fontSize: 12, color: lavender),
                     ),
-                    ReadingProgress(
-                      percent: r.percent(true),
-                      reduced: MediaQuery.disableAnimationsOf(context),
-                      label: c.t('jy', 'progress'),
-                    ),
+                    if (!r.marriageFullFailed)
+                      ReadingProgress(
+                        percent: r.percent(true),
+                        reduced: MediaQuery.disableAnimationsOf(context),
+                        label: c.t('jy', 'progress'),
+                      ),
                     OutlinedButton(
                       onPressed: _generating ? null : () => _generate(true),
                       child: Text(

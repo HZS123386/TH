@@ -7,6 +7,7 @@ import '../app/controller.dart';
 import '../core/browser_port.dart';
 import '../core/models.dart' show Json, object;
 import '../ui/jy_components.dart';
+import '../ui/site_header.dart';
 import '../ui/theme.dart';
 
 /// JY's welcome interaction rendered by the existing Flutter application.
@@ -19,9 +20,11 @@ class WelcomePage extends StatefulWidget {
 
 class _WelcomePageState extends State<WelcomePage>
     with SingleTickerProviderStateMixin {
+  static const _portraitHandoff = .79;
+  static const _copyFadeThrough = .56;
   late final _motion = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 820),
+    duration: const Duration(milliseconds: 420),
   );
   bool _leaving = false;
   double _travel = 0;
@@ -32,7 +35,7 @@ class _WelcomePageState extends State<WelcomePage>
     unawaited(widget.h5.recordVisit());
     widget.h5.trackActivity('welcome');
     _motion.addListener(() {
-      if (_motion.value >= 650 / 820) widget.h5.revealLandingPortrait();
+      if (_motion.value >= _portraitHandoff) widget.h5.revealLandingPortrait();
     });
   }
 
@@ -107,13 +110,15 @@ class _WelcomePageState extends State<WelcomePage>
                     1,
                   ).transform(_motion.value);
                   final image = Rect.lerp(from, to, t)!;
-                  final fade = (1 - _motion.value * 820 / 460).clamp(0.0, 1.0);
-                  final imageOpacity = _motion.value < 650 / 820
-                      ? 1.0
-                      : (1 - (_motion.value - 650 / 820) * 820 / 170).clamp(
-                          0.0,
-                          1.0,
-                        );
+                  final fade = (1 - _motion.value / _copyFadeThrough).clamp(
+                    0.0,
+                    1.0,
+                  );
+                  final imageOpacity =
+                      ((1 - _motion.value) / (1 - _portraitHandoff)).clamp(
+                        0.0,
+                        1.0,
+                      );
                   return Stack(
                     clipBehavior: Clip.hardEdge,
                     children: [
@@ -190,6 +195,15 @@ class _WelcomePageState extends State<WelcomePage>
                           ),
                         ),
                       ),
+                      if (!_leaving)
+                        const Positioned(
+                          top: 16,
+                          right: 16,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6),
+                            child: SiteLanguageMenu(),
+                          ),
+                        ),
                       if (signatureName.isEmpty &&
                           c.t('jy', 'welcome.guideName').isNotEmpty)
                         Positioned(

@@ -34,13 +34,14 @@ it("exports the Thai marriage outline for the authorized edition", () => {
     progress: { completed: 0, total: marriageTopicKeys.length },
     catalog: marriageTopicKeys.map(key => ({ key, title: key, questions: [], houses: [], ready: false })),
     marriage: {
-      preview: marriagePreviewKeys.map(key => ({ key, title: key, paragraphs: ["FREE_" + key] })),
+      preview: marriagePreviewKeys.map(key => ({ key, title: key, paragraphs: ["FREE_" + key], visible: key !== "relationship_snapshot" })),
       full: marriageTopicKeys.map(key => ({ key, title: key, paragraphs: ["PRIVATE_" + key] })),
     },
   };
   expect(isLifeReport(report)).toBe(true);
-  expect(reportContent(report).map(section => section.key)).toEqual(marriagePreviewKeys);
+  expect(reportContent(report).map(section => section.key)).toEqual(marriagePreviewKeys.filter(key => key !== "relationship_snapshot"));
   expect(reportHtml(report, lifeLabels(report))).toContain("<p>FREE_unlock_offer</p>");
+  expect(reportHtml(report, lifeLabels(report))).not.toContain("FREE_relationship_snapshot");
   expect(reportHtml(report, lifeLabels(report))).not.toContain("PRIVATE_");
   report.access = "full";
   report.full_state = "generating";

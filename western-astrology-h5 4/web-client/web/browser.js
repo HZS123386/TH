@@ -1,18 +1,49 @@
+const fateOwnerName = 'astro-life-report-key';
+const fateValidOwner = value => typeof value === 'string' && /^[A-Za-z0-9_-]{32,128}$/.test(value);
+const fateHex = bytes => Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+function fateOwnerStores() {
+  const stores = [];
+  for (const read of [() => window.localStorage, () => window.sessionStorage]) {
+    try { stores.push(read()); } catch {}
+  }
+  return stores;
+}
+function fateSavedOwner(stores) {
+  for (const store of stores) {
+    try {
+      const value = store.getItem(fateOwnerName);
+      if (fateValidOwner(value)) return value;
+    } catch {}
+  }
+  return null;
+}
+let fateOwner;
+function fateOwnerKey() {
+  const stores = fateOwnerStores();
+  const key = fateOwner ?? fateSavedOwner(stores) ?? fateHex(crypto.getRandomValues(new Uint8Array(24)));
+  let persisted = false;
+  for (const store of stores) {
+    try {
+      if (store.getItem(fateOwnerName) !== key) store.setItem(fateOwnerName, key);
+      persisted = store.getItem(fateOwnerName) === key || persisted;
+    } catch {}
+  }
+  fateOwner = persisted ? key : null;
+  return fateOwner;
+}
+
 // Upgrade only the deployed IP site; local previews keep their existing origin.
 // The short-lived host cookie avoids putting report credentials in URLs or logs.
 const fateHttpsUpgrading=(()=>{
   if(location.host!=='129.226.126.212'||!location.pathname.startsWith('/thai-landing/'))return false;
   if(new URLSearchParams(location.search).get('legacy_http')==='1')return false;
-  const ownerName='astro-life-report-key',bridgeName='fate-https-owner',upgradeName='_fate_https';
-  const valid=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{32,128}$/.test(value);
-  const stores=[];
-  for(const read of [()=>window.localStorage,()=>window.sessionStorage]){try{stores.push(read());}catch{}}
-  const saved=()=>{for(const store of stores){try{const value=store.getItem(ownerName);if(valid(value))return value;}catch{}}return null;};
+  const bridgeName='fate-https-owner',upgradeName='_fate_https';
+  const stores=fateOwnerStores();
   const cookie=()=>{try{return document.cookie.split(';').map(value=>value.trim()).find(value=>value.startsWith(bridgeName+'='))?.slice(bridgeName.length+1)||null;}catch{return null;}};
   const clearBridge=()=>{try{document.cookie=`${bridgeName}=; Path=/thai-landing/; Max-Age=0; SameSite=Lax; Secure`;}catch{}};
   const redirect=(protocol,legacy=false,migrating=false)=>{const target=new URL(location.href);target.protocol=protocol;target.searchParams.delete(upgradeName);if(migrating)target.searchParams.set(upgradeName,'1');if(legacy)target.searchParams.set('legacy_http','1');location.replace(target.href);return true;};
   if(location.protocol==='http:'){
-    const owner=saved();
+    const owner=fateSavedOwner(stores);
     if(owner){
       try{document.cookie=`${bridgeName}=${owner}; Path=/thai-landing/; Max-Age=60; SameSite=Lax`;}catch{return false;}
       if(cookie()!==owner)return false;
@@ -22,17 +53,17 @@ const fateHttpsUpgrading=(()=>{
   if(location.protocol!=='https:')return false;
   const incoming=cookie();
   const upgrading=new URLSearchParams(location.search).get(upgradeName)==='1';
-  if(!valid(incoming))return upgrading?redirect('http:',true):false;
-  const current=saved();
+  if(!fateValidOwner(incoming))return upgrading?redirect('http:',true):false;
+  const current=fateSavedOwner(stores);
   if(current&&current!==incoming){
     // Keep both owners recoverable, and let the old HTTP link retain its reports.
     let preserved=false;
-    for(const store of stores){try{store.setItem(ownerName+'-http',incoming);preserved=store.getItem(ownerName+'-http')===incoming||preserved;}catch{}}
+    for(const store of stores){try{store.setItem(fateOwnerName+'-http',incoming);preserved=store.getItem(fateOwnerName+'-http')===incoming||preserved;}catch{}}
     if(preserved)clearBridge();
     return redirect('http:',true);
   }
   let persisted=false;
-  for(const store of stores){try{store.setItem(ownerName,incoming);persisted=store.getItem(ownerName)===incoming||persisted;}catch{}}
+  for(const store of stores){try{store.setItem(fateOwnerName,incoming);persisted=store.getItem(fateOwnerName)===incoming||persisted;}catch{}}
   if(!persisted)return redirect('http:',true);
   clearBridge();
   if(upgrading){const target=new URL(location.href);target.searchParams.delete(upgradeName);history.replaceState(null,'',target.href);}
@@ -49,10 +80,35 @@ const fateBootLabels={
   "lo":{"engine": "ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ", "app": "ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ", "slow": "ເຄືອຂ່າຍຊ້າ. ກະລຸນາລໍຖ້າ", "retry": "ການເຊື່ອມຕໍ່ຂາດ. ກຳລັງໂຫຼດໃໝ່", "failed": "ໂຫຼດໜ້າບໍ່ໄດ້. ກວດເຄືອຂ່າຍ ແລະລອງໃໝ່"},
   "ms":{"engine": "Membuka langit anda", "app": "Membuka langit anda", "slow": "Rangkaian perlahan. Sila tunggu", "retry": "Sambungan terputus. Memuatkan semula", "failed": "Halaman tidak dapat dimuatkan. Semak sambungan dan cuba lagi"},
   "id":{"engine": "Membuka langit Anda", "app": "Membuka langit Anda", "slow": "Jaringan lambat. Silakan tunggu", "retry": "Koneksi terputus. Memuat ulang", "failed": "Halaman belum dapat dimuat. Periksa koneksi dan coba lagi"}
-}[document.documentElement.lang];
-let fateBootFinished=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
-let fateWelcomeRequested=false,fateWelcomeEnter;
-let resumeWelcomeBoot;
+};
+let fateBootFinished=false,fateBootFinishing=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
+let fateWelcomeRequested=false,fateWelcomeEnter,fateWelcomeSetLanguage,fateFlutterLanguage;
+let fateWelcomeLanguage=document.documentElement.lang;
+function showFateStartupStatus(stage) {
+  const labels = fateBootLabels[fateWelcomeLanguage] ?? fateBootLabels.th;
+  const status = document.getElementById('fate-startup-status');
+  const progress = document.getElementById('fate-welcome-progress');
+  if (status) status.textContent = labels[stage] ?? labels.app;
+  if (progress) progress.textContent = labels.app;
+}
+function selectFateWelcomeLanguage(language) {
+  fateWelcomeLanguage = language;
+  document.documentElement.lang = language;
+  const select = document.getElementById('fate-welcome-language');
+  if (select) select.value = language;
+  const url = new URL(location.href);
+  url.searchParams.set('lang', language);
+  history.replaceState(history.state, '', url);
+  if (typeof preloadFateLanguage === 'function') preloadFateLanguage(language);
+  showFateStartupStatus(document.getElementById('fate-startup')?.dataset.state);
+  writeWelcomeName(document.getElementById('fate-welcome'));
+}
+function deliverFateWelcome() {
+  if (!fateWelcomeRequested || !fateWelcomeEnter) return;
+  const enter = fateWelcomeEnter;
+  fateWelcomeEnter = undefined;
+  enter();
+}
 const fateBootRetryKey='fate-startup-recovery-at';
 // Consume a queued retry even if navigation stalled, then latch the path preference before its TTL expires.
 const fateBootRetry=(()=>{
@@ -71,15 +127,20 @@ const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBo
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
   compatibility:fateBootRetry?.compatibility===true,
-  welcomePaint:Promise.resolve(),
-  stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage==='engine'||stage==='app'?(fateWelcomeRequested?'waiting':stage):stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
-  connectWelcome(enter){fateWelcomeEnter=enter;},
+  stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage==='engine'||stage==='app'?(fateWelcomeRequested?'waiting':stage):stage;showFateStartupStatus(stage);},
+  connectWelcome(enter, setLanguage, language) {
+    fateWelcomeEnter=enter;
+    fateWelcomeSetLanguage=setLanguage;
+    fateFlutterLanguage=language;
+    deliverFateWelcome();
+  },
   enterWelcome(){
-    if(fateBootFinished||fateBootFailed||document.documentElement.dataset.welcome!=='true')return;
+    if(fateBootFinished||fateBootFailed||fateWelcomeRequested||document.documentElement.dataset.welcome!=='true')return;
     fateWelcomeRequested=true;
+    performance.mark('fate-welcome-accepted');
     document.getElementById('fate-welcome-start')?.setAttribute('aria-busy','true');
     this.stage('waiting');
-    resumeWelcomeBoot?.();
+    deliverFateWelcome();
   },
   fail(){
     if(fateHttpsUpgrading||fateBootFinished||fateBootFailed)return;
@@ -95,23 +156,66 @@ window.fateBoot={
     if(recover){this.stage('retry');fateBootRecovery=setTimeout(()=>location.reload(),700);return;}
     this.stage('failed');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;
   },
-  ready(){
-    if(fateBootFinished)return;
+  async ready(){
+    if(fateBootFinished||fateBootFinishing)return;
+    fateBootFinishing=true;
+    // The HTML picker remains usable until Flutter draws the chosen language.
+    while(fateWelcomeSetLanguage && fateWelcomeLanguage!==fateFlutterLanguage) {
+      const requested=fateWelcomeLanguage;
+      let changed=false;
+      try { changed=await fateWelcomeSetLanguage(requested); } catch {}
+      if(changed) fateFlutterLanguage=requested;
+      if(!changed && requested===fateWelcomeLanguage) selectFateWelcomeLanguage(fateFlutterLanguage);
+      document.documentElement.lang=fateWelcomeLanguage;
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    }
     fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);clearTimeout(fateBootRecovery);
     try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
     document.getElementById('fate-startup')?.remove();performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));
-    // Deliver an early click to the existing Flutter landing flow exactly once.
-    if(fateWelcomeRequested){fateWelcomeRequested=false;fateWelcomeEnter?.();}
     fateWelcomeEnter=undefined;
+    fateWelcomeSetLanguage=undefined;
   }
 };
+function preloadFateWasm(engineRevision) {
+  const {upgrading, compatibility} = window.fateBoot;
+  const {vendor, userAgent} = window.navigator;
+  if (upgrading || compatibility || (vendor !== 'Google Inc.' && !userAgent.includes('Edg/'))) return;
+  // Match the installed Flutter loader's Wasm GC and graphics requirements.
+  const gcModule = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 120, 0]);
+  if (typeof WebAssembly === 'undefined' || !WebAssembly.validate(gcModule)) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  const context = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (!context) return;
+  context.getExtension('WEBGL_lose_context')?.loseContext();
+
+  const lite = typeof ImageDecoder !== 'undefined' && typeof Intl.v8BreakIterator !== 'undefined'
+    && typeof Intl.Segmenter !== 'undefined';
+  const renderer = lite ? 'skwasm' : 'skwasm_heavy';
+  const runtime = priorityPreload('main.dart.mjs', 'script');
+  runtime.rel = 'modulepreload';
+  document.head.append(
+    runtime,
+    priorityPreload('main.dart.wasm', 'fetch'),
+    priorityPreload(`engine/${engineRevision}/${renderer}.wasm`, 'fetch'),
+  );
+}
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
 window.addEventListener('error',event=>{
   if(event.error||event.message||(event.target?.tagName==='SCRIPT'&&/\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src)))window.fateBoot.fail();
 },true);
 window.addEventListener('unhandledrejection',()=>window.fateBoot.fail());
 // The HTML response can stall after rendering the button but before DOMContentLoaded.
-document.addEventListener('click',event=>{if(event.target?.closest?.('#fate-startup-retry'))location.reload();});
+document.addEventListener('click',event=>{
+  if(event.target?.closest?.('#fate-startup-retry')) location.reload();
+  else if(event.target?.closest?.('#fate-welcome-start')) window.fateBoot.enterWelcome();
+});
+document.addEventListener('change',event=>{
+  const select=event.target;
+  if(select?.id==='fate-welcome-language' && !fateBootFinished && Object.hasOwn(fateBootLabels,select.value)) {
+    selectFateWelcomeLanguage(select.value);
+  }
+});
 const fatePendingKey = 'fate-activity-pending';
 let fateActivity, fateActivitySequence = 0, fatePending = [], fateDropped = {};
 let fateUnstored = new Map(), fateRemoved = new Set(), fateStoredKeys = new Set(), fateStoredDropped = {}, fateOverflow = {};
@@ -119,6 +223,52 @@ let fateSending = 0, fateRetryAt = 0, fateRetryCount = 0, fateSendTimer, fateDwe
 const fateTrackingAllowed = () => window.navigator?.globalPrivacyControl !== true && window.navigator?.doNotTrack !== '1';
 const fateState = () => document.visibilityState === 'hidden' ? 'hidden' : 'visible';
 const fateEventKey = item => `${item.visit.id}:${item.event.sequence}`;
+const fateEntryParams = new URLSearchParams(location.search);
+const fateVisitStorageKey = 'fate-visit-context';
+let fateVisit;
+function fateUuid() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = fateHex(bytes);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+function rememberFateVisit() {
+  if (!fateVisit || !fateTrackingAllowed()) return;
+  try { sessionStorage.setItem(fateVisitStorageKey, JSON.stringify(fateVisit)); } catch {}
+  try {
+    const state = history.state;
+    if (state == null || (typeof state === 'object' && !Array.isArray(state))) {
+      history.replaceState({ ...state, fateVisit }, '');
+    }
+  } catch {}
+}
+function restoreFateVisit(value) {
+  if (typeof value?.id !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value.id)) return null;
+  const tag = field => typeof value[field] === 'string' && /^[A-Za-z0-9_.~-]{0,64}$/.test(value[field]) ? value[field] : '';
+  const region = typeof value.region === 'string' && /^[A-Z]{2}$/.test(value.region) ? value.region : null;
+  return { id: value.id, source: tag('source'), campaign: tag('campaign'), ...(region ? { region } : {}) };
+}
+function fateVisitContext() {
+  if (!fateTrackingAllowed() || fateHttpsUpgrading) return null;
+  if (fateVisit) return fateVisit;
+  const type = performance.getEntriesByType?.('navigation')?.[0]?.type;
+  // A fresh document entry uses its own URL tags, even in a previously used tab.
+  if (type !== 'navigate') {
+    try { fateVisit = restoreFateVisit(history.state?.fateVisit); } catch {}
+    if (!fateVisit && type === 'reload') {
+      try { fateVisit = restoreFateVisit(JSON.parse(sessionStorage.getItem(fateVisitStorageKey) || 'null')); } catch {}
+    }
+  }
+  if (!fateVisit) {
+    const tag = name => (fateEntryParams.get(name) || '').replace(/[^A-Za-z0-9_.~-]/g, '').slice(0, 64);
+    const region = fateEntryParams.get('utm_region')?.trim().toUpperCase();
+    fateVisit = { id: fateUuid(), source: tag('utm_source'), campaign: tag('utm_campaign'),
+      ...(/^[A-Z]{2}$/.test(region || '') ? { region } : {}) };
+  }
+  rememberFateVisit();
+  return fateVisit;
+}
 function persistFateActivity(added, delivered = []) {
   if (!fateActivity) return false;
   if (added) fateUnstored.set(fateEventKey(added), added);
@@ -251,11 +401,23 @@ function fateVisibility(state) {
   scheduleFateDwell();
 }
 document.addEventListener('visibilitychange', () => fateVisibility(fateState()));
-window.addEventListener('pagehide', () => fateVisibility('pagehide'));
-window.addEventListener('pageshow', event => { if (event.persisted) fateVisibility(fateState()); });
+window.addEventListener('pagehide', () => {
+  rememberFateVisit();
+  fateVisibility('pagehide');
+});
+window.addEventListener('pageshow', event => {
+  if (event.persisted) {
+    rememberFateVisit();
+    fateVisibility(fateState());
+  }
+});
 window.addEventListener('online', () => { scheduleFateActivity(0); });
 let fateWelcomeStartedAt;
+// Capture the entry's state before Flutter manages browser history.
+try { fateVisitContext(); } catch {}
 window.fateH5 = {
+  ownerKey: fateOwnerKey,
+  visitContext() { return JSON.stringify(fateVisitContext() || {}); },
   welcomeAge(){return fateWelcomeStartedAt===undefined?0:performance.now()-fateWelcomeStartedAt;},
   trackFailure(path, code, method) {
     recordFateActivity('action', fateState(), 'request_failed', { failure_path: path, failure_code: code, failure_method: method });
@@ -265,6 +427,8 @@ window.fateH5 = {
     if (!fateTrackingAllowed()) { clearFateActivity(); return; }
     try {
       const { activity, ...visit } = JSON.parse(payload);
+      if (activity.page === 'welcome' && activity.action === 'view' && fateActivity?.key === key &&
+          fateActivity.visit.id === visit.id && fateActivity.activity.page === 'welcome' && fateActivity.activity.action === 'view') return;
       if (!fateActivity || fateActivity.key !== key) {
         clearFateActivity(false);
         try {
@@ -277,11 +441,8 @@ window.fateH5 = {
         fateActivity = undefined;
       }
       if (!fateActivity) {
-        const bytes = crypto.getRandomValues(new Uint8Array(16));
-        bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
-        const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
         fateActivity = { visit, activity, key, endpoint, visibleMs: 0, visibleSince: null,
-          pageViewId: `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}` };
+          pageViewId: fateUuid() };
       } else fateActivity.activity = activity;
       recordFateActivity();
       scheduleFateDwell();
@@ -307,7 +468,10 @@ window.fateH5 = {
     document.body.append(form);form.submit();form.remove();
   },
   pageReady(page) {
-    if(page==='app-ready')requestAnimationFrame(()=>requestAnimationFrame(()=>window.fateBoot.ready()));
+    if(page==='app-ready')requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      rememberFateVisit();
+      window.fateBoot.ready();
+    }));
     if(!fatePerfEnabled)return;
     requestAnimationFrame(()=>console.debug('[FATE H5 performance] '+JSON.stringify({page,readyMs:Math.round(performance.now()),resources:performance.getEntriesByType('resource').filter(e=>/api\/|main\.dart|skwasm|canvaskit|fonts\/|astrologer/.test(e.name)).map(e=>({name:new URL(e.name).pathname.replace(/(life-reports\/)\w{8,}/,'$1:id'),startMs:Math.round(e.startTime),endMs:Math.round(e.responseEnd),bytes:e.transferSize}))})));
   }
@@ -315,6 +479,10 @@ window.fateH5 = {
 function writeWelcomeName(welcome){
   const data=document.getElementById('fate-welcome-strokes')?.textContent?.trim();
   const name=welcome?.querySelector('.fate-welcome-name');
+  if(!name)return;
+  name.querySelector('canvas')?.remove();
+  name.classList.remove('fate-welcome-stroke-name');
+  name.style.removeProperty('width');
   const label=name?.querySelector(`.fate-startup-${document.documentElement.lang}`)?.textContent?.trim();
   if(!data?.startsWith('{')||!label)return;
   const drawing=JSON.parse(data)[label];
@@ -380,28 +548,28 @@ function mountFateWelcome(){
   if(welcome){
     fateWelcomeStartedAt=performance.now();
     writeWelcomeName(welcome);
+    const trackWelcome = () => {
+      if (document.visibilityState !== 'visible') return;
+      document.removeEventListener('visibilitychange', trackWelcome);
+      try {
+        const visit = fateVisitContext();
+        if (!visit) return;
+        const owner = fateOwnerKey();
+        if (!owner) return;
+        window.fateH5.trackActivity(JSON.stringify({ ...visit, activity: { page: 'welcome', action: 'view' } }),
+          owner, '/api/landing/visits');
+        void flushFateActivity();
+      } catch {}
+    };
+    if (document.visibilityState === 'visible') trackWelcome();
+    else document.addEventListener('visibilitychange', trackWelcome);
   }
   if(image){
-    window.fateBoot.welcomePaint = new Promise(resolve => {
-      const finish = () => {
-        clearTimeout(deadline);
-        resumeWelcomeBoot = undefined;
-        resolve();
-      };
-      // Give the actual portrait one paint before Flutter downloads, with an early-click and slow-image escape.
-      const deadline = setTimeout(finish, 800);
-      resumeWelcomeBoot = finish;
-      image.addEventListener('load', () => {
-        window.fateH5.pageReady('welcome-visible');
-        requestAnimationFrame(() => requestAnimationFrame(finish));
-      }, {once: true});
-      image.addEventListener('error', finish, {once: true});
-    });
+    image.addEventListener('load',()=>window.fateH5.pageReady('welcome-visible'),{once:true});
     image.src='assets/assets/images/astrologer-900.webp';
   }
-  document.getElementById('fate-welcome-start')?.addEventListener('click',()=>window.fateBoot.enterWelcome());
   let touchStart;
-  welcome?.addEventListener('touchstart',event=>{touchStart=event.touches[0]?.clientY;},{passive:true});
+  welcome?.addEventListener('touchstart',event=>{touchStart=event.target?.closest?.('.fate-welcome-language')?undefined:event.touches[0]?.clientY;},{passive:true});
   welcome?.addEventListener('touchend',event=>{if(touchStart!==undefined&&touchStart-event.changedTouches[0]?.clientY>48)window.fateBoot.enterWelcome();touchStart=undefined;},{passive:true});
-  welcome?.addEventListener('wheel',event=>{if(event.deltaY>12)window.fateBoot.enterWelcome();},{passive:true});
+  welcome?.addEventListener('wheel',event=>{if(event.deltaY>12&&!event.target?.closest?.('.fate-welcome-language'))window.fateBoot.enterWelcome();},{passive:true});
 }

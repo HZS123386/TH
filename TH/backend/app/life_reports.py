@@ -511,7 +511,8 @@ class LifeReports:
                        "WHERE unlocked=1 AND preview IS NOT NULL AND full_state='generating' "
                        "AND lease_until<%s AND id<>ALL(%s)", (now, active))
             rows = db.execute("""
-                SELECT r.id,r.owner,r.input,r.full_state,COALESCE(p.network,NULLIF(r.preview_network,''),r.owner) network
+                SELECT r.id,r.owner,r.input,r.full_state,r.generation_progress,
+                       COALESCE(p.network,NULLIF(r.preview_network,''),r.owner) network
                 FROM life_reports r LEFT JOIN life_card_payments p ON p.report_id=r.id
                 WHERE r.unlocked=1 AND r.preview IS NOT NULL AND r.lease_until<%s AND r.id<>ALL(%s)
                   AND (r.full_state IN ('queued','pending') OR (
@@ -528,8 +529,10 @@ class LifeReports:
                     db.execute("UPDATE life_reports SET full_state='limited',lease='',lease_until=0 WHERE id=%s", (row["id"],))
                     continue
                 lease = secrets.token_hex(16)
-                db.execute("UPDATE life_reports SET full_state='generating',lease=%s,lease_until=%s WHERE id=%s",
-                           (lease, time.time() + self.lease_seconds, row["id"]))
+                marks = json.loads(row["generation_progress"])
+                marks.pop("marriage-full", None)
+                db.execute("UPDATE life_reports SET full_state='generating',lease=%s,lease_until=%s,generation_progress=%s WHERE id=%s",
+                           (lease, time.time() + self.lease_seconds, encoded(marks), row["id"]))
                 claimed.append((row, lease))
         for row, lease in claimed:
             report_id = row["id"]
@@ -849,8 +852,9 @@ class LifeReports:
             questions = [[] for _ in chapter_keys]
             ready = row["full_state"] == "ready" and "marriage" in records
             completed = len(chapter_keys) if ready else 0
-            sections = [{"key": key, "percent": 100 if ready else min(99, marks.get("marriage-full", 0))}
-                        for key in chapter_keys]
+            # The full marriage report is saved as one unit after validation.
+            draft_percent = min(99, marks.get("marriage-full", 0)) if row["full_state"] == "generating" else 0
+            sections = [{"key": key, "percent": 100 if ready else draft_percent} for key in chapter_keys]
         if is_personal:
             saved_personal = records.get("personal", {}).get("story", {})
             # Saved four-part reports remain readable; new writing always supplies all six subjects.
@@ -872,11 +876,16 @@ class LifeReports:
         percent = min(percent, 100 if row["full_state"] == "ready" else 99)
         simulation = self.can_simulate_payment(career)
         amount = 9900 if career else CARD_AMOUNT
+        merchant = None
         if self.card_payments.order_only:
             amount = SUNLANDS_AMOUNT
-        if simulation:
-            order = self.card_payments.order_for(row["id"]) if preview and not row["unlocked"] else None
-            amount = order["amount"] if order and order["merchant"] == SIMULATED_MERCHANT else SIMULATED_AMOUNT
+            merchant = "sunlands:" + self.card_payments.settings.sunlands_app_key
+        elif simulation:
+            amount, merchant = SIMULATED_AMOUNT, SIMULATED_MERCHANT
+        if merchant and preview and not row["unlocked"]:
+            order = self.card_payments.order_for(row["id"])
+            if order and order["merchant"] == merchant:
+                amount = order["amount"]
         result = {
             "id": row["id"], "version": version, "title": title,
             "input": body, "created_at": stamp(row["created"]), "location": chart.get("location"),
@@ -1052,7 +1061,7 @@ class LifeReports:
     def can_simulate_payment(self, career):
         return not self.card_payments.order_only and self.development and (bool(career) or not self.card_payments.enabled)
 
-    async def create_card_order(self, report_id, owner, network, contact=None):
+    async def create_card_order(self, report_id, owner, network, contact=None, *, visit_id=None):
         row = self.row(report_id, owner)
         body = json.loads(row["input"])
         if row["unlocked"]:
@@ -1067,10 +1076,11 @@ class LifeReports:
             raise HTTPException(409, "life_payment_unavailable")
         if self.card_payments.order_only:
             return await self.card_payments.create_sunlands(
-                report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "")
+                report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "",
+                visit_id=visit_id)
         if self.can_simulate_payment(career):
-            return self.card_payments.create_simulated(report_id, network)
-        return self.card_payments.create(report_id, network, body["profile"]["language"])
+            return self.card_payments.create_simulated(report_id, network, visit_id=visit_id)
+        return self.card_payments.create(report_id, network, body["profile"]["language"], visit_id=visit_id)
 
     async def simulate_payment(self, report_id, owner, reference):
         row = self.row(report_id, owner)
@@ -1134,7 +1144,8 @@ class LifeReports:
                 bundle = marriage_report.bundle(body, chart, full=True, free_story=preview_record["story"])
                 result = await self.write_part(report_id, lease, bundle, owner, network)
                 if result.get("story"):
-                    record = {"story": result["story"], "evidence": bundle["evidence"], "chart_basis": bundle["chart_basis"]}
+                    record = {"version": bundle["writing_version"], "story": result["story"],
+                              "evidence": bundle["evidence"], "chart_basis": bundle["chart_basis"]}
                     self.update(report_id, expected_lease=lease, chapters=encoded({"marriage": record}),
                                 full_state="ready", lease="", lease_until=0)
                 else:
@@ -1339,7 +1350,8 @@ def life_report_router(service):
 
     @router.post("/{report_id}/payment")
     async def create_payment(report_id: str, request: Request, key: key_header, body: PaymentContact | None = None):
-        return await service.create_card_order(report_id, *scopes(key, request), contact=body)
+        return await service.create_card_order(
+            report_id, *scopes(key, request), contact=body, visit_id=request.headers.get("X-Visit-Id"))
 
     @router.post("/{report_id}/payment/check")
     async def check_payment(report_id: str, request: Request, key: key_header):

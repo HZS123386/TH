@@ -82,7 +82,7 @@ void main() {
         greaterThan(tester.getCenter(find.text('***预警')).dx),
       );
       expect(
-        find.text(controller.copy.t('marriage', 'form_hint')),
+        find.text(controller.copy.t('jy', 'formCaption')),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -172,6 +172,62 @@ void main() {
       },
     );
   }
+  testWidgets('saved Chinese marriage preview shows current headings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final data = marriageFixture();
+    final marriage = object(data['marriage']);
+    final preview = objects(marriage['preview']);
+    const oldTitles = [
+      '你的感情里，藏着一个你没发现的“隐形卡点”',
+      '接下来的30天，你的感情搅局者正在发力',
+      '你一直在被“隐形搅局者”偷偷消耗精力',
+      '解锁完整报告，让你不再受搅局者的困扰',
+    ];
+    for (var i = 0; i < oldTitles.length; i++) {
+      preview[i + 1]['title'] = oldTitles[i];
+    }
+    data['marriage'] = {...marriage, 'preview': preview};
+    final browser = TestBrowser();
+    final controller = H5Controller(
+      translations(),
+      ReportRepository(
+        browser,
+        client: MockClient(
+          (request) async => http.Response(
+            jsonEncode(data),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          ),
+        ),
+      ),
+      browser,
+      language: 'zh',
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      H5App(
+        controller: controller,
+        initialLocation: '/report.html?id=${data['id']}&lang=zh',
+      ),
+    );
+    await tester.pumpAndSettle();
+    for (final title in controller.copy.list('marriage', 'preview')) {
+      expect(
+        find.text(title),
+        title == '感情模式快照' ? findsNothing : findsOneWidget,
+      );
+    }
+    for (final title in oldTitles) {
+      expect(find.text(title), findsNothing);
+    }
+    expect(find.text('Free marriage section 3.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('saved marriage report shows the paid outline in order', (
     tester,
   ) async {

@@ -44,6 +44,8 @@ class LocalDraftStore {
   LocalDraftStore(this.preferences);
   static const actionLedger = 'action-ledger';
   static const guideConversations = 'guide-conversations';
+  static const exampleBookmark = 'example-bookmark';
+  static const legacyExampleBookmark = 'example-report';
   final SharedPreferences preferences;
   Map<String, dynamic>? read(String owner, String kind) {
     final raw = preferences.getString('fate.$kind.$owner');

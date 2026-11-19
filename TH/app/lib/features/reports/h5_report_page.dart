@@ -191,7 +191,8 @@ class _H5ReportPageState extends State<H5ReportPage>
         ],
         if (relationshipReport || marriageReport) ...[
           for (final section in readingSections)
-            if (_lines(section['paragraphs']).isNotEmpty)
+            if (section['visible'] != false &&
+                _lines(section['paragraphs']).isNotEmpty)
               _ReportSection(
                 key: ValueKey(section['key']),
                 title: _text(section['title']),
