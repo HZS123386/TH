@@ -23,7 +23,7 @@ SIMULATED_AMOUNT = 3000
 CHECKOUT_URL = "https://www.thaiepay.com/epaylink/payment.aspx"
 INQUIRY_URL = "https://apis.paysolutions.asia/order/orderdetailpost"
 SIMULATED_MERCHANT = "local_demo"
-SUNLANDS_AMOUNT = 3000
+SUNLANDS_AMOUNT = 1000
 SUNLANDS_CREATE_ORDER = "/tradeApi/trade/externalCreateOrder"
 SUNLANDS_QUERY_ORDER = "/tradeApi/trade/queryOrderDetailInfo"
 

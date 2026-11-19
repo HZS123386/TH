@@ -258,7 +258,7 @@ def test_sunlands_order_saves_its_owned_visit_at_creation(client, monkeypatch, s
     payment_path = f"/api/life-reports/{report_id}/payment"
     contact = {"mobile": "13000000000", "nationCode": "86"}
     order = http.post(payment_path, headers={**headers, "X-Visit-Id": later["id"]}, json=contact)
-    assert order.status_code == 200 and order.json()["amount"] == 3000
+    assert order.status_code == 200 and order.json()["amount"] == 1000
     repeat = http.post(payment_path, headers={**headers, "X-Visit-Id": first["id"]}, json=contact)
     assert repeat.json() == order.json()
     assert len(calls) == 1

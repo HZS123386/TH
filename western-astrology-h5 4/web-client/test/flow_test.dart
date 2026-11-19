@@ -947,8 +947,8 @@ void main() {
           final data = fixture(language: language);
           final reportPath = '/api/life-reports/${data['id']}';
           final calls = <String>[];
-          final currentAmount = existingOrder ? 1000 : 3000;
-          final staleAmount = existingOrder ? 3000 : 1000;
+          final currentAmount = existingOrder ? 3000 : 1000;
+          final staleAmount = existingOrder ? 1000 : 3000;
           final order = {
             'reference': '000000000001',
             'amount': currentAmount,

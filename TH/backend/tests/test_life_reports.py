@@ -274,10 +274,10 @@ def test_production_sunlands_does_not_enable_payso_demo(client):
 def sunlands_phone_response():
     return json.dumps({"flag": "1", "data": {
         "isSuccess": True, "channelCode": "sunlands_fb_fate", "currency": "THB",
-        "orderNumber": "OFFLINE_PHONE_ORDER_001", "stuId": 12345, "totalAmount": 30.0,
+        "orderNumber": "OFFLINE_PHONE_ORDER_001", "stuId": 12345, "totalAmount": 10.0,
         "orderStatus": "UNPAID", "paidupAmount": 0.0, "orderType": "OVERSEAS_NORMAL",
         "payDirectUrl": "http://trade.sunlands.com/trade/web/trade/payDirect.action?orderNumber=OFFLINE_PHONE_ORDER_001&termType=mobile&tradeType=WX_MWEB",
-        "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30.0,
+        "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 10.0,
                           "subSerialNo": "OFFLINE_PHONE_ORDER_001_1"}],
     }}).encode()
 
@@ -304,7 +304,7 @@ def test_sunlands_data_envelope_persists_order_without_pay_number(client, monkey
     order = response.json()
     assert order["state"] == "CREATED" and order["order_only"] is True
     assert order["order_number"] == expected["orderNumber"] and order["stu_id"] == str(expected["stuId"])
-    assert order["pay_number"] is None and order["amount"] == 3000 and order["currency"] == "THB"
+    assert order["pay_number"] is None and order["amount"] == 1000 and order["currency"] == "THB"
     assert "payDirectUrl" not in order
     assert order["checkout_url"] == expected["payDirectUrl"]
     restarted = LifeCardPayments(payments.store, payments.settings)
@@ -418,7 +418,7 @@ def test_sunlands_channel_changes_do_not_change_authentication_or_unlock(client,
     http, app, _, _ = client
     calls = []
     mock_result = {"isSuccess": True, "orderNumber": "OFFLINE_ORDER_001", "payNumber": "OFFLINE_PAY_001",
-                   "stuId": 12345, "totalAmount": 30, "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30}]}
+                   "stuId": 12345, "totalAmount": 10, "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 10}]}
     def upstream(request):
         calls.append(request)
         assert str(request.url) == "https://api-prod.sunlands.com/tradeApi/trade/externalCreateOrder"
@@ -486,7 +486,7 @@ def test_sunlands_phone_order_contract_without_payment_or_unlock(client, monkeyp
         assert form["itemNo"] == ["193261112000101"]
         assert form["mobile"] == ["13000000000"] and form["nationCode"] == ["86"]
         assert form["provinceId"] == ["4"] and "stuId" not in form
-        assert form["totalAmount"] == form["itemPrice"] == ["30.00"]
+        assert form["totalAmount"] == form["itemPrice"] == ["10.00"]
         assert form["deposit"] == form["depositAmount"] == ["0.00"]
         assert "quicklyPayMethod" not in form
         digest = "SHA-256=" + base64.b64encode(hashlib.sha256(request.content).digest()).decode()
@@ -495,13 +495,13 @@ def test_sunlands_phone_order_contract_without_payment_or_unlock(client, monkeyp
             f'x-date: {request.headers["x-date"]}\ndigest: {digest}'.encode(), hashlib.sha256).digest()).decode()
         assert request.headers["proxy-authorization"].endswith(f'signature="{signature}"')
         return httpx.Response(200, json={"isSuccess": True, "orderNumber": "202611120001",
-            "payNumber": "202611120002", "stuId": 12345, "totalAmount": 30,
+            "payNumber": "202611120002", "stuId": 12345, "totalAmount": 10,
             "payDirectUrl": "https://checkout.example.test/never-open",
-            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30, "subSerialNo": "202611120001_1"}]})
+            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 10, "subSerialNo": "202611120001_1"}]})
     payments = sunlands_order_only(app, monkeypatch, upstream)
     report = preview(http)
     path = f"/api/life-reports/{report['id']}"
-    assert report["price"] == {"amount": 3000, "currency": "THB", "display": "฿30", "mode": "sunlands_order_only"}
+    assert report["price"] == {"amount": 1000, "currency": "THB", "display": "฿10", "mode": "sunlands_order_only"}
     assert report["payment_simulation"] is False
     assert http.post(path + "/payment", headers={"X-Report-Key": "z" * 48}).status_code == 404
     order = http.post(path + "/payment", headers=HEADERS, json={"mobile": "13000000000", "nationCode": "86"}).json()
@@ -557,8 +557,8 @@ def test_sunlands_does_not_repeat_an_uncertain_or_rejected_order(client, monkeyp
             raise httpx.ReadTimeout("synthetic timeout", request=request)
         return httpx.Response(200, json={"isSuccess": outcome != "rejected", "orderNumber": "202611120001",
             "payNumber": "202611120002", "stuId": None if outcome == "missing_student" else 12345,
-            "totalAmount": 31 if outcome == "wrong_amount" else 30,
-            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 31 if outcome == "wrong_amount" else 30}]})
+            "totalAmount": 30 if outcome == "wrong_amount" else 10,
+            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30 if outcome == "wrong_amount" else 10}]})
     payments = sunlands_order_only(app, monkeypatch, upstream)
     report = preview(http)
     path = f"/api/life-reports/{report['id']}"
@@ -612,8 +612,8 @@ def test_sunlands_access_denied_allows_manual_retry_without_another_local_order(
         if len(calls) == 1:
             return httpx.Response(403, json={"message": "You cannot consume this service"})
         return httpx.Response(200, json={"isSuccess": True, "orderNumber": "202611120003",
-            "payNumber": "202611120004", "stuId": 54321, "totalAmount": 30,
-            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30}]})
+            "payNumber": "202611120004", "stuId": 54321, "totalAmount": 10,
+            "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 10}]})
     payments = sunlands_order_only(app, monkeypatch, upstream)
     report = preview(http)
     path = f"/api/life-reports/{report['id']}"
@@ -705,7 +705,7 @@ def test_sunlands_denial_with_a_platform_number_never_allows_manual_reordering(c
     assert payments.order_for(report["id"])["sunlands_order_number"] == "EXISTING_ORDER"
 
 
-@pytest.mark.parametrize("sunlands_settlement", [30, 10], indirect=True, ids=["current-price", "saved-price"])
+@pytest.mark.parametrize("sunlands_settlement", [10, 30], indirect=True, ids=["new-price", "previous-price"])
 def test_sunlands_settlement_checks_pending_then_unlocks_atomically_and_survives_restart(sunlands_settlement):
     from backend.app.life_card_payments import LifeCardPayments, SUNLANDS_QUERY_ORDER
     http, app, payments, report, path, state, calls, notice = sunlands_settlement
@@ -745,7 +745,7 @@ def test_sunlands_settlement_rejects_mismatched_payment(sunlands_settlement, mis
     elif mismatch == "student": row["stuId"] = 54321
     elif mismatch == "channel": row["channelCode"] = "another_app"
     elif mismatch == "currency": row["currency"] = "CNY"
-    elif mismatch == "amount": row.update(paidAmount="29.00", unpaidAmount="1.00")
+    elif mismatch == "amount": row.update(paidAmount="9.00", unpaidAmount="1.00")
     elif mismatch == "item": line["itemNo"] = "ANOTHER_ITEM"
     elif mismatch == "suborder": line["subOrderSerialNo"] = "ANOTHER_SUBORDER"
     elif mismatch == "pay_amount": line["payInfo"]["paidAmount"] = "1.00"
@@ -834,10 +834,10 @@ def test_twelve_verified_reports_drain_and_resume_saved_chapters_after_restart(
             payload = {"retCode": "0", "data": [{
                 "orderSerialNo": number, "stuId": "12345", "channelCode": settings.sunlands_app_key,
                 "currency": "THB", "orderType": "OVERSEAS_NORMAL", "orderStatus": "PAID",
-                "totalAmount": "30.00", "paidAmount": "30.00", "unpaidAmount": "0.00",
+                "totalAmount": "10.00", "paidAmount": "10.00", "unpaidAmount": "0.00",
                 "orderDetails": [{"subOrderSerialNo": number + "_1", "subOrderStatus": "PAID",
-                                  "itemNo": settings.sunlands_item_no, "totalAmount": "30.00",
-                                  "payInfo": {"currency": "THB", "totalAmount": "30.00", "paidAmount": "30.00"}}],
+                                  "itemNo": settings.sunlands_item_no, "totalAmount": "10.00",
+                                  "payInfo": {"currency": "THB", "totalAmount": "10.00", "paidAmount": "10.00"}}],
             }]}
         return httpx.Response(200, json=payload, request=httpx.Request("POST", "https://payment.example" + path))
 
@@ -994,7 +994,7 @@ def test_sunlands_failure_receipts_are_durable_and_redacted(client, monkeypatch,
     assert receipt["responseBytes"] > 0 and len(receipt["responseHash"]) == 64 and receipt["elapsedMs"] >= 0
     assert len(receipt["attempts"]) == 1 and receipt["attempts"][0]["httpStatus"] == receipt["httpStatus"]
     assert receipt["attempts"][0]["requestSummary"]["mobile"] == "***0000"
-    assert receipt["attempts"][0]["requestSummary"]["totalAmount"] == "30.00"
+    assert receipt["attempts"][0]["requestSummary"]["totalAmount"] == "10.00"
     if outcome.startswith("html"):
         assert receipt["contentType"] == "text/html" and receipt["parseErrorType"] == "JSONDecodeError"
     if outcome == "structured_error":
@@ -1037,8 +1037,8 @@ def test_sunlands_platform_numbers_cannot_bind_two_reports(client, monkeypatch, 
     def upstream(request):
         calls.append(request)
         result = {"isSuccess": True, "orderNumber": f"ORDER_{len(calls)}", "payNumber": f"PAY_{len(calls)}",
-                  "stuId": 12345, "totalAmount": 30,
-                  "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30}]}
+                  "stuId": 12345, "totalAmount": 10,
+                  "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 10}]}
         result[duplicate_field] = "SHARED_PLATFORM_NUMBER"
         return httpx.Response(200, json=result)
     payments = sunlands_order_only(app, monkeypatch, upstream)
@@ -1078,7 +1078,7 @@ def test_sunlands_concurrent_responses_reserve_platform_order_once(client, monke
             ready.set()
         await release.wait()
         return httpx.Response(200, json={"isSuccess": True, "orderNumber": "SHARED_ORDER", "payNumber": "SHARED_PAY",
-            "stuId": 12345, "totalAmount": 30, "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 30}]})
+            "stuId": 12345, "totalAmount": 10, "orderDetails": [{"itemNo": "193261112000101", "itemPrice": 10}]})
     payments = sunlands_order_only(app, monkeypatch, upstream)
     reports = [preview(http), http.post("/api/life-reports", headers=HEADERS,
                 json={"profile": PROFILE, "year": 2028}).json()]
