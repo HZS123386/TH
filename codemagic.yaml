@@ -1,5 +1,34 @@
 # Manual workflows only. Configure the Apple integration and iOS signing first.
 workflows:
+  ios-store-screenshots:
+    name: FATE Thai App Store screenshots
+    working_directory: TH/app
+    instance_type: mac_mini_m2
+    max_build_duration: 35
+    environment:
+      flutter: 3.47.9
+      xcode: latest
+      vars:
+        FATE_API_BASE_URL: https://fatehoro.top/app-api
+    scripts:
+      - name: Verify the production App API
+        script: python3 ../scripts/ios_release_preflight.py
+      - name: Build the review edition for iOS Simulator
+        script: |
+          set -euo pipefail
+          flutter pub get
+          flutter build ios --debug --simulator --no-codesign \
+            --dart-define="FATE_API_BASE_URL=$FATE_API_BASE_URL" \
+            --dart-define=FATE_DEVELOPMENT_PREVIEW=false \
+            --dart-define=FATE_THAI_ASTROLOGY_ONLY=true \
+            --dart-define=FATE_ENABLE_APPLE_LOGIN=false \
+            --dart-define=FATE_ENABLE_IN_APP_PURCHASES=false
+      - name: Capture Thai chart on iPhone and iPad
+        script: python3 ../scripts/capture_ios_store_screenshots.py
+    artifacts:
+      - $CM_BUILD_DIR/TH/output/ios-submission/store-screenshots/*.png
+      - $CM_BUILD_DIR/TH/output/ios-submission/store-screenshots/*.zip
+
   ios-compile-check:
     name: FATE iOS compile check
     working_directory: TH/app
