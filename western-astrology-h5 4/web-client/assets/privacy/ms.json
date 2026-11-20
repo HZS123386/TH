@@ -1,6 +1,6 @@
 {
-  "version": "1.1",
-  "updated": "2026-11-13",
+  "version": "1.3",
+  "updated": "2026-11-20",
   "labels": {
     "version": "Versi",
     "updated": "Semakan terakhir",
@@ -16,9 +16,9 @@
   },
   "summary": [
     "Laporan memerlukan tarikh lahir, tempat lahir dan zon waktu yang sepadan. Masa lahir yang tidak diketahui dibenarkan, dengan batasan. Soalan pilihan anda boleh dibiarkan kosong.",
-    "Pelayan kami berada di Hong Kong SAR, China. RoxyAPI mengira carta dan Alibaba Cloud Qwen menulis tafsiran, melibatkan pemprosesan di Jerman dan tanah besar China.",
+    "Carta laporan perkahwinan Thai dikira pada pelayan kami. DeepSeek menjana kebanyakan tafsiran bertulis, dengan Qwen daripada Alibaba Cloud sebagai pilihan sandaran.",
     "Kredensial rawak dalam pelayar anda melindungi akses kepada laporan anda. Kekalkannya sebagai rahsia. Mengosongkan storan pelayar tidak memadamkan laporan di pelayan.",
-    "Nyahlakuan buat masa ini adalah ujian tanpa caj sebenar. Muat turun APP tidak dibuka. Tafsiran automatik adalah untuk hiburan dan penerokaan kendiri, bukan untuk keputusan dengan kesan undang-undang atau kesan penting yang serupa."
+    "Laporan penuh dihantar melalui LINE. Hantar kod lima digit kepada sokongan untuk semakan dan terima PDF dalam sembang."
   ],
   "sections": [
     {
@@ -34,10 +34,10 @@
       "title": "2. Maklumat yang anda berikan dan pilihan anda",
       "bullets": [
         "Tarikh lahir diperlukan untuk mengira carta anda. Tanpanya, laporan diperibadikan tidak dapat dijana.",
-        "Masa lahir menentukan faktor sensitif masa seperti ascendant dan rumah. Anda boleh memilih bahawa masa tepat tidak diketahui. Sistem kemudian menggunakan 12:00 tengah hari sebagai rujukan dan mengenal pasti ketidakpastian; rujukan ini bukan masa lahir anda yang disahkan.",
+        "Anda boleh memilih bahawa waktu lahir tepat tidak diingati. Laporan perkahwinan Thai menandakan waktu lahir sebagai tidak diketahui dan mengehadkan tafsiran asenden, rumah atau tempoh yang memerlukan waktu tepat. Sesetengah pengiraan carta Barat menggunakan tengah hari tempatan sebagai rujukan.",
         "Negara lahir, negeri/negara bagian, bandar/daerah dan pengecam tempat yang dipilih menentukan koordinat tempat lahir dan zon waktu. Koordinat berasal dari direktori bandar yang dipilih, bukan GPS atau kebenaran untuk menjejak lokasi semasa anda. Tempat lahir yang boleh dikenali diperlukan untuk pengiraan berkaitan.",
         "Topik yang dipilih, konteks kerjaya dan soalan pilihan menentukan fokus tafsiran. Anda boleh meninggalkan soalan kosong dan menerima laporan standard. Sebarang pengalaman atau maklumat tentang kerja atau hubungan yang anda taip akan diproses sebagai sebahagian daripada teks tersebut.",
-        "Aliran laman web standard tidak memerlukan nama sebenar, dokumen pengenalan diri, nombor telefon atau butiran kad bank anda. Sila jangan menambahkannya ke dalam soalan anda."
+        "Maklumat berikut terpakai kepada pesanan dan bayaran terdahulu. Laporan percuma menggunakan butiran kelahiran dan topik pilihan. Pembelian laporan penuh menggunakan nombor telefon dan kod negara untuk pesanan."
       ]
     },
     {
@@ -46,7 +46,8 @@
       "paragraphs": [
         "Perkhidmatan menyimpan pengecam terbitan untuk kredensial akses rawak anda, ID laporan, carta dan bukti yang dikira, teks percuma dan penuh, kemajuan penjanaan dan keadaan cubaan semula, status nyahlakuan, cap masa dan maklum balas yang anda hantar. Inferens dan pengecam berhash mungkin masih merupakan data peribadi; ia tidak secara automatik menjadi anonim.",
         "Untuk operasi dan keselamatan, permintaan boleh mencipta log yang mengandungi alamat IP, masa, laluan, kod status dan ralat, serta pengecam pengguna/rangkaian dan kiraan untuk had kadar. Rekod penggunaan model mengandungi rujukan laporan, penyedia, model, ID permintaan, masa, kiraan token dan hasil pengesahan. Ia umumnya tidak mengandungi arahan lengkap atau teks laporan tetapi mungkin kekal boleh dipautkan kepada laporan.",
-        "Jika anda menghubungi pengendali, alamat balasan, permintaan dan maklumat yang diperlukan secara munasabah untuk menyiasatnya akan diproses. Mulakan dengan ID laporan dan penerangan isu. Jangan hantar kata laluan, kunci API, kredensial akses pelayar atau salinan dokumen pengenalan diri yang tidak perlu."
+        "Jika anda menghubungi pengendali, alamat balasan, permintaan dan maklumat yang diperlukan secara munasabah untuk menyiasatnya akan diproses. Mulakan dengan ID laporan dan penerangan isu. Jangan hantar kata laluan, kunci API, kredensial akses pelayar atau salinan dokumen pengenalan diri yang tidak perlu.",
+        "Jika anda memilih penyerahan melalui LINE, hantar kod tuntutan kepada sokongan dalam sembang. Kami menggunakan kod itu untuk mencari laporan dan menghantar PDF melalui LINE. LINE mengendalikan data sembang menurut dasar privasinya."
       ]
     },
     {
@@ -72,9 +73,9 @@
       "id": "recipients",
       "title": "6. Pembekal perkhidmatan dan apa yang mereka terima",
       "bullets": [
-        "Infrastruktur Tencent Cloud di Hong Kong menghoskan laman web, API, pangkalan data dan log operasi untuk tujuan penghosan, keselamatan dan operasi perkhidmatan. Akses operasi harus dihadkan kepada kakitangan yang memerlukannya.",
-        "RoxyAPI, yang dikendalikan oleh Roxy Labs, menerima tarikh lahir, masa sebenar atau rujukan, koordinat tempat lahir, zon waktu dan tetapan carta untuk mengira kedudukan dan rumah astrologi Barat. Permintaan pengiraan semasa tidak sengaja memasukkan nama, e-mel, soalan teks bebas atau IP pelayar anda. Pembekal melihat maklumat teknikal yang berkaitan dengan permintaan pelayan kami. Bahan terbitannya menerangkan penghosan di Jerman; dasar privasi dan terma pemprosesannya sendiri dipautkan di bawah.",
-        "Alibaba Cloud Model Studio / Qwen menerima faktor carta yang diperlukan, bukti sokongan, bahasa output, kepastian masa lahir, soalan pilihan anda dan ringkasan tafsiran sedia ada yang diperlukan untuk kesinambungan. Pakej penulisan biasa tidak memerlukan medan langsung untuk nama, tarikh lahir mentah, nama bandar atau koordinat. Soalan, carta dan konteks mungkin tetap merupakan data peribadi. Perkhidmatan tanah besar China semasa menggunakan titik akhir akses Beijing; ini tidak menjamin bahawa semua pengiraan berlaku hanya di Beijing.",
+        "Infrastruktur Tencent Cloud mengehoskan laman, API, pangkalan data dan log operasi.",
+        "Apabila fungsi astrologi Barat menggunakan RoxyAPI (Roxy Labs), sistem menghantar tarikh lahir, masa sebenar atau rujukan, koordinat kelahiran dan zon waktu yang diperlukan. Carta perkahwinan Thai dihitung pada pelayan kami.",
+        "DeepSeek Open Platform dan perkhidmatan sandaran Alibaba Cloud Qwen menjana bacaan daripada data carta yang diperlukan, bahasa, topik dan soalan atau tafsiran berkaitan. Nombor telefon dan data transaksi untuk membuat pesanan dan mengesahkan bayaran diproses berasingan dalam proses pesanan.",
         "GeoNames menyediakan direktori tempat yang digunakan sebagai salinan tempatan pada pelayan kami untuk menyelesaikan bandar dan zon waktu yang dipilih. Carian ini tidak perlu menghantar butiran lahir atau soalan anda kepada GeoNames. Melawati laman web luarnya tertakluk lawatan tersebut kepada amalan mereka sendiri."
       ],
       "paragraphs": [
@@ -90,9 +91,10 @@
           "url": "https://roxyapi.com/policy/dpa"
         },
         {
-          "label": "Maklumat privasi Alibaba Cloud Model Studio",
-          "url": "https://help.aliyun.com/zh/model-studio/privacy-notice"
+          "label": "Dasar Privasi DeepSeek Open Platform (bahasa Cina)",
+          "url": "https://cdn.deepseek.com/policies/zh-CN/deepseek-open-platform-privacy-policy.html"
         },
+        {"label": "Notis privasi Alibaba Cloud Model Studio", "url": "https://help.aliyun.com/zh/model-studio/privacy-notice"},
         {
           "label": "Maklumat privasi Tencent Cloud",
           "url": "https://www.tencentcloud.com/document/product/301/17345"
@@ -103,8 +105,8 @@
       "id": "transfers",
       "title": "7. Pemindahan antarabangsa",
       "paragraphs": [
-        "Jika anda menggunakan laman ini di Thailand atau di tempat lain, data mungkin mula-mula sampai ke pelayan Hong Kong kami. Input carta yang diperlukan kemudian diproses oleh perkhidmatan RoxyAPI yang dihoskan di Jerman, dan input tafsiran oleh Alibaba Cloud di tanah besar China. Perkhidmatan ini tidak sepenuhnya luar talian atau terhad kepada menyimpan semua data di Thailand. Undang-undang, akses peraturan dan remedi boleh berbeza antara lokasi.",
-        "Pemindahan mesti memenuhi syarat undang-undang yang berkenaan, seperti piawaian kecukupan yang terpakai, jaminan wajar dengan hak dan remedi yang boleh dikuatkuasakan, atau pengecualian berstatut yang terpakai secara ketat. HTTPS, kenyataan GDPR pembekal, mendedahkan lokasi atau mengklik Jana dengan sendirinya tidak memenuhi peraturan pemindahan Thailand. Pengendali mesti menentukan mekanisme sebenar untuk setiap pembekal dan destinasi; draf semakan ini tidak mensijilkan penyelesaian. Hubungi e-mel privasi untuk asas yang berkenaan dan maklumat jaminan yang tersedia."
+        "Data anda mungkin diproses oleh pelayan dan penyedia perkhidmatan di luar negara atau rantau anda. Lihat penerima dan tujuan di Bahagian 6.",
+        "Hubungi pengendali melalui e-mel privasi untuk mengetahui destinasi, asas pindahan dan perlindungan yang berkaitan dengan fungsi yang anda gunakan."
       ]
     },
     {
@@ -128,9 +130,9 @@
         "Input, carta, teks laporan dan maklum balas laporan: dikekalkan untuk pembukaan semula dan cubaan semula sehingga anda memadam laporan, tujuan perkhidmatan tamat atau pemadaman dikehendaki oleh undang-undang. Laporan kini tiada luput berasaskan umur automatik. Ini tidak membenarkan pengekalan tak terhingga bagi semua maklumat.",
         "Lawatan pihak pertama dan persatuan laporan: tetingkap bergolek 30 hari, dengan rekod luput dibuang apabila lawatan kemudian mencetuskan pembersihan dan bukannya pada saat terjadual yang tepat.",
         "Storan sementara pengiraan dan penjanaan tempatan: hasil umumnya mempunyai kesahihan kira-kira 24 jam dan dibersihkan oleh operasi storan sementara kemudian, pengusiran kapasiti atau permulaan semula proses. Kaunter penggunaan pengguna/rangkaian harian juga membuang rekod yang lebih tua daripada 24 jam pada operasi kemudian yang berkenaan.",
-        "Rekod penggunaan model, ralat dan keselamatan: dikekalkan sebagaimana diperlukan untuk penyelarasan penggunaan, penyelesaian masalah, siasatan penyalahgunaan, pertikaian atau kewajipan undang-undang. Jadual penggunaan semasa tiada luput automatik seragam dan log akses berputar mengikut saiz. Had maksimum tetap dan prosedur pembersihan bertanggungjawab mesti disahkan oleh pengendali sebelum penerbitan akhir; draf ini tidak menjanjikan bilangan hari yang tidak dikonfigurasi.",
+        "Log penggunaan model, ralat dan keselamatan digunakan untuk semakan, siasatan dan pematuhan. Rekod penggunaan kini tiada tamat tempoh automatik seragam. Log akses digilir berdasarkan saiz.",
         "Sandaran: memadam rekod langsung tidak serta-merta menulis semula sandaran sejarah. Pengendali mesti mengesahkan tempoh putaran dan tulis ganti akhir. Akses dan penggunaan sandaran harus dihadkan, dan pemulihan tidak sepatutnya membatalkan permintaan pemadaman yang berkenaan.",
-        "Pembekal mengenakan terma perkhidmatan mereka dan kewajipan pengekalan undang-undang. Sifar pengekalan data untuk titik akhir tanah besar China semasa belum disahkan. Kami tidak boleh menjanjikan sifar pengekalan pihak ketiga; permintaan pemadaman atau sekatan lanjut yang berkenaan boleh dibuat melalui pengendali."
+        "Penyedia carta dan model mengurus rekod menurut syarat perkhidmatan dan kewajipan undang-undang yang terpakai. Hantar permintaan untuk mengakses, memadam atau mengehadkan data penyedia melalui e-mel privasi."
       ]
     },
     {
@@ -138,6 +140,7 @@
       "title": "10. Memadam laporan dan menghentikan menunggu",
       "paragraphs": [
         "Gunakan kawalan pemadaman pada laporan anda atau dalam Laporan Saya untuk laporan yang boleh diakses dengan kredensial anda. Ia membuang rekod laporan utama dan rekod pembayaran ujian yang berkaitan. Pemadaman mungkin ditolak sementara apabila kerja penjanaan aktif; cuba lagi selepas ia selesai atau hubungi pengendali. Laporan yang dipadam umumnya tidak boleh dipulihkan; menjana semula adalah pemprosesan baharu.",
+        "Sokongan perlu menyemak pesanan sebenar sebelum laporan berkaitan boleh dipadamkan. Anda boleh memohon pemadaman melalui e-mel di halaman ini. Rekod transaksi yang mesti disimpan diurus mengikut undang-undang yang terpakai.",
         "Batal Menunggu utamanya menghentikan tunggu atau undian halaman, bukan semestinya pengiraan yang sudah diserahkan kepada pelayan. Ia tidak secara automatik memadam data yang disimpan. Membersihkan storan pelayar tidak menghantar permintaan pemadaman pelayan dan mungkin menghilangkan keupayaan anda untuk membuktikan akses laporan. Padamkan laporan dahulu jika itu niat anda.",
         "Kawalan halaman tidak secara automatik memadam setiap storan sementara, rekod lawatan, rekod penggunaan model, rekod yang dipegang pembekal atau sandaran sejarah; lihat seksyen 9 dan hubungi e-mel privasi untuk permintaan lanjut. PDF atau teks yang anda muat turun, salin atau kongsi kekal di bawah kawalan anda atau penerima dan tidak boleh dipadam dari jauh oleh pemadaman pelayan."
       ]
@@ -147,7 +150,7 @@
       "title": "11. Tafsiran automatik dan latihan model",
       "paragraphs": [
         "Laporan menggabungkan faktor terhitung dan bahasa yang dijana AI untuk membuat inferens tentang personaliti, pilihan atau tema hubungan. Analisis peribadi automatik ini mungkin tidak tepat, tidak lengkap atau tidak sesuai. Masa lahir yang tidak diketahui menambah ketidakpastian. Ia bukan bukti bahawa ramalan akan berlaku dan tidak digunakan untuk keputusan perubatan, kredit, pekerjaan, insurans, kehakiman atau lain-lain yang penting dari segi undang-undang atau serupa tentang anda.",
-        "Perkhidmatan kami semasa tiada alur kerja untuk melatih model tujuan umum kami sendiri menggunakan laporan anda. Latihan dan pengekalan pembekal adalah isu berbeza: Alibaba Cloud menyatakan bahawa ia tidak melatih model menggunakan data pelanggan tetapi mungkin mengekalkan data berkaitan panggilan sebagaimana dikehendaki oleh undang-undang. Tiada latihan tidak bermaksud tiada pengekalan. Latihan yang tidak berkaitan, profil pengiklanan atau tujuan baharu lain memerlukan asas sah mereka sendiri dan sebarang persetujuan yang diperlukan."
+        "FATE kini tidak mempunyai proses untuk menggunakan laporan bagi melatih model serba guna sendiri. Lihat pautan di Bahagian 6 untuk aturan pemprosesan penyedia model."
       ]
     },
     {
@@ -183,10 +186,10 @@
     },
     {
       "id": "payment",
-      "title": "15. Nyahkunci ujian, muat turun APP dan ciri masa hadapan",
+      "title": "15. Maklumat pembayaran dan pesanan",
       "paragraphs": [
-        "Harga dan kawalan nyahkunci yang dipaparkan kini berfungsi untuk tujuan ujian tanpa pengumpulan bayaran sebenar. Aliran laporan tidak mengumpul butiran kad, kata laluan pembayaran atau kebenaran dompet digital. Butang muat turun APP kini memaparkan notis ujian; ia tidak memuat turun atau memasang aplikasi.",
-        "Sebelum mengaktifkan bayaran sebenar, pengedaran APP, log masuk, tarot, numerologi atau fungsi baharu lain, pengendali mesti menilai semula data, penerima dan asas undang-undang, mengemas kini dasar ini dan memberikan notis atau kebenaran di mana diperlukan. Dasar ini bukan kebenaran awal untuk semua pemprosesan masa hadapan."
+        "Maklumat berikut terpakai kepada pesanan dan bayaran terdahulu. Apabila anda membuat pesanan sebenar, nombor telefon dan kod negara yang anda berikan dihantar bersama maklumat pesanan kepada perkhidmatan pesanan Sunlands untuk mewujudkan dan mengesahkan pesanan. Butiran pengesahan pembayaran diproses di halaman pembayaran rasmi.",
+        "Kami menyimpan rekod transaksi seperti nombor pesanan, jumlah dan status bayaran untuk mengesahkan pembayaran, membuka laporan dan mengurus permintaan selepas jualan."
       ]
     },
     {
@@ -194,7 +197,7 @@
       "title": "16. Kemas kini, hubungan dan bahasa",
       "paragraphs": [
         "Versi dan tarikh semakan di atas mengenal pasti dasar ini. Perubahan material kepada tujuan, kategori data, penerima, pemindahan atau hak harus dimaklumkan dengan jelas sebelum pelaksanaan, dengan kebenaran baharu di mana diperlukan. Meneruskan pelayaran sahaja bukanlah kebenaran untuk setiap tujuan baharu.",
-        "Hubungi pengendali dan e-mel privasi yang dikenal pasti di atas mengenai hak privasi atau aduan. Jika perwakilan tempatan atau pegawai perlindungan data dikehendaki oleh undang-undang, pengendali juga mesti menyediakan butiran hubungan tersebut; draf ini tidak mendakwa pelantikan atau pengecualian automatik. Terjemahan bertujuan untuk menyampaikan fakta yang sama. Tanya pengendali mengenai percanggahan; tiada versi bahasa yang mengehadkan hak undang-undang wajib."
+        "Hubungi pengendali melalui e-mel pada halaman ini untuk permintaan privasi atau aduan. Jika undang-undang mewajibkan butiran hubungan wakil tempatan atau pegawai perlindungan data diterbitkan, kami akan memaparkannya di sini. Setiap versi bahasa menerangkan amalan pengendalian yang sama. Hubungi pengendali jika ada soalan. Hak anda di sisi undang-undang yang terpakai kekal berkuat kuasa."
       ]
     },
     {
@@ -202,7 +205,7 @@
       "title": "17. Undang-undang yang terpakai kepada lokasi pengendali",
       "paragraphs": [
         "Pengendali kini berpusat di Beijing, tanah besar China. Pemprosesan di tanah besar China juga mesti mematuhi undang-undang China yang berkenaan, termasuk PIPL. Berkhidmat di Thailand tidak secara automatik mengecualikan kewajipan ini. Asas kepentingan sah undang-undang Thailand dalam dasar ini tidak dengan sendirinya mewujudkan asas undang-undang China.",
-        "Kewajipan undang-undang China untuk pemindahan, notifikasi, sebarang kebenaran berasingan yang diperlukan dan penilaian impak mesti disemak terhadap aliran data sebenar. Sebarang penilaian, kontrak, pensijilan atau pengecualian mesti memenuhi syarat semasa. Draf ini tidak menegaskan penyelesaian atau mengubah lokasi pelayan di Hong Kong.",
+        "Keperluan notis, persetujuan dan penilaian di bawah undang-undang China yang terpakai bergantung pada aliran data sebenar. Hubungi e-mel privasi mengenai destinasi dan perlindungan.",
         "Di mana Ordinan Data Peribadi (Privasi) Hong Kong, Bab 486, terpakai, anda boleh meminta akses, salinan dan pembetulan. Permintaan yang berkenaan umumnya mengikuti tempoh 40 hari, tertakluk kepada prosedur statut dan pengecualian; ini tidak melanjutkan had masa akses PDPA Thailand sebanyak 30 hari kepada 40. Sebarang bayaran salinan/akses yang sah harus dijelaskan terlebih dahulu dan dihadkan kepada apa yang dibenarkan oleh undang-undang secara munasabah.",
         "Gunakan e-mel privasi di atas atau buat aduan kepada pihak berkuasa yang kompeten, termasuk PCPD Hong Kong di mana undang-undangnya terpakai. Pengoutsorsingan atau pemprosesan luar negara tidak dengan sendirinya menghilangkan tanggungjawab pengendali yang terpakai. Pasaran lain harus menerima notis dan jaminan yang sesuai sebelum pengembangan aktif."
       ],

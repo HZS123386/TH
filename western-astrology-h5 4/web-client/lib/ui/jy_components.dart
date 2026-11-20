@@ -364,130 +364,135 @@ class _JYButtonState extends State<JYButton>
 }
 
 class ThemeBoards extends StatelessWidget {
-  const ThemeBoards({required this.copy, this.showHeading = true, super.key});
+  const ThemeBoards({
+    required this.copy,
+    required this.viewportHeight,
+    this.showHeading = true,
+    super.key,
+  });
   final Copy copy;
+  final double viewportHeight;
   final bool showHeading;
+
   @override
-  Widget build(BuildContext context) => Stack(
-    clipBehavior: Clip.none,
+  Widget build(BuildContext context) {
+    final spacing = (viewportHeight / 720).clamp(.84, 1.0).toDouble();
+    return Center(
+      child: ConstrainedBox(
+        // Keep the two columns balanced on short, wide viewports.
+        constraints: BoxConstraints(maxWidth: math.max(380.0, viewportHeight)),
+        child: _panel(spacing),
+      ),
+    );
+  }
+
+  Widget _panel(double spacing) => Stack(
     children: [
-      Container(
-        margin: EdgeInsets.only(top: showHeading ? 15 : 0),
-        padding: EdgeInsets.fromLTRB(8, showHeading ? 22 : 8, 8, 9),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFD9B06B)),
-          borderRadius: BorderRadius.circular(12),
-          gradient: const RadialGradient(
-            center: Alignment.topCenter,
-            radius: 1.2,
-            colors: [Color(0xFF432754), Color(0xFF241632)],
+      Positioned.fill(
+        top: showHeading ? 15 * spacing : 0,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFD9B06B)),
+            borderRadius: BorderRadius.circular(12),
+            gradient: const RadialGradient(
+              center: Alignment.topCenter,
+              radius: 1.2,
+              colors: [Color(0xFF432754), Color(0xFF241632)],
+            ),
           ),
         ),
-        child: Column(
-          children: [
-            _board('outlook', const Rect.fromLTWH(121, 196, 517, 389), false),
-            const SizedBox(height: 8),
-            _board('highlights', const Rect.fromLTWH(656, 644, 517, 443), true),
-          ],
-        ),
       ),
-      if (showHeading)
-        Positioned(
-          top: 0,
-          left: 6,
-          right: 6,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFFFE48F)),
-              borderRadius: BorderRadius.circular(14),
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFFECAA28),
-                  Color(0xFFFFDC65),
-                  Color(0xFFF3B830),
-                ],
-              ),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Keep the banner in flow so wrapped translations cannot cover a board.
+          if (showHeading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: _heading(spacing),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              8,
+              (showHeading ? 4 : 8) * spacing,
+              8,
+              12 * spacing,
+            ),
+            child: Column(
               children: [
-                const LandingIcon('cloud', size: 21, color: Color(0xFF341D38)),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    copy.t('jy', 'topicLabel'),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF341D38),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      height: 1.4,
-                    ),
-                  ),
+                _board(
+                  'outlook',
+                  const Rect.fromLTWH(121, 196, 517, 389),
+                  false,
+                  spacing: spacing,
                 ),
-                const SizedBox(width: 8),
-                Transform.flip(
-                  flipX: true,
-                  child: const LandingIcon(
-                    'cloud',
-                    size: 21,
-                    color: Color(0xFF341D38),
-                  ),
+                SizedBox(height: 10 * spacing),
+                _board(
+                  'highlights',
+                  const Rect.fromLTWH(656, 644, 517, 443),
+                  true,
+                  spacing: spacing,
                 ),
               ],
             ),
           ),
-        ),
+        ],
+      ),
     ],
   );
 
-  Widget _board(String key, Rect crop, bool reverse) {
+  Widget _heading(double spacing) => Container(
+    padding: EdgeInsets.symmetric(horizontal: 7, vertical: 6 * spacing),
+    decoration: BoxDecoration(
+      border: Border.all(color: const Color(0xFFFFE48F)),
+      borderRadius: BorderRadius.circular(14),
+      gradient: const LinearGradient(
+        colors: [Color(0xFFECAA28), Color(0xFFFFDC65), Color(0xFFF3B830)],
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const LandingIcon('cloud', size: 21, color: Color(0xFF341D38)),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            copy.t('jy', 'topicLabel'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF341D38),
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              height: 1.4,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Transform.flip(
+          flipX: true,
+          child: const LandingIcon('cloud', size: 21, color: Color(0xFF341D38)),
+        ),
+      ],
+    ),
+  );
+
+  Widget _board(
+    String key,
+    Rect crop,
+    bool reverse, {
+    required double spacing,
+  }) {
     final titles = objects(
       object(copy.data['jyThemes'])[key],
     ).map((item) => text(item[copy.language]));
-    final art = Expanded(
-      child: ClipPath(
-        clipper: _Corners(),
-        child: AspectRatio(
-          aspectRatio: reverse ? 7 / 6 : 4 / 3,
-          child: LayoutBuilder(
-            builder: (context, box) {
-              final scale = math.max(
-                box.maxWidth / crop.width,
-                box.maxHeight / crop.height,
-              );
-              return Stack(
-                clipBehavior: Clip.hardEdge,
-                children: [
-                  Positioned(
-                    left:
-                        -crop.left * scale +
-                        (box.maxWidth - crop.width * scale) / 2,
-                    top:
-                        -crop.top * scale +
-                        (box.maxHeight - crop.height * scale) / 2,
-                    width: 1315 * scale,
-                    height: 1197 * scale,
-                    child: FateImage(
-                      'assets/images/theme-thai-artwork.jpg',
-                      fit: BoxFit.fill,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
-    );
     final labels = Column(
       mainAxisSize: MainAxisSize.min,
+      spacing: 7 * spacing,
       children: [
         for (final title in titles)
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.symmetric(vertical: 2.5),
+            constraints: BoxConstraints(minHeight: 33 * spacing),
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(40),
@@ -506,7 +511,11 @@ class ThemeBoards extends StatelessWidget {
               ),
             ),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
+              alignment: Alignment.center,
+              padding: EdgeInsets.symmetric(
+                horizontal: 2,
+                vertical: 3 * spacing,
+              ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(40),
                 gradient: const LinearGradient(
@@ -530,16 +539,50 @@ class ThemeBoards extends StatelessWidget {
       ],
     );
     return Container(
-      padding: const EdgeInsets.all(6),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8 * spacing),
       decoration: BoxDecoration(
         color: reverse ? const Color(0xFF39224E) : const Color(0xFF3A234C),
         borderRadius: BorderRadius.circular(7),
         border: Border.all(color: const Color(0x9CBF975D)),
       ),
-      child: Row(
-        children: reverse
-            ? [Expanded(child: labels), const SizedBox(width: 7), art]
-            : [art, const SizedBox(width: 7), Expanded(child: labels)],
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final gap = math.min(9 * spacing, box.maxWidth);
+          final ratio = reverse ? 7 / 6 : 4 / 3;
+          final width = (box.maxWidth - gap) * spacing / 2;
+          final art = _artwork(crop, Size(width, width / ratio));
+          final spacer = SizedBox(width: gap);
+          return Row(
+            children: reverse
+                ? [Expanded(child: labels), spacer, art]
+                : [art, spacer, Expanded(child: labels)],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _artwork(Rect crop, Size size) {
+    final scale = math.max(size.width / crop.width, size.height / crop.height);
+    return SizedBox.fromSize(
+      size: size,
+      child: ClipPath(
+        clipper: _Corners(),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            Positioned(
+              left: -crop.left * scale + (size.width - crop.width * scale) / 2,
+              top: -crop.top * scale + (size.height - crop.height * scale) / 2,
+              width: 1315 * scale,
+              height: 1197 * scale,
+              child: const FateImage(
+                'assets/images/theme-thai-artwork.jpg',
+                fit: BoxFit.fill,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

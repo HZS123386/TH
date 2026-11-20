@@ -60,6 +60,7 @@ const views = {
   issues: ['失败与异常', '区分当前业务异常与历史失败尝试，定位需要跟进的记录。'],
   audit: ['操作记录', '管理员的每次处理都有时间、原因和结果。'],
   sources: ['数据来源与口径', '知道数据从哪里来，也知道每个数字如何计算。'],
+  'line-contacts': ['LINE 报告发放', '按 LINE 聊天里的领取编号确认好友，下载完整 PDF 并发送。'],
 };
 const visitPages = {
   welcome: '欢迎页', birth_form: '资料填写页', consent: '数据使用确认', history: '历史报告列表',
@@ -85,9 +86,13 @@ const visitActions = {
   open_cashier: '发起打开官方收银台', cashier_failed: '打开收银台失败', check_payment: '手动核对到账',
   payment_result: '支付界面收到成功结果', close_history: '关闭历史报告',
   leave_page: '离开当前页面', request_failed: '客户端请求失败',
+  open_line_contact: '点击添加 LINE 好友', line_qr_shown: '显示 LINE 二维码',
 };
 const visitStates = { visible: '上报时在前台', hidden: '已切到后台，去向未知', pagehide: '已离开页面（关闭 / 刷新 / 跳转）' };
 const labels = {
+  line_confirm: '确认 LINE 好友',
+  line_retry: '重试生成 LINE 报告',
+  line_mark_sent: '标记 LINE 报告已发送',
   ready: '生成完成',
   failed: '失败',
   stalled: '生成中断',
@@ -151,6 +156,9 @@ const labels = {
   association: '订单关联冲突',
 };
 const errors = {
+  admin_permission_denied: '该账号没有访问此页面的权限。',
+  admin_delivery_report_unavailable: '请先确认已加好友，并等待完整报告生成。',
+  admin_delivery_not_pending: '这份报告不在待发送列表中。',
   admin_login_required: '登录已过期，请重新登录。',
   admin_not_configured: '尚未配置管理员，请在服务配置中设置管理员账号和密码哈希。',
   admin_invalid_credentials: '账号或密码不正确。',
@@ -160,6 +168,8 @@ const errors = {
   admin_action_duplicate: '这次操作已经提交，请刷新详情查看操作记录。',
   admin_no_verifiable_order: '没有可以通过当前后台核验的正式网关订单，请查看订单回执。',
   admin_report_already_ready: '报告已经完成，无需重试。',
+  admin_report_content_unavailable: '这个版本的正文尚未生成并保存。',
+  admin_report_content_invalid: '这份报告的正文暂无法读取。',
   admin_action_failed: '操作没有完成，请查看业务状态与操作记录。',
   life_payment_required: '该报告尚未获得解锁权限，请先核验到账。',
   life_order_needs_review: '建单结果不确定，请结合保存的回执人工核查，系统不会重复建单。',
@@ -175,6 +185,8 @@ const errors = {
   request_failed: '请求失败，请稍后重试。',
 };
 const verifiedOrdersRoute = 'orders?time_basis=verified';
+const reportEditionNames = { preview: '免费报告', full: '完整报告' };
+const lineDeliveryTabs = { pending: '待发报告', unconfirmed: '待确认好友', sent: '已发送' };
 const state = {
   session: null,
   view: 'overview',
@@ -186,6 +198,7 @@ const state = {
   source: '',
   category: '',
   caseStatus: '',
+  lineDelivery: 'pending',
   overview: null,
   overviewDays: null,
   records: null,
@@ -266,6 +279,7 @@ function navigate(view, { refresh = false } = {}) {
   state.timeBasis = view === verifiedOrdersRoute ? 'verified' : 'created';
   if (state.timeBasis === 'verified') view = 'orders';
   if (!views[view]) view = 'overview';
+  if (state.session?.role === 'report_support') view = 'line-contacts';
   state.view = view;
   state.page = 1;
   state.q = '';
@@ -273,10 +287,12 @@ function navigate(view, { refresh = false } = {}) {
   state.source = '';
   state.category = '';
   state.caseStatus = '';
+  state.lineDelivery = 'pending';
   return loadView({ refresh });
 }
 function nav() {
-  $('#navigation').innerHTML = Object.keys(views)
+  const visible = state.session.role === 'report_support' ? ['line-contacts'] : Object.keys(views);
+  $('#navigation').innerHTML = visible
     .map(
       (key, index) =>
         `${index === 6 ? '<div class="nav-divider"></div>' : ''}<a href="#${key}" class="nav-item ${state.view === key ? 'active' : ''}" title="${views[key][0]}" ${state.view === key ? 'aria-current="page"' : ''}>${icon(key)}<span class="nav-text">${views[key][0]}</span>${key === 'issues' && state.overview ? `<span class="nav-count">${number(state.overview.metrics.report_failures + state.overview.metrics.order_issues)}</span>` : ''}</a>`,
@@ -287,6 +303,8 @@ async function openWorkspace() {
   $('#login-view').hidden = true;
   $('#workspace').hidden = false;
   $('#actor-name').textContent = state.session.username;
+  $('#database-name').textContent = '';
+  $('#environment').textContent = state.session.role === 'report_support' ? '客服账号' : '连接中';
   await navigate(location.hash.slice(1), { refresh: true });
 }
 function showPageError(error) {
@@ -305,7 +323,7 @@ async function loadView({ refresh = false } = {}) {
   $('#page-error').hidden = true;
   $('#content').innerHTML = '<div class="loading">正在读取业务数据…</div>';
   try {
-    if (refresh || state.overviewDays !== days) {
+    if (state.session.role === 'admin' && (refresh || state.overviewDays !== days)) {
       const overview = await api(`/overview?days=${days}`);
       if (revision !== state.revision || !state.session) return;
       state.overview = overview;
@@ -320,6 +338,12 @@ async function loadView({ refresh = false } = {}) {
       const params = new URLSearchParams({ days, page_size: 5 });
       data = await api('/records/reports?' + params);
     } else if (view === 'sources') data = await api('/sources');
+    else if (view === 'line-contacts') {
+      const params = new URLSearchParams({
+        days, page: state.page, report_id: state.q, delivery: state.lineDelivery,
+      });
+      data = await api('/line-contacts?' + params);
+    }
     else
       data = await api(
         `/records/${view}?` +
@@ -337,6 +361,7 @@ async function loadView({ refresh = false } = {}) {
     if (revision !== state.revision || !state.session) return;
     if (view === 'overview') renderOverview(data.items);
     else if (view === 'sources') renderSources(data.items);
+    else if (view === 'line-contacts') renderLineContacts(data);
     else {
       state.records = data;
       renderRecords(data);
@@ -348,6 +373,110 @@ async function loadView({ refresh = false } = {}) {
       showPageError(error);
     }
   }
+}
+
+function renderLineContacts(data) {
+  const generation = {
+    queued: '等待生成', pending: '等待生成', generating: '正在生成',
+    limited: '生成额度已满', unavailable: '生成失败', unconfigured: '生成服务未配置',
+  };
+  const rows = data.items.map((row) => {
+    const confirmed = row.line_confirmed_at != null;
+    const sent = row.line_sent_at != null;
+    const ready = confirmed && row.full_state === 'ready';
+    const status = sent ? '已发送' : !confirmed ? '待确认好友'
+      : ready ? '待发送' : generation[row.full_state] || '待生成';
+    const action = (name, title) =>
+      `<button type="button" class="button" data-line-action="${name}" data-line-report="${esc(row.id)}">${title}</button>`;
+    const canRetry = confirmed && !sent && !ready && !['queued', 'pending', 'generating'].includes(row.full_state);
+    return `<tr>${[
+      `<span class="mono">${esc(row.claim_code)}</span>`,
+      fullDate(row.line_contact_at),
+      fullDate(row.line_confirmed_at),
+      `<strong>${status}</strong>${sent ? `<small>${fullDate(row.line_sent_at)}</small>` : ''}`,
+      `<div class="line-actions">
+        ${!confirmed ? action('confirm', '确认已加好友') : ''}
+        ${canRetry ? action('retry', '重试生成') : ''}
+        ${ready ? action('download', '下载 PDF') : ''}
+        ${ready && !sent ? action('mark_sent', '标记已发送') : ''}
+      </div>`,
+    ].map((cell) => `<td>${cell}</td>`).join('')}</tr>`;
+  });
+  $('#content').innerHTML = `<div class="line-metrics">
+    <section class="stat-card">
+      <div class="stat-top"><h3>二维码弹出次数</h3></div>
+      <div class="stat-value">${number(data.metrics.qr_popups)}<span class="unit">次</span></div>
+      <p class="stat-hint">二维码每成功显示一次计一次</p>
+    </section>
+    <section class="stat-card">
+      <div class="stat-top"><h3>按钮点击人数</h3></div>
+      <div class="stat-value">${number(data.metrics.click_visitors)}<span class="unit">人</span></div>
+      <p class="stat-hint">点击「添加好友」，同一浏览器只计一人</p>
+    </section>
+  </div>
+  <p class="data-note">时间范围用于统计，最多保留最近 30 天。输入领取编号可查询任一状态。</p>
+  <section class="panel table-panel">
+    <div class="line-delivery-tabs" role="group" aria-label="报告发放分类">
+      ${Object.entries(lineDeliveryTabs).map(([key, title]) =>
+        `<button type="button" class="button" data-line-tab="${key}" aria-pressed="${!state.q && state.lineDelivery === key}">${title}</button>`
+      ).join('')}
+    </div>
+    <form class="filters" id="line-search">
+      <div class="search"><span aria-hidden="true">⌕</span><input id="line-report-id" aria-label="领取编号" placeholder="粘贴领取编号" maxlength="128" value="${esc(state.q)}"></div>
+      <button class="button" type="submit">查询</button>
+    </form>
+    ${rows.length ? table(['领取编号', '首次打开联系码', '确认加好友', '发送状态', '操作'], rows)
+      : `<div class="empty">${icon('reports')}<strong>${state.q ? '未找到此编号的预览报告' : '此分类暂无报告'}</strong></div>`}
+    <div class="table-footer"><span>第 ${state.page} 页</span><div class="pagination">
+      <button type="button" class="button" id="line-prev" ${state.page <= 1 ? 'disabled' : ''}>上一页</button>
+      <button type="button" class="button" id="line-next" ${data.has_more ? '' : 'disabled'}>下一页</button>
+    </div></div></section>`;
+  $('#line-search').addEventListener('submit', (event) => {
+    event.preventDefault();
+    state.q = $('#line-report-id').value.trim();
+    state.page = 1;
+    loadView();
+  });
+  $('#line-prev').addEventListener('click', () => { state.page--; loadView(); });
+  $('#line-next').addEventListener('click', () => { state.page++; loadView(); });
+  $('#content').querySelectorAll('[data-line-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.lineDelivery = button.dataset.lineTab;
+      state.q = '';
+      state.page = 1;
+      loadView();
+    });
+  });
+  $('#content').querySelectorAll('[data-line-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const session = state.session;
+      const action = button.dataset.lineAction;
+      const path = `/line-contacts/${encodeURIComponent(button.dataset.lineReport)}`;
+      button.disabled = true;
+      try {
+        if (action === 'download') {
+          const { exportDocument } = await import('/thai-landing/runtime/report-pdf.js');
+          if (state.session !== session) return;
+          const report = await api(path + '/report', { method: 'POST' });
+          if (state.session !== session) return;
+          const result = await exportDocument(JSON.stringify(report), 'pdf');
+          if (result !== 'cancelled') toast('PDF 已下载，请发给 LINE 用户。');
+        } else {
+          const result = await api(path + '/actions', { method: 'POST', body: { action } });
+          if (state.session !== session) return;
+          toast(action === 'mark_sent' ? '已标记发送'
+            : result.full_state === 'ready' ? '报告可下载'
+            : result.full_state === 'limited' ? '生成额度已满，可稍后重试'
+            : '已提交生成，稍后刷新查看。');
+          if (state.view === 'line-contacts') await loadView();
+        }
+      } catch (error) {
+        toast(error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
 }
 const reportLink = (row) =>
   row.report_id === null
@@ -696,6 +825,65 @@ async function openDetail(id) {
       $('#detail-content').innerHTML = `<div class="error-banner">${esc(error.message)}</div>`;
   }
 }
+function reportDocumentSection(editions) {
+  const available = Object.keys(reportEditionNames).filter((edition) => editions?.includes(edition));
+  const controls = available.map((edition) => {
+    const name = reportEditionNames[edition];
+    return `<button type="button" class="button" data-report-edition="${edition}">查看${name}</button>
+      <button type="button" class="button" data-report-edition="${edition}" data-report-pdf>下载${name} PDF</button>`;
+  }).join('');
+  return `<section class="detail-section"><h3>报告正文</h3>
+    ${controls ? `<div class="report-document-tools">${controls}</div>
+      <p class="report-document-status muted" role="status"></p>
+      <iframe class="report-document-frame" title="报告正文" sandbox referrerpolicy="no-referrer" hidden></iframe>`
+    : '<p class="panel-body muted">正文生成并保存后可查看和下载。</p>'}
+  </section>`;
+}
+
+async function openReportDocument(button) {
+  if (!state.detail || button.disabled) return;
+  const reportId = state.detail.report.id;
+  const request = state.detailRequest;
+  const edition = button.dataset.reportEdition;
+  const pdf = button.hasAttribute('data-report-pdf');
+  const section = button.closest('.detail-section');
+  const controls = section.querySelectorAll('[data-report-edition]');
+  const status = section.querySelector('.report-document-status');
+  const frame = section.querySelector('.report-document-frame');
+  const current = () => request === state.detailRequest && section.isConnected && $('#detail-dialog').open;
+  for (const control of controls) control.disabled = true;
+  status.classList.remove('error-text');
+  status.textContent = pdf ? '正在准备 PDF…' : '正在读取报告正文…';
+  try {
+    const [report, runtime] = await Promise.all([
+      api(`/reports/${encodeURIComponent(reportId)}/content?edition=${encodeURIComponent(edition)}`),
+      import('/thai-landing/runtime/report-pdf.js'),
+    ]);
+    if (!current()) return;
+    const payload = JSON.stringify(report);
+    if (pdf) {
+      const result = await runtime.exportDocument(payload, 'pdf');
+      if (current()) status.textContent = {
+        saved: 'PDF 已保存。',
+        downloaded: 'PDF 下载已开始。',
+        cancelled: '已取消保存。',
+      }[result];
+    } else {
+      frame.title = reportEditionNames[edition] + '正文';
+      frame.srcdoc = runtime.renderReportHtml(payload);
+      frame.hidden = false;
+      status.textContent = '';
+    }
+  } catch (error) {
+    if (current()) {
+      status.classList.add('error-text');
+      status.textContent = error.message;
+    }
+  } finally {
+    for (const control of controls) control.disabled = false;
+  }
+}
+
 function renderDetail(data) {
   const r = data.report,
     p = data.input.profile || {},
@@ -711,6 +899,7 @@ function renderDetail(data) {
   );
   $('#detail-content').innerHTML =
     `<p class="detail-id mono">${esc(r.id)}</p><div class="detail-actions"><button class="button" data-action="check_payment" ${order && order.environment !== 'simulation' ? '' : 'disabled'}>核对到账</button><button class="button" data-action="retry_report" ${canRetry ? '' : 'disabled'} title="已解锁的失败报告可重试；未解锁只可重试免费预览">重试失败报告</button><button class="primary" data-action="note">添加处理记录</button><button class="button" data-report="${esc(r.id)}">↻ 刷新详情</button></div>
+    ${reportDocumentSection(data.content_editions)}
     <section class="detail-section"><h3>报告状态与来源 ${badge(r.status)}</h3><div class="detail-fields">${field('预览状态', label(r.preview_state), 'life_reports.preview_state')}${field('完整报告', label(r.full_state), 'life_reports.full_state')}${field('权限', r.unlocked ? '已解锁（不等同于实收）' : '未解锁', 'life_reports.unlocked')}${field('访客编号', r.visitor_number || '暂无编号', 'landing_visitors.visitor_number')}${field('创建时间', fullDate(r.created), 'life_reports.created')}${field('首次来源', sourceName(r), '报告创建时记录')}${field('首次活动', r.campaign || '未记录', '报告创建时记录')}${field('首次投放地区', r.region_code || '未知', '首次链接的地区标签')}${field('已完成内容', `${data.completed_chapters.length} 个章节${data.has_plan ? ' + 行动计划' : ''}`, 'life_reports.chapters / plan')}${field('内部跟进', label(data.case.status), 'admin_cases.status')}</div><details><summary>查看当前生成进度记录</summary><pre>${esc(JSON.stringify(data.progress, null, 2))}</pre></details></section>
     <section class="detail-section"><h3>用户提交信息</h3><div class="detail-fields">${field('姓名', p.display_name || '未填写', 'input.profile.display_name')}${field('报告语言', label(p.language), 'input.profile.language')}${field('出生日期', p.birth_date || '未记录', 'input.profile.birth_date')}${field('出生时间', p.birth_time || '未知', 'input.profile.birth_time')}${field('出生地', p.birthplace || '未记录', 'input.profile.birthplace')}${field('时区', p.timezone || '未记录', 'input.profile.timezone')}</div></section>
     <section class="detail-section"><h3>订单与服务端回执 ${order ? badge(order.status) : ''}</h3>${order ? `<div class="detail-fields">${field('订单编号', order.id, 'life_card_payments.reference')}${field('订单金额', 'THB ' + money(order.amount), 'life_card_payments.amount / 100')}${field('建单来源', sourceName(order), 'life_card_payments.landing_source')}${field('建单访问编号', order.landing_visit_id || '未归因', 'life_card_payments.landing_visit_id')}${field('平台单号', order.order_number || '未返回', 'sunlands_order_number')}${field('运行环境', label(order.environment), '支付网关与商户类型')}${field('到账核验', label(order.status), 'paymentStatus + provider_order')}${field('核验到账时间', fullDate(order.paid_at), 'sunlands_order.paidAt')}</div><details><summary>查看已脱敏的建单与查单回执</summary><pre>${esc(JSON.stringify(data.receipt, null, 2))}</pre></details>` : '<div class="panel-body muted">没有关联支付订单。报告解锁本身不能证明收款。</div>'}</section>
@@ -787,10 +976,16 @@ document.addEventListener('click', (event) => {
   if (report) openDetail(report.dataset.report);
   const action = event.target.closest('[data-action]');
   if (action) openAction(action.dataset.action);
+  const reportDocument = event.target.closest('[data-report-edition]');
+  if (reportDocument) openReportDocument(reportDocument);
 });
-$('#close-detail').addEventListener('click', () => {
-  $('#detail-dialog').close();
-  state.detailRequest = null;
+$('#close-detail').addEventListener('click', () => $('#detail-dialog').close());
+$('#detail-dialog').addEventListener('close', (event) => {
+  if (!event.target.open) {
+    state.detail = null;
+    state.detailRequest = null;
+    $('#detail-content').replaceChildren();
+  }
 });
 $('#cancel-action').addEventListener('click', () => $('#action-dialog').close());
 $('#action-form').addEventListener('submit', async (event) => {

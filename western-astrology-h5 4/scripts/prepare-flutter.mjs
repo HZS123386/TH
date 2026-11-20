@@ -14,7 +14,7 @@ import {additionalLocales,languages} from './src/lib/locales';
 export default {life:lifeCopy,career:careerCopy,western:westernCopy,generation:generationCopy,ui,fortune:fortuneCopy,topics:fortuneTopics,additional:additionalLocales,reading:Object.fromEntries(languages.map(code=>[code,readingCopy(code)]))};`,resolveDir:root},bundle:true,platform:'node',format:'esm',outfile:extracted});
 const copy = (await import(pathToFileURL(extracted).href + '?v=' + Date.now())).default;
 copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checkout.json'),'utf8'));
-copy.phoneCountries = JSON.parse(await readFile(path.join(root,'src','content','phone-countries.json'),'utf8')).countries;
+copy.purchasePolicies = JSON.parse(await readFile(path.join(root,'src','content','support','index.json'),'utf8')).purchasePolicyLabels;
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));
 copy.relationship = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','relationship-report.json'),'utf8'));
 copy.marriage = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','marriage-report.json'),'utf8'));

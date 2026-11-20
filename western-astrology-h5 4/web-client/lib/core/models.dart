@@ -219,6 +219,7 @@ class LifeReport {
   LifeReport._(this.json);
   final Json json;
   String get id => text(json['id']);
+  String get claimCode => text(json['claim_code']);
   Json get input => object(json['input']);
   Json get profile => object(input['profile']);
   String get language => text(profile['language']);

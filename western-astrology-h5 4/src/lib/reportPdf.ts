@@ -82,6 +82,10 @@ function edition(report: LifeReport, labels: LifeLabels): string {
   return additionalLocales[language].reportContent.fullVersion;
 }
 
+function reportNumber(report: LifeReport): string {
+  return report.claim_code || report.id.slice(0, 12).toUpperCase();
+}
+
 function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
   if (report.format === "western-personal" || report.format === "thai-marriage") return [
     { text: "FATE", color: palette.paleGold, characterSpacing: 2.2, fontSize: 9, margin: [0, 0, 0, 10] },
@@ -103,7 +107,7 @@ function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
     { table: { widths: ["*", 148], dontBreakRows: true, body: [
       [
         { stack: [label(labels.birth), value(`${profile.birth_date} · ${profile.birth_time || labels.timeUnknown}`, 12), value(profile.birthplace), { text: textRuns(profile.timezone), fontSize: 8.5, color: palette.muted }] },
-        { stack: [label(labels.number), value(report.id.slice(0, 12).toUpperCase()), label(labels.created), value(created)] },
+        { stack: [label(labels.number), value(reportNumber(report)), label(labels.created), value(created)] },
       ],
       [{ colSpan: 2, stack: [
         { text: [...textRuns(`${labels.name}  `), ...textRuns(profile.display_name || labels.defaultName, true)], fontSize: 9.5, color: palette.ink, margin: [0, 0, 0, 6] },
@@ -264,14 +268,14 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
     ], fontSize: 8, margin: [52, 27, 52, 0] }),
     content: Array.from(document.body.children).flatMap(element => blocks(element)),
     footer: (page, count) => ({ columns: [
-      { text: textRuns(`FATE  /  ${report.id.slice(0, 12).toUpperCase()}`) },
+      { text: textRuns(`FATE  /  ${reportNumber(report)}`) },
       { text: `${page} / ${count}`, alignment: "right" },
     ], fontSize: 7.5, color: palette.muted, margin: [52, personal ? 20 : 32, 52, 0] }),
   };
 }
 
 async function fontData(filename: string): Promise<string> {
-  const response = await fetch(new URL(`fonts/pdf/${filename}`, document.baseURI), { cache: "force-cache" });
+  const response = await fetch(new URL(`../fonts/pdf/${filename}`, import.meta.url), { cache: "force-cache" });
   if (!response.ok) throw new Error("PDF_font_unavailable");
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
@@ -311,11 +315,11 @@ async function ensureRegionalPdfFonts(pdf: PdfEngine, report: LifeReport, labels
 
 export async function saveReportPdf(report: LifeReport, labels: LifeLabels, signal: AbortSignal): Promise<"saved" | "downloaded" | "cancelled"> {
   const full = report.access === "full" && report.full_state === "ready";
-  const id = report.id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48) || "report";
+  const id = (report.claim_code || report.id).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48) || "report";
   const fullFilename = report.format === "thai-marriage" && report.input.profile.language === "zh"
     ? "FATE完整婚姻关系报告.pdf"
     : `FATE-${edition(report, labels)}.pdf`;
-  const filename = full ? fullFilename : `Life-Report-${id}-preview.pdf`;
+  const filename = full && !report.claim_code ? fullFilename : `Life-Report-${id}-${full ? "full" : "preview"}.pdf`;
   let handle: FileSystemFileHandle | undefined;
   const picker = (window as SaveWindow).showSaveFilePicker;
   if (picker) {

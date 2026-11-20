@@ -421,6 +421,26 @@ nav {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
+.line-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.line-delivery-tabs,
+.line-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.line-delivery-tabs {
+  padding: 16px 20px 0;
+}
+.line-delivery-tabs [aria-pressed="true"] {
+  background: #f5f4fa;
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .stat-card,
 .panel {
   background: white;
@@ -1095,6 +1115,27 @@ td button.link {
   padding: 16px 18px;
   border-bottom: 1px solid var(--line);
   font-size: 13px;
+}
+.report-document-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 18px;
+}
+.report-document-status {
+  margin: 0;
+  padding: 0 18px 12px;
+  font-size: 12px;
+}
+.report-document-status:empty {
+  display: none;
+}
+.report-document-frame {
+  display: block;
+  width: 100%;
+  height: min(66dvh, 720px);
+  border: 0;
+  border-top: 1px solid var(--line);
 }
 .visit-detail-meta {
   display: flex;

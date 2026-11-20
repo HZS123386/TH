@@ -225,7 +225,5 @@ class TestBrowser implements BrowserPort {
   }
 
   @override
-  void postPayment(String action, Map<String, String> fields) {}
-  @override
   void pageReady(String page) {}
 }

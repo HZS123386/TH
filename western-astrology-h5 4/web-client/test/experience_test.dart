@@ -17,6 +17,8 @@ import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/features/information_page.dart';
 import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/welcome_page.dart';
+import 'package:fate_h5/ui/jy_components.dart';
+import 'package:fate_h5/ui/theme.dart';
 
 import 'support.dart';
 
@@ -54,12 +56,83 @@ class _PolicyAssets extends CachingAssetBundle {
 }
 
 void main() {
+  testWidgets(
+    'theme boards match the reference spacing and fit short screens',
+    (tester) async {
+      phone(tester);
+      final data = translations();
+      Widget boards(String language) => MaterialApp(
+        theme: h5Theme(),
+        home: Scaffold(
+          body: LayoutBuilder(
+            builder: (context, viewport) => SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 36),
+              child: ThemeBoards(
+                copy: Copy(data, language),
+                viewportHeight: viewport.maxHeight,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final board = find.byType(ThemeBoards);
+      final artwork = find.descendant(
+        of: board,
+        matching: find.byType(ClipPath),
+      );
+      tester.view.physicalSize = const Size(452, 844);
+      await tester.pumpWidget(boards('zh'));
+      await tester.pumpAndSettle();
+      final tall = tester.getSize(board);
+      final tallImage = tester.getSize(artwork.first);
+      expect(tall.width, 380);
+      expect(tallImage.height, closeTo(126, 1));
+      expect(tester.getSize(artwork.last).height, closeTo(144, 1));
+      expect(
+        tester.getTopLeft(artwork.last).dy -
+            tester.getBottomLeft(artwork.first).dy,
+        closeTo(28, 1),
+      );
+      final titles = objects(
+        object(data['jyThemes'])['outlook'],
+      ).map((item) => find.text(text(item['zh']))).toList();
+      expect(
+        tester.getCenter(titles[1]).dy - tester.getCenter(titles[0]).dy,
+        closeTo(40, 1),
+      );
+
+      tester.view.physicalSize = const Size(452, 610);
+      await tester.pumpAndSettle();
+      expect(tester.getSize(board).width, tall.width);
+      expect(tester.getSize(board).height, lessThan(tall.height));
+      expect(tester.getSize(artwork.first).height, lessThan(tallImage.height));
+
+      tester.view.physicalSize = const Size(320, 568);
+      await tester.pumpWidget(boards('th'));
+      await tester.pumpAndSettle();
+      final banner = tester.getRect(
+        find.text(Copy(data, 'th').t('jy', 'topicLabel')),
+      );
+      for (final group in ['outlook', 'highlights']) {
+        for (final item in objects(object(data['jyThemes'])[group])) {
+          final topic = find.text(text(item['th']));
+          expect(topic, findsOneWidget);
+          expect(tester.getTopLeft(topic).dy, greaterThan(banner.bottom));
+        }
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test(
     'information text and identity are complete in all nine selected languages',
     () {
       final identity = object(
         jsonDecode(File('assets/privacy/controller.json').readAsStringSync()),
       );
+      expect(identity['contact_email'], 'wangb2295@gmail.com');
+      final data = translations();
       for (final kind in ['privacy', 'support']) {
         final index = object(
           jsonDecode(File('assets/$kind/index.json').readAsStringSync()),
@@ -78,6 +151,18 @@ void main() {
             objects(content['sections']).map((s) => s['id']).toList(),
             objects(reference['sections']).map((s) => s['id']).toList(),
           );
+          if (kind == 'support') {
+            expect(Copy(data, language).t('jy', 'birthDataNotice'), isNotEmpty);
+            final policies = object(content['purchasePolicies']);
+            for (final policy in ['terms', 'refund', 'delivery']) {
+              final sections = objects(policies[policy]);
+              expect(sections.length, greaterThanOrEqualTo(2));
+              for (final section in sections) {
+                expect(text(section['title']), isNotEmpty);
+                expect(section['paragraphs'], isNotEmpty);
+              }
+            }
+          }
           final localized = object(object(identity['localizations'])[language]);
           expect(text(localized['controller_name']), isNotEmpty);
           expect(text(localized['controller_address']), isNotEmpty);
@@ -318,7 +403,8 @@ void main() {
       expect(find.byType(WelcomePage), findsNothing);
       expect(find.text('隐私政策'), findsOneWidget);
       expect(find.byKey(const ValueKey('privacy-content-zh')), findsOneWidget);
-      expect(find.textContaining('上线审阅稿：'), findsOneWidget);
+      expect(find.text('生效日期: 2026-11-20'), findsOneWidget);
+      expect(find.textContaining('上线审阅稿：'), findsNothing);
       prepared.clear();
       await tester.tap(find.byKey(const ValueKey('language-menu')));
       await tester.pumpAndSettle();
@@ -378,7 +464,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('m15227933636@163.com'), findsOneWidget);
+      expect(find.text('wangb2295@gmail.com'), findsOneWidget);
       expect(find.text('北京尚德机构科技有限公司'), findsOneWidget);
       expect(find.text('9. 保存期限与清理规则'), findsNWidgets(2));
       final contentsLink = find.widgetWithText(TextButton, '9. 保存期限与清理规则');
@@ -424,10 +510,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('support-content-zh')), findsOneWidget);
-      expect(find.text('m15227933636@163.com'), findsOneWidget);
+      expect(find.text('wangb2295@gmail.com'), findsOneWidget);
       expect(
-        tester.getSemantics(find.text('m15227933636@163.com')).label,
-        'm15227933636@163.com',
+        tester.getSemantics(find.text('wangb2295@gmail.com')).label,
+        'wangb2295@gmail.com',
       );
       semantics.dispose();
       expect(find.text('正式上线后会提供联系方式。'), findsNothing);
@@ -436,13 +522,31 @@ void main() {
       await tester.tap(emailButton);
       final mail = Uri.parse(browser.openedPages.single);
       expect(mail.scheme, 'mailto');
-      expect(mail.path, 'm15227933636@163.com');
+      expect(mail.path, 'wangb2295@gmail.com');
       expect(mail.queryParameters, {'subject': 'FATE 网页支持请求'});
       final faq = find.byKey(const ValueKey('support-faq-generation'));
       await tester.ensureVisible(faq);
       await tester.tap(faq);
       await tester.pumpAndSettle();
       expect(find.textContaining('先确认网络连接正常'), findsOneWidget);
+      final paymentFaq = find.byKey(const ValueKey('support-faq-unlock'));
+      await tester.ensureVisible(paymentFaq);
+      await tester.tap(paymentFaq);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('目前通过 LINE 领取完整报告'), findsOneWidget);
+      for (final (label, policy, detail) in [
+        ('服务条款', 'terms', '报告与费用'),
+        ('退款政策', 'refund', '退款受理范围'),
+        ('交付说明', 'delivery', '报告如何交付'),
+      ]) {
+        final link = find.widgetWithText(TextButton, label);
+        await tester.ensureVisible(link);
+        await tester.tap(link);
+        await tester.pumpAndSettle();
+        expect(find.byKey(ValueKey('support-$policy-zh')), findsOneWidget);
+        expect(find.text(detail), findsOneWidget);
+        expect(find.text('wangb2295@gmail.com'), findsOneWidget);
+      }
       final privacy = find.byKey(const ValueKey('support-privacy-link'));
       await tester.ensureVisible(privacy);
       await tester.tap(privacy);
@@ -480,7 +584,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.refresh));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('privacy-content-zh')), findsOneWidget);
-      expect(find.text('m15227933636@163.com'), findsOneWidget);
+      expect(find.text('wangb2295@gmail.com'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();

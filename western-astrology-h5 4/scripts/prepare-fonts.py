@@ -46,7 +46,11 @@ def generate_welcome_fonts():
 def main():
     generate_welcome_fonts()
     ui = set()
-    paths = [ROOT / 'web-client/assets/copy.json', ROOT.parent / 'TH/backend/content/birth-regions.json']
+    paths = [
+        ROOT / 'web-client/assets/copy.json',
+        ROOT / 'src/content/support/index.json',
+        ROOT.parent / 'TH/backend/content/birth-regions.json',
+    ]
     paths += [p for p in (ROOT / 'web-client/lib').rglob('*.dart') if p.name != 'chinese_coverage.dart']
     for path in paths:
         ui.update(map(ord, path.read_text(encoding='utf8')))

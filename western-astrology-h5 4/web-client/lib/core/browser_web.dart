@@ -9,8 +9,6 @@ import 'repository.dart';
 external JSString _today(JSString zone);
 @JS('fateH5.exportDocument')
 external JSPromise<JSString> _export(JSString payload, JSString format);
-@JS('fateH5.postPayment')
-external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
 @JS('fateH5.welcomeAge')
@@ -45,7 +43,7 @@ class WebBrowserPort implements BrowserPort {
     Future<bool> Function(String) changeLanguage,
     String language,
   ) {
-    final change = (JSString next) =>
+    JSPromise<JSBoolean> change(JSString next) =>
         changeLanguage(next.toDart).then((changed) => changed.toJS).toJS;
     _connectWelcome(enter.toJS, change.toJS, language.toJS);
   }
@@ -83,9 +81,6 @@ class WebBrowserPort implements BrowserPort {
         jsonEncode(report.exportPayload()).toJS,
         format.toJS,
       ).toDart).toDart;
-  @override
-  void postPayment(String action, Map<String, String> fields) =>
-      _payment(action.toJS, jsonEncode(fields).toJS);
   @override
   void pageReady(String page) => _ready(page.toJS);
 

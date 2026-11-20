@@ -1,11 +1,21 @@
-import { isLifeReport, lifeLabels } from './lifeReport';
+import { isLifeReport, lifeLabels, type LifeReport } from './lifeReport';
 import { reportHtml } from './reading';
 import { saveReportPdf } from './reportPdf';
 
-// Keep the original permission-aware PDF and HTML document generation.
-export async function exportDocument(payload: string, format: string) {
+function readReport(payload: string): LifeReport {
   const report: unknown = JSON.parse(payload);
   if (!isLifeReport(report)) throw new Error('Invalid report');
+  return report;
+}
+
+export function renderReportHtml(payload: string) {
+  const report = readReport(payload);
+  return reportHtml(report, lifeLabels(report));
+}
+
+// Keep the original permission-aware PDF and HTML document generation.
+export async function exportDocument(payload: string, format: string) {
+  const report = readReport(payload);
   if (format !== 'pdf' && format !== 'html') throw new Error('Invalid export format');
   const labels = lifeLabels(report);
   if (format === 'pdf') return saveReportPdf(report, labels, new AbortController().signal);

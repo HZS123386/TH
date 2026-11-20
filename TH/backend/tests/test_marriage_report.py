@@ -150,7 +150,7 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         preview_sections = free["marriage"]["preview"]
         style, current = (section["paragraphs"] for section in preview_sections[1:3])
         assert [section["title"] for section in preview_sections if section.get("visible", True)] == [
-            "基础信息", "上升在感情里的真实样子" if known else "你在感情里的相处倾向", "当前感情能量", "付费引导",
+            "基础信息", "上升在感情里的真实样子" if known else "你在感情里的相处倾向", "当前感情能量", "领取完整报告",
         ]
         assert style == [FREE_TEXT[key] for key in ("needs", "reaction", "trap")]
         assert current == ["现在具备认真看人的条件。" if known else "先观察实际相处。", FREE_TEXT["current"]]
@@ -193,6 +193,9 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert complete["progress"] == {"total": 8, "completed": 8}
         with app.store.connect() as db:
             row = db.execute("SELECT * FROM life_reports WHERE id=%s", (free["id"],)).fetchone()
+        line_ready = {**row, "unlocked": 0, "line_confirmed_at": 1.0}
+        assert app.public(line_ready)["marriage"]["full"] is None
+        assert app.public(line_ready, line_delivery=True)["marriage"]["full"] == complete["marriage"]["full"]
         failed = app.public({**row, "full_state": "unavailable", "chapters": "{}",
                              "generation_progress": '{"marriage-full":95}'})
         assert failed["progress"] == {"total": 8, "completed": 0}

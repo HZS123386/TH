@@ -81,10 +81,7 @@ void main() {
         lowerImage.dx,
         greaterThan(tester.getCenter(find.text('***预警')).dx),
       );
-      expect(
-        find.text(controller.copy.t('jy', 'formCaption')),
-        findsOneWidget,
-      );
+      expect(find.text(controller.copy.t('jy', 'formCaption')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
@@ -383,14 +380,6 @@ void main() {
             expect(find.text('Synthetic small action 3'), findsOneWidget);
           } else {
             expect(find.byType(ReportCheckout), findsOneWidget);
-            final unlock = tester.widget<JYButton>(
-              find.byKey(const ValueKey('jy-payment-preview')),
-            );
-            expect(
-              unlock.label,
-              controller.copy.t('jy', 'personal.relationshipUnlock'),
-            );
-            expect(unlock.label, isNotEmpty);
             final aboutTitles = controller.copy.list(
               'jy',
               'checkout.relationshipAboutTitle',
@@ -484,18 +473,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(ReportCheckout), findsOneWidget);
-      expect(find.text('฿39'), findsOneWidget);
+      expect(find.text('฿39'), findsNothing);
       expect(find.text('฿30'), findsNothing);
-      expect(
-        find.text(controller.copy.t('jy', 'checkout.preview')),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<JYButton>(find.byKey(const ValueKey('jy-payment-preview')))
-            .onPressed,
-        isNull,
-      );
+      expect(find.byKey(const ValueKey('jy-payment-preview')), findsNothing);
       expect(requests.where((method) => method != 'GET'), isEmpty);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
