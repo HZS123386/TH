@@ -421,6 +421,26 @@ nav {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
+.line-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.line-delivery-tabs,
+.line-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.line-delivery-tabs {
+  padding: 16px 20px 0;
+}
+.line-delivery-tabs [aria-pressed="true"] {
+  background: #f5f4fa;
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .stat-card,
 .panel {
   background: white;

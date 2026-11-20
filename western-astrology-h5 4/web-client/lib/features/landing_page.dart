@@ -7,11 +7,9 @@ import '../core/models.dart';
 import '../core/repository.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
-import '../ui/site_header.dart';
 import 'birth_date_dialog.dart';
-import 'generation_dialog.dart';
-import 'history_dialog.dart';
-import 'information_page.dart';
+import 'generation_dialog.dart' deferred as generation;
+import 'history_dialog.dart' deferred as history;
 import 'place_picker.dart';
 
 enum _BirthFormProgress { empty, date, time, place, complete }
@@ -19,16 +17,23 @@ enum _BirthFormProgress { empty, date, time, place, complete }
 class LandingPage extends StatefulWidget {
   const LandingPage({this.topic = 'life', super.key});
   final String topic;
+
+  @visibleForTesting
+  static Future<void> loadDialogsForWidgetTests() async {
+    await history.loadLibrary();
+    await generation.loadLibrary();
+  }
+
   @override
   State<LandingPage> createState() => _LandingPageState();
 }
 
 class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   String _date = '', _time = '', _error = '';
-  bool _unknown = false, _confirming = false;
+  bool _unknown = false, _confirming = false, _noticeOutdated = false;
   Place? _place;
   CancelToken? _request;
-  GenerationState? _generation;
+  bool _generating = false, _openingHistory = false;
   bool _recordedPage = false;
   bool _resumeChecked = false;
   @override
@@ -140,8 +145,26 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     };
   }
 
+  Future<void> _openHistory(H5Controller h5) async {
+    if (_openingHistory) return;
+    setState(() => _openingHistory = true);
+    try {
+      await history.loadLibrary();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(h5.copy.t('ui', 'network'))),
+        );
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _openingHistory = false);
+    }
+    if (mounted) await history.showHistory(context, h5);
+  }
+
   Future<void> _generate(H5Controller h5) async {
-    if (_generation != null || _confirming) return;
+    if (_generating || _confirming || _noticeOutdated) return;
     final c = h5.copy;
     final progress = _formProgress(h5);
     _recordFormProgress(h5, progress);
@@ -156,20 +179,36 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       h5.trackActivity('birth_form', 'invalid_form');
       return;
     }
+    final input = _input(h5);
     setState(() {
       _error = '';
       _confirming = true;
     });
-    var accepted = false;
     try {
-      accepted = await confirmDataUse(context, h5);
+      await h5.acceptDataUse();
+      if (!mounted) return;
+      h5.trackActivity('birth_form', 'consent_accept');
+      await generation.loadLibrary();
+    } on ApiFailure catch (error) {
+      if (mounted) {
+        setState(() {
+          _noticeOutdated = error.code == 'landing_notice_outdated';
+          _error = h5.copy.t(
+            'jy',
+            _noticeOutdated ? 'noticeOutdated' : 'consentError',
+          );
+        });
+      }
+      return;
+    } catch (_) {
+      if (mounted) setState(() => _error = h5.copy.t('ui', 'network'));
+      return;
     } finally {
       if (mounted) setState(() => _confirming = false);
     }
-    if (!mounted || !accepted) return;
-    final input = _input(h5);
-    final state = GenerationState();
-    _generation = state;
+    if (!mounted) return;
+    final state = generation.GenerationState();
+    _generating = true;
     var attempts = 0;
     Future<void> run() async {
       _request?.cancel();
@@ -207,7 +246,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       PageRouteBuilder<void>(
         opaque: true,
         transitionDuration: const Duration(milliseconds: 260),
-        pageBuilder: (context, animation, secondaryAnimation) => GenerationDialog(
+        pageBuilder: (context, animation, secondaryAnimation) => generation.GenerationDialog(
           h5: h5,
           state: state,
           full: false,
@@ -223,7 +262,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
             h5.browser.writeSetting('active-preview', '', session: true);
             Navigator.of(context, rootNavigator: true).pop();
             context.go(
-              '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}&checkout=1',
+              '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}',
             );
           },
         ),
@@ -232,7 +271,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       ),
     );
     _request?.cancel();
-    if (_generation == state) _generation = null;
+    _generating = false;
     state.dispose();
   }
 
@@ -286,7 +325,6 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SiteHeader(),
               SizedBox(
                 height: heroHeight,
                 child: Stack(
@@ -398,8 +436,13 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     Align(
                       alignment: Alignment.centerRight,
                       child: OutlinedButton.icon(
-                        onPressed: () => showHistory(context, h5),
-                        icon: const LandingIcon('history', size: 14),
+                        onPressed: _openingHistory ? null : () => _openHistory(h5),
+                        icon: _openingHistory
+                            ? const SizedBox.square(
+                                dimension: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const LandingIcon('history', size: 14),
                         label: Text(c.t('jy', 'history')),
                       ),
                     ),
@@ -532,14 +575,35 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 8),
                     errorMessage(_error),
-                    const SizedBox(height: 21),
+                    const SizedBox(height: 15),
+                    if (!_noticeOutdated) ...[
+                      Text(
+                        c.t('jy', 'submitConsent'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          height: 1.5,
+                          color: lavender,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     JYButton(
                       key: const ValueKey('generate-report'),
-                      label: c.t('jy', 'topics.${widget.topic}.action'),
+                      label: c.t(
+                        'jy',
+                        _noticeOutdated
+                            ? 'openLatest'
+                            : 'topics.${widget.topic}.action',
+                      ),
                       icon: 'book',
                       bounce: true,
                       onPressed: h5.languageLoading || _confirming
                           ? null
+                          : _noticeOutdated
+                          ? () => h5.browser.openPage(
+                              './?lang=${h5.language}&preview=notice-${DateTime.now().millisecondsSinceEpoch}',
+                            )
                           : () => _generate(h5),
                     ),
                     const SizedBox(height: 19),

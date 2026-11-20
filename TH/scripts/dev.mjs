@@ -39,6 +39,11 @@ const apiPort = process.env.SABAI_API_PORT || '8000';
 const webPort = process.env.SABAI_WEB_PORT || process.env.FATE_APP_PORT || '5176';
 const previewArgs = process.argv.includes('--skip-build') ? ['--skip-build'] : [];
 const previewEnv = { ...process.env, FATE_API_UPSTREAM: `http://127.0.0.1:${apiPort}` };
+const apiEnv = { ...process.env };
+if ((apiEnv.APP_ENV || 'development') === 'development') {
+  // The browser can reopen a local report only on the same preview origin.
+  apiEnv.SUNLANDS_H5_RETURN_URL = `http://127.0.0.1:${apiEnv.FATE_H5_PORT || '8765'}${apiEnv.FATE_H5_BASE_PATH || '/thai-landing/'}report.html`;
+}
 const children = [
   spawn(
     python,
@@ -53,7 +58,7 @@ const children = [
       apiPort,
       ...(process.env.SABAI_NO_RELOAD === '1' ? [] : ['--reload', '--reload-dir', 'backend']),
     ],
-    { stdio: 'inherit' },
+    { stdio: 'inherit', env: apiEnv },
   ),
   spawn(process.execPath, ['scripts/serve-app.mjs', ...previewArgs], {
     stdio: 'inherit',

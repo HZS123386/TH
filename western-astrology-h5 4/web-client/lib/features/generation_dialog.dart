@@ -6,6 +6,7 @@ import 'generation_video.dart'
 import '../app/controller.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
+import '../ui/site_header.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
 import 'report_chart.dart';
@@ -617,7 +618,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                                 top: 10,
                                               ),
                                               child: Text(
-                                                '${c.t('jy', 'interpretation.next')} · ${_step < 2 ? c.t('jy', 'interpretation.steps.${keys[_step + 1]}.title') : c.t('jy', 'checkout.title')}',
+                                                '${c.t('jy', 'interpretation.next')} · ${_step < 2 ? c.t('jy', 'interpretation.steps.${keys[_step + 1]}.title') : widget.full ? c.t('checkout', 'reportProduct') : c.t('jy', 'report.freeTitle')}',
                                                 style: const TextStyle(
                                                   fontSize: 12,
                                                   color: lavender,
@@ -676,6 +677,11 @@ class _GenerationDialogState extends State<GenerationDialog> {
                               ),
                             ),
                           ),
+                        ),
+                        Positioned(
+                          top: MediaQuery.paddingOf(context).top,
+                          right: 8,
+                          child: HomeArrow(h5: widget.h5, onLeaving: widget.onCancel),
                         ),
                         if (!_loading)
                           Positioned(

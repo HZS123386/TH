@@ -48,9 +48,6 @@ Future<void> _startApp(WebBrowserPort browser) async {
   ).wait;
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([
-      'libphonenumber', 'libphonenumber-js', 'Unicode CLDR', 'flag-icons',
-    ], await rootBundle.loadString('assets/licenses/phone-countries.txt'));
-    yield LicenseEntryWithLineBreaks([
       'Noto Sans Thai',
     ], await rootBundle.loadString('assets/fonts/OFL.txt'));
     yield LicenseEntryWithLineBreaks([

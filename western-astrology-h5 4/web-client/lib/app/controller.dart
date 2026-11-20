@@ -78,6 +78,14 @@ class H5Controller extends ChangeNotifier {
     unawaited(ensureFont?.call(language).catchError((_) {}));
   }
 
+  void returnToWelcome() {
+    browser.writeSetting('active-preview', '', session: true);
+    if (welcomeOpen) return;
+    welcomeOpen = true;
+    welcomePortraitRevealed = false;
+    notifyListeners();
+  }
+
   void prepareLanding() {
     if (landingPrepared) return;
     landingPrepared = true;

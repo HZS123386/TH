@@ -23,9 +23,9 @@ PASSWORD = "synthetic-admin-password"
 HASH = password_hash(PASSWORD)
 
 
-def login(http):
+def login(http, username="admin-test"):
     result = http.post("/api/admin/login", headers={"X-Admin-Request": "1"},
-                       json={"username": "admin-test", "password": PASSWORD})
+                       json={"username": username, "password": PASSWORD})
     assert result.status_code == 200, result.text
     return {"X-CSRF-Token": result.json()["csrf"]}
 
@@ -80,7 +80,8 @@ def seed(app):
 @pytest.fixture
 def admin(postgres_url, monkeypatch):
     app = create_app(Settings(database_url=postgres_url, app_env="production",
-                              admin_username="admin-test", admin_password_hash=HASH))
+                              admin_username="admin-test", admin_password_hash=HASH,
+                              report_support_username="support-test", report_support_password_hash=HASH))
     # The seeded report states are snapshots for the dashboard assertions.
     monkeypatch.setattr(app.state.life_reports, "dispatch_full_reports", lambda: None)
     seed(app)
@@ -97,6 +98,113 @@ def test_admin_data_requires_separate_login_and_static_page_has_no_business_data
     assert html.headers["cache-control"] == "no-store"
     assert "frame-ancestors 'none'" in html.headers["content-security-policy"]
     assert http.get("/admin/config.py").status_code == 404
+
+
+def test_line_metrics_count_each_popup_and_dedupe_clicks_across_visits(admin):
+    http, app = admin
+    owner_key = "synthetic-line-contact-owner-key-1234"
+    visit_id = str(uuid4())
+    headers = {"X-Report-Key": owner_key}
+    with app.state.store.connect() as db:
+        db.execute("UPDATE life_reports SET owner=%s WHERE id='report-1'", (owner_for(owner_key),))
+
+    def visit(key, identifier, actions):
+        page_view = str(uuid4())
+        body = {"id": identifier, "events": [
+            {"sequence": seq, "page_view_id": page_view, "page": "preview_report", "action": action,
+             "kind": kind, "state": "visible", "occurred_at": time.time(), "visible_ms": 0}
+            for seq, (action, kind) in enumerate(actions, 1)
+        ]}
+        response = http.post("/api/landing/visits", headers={"X-Report-Key": key}, json=body)
+        assert response.status_code == 200, response.text
+        return body
+
+    first = visit(owner_key, visit_id, [
+        ("open_line_contact", "action"), ("line_qr_shown", "action"),
+        ("open_line_contact", "action"), ("line_qr_shown", "action"), ("line_qr_shown", "dwell"),
+    ])
+    assert http.post("/api/landing/visits", headers=headers, json=first).status_code == 200
+    later = str(uuid4())
+    visit(owner_key, later, [("open_line_contact", "action"), ("line_qr_shown", "action")])
+    visit("synthetic-line-contact-other-browser", str(uuid4()), [("open_line_contact", "action")])
+    event_path = f"/api/landing/visits/{visit_id}/events"
+    assert http.post(event_path, headers=headers, json={"report_id": "report-2", "event": "line_contact"}).status_code == 404
+    event = {"report_id": "report-1", "event": "line_contact"}
+    assert http.post(event_path, headers=headers, json=event).json()["recorded"] is True
+    assert http.post(event_path, headers=headers, json=event).json()["recorded"] is True
+    with app.state.store.connect() as db:
+        row = db.execute("SELECT submitted_at, seen_at FROM landing_visits WHERE id=%s", (visit_id,)).fetchone()
+        assert row == {"submitted_at": None, "seen_at": None}
+        db.execute("UPDATE landing_visit_activity SET received_at=%s WHERE visit_id=%s",
+                   (time.time() - 9 * 86400, later))
+    login(http, "support-test")
+    base = "/api/admin/line-contacts"
+    contacts = http.get(base, params={"delivery": "unconfirmed"}).json()
+    assert [row["id"] for row in contacts["items"]] == ["report-1"]
+    assert contacts["metrics"] == {"qr_popups": 3, "click_visitors": 2}
+    assert http.get(base, params={"days": 7}).json()["metrics"] == {"qr_popups": 2, "click_visitors": 2}
+    assert http.get(base).json()["items"] == []
+
+
+def test_support_can_deliver_full_report_without_unlocking_h5(client):
+    http, app, _, _ = client
+    http.base_url = httpx.URL("https://testserver")
+    app.state.h5_admin.settings.report_support_username = "support-test"
+    app.state.h5_admin.settings.report_support_password_hash = HASH
+    report = preview(http, language="th")
+    report_id = report["id"]
+    claim_code = report["claim_code"]
+    assert len(claim_code) == 5 and claim_code.isascii() and claim_code.isdigit()
+    report_path = f"/api/life-reports/{report_id}"
+    base = "/api/admin/line-contacts"
+    actions = f"{base}/{report_id}/actions"
+    export = f"{base}/{report_id}/report"
+    assert http.get(base).status_code == 401
+    assert http.post(export).status_code == 401
+    assert http.post(actions, json={"action": "confirm"}).status_code == 401
+    csrf = login(http, "support-test")
+    assert http.get("/api/admin/session").json()["role"] == "report_support"
+    for path in ("/overview", "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
+        assert http.get("/api/admin" + path).status_code == 403
+    assert action(http, csrf, report_id, "note").status_code == 403
+    assert http.post(export).status_code == 403
+    assert http.post(export, headers=csrf).status_code == 404
+    assert http.post(actions, headers=csrf, json={"action": "mark_sent"}).status_code == 409
+
+    # An exact number from LINE is sufficient even when H5 analytics were unavailable.
+    assert http.get(base, params={"delivery": "unconfirmed"}).json()["items"] == []
+    item, = http.get(base, params={"report_id": claim_code}).json()["items"]
+    assert item["id"] == report_id and item["line_contact_at"] is None
+    assert item["claim_code"] == claim_code
+    assert http.get(base, params={"report_id": report_id}).json()["items"] == [item]
+    assert set(item) == {"id", "claim_code", "line_contact_at", "line_confirmed_at", "line_sent_at", "full_state"}
+    assert http.post(actions, json={"action": "confirm"}).status_code == 403
+    assert http.post(actions, headers=csrf, json={"action": "confirm"}).status_code == 200
+    assert http.post(actions, headers=csrf, json={"action": "confirm"}).status_code == 200
+    assert [row["id"] for row in http.get(base).json()["items"]] == [report_id]
+    assert http.post(export, headers=csrf).status_code == 404
+    assert http.post(report_path + "/unlock", headers=life_fixtures.HEADERS).status_code == 402
+
+    finish(http, app)
+    full = http.post(export, headers=csrf).json()
+    assert full["id"] == report_id and full["access"] == "full" and full["full_state"] == "ready"
+    assert full["claim_code"] == claim_code
+    assert full["chapters"] and full["plan"]
+    public = http.get(report_path, headers=life_fixtures.HEADERS).json()
+    assert public["access"] == "preview" and public["full_state"] == "not_started"
+    assert public["chapters"] == [] and public["plan"] is None and public["progress"]["completed"] == 0
+    assert not any(item["ready"] for item in public["catalog"])
+    history, = http.get("/api/life-reports", headers=life_fixtures.HEADERS).json()["items"]
+    assert history["access"] == "preview" and history["full_state"] == "not_started"
+    assert http.post(actions, headers=csrf, json={"action": "mark_sent"}).status_code == 200
+    assert http.post(actions, headers=csrf, json={"action": "mark_sent"}).status_code == 200
+    sent, = http.get(base, params={"delivery": "sent"}).json()["items"]
+    assert sent["id"] == report_id and sent["line_sent_at"] >= sent["line_confirmed_at"]
+    assert http.get(base).json()["items"] == []
+    with app.state.store.connect() as db:
+        assert not db.execute("SELECT 1 FROM life_card_payments WHERE report_id=%s", (report_id,)).fetchone()
+        audit = db.execute("SELECT action FROM admin_audit WHERE report_id=%s ORDER BY created", (report_id,)).fetchall()
+        assert [row["action"] for row in audit] == ["line_confirm", "line_mark_sent"]
 
 
 def test_visit_records_expose_observed_page_and_leave_history_unknown(admin):

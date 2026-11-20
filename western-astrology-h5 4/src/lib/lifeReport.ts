@@ -22,6 +22,7 @@ export interface LifeChapter {
 }
 export interface LifeReport {
   id: string;
+  claim_code?: string;
   version: string;
   format?: "western-compact" | "legacy";
   title: string;

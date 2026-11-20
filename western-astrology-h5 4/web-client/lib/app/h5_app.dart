@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../features/information_page.dart' deferred as information;
 import '../features/landing_page.dart';
-import '../features/report_page.dart';
+import '../features/report_page.dart' deferred as reports;
 import '../features/welcome_page.dart';
-import '../features/information_page.dart';
+import '../ui/site_header.dart';
 import '../ui/theme.dart';
 import 'controller.dart';
 import 'localizations.dart';
@@ -13,6 +14,13 @@ class H5App extends StatefulWidget {
   const H5App({required this.controller, this.initialLocation, super.key});
   final H5Controller controller;
   final String? initialLocation;
+
+  @visibleForTesting
+  static Future<void> loadRoutesForWidgetTests() async {
+    await reports.loadLibrary();
+    await information.loadLibrary();
+  }
+
   @override
   State<H5App> createState() => _H5AppState();
 }
@@ -23,8 +31,11 @@ class _H5AppState extends State<H5App> {
     initialLocation: widget.initialLocation,
     routes: [
       ShellRoute(
-        builder: (context, state, child) =>
-            _Shell(landing: state.uri.path == '/', child: child),
+        builder: (context, state, child) => _Shell(
+          landing: state.uri.path == '/',
+          showLanguages: state.uri.path != '/report.html',
+          child: child,
+        ),
         routes: [
           GoRoute(
             path: '/',
@@ -40,19 +51,27 @@ class _H5AppState extends State<H5App> {
           ),
           GoRoute(
             path: '/privacy.html',
-            builder: (context, state) => const InformationPage(),
+            builder: (context, state) => _DeferredPage(
+              load: information.loadLibrary,
+              page: () => information.InformationPage(),
+            ),
           ),
           GoRoute(
             path: '/support.html',
-            builder: (context, state) => const InformationPage(support: true),
+            builder: (context, state) => _DeferredPage(
+              load: information.loadLibrary,
+              page: () => information.InformationPage(support: true),
+            ),
           ),
           GoRoute(
             path: '/report.html',
-            builder: (context, state) => ReportPage(
-              key: ValueKey(state.uri.queryParameters['id']),
-              h5: widget.controller,
-              id: state.uri.queryParameters['id'] ?? '',
-              checkout: state.uri.queryParameters['checkout'] == '1',
+            builder: (context, state) => _DeferredPage(
+              load: reports.loadLibrary,
+              page: () => reports.ReportPage(
+                key: ValueKey(state.uri.queryParameters['id']),
+                h5: widget.controller,
+                id: state.uri.queryParameters['id'] ?? '',
+              ),
             ),
           ),
         ],
@@ -121,10 +140,52 @@ class _H5AppState extends State<H5App> {
   );
 }
 
+class _DeferredPage extends StatefulWidget {
+  const _DeferredPage({required this.load, required this.page});
+
+  final Future<void> Function() load;
+  final Widget Function() page;
+
+  @override
+  State<_DeferredPage> createState() => _DeferredPageState();
+}
+
+class _DeferredPageState extends State<_DeferredPage> {
+  late Future<void> _library = widget.load();
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<void>(
+    future: _library,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (!snapshot.hasError) return widget.page();
+      final copy = H5Scope.of(context).copy;
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(copy.t('ui', 'network'), textAlign: TextAlign.center),
+            TextButton(
+              onPressed: () => setState(() => _library = widget.load()),
+              child: Text(copy.t('generation', 'retry')),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class _Shell extends StatelessWidget {
-  const _Shell({required this.child, this.landing = false});
+  const _Shell({
+    required this.child,
+    required this.landing,
+    required this.showLanguages,
+  });
   final Widget child;
-  final bool landing;
+  final bool landing, showLanguages;
   @override
   Widget build(BuildContext context) {
     final h5 = H5Scope.of(context);
@@ -151,9 +212,17 @@ class _Shell extends StatelessWidget {
                       ignoring: showWelcome,
                       // Build the hidden form when the welcome transition begins.
                       child: Scaffold(
-                        body: showWelcome && !h5.landingPrepared
-                            ? const SizedBox.expand()
-                            : child,
+                        body: Column(
+                          children: [
+                            if (!showWelcome || h5.landingPrepared)
+                              SiteHeader(showLanguages: showLanguages),
+                            Expanded(
+                              child: showWelcome && !h5.landingPrepared
+                                  ? const SizedBox.expand()
+                                  : child,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

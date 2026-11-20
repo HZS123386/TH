@@ -5,7 +5,9 @@ import 'jy_components.dart';
 import 'theme.dart';
 
 class SiteHeader extends StatelessWidget {
-  const SiteHeader({super.key});
+  const SiteHeader({this.showLanguages = true, super.key});
+  final bool showLanguages;
+
   Future<void> _language(
     BuildContext context,
     H5Controller h5,
@@ -57,24 +59,48 @@ class SiteHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           InkWell(
-            onTap: () => context.go('/?lang=${h5.language}'),
+            onTap: () => _goHome(context, h5),
             child: const FateBrand(),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              language('th', 'TH'),
-              const ExcludeSemantics(
-                child: Text(
-                  '/',
-                  style: TextStyle(fontSize: 12.3, color: lavender),
+              if (showLanguages) ...[
+                language('th', 'TH'),
+                const ExcludeSemantics(
+                  child: Text(
+                    '/',
+                    style: TextStyle(fontSize: 12.3, color: lavender),
+                  ),
                 ),
-              ),
-              language('zh', '中文'),
+                language('zh', '中文'),
+              ],
+              HomeArrow(h5: h5),
             ],
           ),
         ],
       ),
     );
   }
+}
+
+void _goHome(BuildContext context, H5Controller h5, [VoidCallback? onLeaving]) {
+  final router = GoRouter.of(context);
+  onLeaving?.call();
+  h5.returnToWelcome();
+  router.go('/?lang=${h5.language}');
+}
+
+class HomeArrow extends StatelessWidget {
+  const HomeArrow({required this.h5, this.onLeaving, super.key});
+
+  final H5Controller h5;
+  final VoidCallback? onLeaving;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: h5.copy.t('jy', 'checkout.back'),
+    onPressed: () => _goHome(context, h5, onLeaving),
+    icon: const Icon(Icons.arrow_back, color: gold, size: 20),
+  );
 }

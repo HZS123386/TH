@@ -37,11 +37,14 @@ class WebBrowserPort implements BrowserPort {
       Duration(microseconds: (_welcomeAge().toDartDouble * 1000).round());
 
   @override
-  void openPage(String path) => web.window.open(
-    Uri.base.resolve(path).toString(),
-    '_blank',
-    'noopener,noreferrer',
-  );
+  void openPage(String path, {bool sameTab = false}) {
+    final url = Uri.base.resolve(path).toString();
+    if (sameTab) {
+      web.window.location.assign(url);
+    } else {
+      web.window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }
   @override
   String ownerKey() {
     final key = _ownerKey()?.toDart;

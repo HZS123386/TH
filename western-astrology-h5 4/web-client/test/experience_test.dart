@@ -34,6 +34,8 @@ void phone(WidgetTester tester) {
 }
 
 void main() {
+  setUpAll(H5App.loadRoutesForWidgetTests);
+
   testWidgets(
     'welcome delays hidden form work until entering and preserves its state and URL',
     (tester) async {
@@ -125,6 +127,9 @@ void main() {
         await tester.pump();
         expect(find.byType(WelcomePage), findsNothing);
         expect(find.byType(LandingPage), findsOneWidget);
+        await tester.tap(find.byTooltip(reopened.copy.t('jy', 'checkout.back')));
+        await tester.pumpAndSettle();
+        expect(find.byType(WelcomePage), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
         reopened.dispose();
@@ -157,133 +162,47 @@ void main() {
       expect(uri.path, '/privacy.html');
       expect(uri.queryParameters['lang'], 'th');
       expect(find.text('นโยบายความเป็นส่วนตัว'), findsOneWidget);
+      await tester.tap(find.byTooltip(h5.copy.t('jy', 'checkout.back')));
+      await tester.pumpAndSettle();
+      expect(find.byType(WelcomePage), findsOneWidget);
+      final home = GoRouter.of(
+        tester.element(find.byType(WelcomePage)),
+      ).routeInformationProvider.value.uri;
+      expect(home.path, '/');
+      expect(home.queryParameters['lang'], 'th');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
     },
   );
 
-  testWidgets(
-    'data-use cancel sends nothing; failed acceptance can retry before saving the preference',
-    (tester) async {
-      phone(tester);
-      final browser = TestBrowser()..settings.remove('fate-data-use-version');
-      var attempts = 0;
-      final repo = ReportRepository(
-        browser,
-        baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          if (request.url.path == '/api/landing/config') {
-            return reply({'notice_version': H5Controller.noticeVersion});
-          }
-          expect(request.url.path, '/api/landing/consents');
-          expect(request.headers['X-Report-Key'], browser.key);
-          expect(jsonDecode(request.body), {
-            'notice_version': H5Controller.noticeVersion,
-            'granted': true,
-          });
-          attempts++;
-          return attempts == 1
-              ? reply({'code': 'busy'}, 503)
-              : reply({
-                  'accepted': true,
-                  'notice_version': H5Controller.noticeVersion,
-                });
-        }),
-      );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
-      bool? accepted;
-      await tester.pumpWidget(
-        H5Scope(
-          controller: h5,
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: TextButton(
-                  onPressed: () async {
-                    accepted = await confirmDataUse(context, h5);
-                  },
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ),
+  test('an outdated data-use notice prevents accepting the old version', () async {
+    final browser = TestBrowser()..settings.remove('fate-data-use-version');
+    final requests = <String>[];
+    final repo = ReportRepository(
+      browser,
+      baseUrl: 'https://example.test',
+      client: MockClient((request) async {
+        requests.add(request.url.path);
+        return reply({'notice_version': 'h5-data-use-future'});
+      }),
+    );
+    final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+    await expectLater(
+      h5.acceptDataUse(),
+      throwsA(
+        isA<ApiFailure>().having(
+          (error) => error.code,
+          'code',
+          'landing_notice_outdated',
         ),
-      );
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('取消'));
-      await tester.pumpAndSettle();
-      expect(accepted, isFalse);
-      expect(attempts, 0);
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
-      await tester.pumpAndSettle();
-      expect(h5.noticeAccepted, isFalse);
-      expect(browser.readSetting('fate-data-use-version'), isNull);
-      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
-      await tester.pumpAndSettle();
-      expect(accepted, isTrue);
-      expect(h5.noticeAccepted, isTrue);
-      expect(
-        browser.readSetting('fate-data-use-version'),
-        H5Controller.noticeVersion,
-      );
-      expect(attempts, 2);
-      await tester.pumpWidget(const SizedBox.shrink());
-      h5.dispose();
-    },
-  );
-
-  testWidgets(
-    'outdated data-use notice offers a fresh page without submitting consent',
-    (tester) async {
-      phone(tester);
-      final browser = TestBrowser()..settings.remove('fate-data-use-version');
-      var unexpected = 0;
-      final repo = ReportRepository(
-        browser,
-        baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          if (request.url.path == '/api/landing/config') {
-            return reply({'notice_version': 'h5-data-use-future'});
-          }
-          unexpected++;
-          return reply({}, 500);
-        }),
-      );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
-      await tester.pumpWidget(
-        H5Scope(
-          controller: h5,
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: TextButton(
-                  onPressed: () => confirmDataUse(context, h5),
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
-      await tester.pumpAndSettle();
-      expect(find.text(h5.copy.t('jy', 'noticeOutdated')), findsOneWidget);
-      expect(find.byKey(const ValueKey('data-use-agree')), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('data-use-reload')));
-      expect(browser.openedPages.single, contains('?lang=zh&preview=notice-'));
-      expect(browser.readSetting('fate-data-use-version'), isNull);
-      expect(h5.noticeAccepted, isFalse);
-      expect(unexpected, 0);
-      await tester.pumpWidget(const SizedBox.shrink());
-      h5.dispose();
-    },
-  );
+      ),
+    );
+    expect(requests, ['/api/landing/config']);
+    expect(browser.readSetting('fate-data-use-version'), isNull);
+    expect(h5.noticeAccepted, isFalse);
+    h5.dispose();
+  });
 
   test('an invalid consent acknowledgement cannot save acceptance', () async {
     final browser = TestBrowser()..settings.remove('fate-data-use-version');
@@ -345,20 +264,27 @@ void main() {
           initialLocation: '/report.html?id=${report['id']}&lang=zh',
         ),
       );
-      await tester.pumpAndSettle();
+      for (var attempt = 0; attempt < 30 &&
+          find.byType(ReportPreview).evaluate().isEmpty; attempt++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
       await tester.ensureVisible(find.text('删除此结果'));
       await tester.tap(find.text('删除此结果'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.tap(find.text('保留报告'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(deleted, isFalse);
       await tester.ensureVisible(find.text('删除此结果'));
       await tester.tap(find.text('删除此结果'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.tap(find.widgetWithText(FilledButton, '删除报告'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(deleted, isTrue);
-      expect(find.byType(ReportCheckout), findsNothing);
+      expect(find.byType(ReportPreview), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();

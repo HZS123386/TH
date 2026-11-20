@@ -27,7 +27,8 @@ class VisitActivity(Input):
                     "order_failed", "invalid_phone", "open_cashier", "cashier_failed", "check_payment",
                     "payment_result", "close_history", "leave_page", "request_failed", "select_birth_date",
                     "select_birth_time", "select_birthplace", "form_progress_empty", "form_progress_date",
-                    "form_progress_time", "form_progress_place", "form_progress_complete"]
+                    "form_progress_time", "form_progress_place", "form_progress_complete",
+                    "open_line_contact", "line_qr_shown"]
     state: Literal["visible", "hidden", "pagehide"]
     sequence: int = Field(strict=True, ge=1, le=9007199254740991)
 
@@ -65,7 +66,7 @@ class ActivityEvent(VisitActivity):
 
 class VisitEvent(Input):
     report_id: str = Field(min_length=8, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
-    event: Literal["submitted", "seen"]
+    event: Literal["submitted", "seen", "line_contact"]
 
 
 class ConsentInput(Input):
@@ -143,7 +144,7 @@ class LandingFeatures:
 
     def event(self, visit_id, body, owner):
         report = self.reports.row(body.report_id, owner)
-        if body.event == "seen" and not report["preview"]:
+        if body.event in ("seen", "line_contact") and not report["preview"]:
             raise HTTPException(409, "life_preview_required")
         visit_id = str(visit_id)
         with self.store.connect() as db:
@@ -153,6 +154,11 @@ class LandingFeatures:
                 raise HTTPException(404, "landing_visit_not_found")
             if body.event == "submitted":
                 record_submission(db, visit_id, body.report_id, owner)
+                return True
+            if body.event == "line_contact":
+                db.execute("UPDATE life_reports SET line_contact_at=%s "
+                           "WHERE id=%s AND owner=%s AND line_contact_at IS NULL",
+                           (time.time(), body.report_id, owner))
                 return True
             if not db.execute("SELECT 1 FROM landing_visit_reports WHERE visit_id=%s AND report_id=%s",
                               (visit_id, body.report_id)).fetchone():

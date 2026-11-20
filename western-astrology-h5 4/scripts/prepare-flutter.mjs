@@ -13,7 +13,6 @@ import {fortuneTopics,fortuneCopy} from './src/lib/fortuneTopics';
 export default {life:lifeCopy,career:careerCopy,western:westernCopy,generation:generationCopy,ui,fortune:fortuneCopy,topics:fortuneTopics,reading:{zh:readingCopy('zh'),th:readingCopy('th')}};`,resolveDir:root},bundle:true,platform:'node',format:'esm',outfile:extracted});
 const copy = (await import(pathToFileURL(extracted).href + '?v=' + Date.now())).default;
 copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checkout.json'),'utf8'));
-copy.phoneCountries = JSON.parse(await readFile(path.join(root,'src','content','phone-countries.json'),'utf8')).countries;
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));
 const jy = JSON.parse(await readFile(path.join(root,'src','content','jy.json'),'utf8'));
 copy.jy = jy.jy;

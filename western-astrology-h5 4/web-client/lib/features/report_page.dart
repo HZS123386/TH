@@ -15,12 +15,10 @@ class ReportPage extends StatefulWidget {
   const ReportPage({
     required this.h5,
     required this.id,
-    this.checkout = false,
     super.key,
   });
   final H5Controller h5;
   final String id;
-  final bool checkout;
   @override
   State<ReportPage> createState() => _ReportPageState();
 }
@@ -31,7 +29,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   final _anchors = <String, GlobalKey>{};
   final _expanded = <String>{};
   final _deleteRequest = CancelToken();
-  bool _deleting = false, _paying = false;
+  bool _deleting = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
   bool _resumedPreview = false;
@@ -62,7 +60,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         if (mounted) {
           widget.h5.browser.pageReady('report-content');
           unawaited(widget.h5.trackReport(r.id, 'seen'));
-          if (!_paying && !_generating && !r.ready) {
+          if (!_generating && !r.ready) {
             widget.h5.trackActivity('preview_report', 'report_ready');
           }
         }
@@ -73,7 +71,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           widget.h5.browser.pageReady('report-full-content');
-          if (!_paying && !_generating) widget.h5.trackActivity('full_report', 'report_ready');
+          if (!_generating) widget.h5.trackActivity('full_report', 'report_ready');
         }
       });
     }
@@ -136,41 +134,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       }
     } finally {
       if (mounted) setState(() => _deleting = false);
-    }
-  }
-
-  Future<void> _pay() async {
-    final report = _model.report;
-    if (report == null ||
-        !report.canPay ||
-        report.full ||
-        _paying ||
-        _deleting) {
-      return;
-    }
-    setState(() => _paying = true);
-    try {
-      final latest = await _model.load(background: true);
-      if (!mounted || latest == null || !latest.canPay || latest.full) {
-        return;
-      }
-      final paid = await showDialog<bool>(
-        context: context,
-        builder: (_) => ReportPaymentDialog(h5: widget.h5, report: latest),
-      );
-      if (mounted) {
-        widget.h5.trackActivity(_model.report?.ready == true ? 'full_report' : 'preview_report', 'close_payment');
-      }
-      if (mounted && paid == true) {
-        await _model.load(background: true);
-        if (mounted && _model.report?.fullInProgress == true) {
-          await _generate(true);
-        }
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _paying = false);
-      }
     }
   }
 
@@ -655,25 +618,20 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                     onPressed: () => _model.load(),
                     child: Text(c.t('generation', 'retry')),
                   ),
-                TextButton(
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
-                  child: Text(c.t('jy', 'checkout.back')),
-                ),
               ],
             ),
           ),
         );
       }
       if (!r.full && r.preview.isNotEmpty) {
-        return ReportCheckout(
+        return ReportPreview(
           h5: widget.h5,
-          report: r,
+          reportId: r.id,
+          claimCode: r.claimCode,
           freePreview: _freePreview(r, c),
-          busy: _deleting || _paying,
+          busy: _deleting,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
-          onBack: () => context.go('/?lang=${widget.h5.language}'),
           onErase: () => _erase(),
-          onPay: r.canPay ? _pay : null,
         );
       }
       if (r.preview.isEmpty) {
@@ -693,56 +651,12 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   label: c.t('report', r.previewInProgress ? 'viewProgress' : 'retryPreview'),
                   onPressed: _generating ? null : () => _generate(false),
                 ),
-                TextButton(
-                  onPressed: () => context.go('/?lang=${widget.h5.language}'),
-                  child: Text(c.t('jy', 'checkout.back')),
-                ),
               ],
             ),
           ),
         );
       }
       return Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          backgroundColor: night,
-          titleSpacing: 20,
-          title: InkWell(
-            onTap: () => context.go('/?lang=${widget.h5.language}'),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.auto_awesome_outlined, size: 25),
-                SizedBox(width: 12),
-                Text(
-                  'FATE',
-                  style: TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            if (MediaQuery.sizeOf(context).width < 480)
-              IconButton(
-                tooltip: c.t('generation', 'back'),
-                onPressed: () => context.go('/?lang=${widget.h5.language}'),
-                icon: const Icon(Icons.arrow_back, size: 20),
-              )
-            else
-              TextButton.icon(
-                onPressed: () => context.go('/?lang=${widget.h5.language}'),
-                icon: const Icon(Icons.arrow_back, size: 16),
-                label: Text(
-                  c.t('generation', 'back'),
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ),
-          ],
-        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           child: Column(

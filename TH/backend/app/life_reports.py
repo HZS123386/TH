@@ -75,9 +75,8 @@ class SimulatedPayment(Input):
     reference: str = Field(pattern=r"^[0-9]{12}$")
 
 
-class PaymentContact(Input):
-    mobile: str = Field(default="", max_length=32)
-    nationCode: str = Field(default="", max_length=4)
+class SunlandsPayment(Input):
+    method: str = Field(max_length=64, pattern=r"^FM_[A-Z0-9_]+$")
 
 
 def encoded(value):
@@ -229,15 +228,25 @@ class LifeReports:
                 # Save the job before any external calculation; no chart positions are fabricated.
                 chart = {"status": "queued", "provider": "roxy" if use_roxy else "thai",
                          "domain": "astrology", "version": version}
-                report_id = secrets.token_hex(16)
-                db.execute("""
-                    INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview_state,preview_network,
-                                             landing_visitor_number,landing_source,landing_campaign,landing_region)
-                    VALUES (%s,%s,%s,%s,%s,%s,'queued',%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING
-                """, (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time(), network,
-                      attribution.get("visitor_number"), attribution.get("first_source"),
-                      attribution.get("first_campaign"), attribution.get("region_code")))
-                report_id = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s", (owner, fingerprint)).fetchone()["id"]
+                # Retry code collisions while reusing a report inserted by a concurrent submission.
+                for _ in range(8):
+                    report_id = secrets.token_hex(16)
+                    inserted = db.execute("""
+                        INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview_state,preview_network,
+                                                 landing_visitor_number,landing_source,landing_campaign,landing_region)
+                        VALUES (%s,%s,%s,%s,%s,%s,'queued',%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING RETURNING id
+                    """, (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time(), network,
+                          attribution.get("visitor_number"), attribution.get("first_source"),
+                          attribution.get("first_campaign"), attribution.get("region_code"))).fetchone()
+                    if inserted:
+                        break
+                    existing = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s",
+                                          (owner, fingerprint)).fetchone()
+                    if existing:
+                        report_id = existing["id"]
+                        break
+                else:
+                    raise HTTPException(503, "life_report_create_unavailable")
             if visit_id is not None:
                 try:
                     with db.transaction():
@@ -325,12 +334,13 @@ class LifeReports:
         with self.store.connect() as db:
             # A pending report has already consumed its generation admission.
             db.execute("UPDATE life_reports SET full_state='pending',lease='',lease_until=0 "
-                       "WHERE unlocked=1 AND preview IS NOT NULL AND full_state='generating' "
+                       "WHERE (unlocked=1 OR line_confirmed_at IS NOT NULL) AND preview IS NOT NULL AND full_state='generating' "
                        "AND lease_until<%s AND id<>ALL(%s)", (now, active))
             rows = db.execute("""
                 SELECT r.id,r.owner,r.input,r.full_state,COALESCE(p.network,NULLIF(r.preview_network,''),r.owner) network
                 FROM life_reports r LEFT JOIN life_card_payments p ON p.report_id=r.id
-                WHERE r.unlocked=1 AND r.preview IS NOT NULL AND r.lease_until<%s AND r.id<>ALL(%s)
+                WHERE (r.unlocked=1 OR r.line_confirmed_at IS NOT NULL)
+                  AND r.preview IS NOT NULL AND r.lease_until<%s AND r.id<>ALL(%s)
                   AND (r.full_state IN ('queued','pending') OR (
                     r.full_state='not_started' AND p.provider_order IS NOT NULL
                     AND (NOT starts_with(p.merchant,'sunlands:') OR (
@@ -483,7 +493,11 @@ class LifeReports:
             "aspects": [],
         }
 
-    def public(self, row):
+    def public(self, row, *, line_delivery=False):
+        full_access = bool(row["unlocked"]) or (line_delivery and row["line_confirmed_at"] is not None
+                                                and row["full_state"] == "ready")
+        full_state = row["full_state"] if full_access else "not_started"
+        plan_ready = full_access and bool(row["plan"])
         body = json.loads(row["input"])
         language = body["profile"]["language"]
         career = body.get("career")
@@ -491,7 +505,7 @@ class LifeReports:
         labels = CAREER_COPY[language] if career else None
         chart = json.loads(row["chart"])
         is_western = western(chart)
-        records = json.loads(row["chapters"])
+        records = json.loads(row["chapters"]) if full_access else {}
         preview = json.loads(row["preview"]) if row["preview"] else None
         title = ("运程解析" if language == "zh" else "วิเคราะห์ดวงชะตา") if fortune else ("人生报告" if language == "zh" else "รายงานชีวิต")
         version = chart["version"] if is_western else FORTUNE_VERSION if fortune else VERSION
@@ -502,17 +516,19 @@ class LifeReports:
         preview_sections = [{"key": key, "percent": 100 if preview else min(99, marks.get(key, 0))}
                             for key in ("preview_summary", "preview_strength", "preview_decisions", "preview_relationships")]
         chapter_keys = WESTERN_CHAPTERS if is_western else FORTUNE_CHAPTERS if fortune else CHAPTERS
-        parts = {key: 100 if key in records else min(99, marks.get(key, 0)) for key in chapter_keys}
+        full_marks = marks if full_access else {}
+        parts = {key: 100 if key in records else min(99, full_marks.get(key, 0)) for key in chapter_keys}
+        plan_percent = 100 if plan_ready else min(99, full_marks.get("plan", 0))
         sections = ([{"key": key, "percent": parts[key]} for key in chapter_keys] + [
-            {"key": "plan", "percent": 100 if row["plan"] else min(99, marks.get("plan", 0))},
+            {"key": "plan", "percent": plan_percent},
         ]) if fortune or is_western else [
             {"key": "work", "percent": parts["work"]}, {"key": "money", "percent": parts["money"]},
             {"key": "relationships", "percent": (parts["love"] + parts["family"]) / 2},
             {"key": "annual", "percent": parts["annual"]},
-            {"key": "plan", "percent": 100 if row["plan"] else min(99, marks.get("plan", 0))},
+            {"key": "plan", "percent": plan_percent},
         ]
-        completed = (sum(key in records for key in chapter_keys) + bool(row["plan"])) if fortune or is_western else (
-            sum(key in records for key in ("work", "money", "annual")) + ("love" in records and "family" in records) + bool(row["plan"]))
+        completed = (sum(key in records for key in chapter_keys) + plan_ready) if fortune or is_western else (
+            sum(key in records for key in ("work", "money", "annual")) + ("love" in records and "family" in records) + plan_ready)
         if career:
             sections = [{"key": "work", "percent": parts["work"]}]
             completed = int("work" in records)
@@ -527,7 +543,7 @@ class LifeReports:
             titles[0] = f"{body['year']}年运程" if language == "zh" else f"ดวงปี {body['year']}"
             questions = [FORTUNE_TOPICS[key][language]["questions"] for key in chapter_keys]
         percent = int(sum(section["percent"] for section in sections) / len(sections))
-        percent = min(percent, 100 if row["full_state"] == "ready" else 99)
+        percent = min(percent, 100 if full_state == "ready" else 99)
         simulation = self.can_simulate_payment(career)
         amount = 9900 if career else CARD_AMOUNT
         merchant = None
@@ -536,12 +552,12 @@ class LifeReports:
             merchant = "sunlands:" + self.card_payments.settings.sunlands_app_key
         elif simulation:
             amount, merchant = SIMULATED_AMOUNT, SIMULATED_MERCHANT
-        if merchant and preview and not row["unlocked"]:
+        if merchant and preview and not full_access:
             order = self.card_payments.order_for(row["id"])
             if order and order["merchant"] == merchant:
                 amount = order["amount"]
         result = {
-            "id": row["id"], "version": version, "title": title,
+            "id": row["id"], "claim_code": str(row["claim_code"]), "version": version, "title": title,
             "input": body, "created_at": stamp(row["created"]), "location": chart.get("location"),
             "method": ({"name": "RoxyAPI Western Astrology", "house_system": "placidus", "version": "v2",
                         "zodiac": "tropical", "node_type": "true", "source": chart.get("source")} if is_western else
@@ -554,8 +570,8 @@ class LifeReports:
                       "mode": "sunlands_order_only" if self.card_payments.order_only else
                       "payso_test" if self.card_payments.enabled and not career else "direct"},
             "payment_simulation": simulation,
-            "preview_state": row["preview_state"], "access": "full" if row["unlocked"] else "preview",
-            "full_state": "queued" if row["full_state"] == "pending" else row["full_state"],
+            "preview_state": row["preview_state"], "access": "full" if full_access else "preview",
+            "full_state": "queued" if full_state == "pending" else full_state,
             "progress": {"completed": completed, "total": len(sections)},
             "generation_progress": {"percent": percent, "sections": sections},
             "preview_generation_progress": {"percent": int(sum(section["percent"] for section in preview_sections) / 4), "sections": preview_sections},
@@ -578,7 +594,7 @@ class LifeReports:
             result["reference_period"] = {"start": career["start"], "end": (date.fromisoformat(career["start"]) + timedelta(days=29)).isoformat()}
         if preview and "career_answer" in preview:
             result["preview"]["career_answer"] = public_point(preview["career_answer"], preview["evidence"], language)
-        if row["unlocked"]:
+        if full_access:
             for index, key in enumerate(chapter_keys):
                 if key not in records:
                     continue
@@ -587,7 +603,7 @@ class LifeReports:
                 result["chapters"].append({"key": key, "title": titles[index],
                     "summary": public_point(story["summary"], facts, language),
                     **{kind: [public_point(item, facts, language) for item in story[kind]] for kind in ("insights", "watchpoints", "actions")}})
-            if row["plan"]:
+            if plan_ready:
                 plan = json.loads(row["plan"])
                 # Resolve stored references from their source records, independently of visible chapter grouping.
                 actions = {f"{key}:{index}": {"chapter": key, "index": index, **public_point(action, record["evidence"], language)}
@@ -617,9 +633,10 @@ class LifeReports:
 
     @staticmethod
     def _history_item(row):
+        full_state = row["full_state"] if row["unlocked"] else "not_started"
         return {"id": row["id"], "input": json.loads(row["input"]), "created_at": stamp(row["created"]),
                 "access": "full" if row["unlocked"] else "preview", "preview_state": row["preview_state"],
-                "full_state": "queued" if row["full_state"] == "pending" else row["full_state"]}
+                "full_state": "queued" if full_state == "pending" else full_state}
 
     def list(self, owner):
         return [self._history_item(row) for row in self._history_rows(owner, 30)]
@@ -657,14 +674,19 @@ class LifeReports:
             if (self.card_payments.order_only or self.can_simulate_payment(career) or self.card_payments.order_for(report_id)
                     or (self.card_payments.enabled and not career)):
                 raise HTTPException(402, "life_payment_required")
-            self.update(report_id, unlocked=1)
+            with self.store.connect() as db:
+                # A LINE request grants staff delivery only, even under legacy direct unlock.
+                updated = db.execute("UPDATE life_reports SET unlocked=1 WHERE id=%s AND owner=%s "
+                                     "AND line_confirmed_at IS NULL", (report_id, owner))
+                if not updated.rowcount:
+                    raise HTTPException(402, "life_payment_required")
         await self.start_full_generation(report_id, owner, network)
         return self.get(report_id, owner)
 
     def can_simulate_payment(self, career):
         return not self.card_payments.order_only and self.development and (bool(career) or not self.card_payments.enabled)
 
-    async def create_card_order(self, report_id, owner, network, contact=None, *, visit_id=None):
+    async def create_card_order(self, report_id, owner, network, *, visit_id=None, origin=None):
         row = self.row(report_id, owner)
         body = json.loads(row["input"])
         if row["unlocked"]:
@@ -673,14 +695,23 @@ class LifeReports:
             raise HTTPException(409, "life_preview_required")
         career = body.get("career")
         if self.card_payments.order_only:
-            return await self.card_payments.create_sunlands(
-                report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "",
-                visit_id=visit_id)
+            return_url = self.card_payments.report_return_url(report_id, body["profile"]["language"], origin)
+            return await self.card_payments.create_sunlands(report_id, network, visit_id=visit_id, return_url=return_url)
         if self.can_simulate_payment(career):
             return self.card_payments.create_simulated(report_id, network, visit_id=visit_id)
         if not self.card_payments.enabled or career:
             raise HTTPException(409, "life_payment_unavailable")
         return self.card_payments.create(report_id, network, body["profile"]["language"], visit_id=visit_id)
+
+    def sunlands_checkout_language(self, report_id, owner):
+        row = self.row(report_id, owner)
+        if not self.card_payments.order_only:
+            raise HTTPException(409, "life_payment_unavailable")
+        if row["unlocked"]:
+            return None
+        if not row["preview"]:
+            raise HTTPException(409, "life_preview_required")
+        return "th-TH" if json.loads(row["input"])["profile"]["language"] == "th" else "zh-CN"
 
     async def simulate_payment(self, report_id, owner, reference):
         row = self.row(report_id, owner)
@@ -707,6 +738,13 @@ class LifeReports:
         return (bool(json.loads(row["input"]).get("career")) or not self.writer.enabled
                 or self.writer.reserve_run(row["owner"], network, db=db))
 
+    def queue_full_generation(self, db, row, network):
+        state = row["full_state"]
+        if state not in ("queued", "pending", "generating", "ready") and row["lease_until"] < time.time():
+            state = "pending" if self.admit_full(db, row, network) else "limited"
+            db.execute("UPDATE life_reports SET full_state=%s,lease='',lease_until=0 WHERE id=%s", (state, row["id"]))
+        return state
+
     async def start_full_generation(self, report_id, owner, network):
         with self.store.connect() as db:
             row = db.execute("SELECT * FROM life_reports WHERE id=%s AND owner=%s FOR UPDATE", (report_id, owner)).fetchone()
@@ -714,9 +752,7 @@ class LifeReports:
                 raise HTTPException(404, "life_report_not_found")
             if not row["unlocked"] or not row["preview"]:
                 return
-            if row["full_state"] not in ("queued", "pending", "generating", "ready") and row["lease_until"] < time.time():
-                state = "pending" if self.admit_full(db, row, network) else "limited"
-                db.execute("UPDATE life_reports SET full_state=%s,lease='',lease_until=0 WHERE id=%s", (state, report_id))
+            self.queue_full_generation(db, row, network)
         self.wake_dispatcher()
 
     def finish_full_attempt(self, report_id, lease, state):
@@ -882,9 +918,25 @@ def life_report_router(service):
         return order if order is not None else Response(status_code=204)
 
     @router.post("/{report_id}/payment")
-    async def create_payment(report_id: str, request: Request, key: key_header, body: PaymentContact | None = None):
+    async def create_payment(report_id: str, request: Request, key: key_header):
         return await service.create_card_order(
-            report_id, *scopes(key, request), contact=body, visit_id=request.headers.get("X-Visit-Id"))
+            report_id, *scopes(key, request), visit_id=request.headers.get("X-Visit-Id"),
+            origin=request.headers.get("origin"))
+
+    @router.get("/{report_id}/payment/methods")
+    async def payment_methods(report_id: str, request: Request, key: key_header):
+        language = service.sunlands_checkout_language(report_id, scopes(key, request)[0])
+        if language is None:
+            return {"methods": [], "check_payment": True}
+        return await service.card_payments.sunlands_methods(report_id, language)
+
+    @router.post("/{report_id}/payment/start")
+    async def start_payment(report_id: str, body: SunlandsPayment, request: Request, key: key_header):
+        language = service.sunlands_checkout_language(report_id, scopes(key, request)[0])
+        if language is None:
+            return {"redirect_url": None}
+        return await service.card_payments.start_sunlands_payment(
+            report_id, body.method, language, origin=request.headers.get("origin"))
 
     @router.post("/{report_id}/payment/check")
     async def check_payment(report_id: str, request: Request, key: key_header):

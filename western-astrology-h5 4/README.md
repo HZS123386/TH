@@ -59,23 +59,23 @@ TH 后端的 `life_reports.py` 复用真实 Suriyayatra 排盘与主题宫位提
 
 当前收费为测试流程，APP 下载入口为页面预览。现有报告的设备归属和查看权限继续由原服务端校验。
 
-## 尚德真实建单联调（2026-11-12）
+## 尚德 H5 支付
 
-本次接入沿用 Flutter H5 的付款入口、`POST /api/life-reports/{id}/payment` 和 TH 后端 `life_card_payments.py`，没有新增 H5 入口。仅在开发环境开启 `SUNLANDS_ORDER_ONLY=true`；服务端固定金额 3000 satang（30 THB），商品编号 `193261112000101`、产品编号 `1932611120001`、名称“测试产品包”。真实商品查询已返回 HTTP 200、价格 30、状态 1（在售）、`currencyType=3`；THB 按用户提供的商品页面确认，尚未通过真实订单或收银台返回验证。
+付款沿用 `POST /api/life-reports/{id}/payment` 和 TH 后端 `life_card_payments.py`，通过 `SUNLANDS_ORDER_ONLY=true` 启用。正式环境使用集团正式网关并校验建单配置。新订单价格为 ฿10，已建订单按保存的金额核对。
 
-后端从 Git 忽略的 `TH/.env` 读取应用凭据，调用接口 10598：`POST /tradeApi/trade/externalCreateOrder`（对外-手机号下单）。售卖地区继续通过 `SUNLANDS_PROVINCE_ID` 配置，当前使用对接技术指定的 `4`；手机号和国家区号来自每次用户确认的请求。用户在 H5 确认框填写自己的手机号和国家区号，后端通过 `mobile`、`nationCode` 传给 10598；不再读取固定测试号码，stuId 从建单响应取得。打开或取消确认框不发起建单，只有点击“创建待支付订单”才提交。缺少配置时拦截请求，不调用尚德接口。
+用户点击“选择支付方式”后，后端用 `TH/.env` 中的 `SUNLANDS_ORDER_MOBILE` 和 `SUNLANDS_ORDER_NATION_CODE` 调用 `externalCreateOrder`（10598）。售卖地区通过 `SUNLANDS_PROVINCE_ID` 配置。应用凭据和建单号码由后端保管，完整的固定号码无需提供给 H5。
 
-订单使用原表 `life_card_payments`；其 `reference` 为顺序号，页面按 0001 格式显示。`sunlands_order` JSON 保存状态、平台订单号、支付号、子订单号、返回的 stuId 和商品信息，以及本次用户手机号末四位和国家区号；完整手机号不写入诊断摘要。订单通过 `report_id` 关联报告和报告所属的本地访客，尚德 stuId 与本地访客编号分别保存。同一报告再次点击或服务重启后复用原订单。仅收到明确的网关访问拒绝且没有平台订单号时允许手动重试，仍复用本地编号；超时、业务拒绝或响应不匹配时保留记录并要求核对，不重复建单。存在尚德订单记录的报告暂不允许删除，以免丢失核对关系。
+`life_card_payments` 保存 `orderNumber` 和 `report_id`，由报告记录确认本地访客归属。集团 `stuId` 保存在凭据中以供核验，同一个固定手机号可对应多笔独立订单。同一报告再次点击或服务重启后复用原订单。收到明确的网关访问拒绝且没有平台订单号时，可以手动用原本地编号重试。超时、业务拒绝或响应不匹配时保留记录供核对。存在尚德订单记录的报告暂不允许删除，以免丢失核对关系。
 
 原表增加 `sunlands_gateway`、`sunlands_order_number`、`sunlands_pay_number`，按网关和商户对平台订单号、支付号分别建立唯一索引；它们不等同于到账凭据 `provider_order`。绑定检查和保存位于同一写事务，并发返回也只允许一份报告占用平台编号。冲突响应保留在原 JSON 中，标记 `UNKNOWN` 和冲突的本地编号，不建立第二份有效绑定。启动时为已有编号补齐索引字段，旧的重复记录保留并转为待核对，已有未知记录不会被重发。
 
 失败记录区分 `transport`、`http`、`parse`、`business`、`validation`、`association`；保存收到的 HTTP 状态、Content-Type、响应字节数及哈希、耗时、网关请求编号（如有）、具体不匹配字段和脱敏摘要。完整手机号、应用密钥和签名不写入诊断摘要，非 JSON 响应不保存原始正文；网络未返回响应时不虚构 HTTP 状态。JSON 同时保存累计尝试次数和最近 10 次摘要，手动重试不会覆盖前一次失败原因。取消请求也保存为未知结果，不自动重新建单。
 
-H5 沿用原支付弹窗，展示 30 泰铢、创建进度和建单结果。成功后显示平台订单号、本地编号和“待支付 · 报告未解锁”；配置缺失、访问受限、业务拒绝和结果待核对分别提示。只有明确可重试的状态才显示重试按钮，没有自动重试，也不会将接口失败显示成建单成功。
+建单成功后，H5 在当前页打开集团返回并经核对的 `payDirectUrl`。付款方式由集团收银台提供。返回原报告时，H5 自动读取已有订单并查询到账，用户也可手动查询。
 
-此模式不调用 `paySingle`，不打开 `payDirectUrl`，不展示银行卡表单，不接受模拟支付、不解锁报告；查询付款确认始终返回未确认。请求显式携带 `deposit=0.00` 和 `depositAmount=0.00`，按接口说明校验已有订金为零。保存收银台地址仅用于后续接入，当前不向 H5 返回可付款地址。
+建单请求携带 `deposit=0.00` 和 `depositAmount=0.00`，按接口说明校验已有订金为零。后端使用 `orderNumber` 向集团查单，核对订单归属、商品、金额、币种和到账状态后，将回执、解锁和完整报告生成请求一并保存。
 
-当前只使用手机号接口 `externalCreateOrder`（10598），不调用 `createOrder`（137），也不在失败后切换到旧接口。用户填写 `mobile`、`nationCode`，无需先提供 stuId；stuId 仅作为新接口成功响应中的学员信息保存。此前的旧接口试验不代表当前 H5 调用链。
+### 历史联调记录
 
 最新已保存的真实响应：2026-11-12 23:02（北京时间），经授权的一次独立接口测试使用 `NORMAL` 请求 `externalCreateOrder`，HTTP 200，返回 `{"flag":"0","message":"channelCode不正确: sunlands_fb_fate"}`，没有取得平台订单号或支付号。该次完整记录位于 `TH/tmp/sunlands-10598-normal-once-20261112.json`，没有绑定或替换原 H5 订单。20:19 的本地记录 0002 使用 `OVERSEAS_NORMAL`，两次原始响应长度及 SHA-256 相同；早先 18:44 的 HTTP 403 仅是历史结果。实际有效的交易渠道及其绑定尚未核实。
 
@@ -116,7 +116,9 @@ pnpm check
 pnpm build
 ```
 
-`pnpm test` 执行仍被使用的 TypeScript 内容契约检查及 Flutter 模型、接口、页面交互检查。`pnpm check` 执行文档工具的 TypeScript 检查与 Flutter 静态分析。构建采用 `flutter build web --release --wasm --no-web-resources-cdn`，先输出到独立暂存目录，验证必需文件后再替换 `site/`；上一份构建移入 `tmp/site-previous-*` 以便回退。默认 base 为 `/thai-landing/`，可通过 `FATE_H5_BASE_PATH` 调整，部署目录必须与构建 base 一致。
+`pnpm test` 执行仍被使用的 TypeScript 内容契约检查及 Flutter 模型、接口、页面交互检查。`pnpm check` 执行文档工具的 TypeScript 检查与 Flutter 静态分析。H5 发布构建使用 Flutter 3.50 或更新版本，可通过 `FATE_FLUTTER_BIN` 指定。构建启用 `--release --wasm --enable-wasm-deferred-loading --no-web-resources-cdn`，验证 Wasm 和 JavaScript 的分包后再替换 `site/`，上一份构建移入 `tmp/site-previous-*` 以便回退。默认 base 为 `/thai-landing/`，可通过 `FATE_H5_BASE_PATH` 调整，部署目录必须与构建 base 一致。
+
+报告详情与收银台、我的报告、隐私与支持、生成弹窗在对应入口首次使用时加载。发布时应复制完整 `site/`，包括主包、按需分包及各自的压缩文件。
 
 TH 后端默认在构建完成后挂载同级本目录的 `site/` 到 `http://127.0.0.1:8000/thai-landing/`，与报告接口同源。部署到其他位置时可通过后端环境变量 `THAI_LANDING_DIR` 指定构建目录。构建目录在后端启动时检测，应先构建后启动。
 

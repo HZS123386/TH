@@ -31,7 +31,12 @@ export async function buildLanding({release=false}={}){
   const generated=await mkdtemp(path.join(temporary,'flutter-site-'));
   const previous=path.join(temporary,`site-previous-${Date.now()}`);
   if(!generated.startsWith(temporary+path.sep)||!previous.startsWith(temporary+path.sep)||destination!==path.join(projectRoot,'site'))throw Error('Unexpected build directory');
-  await flutter(['build','web','--release','--wasm','--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
+  await flutter(['build','web','--release','--wasm','--enable-wasm-deferred-loading','--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
+  const compiledFiles=await readdir(generated);
+  if (!compiledFiles.some(file=>/^main\.dart_module\d+\.wasm$/.test(file)) ||
+      !compiledFiles.some(file=>/^main\.dart\.js_\d+.*\.part\.js$/.test(file))) {
+    throw Error('Expected deferred chunks for both Flutter Web targets');
+  }
   const bootstrap=await readFile(path.join(generated,'flutter_bootstrap.js'),'utf8');
   const engineRevision=/"engineRevision":"([a-f0-9]{40})"/.exec(bootstrap)?.[1];
   if(!engineRevision)throw Error('Missing Flutter engine revision');

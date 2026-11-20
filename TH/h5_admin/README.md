@@ -52,7 +52,7 @@
 
 ## 启动与管理员配置
 
-更新后启动前在 `TH/` 执行现有迁移命令 `node scripts/python.mjs -m alembic -c backend/alembic.ini upgrade head`。`20261119_order_attribution` 为订单表新增可空的建单来源字段。历史缺少来源的订单显示「未归因」。
+更新后启动前在 `TH/` 执行现有迁移命令 `node scripts/python.mjs -m alembic -c backend/alembic.ini upgrade head`。`20261120_claim_code` 为已有报告补齐 5 位领取编号。
 
 在仓库根目录运行原命令：
 
@@ -68,6 +68,10 @@ node TH/scripts/dev.mjs --skip-build
 ADMIN_USERNAME=你的管理员账号
 ADMIN_PASSWORD_HASH='生成的 scrypt-v1 密码哈希'
 ```
+
+客服使用同一个 `/admin/` 页面登录。用不同的用户名和同一方式生成的密码哈希配置 `REPORT_SUPPORT_USERNAME`、`REPORT_SUPPORT_PASSWORD_HASH` 后重启。客服只能访问「LINE 报告发放」。在 LINE 收到报告编号后，输入完整编号查询并点击「确认已加好友」。后台生成完整报告，生成完成后可「下载 PDF」。客服在 LINE 发送后点击「标记已发送」。这条流程不需要订单，也不会授予用户网页的完整报告权限。下载使用同服务 `/thai-landing/` 下的现有 H5 构建产物。
+
+「待确认好友」列出打开过报告联系码、还未人工确认的报告。「待发报告」保留所有已确认但未标记发送的报告。「已发送」记录客服完成的发放。时间筛选只影响上方统计，点击人数按匿名浏览器去重，二维码弹出次数按二维码成功显示计数。按服务端收到事件的时间统计，最多保留 30 天，旧记录不补算。
 
 新环境可在 `TH` 目录通过原账户密码模块生成哈希：
 

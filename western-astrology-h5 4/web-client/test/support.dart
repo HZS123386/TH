@@ -18,7 +18,11 @@ class TestBrowser implements BrowserPort {
   @override
   Duration get welcomeAge => Duration.zero;
   @override
-  void openPage(String path) => openedPages.add(path);
+  void openPage(String path, {bool sameTab = false}) {
+    openedPages.add(path);
+    if (sameTab) sameTabPages.add(path);
+  }
+  final sameTabPages = <String>[];
   final settings = <String, String>{'fate-data-use-version': 'h5-data-use-3'};
   Json visit = {};
   @override

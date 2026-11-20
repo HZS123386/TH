@@ -11,7 +11,7 @@
 - 入口配置：`/opt/astro-life-report/shared/Caddyfile`，沿用现有 Caddy 网关，另外增加公网 IP 站点。
 - 网关修改前的备份：`/opt/astro-life-report/shared/backups/ingress-*`。
 
-当前保留原有点击解锁逻辑，不接入真实收款。TH 的本地开发登录入口在 production 环境关闭，公网入口只转发落地页、地点查询、人生报告接口和健康检查。
+正式环境开启集团支付后，报告在服务端核验到账后解锁。TH 的本地开发登录入口在 production 环境关闭，公网入口转发落地页、地点查询、人生报告、访问统计接口和健康检查。
 
 ## 日常查看
 
@@ -33,7 +33,11 @@ sudo docker compose logs --tail 80 app
 
 `runtime.env` 与应用压缩包分开生成和上传，不进入 Docker 构建上下文。打包程序会检查构建文件中是否包含本机已配置的密钥，并排除原有用户数据库。地点索引单独复制，后续版本复用服务器已有文件。
 
-准备 PostgreSQL 版发布包时，通过 `FATE_DEPLOY_DATABASE_URL` 提供该部署环境的 FATE 业务库连接。切换前，先对服务器现有业务库做一致性备份，并在目标 PostgreSQL 应用 `TH/backend/alembic.ini` 的迁移。使用 `TH/scripts/migrate-sqlite-to-postgres.py` 导入并对账后更新服务端 `runtime.env`，再启动新版。回退前保留 PostgreSQL 中切换后产生的订单和报告。2026-11-16 完成的是本机库的迁移，服务器需按其自身数据另行核对。
+正式付费镜像自带启动校验，要求 `APP_ENV=production`、`SUNLANDS_ORDER_ONLY=true` 和完整有效的集团支付配置。打包程序检查开关及必需项，优先使用当前进程的 `SUNLANDS_*` 配置，再从 `TH/.env` 读取相应值，并将所需的支付配置写入单独的 `runtime.env`。已有 `shared/runtime.env` 的服务器需先按原流程更新运行配置，`stage_server.sh` 会核对配置一致后继续。
+
+泰国域名的 `SUNLANDS_H5_RETURN_URL` 为 `https://ipplay.top/thai-landing/report.html`；按用户实际打开的 H5 域名填写，不带查询参数。后端会自动附上原报告编号和语言。本地 `dev.mjs` 单独使用本机预览地址。`SUNLANDS_MERCHANT_NOTIFY_URI` 只填集团已登记的通知路径，不能用浏览器回跳地址替代。
+
+准备 PostgreSQL 版发布包时，通过 `FATE_DEPLOY_DATABASE_URL` 提供该部署环境的 FATE 业务库连接。仍使用 SQLite 的环境先备份业务库，将空的 PostgreSQL 目标库迁移到 `20261116_postgres`，使用 `TH/scripts/migrate-sqlite-to-postgres.py` 导入并对账，再把目标库升级到当前版本并启动新版。回退前保留 PostgreSQL 中切换后产生的订单和报告。2026-11-16 完成的是本机库的迁移，服务器需按其自身数据另行核对。
 
 首次部署依次使用 `stage_server.sh`、`start_server.sh` 和 `publish_proxy.py`。后续更新只需构建和启动新应用版本。需要修改已有 IP 入口时，向网关脚本额外提供上个版本的 `Caddyfile.ip` 路径；只有旧配置逐字匹配时才替换该站点，避免重复添加或改动其他网站。
 

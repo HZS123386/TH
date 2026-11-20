@@ -9,7 +9,7 @@ import secrets
 import time
 from typing import Literal
 from urllib.parse import urlsplit
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -44,9 +44,9 @@ BASE = f"""WITH active_visits AS (
  COALESCE(c.status,'untracked') case_status,
  CASE WHEN r.landing_source IS NULL THEN 'unattributed' WHEN r.landing_source='' THEN 'untagged' ELSE 'tagged' END attribution,
  CASE WHEN (r.preview_state='generating' OR r.full_state='generating') AND r.lease_until<EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) THEN 'stalled'
- WHEN r.preview_state IN {FAILURES} OR (r.unlocked=1 AND r.full_state IN {FAILURES}) THEN 'failed'
+ WHEN r.preview_state IN {FAILURES} OR ((r.unlocked=1 OR r.line_confirmed_at IS NOT NULL) AND r.full_state IN {FAILURES}) THEN 'failed'
  WHEN r.preview_state='generating' OR r.full_state='generating' THEN 'generating'
- WHEN r.preview_state='queued' OR (r.unlocked=1 AND r.full_state IN ('queued','pending')) THEN 'queued'
+ WHEN r.preview_state='queued' OR ((r.unlocked=1 OR r.line_confirmed_at IS NOT NULL) AND r.full_state IN ('queued','pending')) THEN 'queued'
  WHEN r.full_state='ready' THEN 'ready' WHEN r.preview_state='ready' THEN 'preview' ELSE 'pending' END status,
  CASE WHEN r.preview_state IN {FAILURES} THEN 'preview:'||r.preview_state
  WHEN r.full_state IN {FAILURES} THEN 'full:'||r.full_state
@@ -152,6 +152,8 @@ SOURCES = [
      "rule": "报告保留创建时所存的值。早期缺失的首次来源显示未归因，首次访问没有渠道标签的显示未标记。地区为链接提供的投放标签。"},
     {"name": "处理记录", "table": "admin_audit / admin_cases", "origin": "已登录管理员提交的业务操作和备注",
      "rule": "处理进度只是内部跟进状态，不修改订单支付状态或报告权限。所有操作记录管理员、时间、原因与结果。"},
+    {"name": "LINE 联系与报告发放", "table": "landing_visit_activity / life_reports / admin_audit", "origin": "H5 添加好友按钮、二维码显示事件和客服确认",
+     "rule": "点击人数按匿名浏览器去重。二维码每次显示计一次，重传按同一事件去重。统计按服务器接收时间，最长保留 30 天。客服按报告编号确认加好友、下载完整 PDF 并标记已发送。"},
     {"name": "接口失败", "table": "h5_request_failures", "origin": "现有 H5 API 请求边界中的非成功响应",
      "rule": "保留最近 30 天且最多 20000 条。记录接口模板、HTTP 状态、错误码、耗时、匿名访客哈希和访问编号；按所有权核对关联。包含地点查询和报告创建前的失败；客户端网络或响应解析异常单独标注，不当作服务端 HTTP 失败。不保存请求体、手机号、访问密钥、IP 或查询参数。"},
 ]
@@ -167,6 +169,10 @@ class Action(Input):
     action: Literal["check_payment", "retry_report", "note"]
     note: str = Field(min_length=1, max_length=1000)
     case_status: Literal["open", "investigating", "resolved"] = "open"
+
+
+class LineDeliveryAction(Input):
+    action: Literal["confirm", "retry", "mark_sent"]
 
 
 def digest(value):
@@ -206,19 +212,34 @@ class H5Admin:
             logger.warning("H5 request failure could not be recorded")
 
     @property
-    def credential(self):
-        return digest(self.settings.admin_username + self.settings.admin_password_hash)
+    def accounts(self):
+        settings = self.settings
+        accounts = {}
+        if settings.admin_username and settings.admin_password_hash:
+            accounts[settings.admin_username] = ("admin", settings.admin_password_hash)
+        if (settings.report_support_username and settings.report_support_password_hash
+                and settings.report_support_username != settings.admin_username):
+            accounts[settings.report_support_username] = ("report_support", settings.report_support_password_hash)
+        return accounts
+
+    @staticmethod
+    def credential(username, role, password_hash):
+        if role == "admin":
+            return digest(username + password_hash)
+        return digest(json.dumps([role, username, password_hash]))
 
     def session(self, request: Request):
-        if not self.settings.admin_username or not self.settings.admin_password_hash:
+        accounts = self.accounts
+        if not accounts:
             raise HTTPException(503, "admin_not_configured")
         token = request.cookies.get(COOKIE, "")
         with self.store.connect() as db:
-            row = db.execute("SELECT * FROM admin_sessions WHERE hash=%s AND expires>%s AND credential=%s",
-                             (digest(token), time.time(), self.credential)).fetchone()
-        if not row:
+            row = db.execute("SELECT * FROM admin_sessions WHERE hash=%s AND expires>%s",
+                             (digest(token), time.time())).fetchone()
+        account = accounts.get(row["actor"]) if row else None
+        if not account or not hmac.compare_digest(row["credential"], self.credential(row["actor"], *account)):
             raise HTTPException(401, "admin_login_required")
-        return {"username": row["actor"], "expires": row["expires"], "csrf": digest("csrf:" + token)}
+        return {"username": row["actor"], "role": account[0], "expires": row["expires"], "csrf": digest("csrf:" + token)}
 
     @staticmethod
     def same_origin(request):
@@ -238,7 +259,8 @@ class H5Admin:
         self.same_origin(request)
         if request.headers.get("x-admin-request") != "1":
             raise HTTPException(403, "admin_origin_rejected")
-        if not self.settings.admin_username or not self.settings.admin_password_hash:
+        accounts = self.accounts
+        if not accounts:
             raise HTTPException(503, "admin_not_configured")
         network, now = digest(request.client.host if request.client else "unknown"), time.time()
         with self.store.connect() as db:
@@ -247,21 +269,23 @@ class H5Admin:
             if db.execute("SELECT COUNT(*) AS count FROM admin_login_attempts WHERE network=%s", (network,)).fetchone()["count"] >= 5:
                 raise HTTPException(429, "admin_login_limited")
             db.execute("INSERT INTO admin_login_attempts VALUES(%s,%s)", (network, now))
-        match_name = hmac.compare_digest(body.username.encode(), self.settings.admin_username.encode())
+        account = accounts.get(body.username)
+        role, password_hash = account or ("", DUMMY_PASSWORD_HASH)
         try:
-            valid = password_matches(body.password, self.settings.admin_password_hash if match_name else DUMMY_PASSWORD_HASH)
+            valid = password_matches(body.password, password_hash)
         except (ValueError, TypeError):
             valid = False
-        if not (valid and match_name):
+        if not (valid and account):
             raise HTTPException(401, "admin_invalid_credentials")
         token, expires = secrets.token_urlsafe(32), now + 8 * 3600
         with self.store.connect() as db:
             db.execute("DELETE FROM admin_login_attempts WHERE network=%s", (network,))
             db.execute("DELETE FROM admin_sessions WHERE expires<%s OR hash=%s", (now, digest(request.cookies.get(COOKIE, ""))))
-            db.execute("INSERT INTO admin_sessions VALUES(%s,%s,%s,%s)", (digest(token), body.username, expires, self.credential))
+            db.execute("INSERT INTO admin_sessions VALUES(%s,%s,%s,%s)",
+                       (digest(token), body.username, expires, self.credential(body.username, role, password_hash)))
         response.set_cookie(COOKIE, token, max_age=8 * 3600, httponly=True, secure=self.settings.app_env == "production",
                             samesite="strict", path="/api/admin")
-        return {"username": body.username, "expires": expires, "csrf": digest("csrf:" + token)}
+        return {"username": body.username, "role": role, "expires": expires, "csrf": digest("csrf:" + token)}
 
     def rows(self, sql, params=()):
         with self.store.connect() as db:
@@ -270,6 +294,81 @@ class H5Admin:
     @staticmethod
     def cutoff(days):
         return time.time() - days * 86400 if days else 0
+
+    def line_contacts(self, days, report_id, delivery, page):
+        filters = {
+            "unconfirmed": ("line_contact_at IS NOT NULL AND line_confirmed_at IS NULL", "line_contact_at DESC"),
+            "pending": ("line_confirmed_at IS NOT NULL AND line_sent_at IS NULL", "line_confirmed_at"),
+            "sent": ("line_sent_at IS NOT NULL", "line_sent_at DESC"),
+        }
+        match, order = filters[delivery]
+        params = ((page - 1) * 25,)
+        if re.fullmatch(r"[1-9][0-9]{4}", report_id):
+            match, params = "claim_code=%s", (int(report_id), *params)
+        elif report_id:
+            match, params = "id=%s", (report_id, *params)
+        retention = time.time() - VISIT_RETENTION_SECONDS
+        with self.store.connect() as db:
+            items = db.execute(f"""
+                SELECT id, claim_code::text AS claim_code, line_contact_at, line_confirmed_at, line_sent_at, full_state
+                FROM life_reports WHERE preview IS NOT NULL AND {match}
+                ORDER BY {order}, id LIMIT 26 OFFSET %s
+            """, params).fetchall()
+            metrics = db.execute("""
+                SELECT COUNT(*) FILTER (WHERE a.action='line_qr_shown') AS qr_popups,
+                       COUNT(DISTINCT v.owner) FILTER (WHERE a.action='open_line_contact') AS click_visitors
+                FROM landing_visit_activity a JOIN landing_visits v ON v.id=a.visit_id
+                WHERE v.visited_at >= %s AND a.received_at >= %s
+                  AND a.page='preview_report' AND a.kind='action'
+                  AND a.action IN ('open_line_contact','line_qr_shown')
+            """, (retention, max(retention, self.cutoff(days)))).fetchone()
+        return {"items": items[:25], "has_more": len(items) > 25, "metrics": metrics}
+
+    def line_contact_report(self, report_id):
+        with self.store.connect() as db:
+            row = db.execute("""
+                SELECT * FROM life_reports WHERE id=%s AND preview IS NOT NULL
+                AND line_confirmed_at IS NOT NULL AND full_state='ready'
+            """, (report_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "admin_delivery_report_unavailable")
+        return self.reports.public(row, line_delivery=True)
+
+    async def line_delivery_action(self, report_id, action, actor):
+        with self.store.connect() as db:
+            row = db.execute("SELECT * FROM life_reports WHERE id=%s AND preview IS NOT NULL FOR UPDATE",
+                             (report_id,)).fetchone()
+            if not row:
+                raise HTTPException(404, "life_report_not_found")
+            confirmed = row["line_confirmed_at"] is not None
+            state = row["full_state"]
+            now = time.time()
+            if action == "mark_sent":
+                if not confirmed or state != "ready":
+                    raise HTTPException(409, "admin_delivery_report_unavailable")
+                if row["line_sent_at"] is not None:
+                    return {"full_state": state}
+                db.execute("UPDATE life_reports SET line_sent_at=%s WHERE id=%s", (now, report_id))
+                note = "客服已在 LINE 发送完整报告"
+            else:
+                if action == "confirm":
+                    if confirmed:
+                        return {"full_state": state}
+                    db.execute("UPDATE life_reports SET line_confirmed_at=%s WHERE id=%s", (now, report_id))
+                    note = "客服按报告编号确认已添加 LINE 好友"
+                else:
+                    if not confirmed or row["line_sent_at"] is not None:
+                        raise HTTPException(409, "admin_delivery_not_pending")
+                    if state in ("queued", "pending", "generating", "ready"):
+                        return {"full_state": state}
+                    note = "重试生成待发送的 LINE 报告"
+                state = self.reports.queue_full_generation(db, row, row["preview_network"] or row["owner"])
+            db.execute("INSERT INTO admin_audit(id,report_id,created,actor,action,status,code,note) "
+                       "VALUES(%s,%s,%s,%s,%s,'succeeded',%s,%s)",
+                       (str(uuid4()), report_id, now, actor, "line_" + action, "queued" if state == "pending" else state, note))
+        if action != "mark_sent":
+            self.reports.wake_dispatcher()
+        return {"full_state": state}
 
     def overview(self, days):
         since = self.cutoff(days)
@@ -496,6 +595,10 @@ class H5Admin:
 def admin_router(service):
     router = APIRouter(prefix="/api/admin", tags=["H5 administration"])
 
+    def only_admin(current=Depends(service.session)):
+        if current["role"] != "admin":
+            raise HTTPException(403, "admin_permission_denied")
+
     @router.post("/login")
     def login(body: Login, request: Request, response: Response):
         return service.login(request, response, body)
@@ -512,11 +615,11 @@ def admin_router(service):
         return {"ok": True}
 
     @router.get("/overview")
-    def overview(days: int = Query(30, ge=0, le=365), current=Depends(service.session)):
+    def overview(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
         return service.overview(days)
 
     @router.get("/sources")
-    def sources(current=Depends(service.session)):
+    def sources(current=Depends(only_admin)):
         return {"items": SOURCES}
 
     @router.get("/records/{kind}")
@@ -524,20 +627,34 @@ def admin_router(service):
                 status: str = Query("", max_length=40), source: str = Query("", max_length=64),
                 category: str = Query("", max_length=20), case_status: str = Query("", max_length=20),
                 time_basis: Literal["created", "verified"] = "created",
-                page: int = Query(1, ge=1, le=10000), page_size: int = Query(25, ge=1, le=100), current=Depends(service.session)):
+                page: int = Query(1, ge=1, le=10000), page_size: int = Query(25, ge=1, le=100), current=Depends(only_admin)):
         return service.records(kind, days, q, status, source, page, page_size, category, case_status, time_basis)
 
     @router.get("/reports/{report_id}")
-    def detail(report_id: str, current=Depends(service.session)):
+    def detail(report_id: str, current=Depends(only_admin)):
         return service.detail(report_id)
 
     @router.get("/visits/{visit_id}")
-    def visit_detail(visit_id: str, page: int = Query(1, ge=1, le=10000), current=Depends(service.session)):
+    def visit_detail(visit_id: str, page: int = Query(1, ge=1, le=10000), current=Depends(only_admin)):
         return service.visit_detail(visit_id, page)
 
-    @router.post("/reports/{report_id}/actions")
+    @router.post("/reports/{report_id}/actions", dependencies=[Depends(only_admin)])
     async def action(report_id: str, body: Action, current=Depends(service.write_session)):
         return await service.action(report_id, body, current["username"])
+
+    @router.get("/line-contacts")
+    def line_contacts(days: int = Query(30, ge=0, le=365), report_id: str = Query("", max_length=128),
+                      delivery: Literal["unconfirmed", "pending", "sent"] = "pending",
+                      page: int = Query(1, ge=1, le=10000), current=Depends(service.session)):
+        return service.line_contacts(days, report_id, delivery, page)
+
+    @router.post("/line-contacts/{report_id}/actions")
+    async def line_delivery_action(report_id: str, body: LineDeliveryAction, current=Depends(service.write_session)):
+        return await service.line_delivery_action(report_id, body.action, current["username"])
+
+    @router.post("/line-contacts/{report_id}/report")
+    def line_contact_report(report_id: str, current=Depends(service.write_session)):
+        return service.line_contact_report(report_id)
 
     return router
 

@@ -28,8 +28,6 @@ flutter:
     - assets/copy.json
     - assets/images/
     - assets/images/badges/
-    - assets/images/flags/
-    - assets/licenses/phone-countries.txt
     - assets/licenses/welcome-strokes.txt
     - assets/fonts/OFL.txt
     - assets/fonts/OFL-CJK.txt

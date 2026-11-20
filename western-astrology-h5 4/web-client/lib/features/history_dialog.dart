@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
+import '../ui/site_header.dart';
 import '../ui/theme.dart';
 import 'generation_dialog.dart';
 
@@ -63,7 +64,7 @@ class _HistoryDialogState extends State<HistoryDialog> {
     final language = text(object(object(item['input'])['profile'])['language']);
     Navigator.pop(context, true);
     context.go(
-      '/report.html?id=${Uri.encodeComponent(text(item['id']))}&lang=$language${item['access'] == 'full' ? '' : '&checkout=1'}',
+      '/report.html?id=${Uri.encodeComponent(text(item['id']))}&lang=$language',
     );
   }
 
@@ -103,6 +104,10 @@ class _HistoryDialogState extends State<HistoryDialog> {
                     tooltip: c.t('jy', 'close'),
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close, size: 24, color: gold),
+                  ),
+                  HomeArrow(
+                    h5: widget.h5,
+                    onLeaving: () => Navigator.pop(context, true),
                   ),
                 ],
               ),
@@ -186,14 +191,7 @@ class _HistoryDialogState extends State<HistoryDialog> {
                               const SizedBox(width: 12),
                               OutlinedButton(
                                 onPressed: () => _open(item),
-                                child: Text(
-                                  c.t(
-                                    'jy',
-                                    item['access'] == 'full'
-                                        ? 'openReport'
-                                        : 'checkout.resume',
-                                  ),
-                                ),
+                                child: Text(c.t('jy', 'openReport')),
                               ),
                             ],
                           ),
