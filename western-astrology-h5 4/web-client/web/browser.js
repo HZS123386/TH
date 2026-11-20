@@ -224,12 +224,13 @@ function preloadFateWasm(engineRevision) {
   const lite = typeof ImageDecoder !== 'undefined' && typeof Intl.v8BreakIterator !== 'undefined'
     && typeof Intl.Segmenter !== 'undefined';
   const renderer = lite ? 'skwasm' : 'skwasm_heavy';
-  const runtime = priorityPreload('main.dart.mjs', 'script');
+  const priority = document.documentElement.dataset.welcome === 'true' ? 'low' : 'high';
+  const runtime = priorityPreload('main.dart.mjs', 'script', priority);
   runtime.rel = 'modulepreload';
   document.head.append(
     runtime,
-    priorityPreload('main.dart.wasm', 'fetch'),
-    priorityPreload(`engine/${engineRevision}/${renderer}.wasm`, 'fetch'),
+    priorityPreload('main.dart.wasm', 'fetch', priority),
+    priorityPreload(`engine/${engineRevision}/${renderer}.wasm`, 'fetch', priority),
   );
 }
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
@@ -577,7 +578,9 @@ function writeWelcomeName(welcome){
 }
 function mountFateWelcome(){
   if(document.documentElement.dataset.welcome!=='true')return;
-  const welcome=document.getElementById('fate-welcome'),image=document.getElementById('fate-welcome-portrait');
+  const welcome=document.getElementById('fate-welcome');
+  const portraitSlot=document.getElementById('fate-welcome-portrait-slot');
+  const image=typeof fateWelcomePortrait==='undefined'?null:fateWelcomePortrait;
   if(welcome){
     fateWelcomeStartedAt=performance.now();
     writeWelcomeName(welcome);
@@ -597,12 +600,15 @@ function mountFateWelcome(){
     if (document.visibilityState === 'visible') trackWelcome();
     else document.addEventListener('visibilitychange', trackWelcome);
   }
-  if(image){
-    image.addEventListener('load',()=>{
+  if(image&&portraitSlot){
+    portraitSlot.replaceWith(image);
+    const painted=()=>{
       image.setAttribute('data-loaded','');
       window.fateH5.pageReady('welcome-visible');
-    },{once:true});
-    image.src='assets/assets/images/astrologer-900.webp';
+    };
+    if(image.complete){
+      if(image.naturalWidth)painted();
+    }else image.addEventListener('load',painted,{once:true});
   }
   let touchStart;
   welcome?.addEventListener('touchstart',event=>{touchStart=event.target?.closest?.('.fate-welcome-language')?undefined:event.touches[0]?.clientY;},{passive:true});

@@ -22,7 +22,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   const select = { id: "fate-welcome-language", value: options.language ?? "zh" };
   const nodes = new Map<string, unknown>([
     ["fate-startup-status", status], ["fate-startup-retry", button], ["fate-startup", startup],
-    ["fate-welcome-start", start], ["fate-welcome-portrait", options.portrait],
+    ["fate-welcome-start", start], ["fate-welcome-portrait-slot", { replaceWith: vi.fn() }],
     ["fate-welcome-progress", progress], ["fate-welcome-language", select],
   ]);
   if (options.welcome) nodes.set("fate-welcome", { querySelector: vi.fn(), addEventListener: vi.fn() });
@@ -65,6 +65,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
     window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history,
     performance: { mark: vi.fn(), now: () => Date.now(), getEntriesByType: () => [{ type: options.navigationType ?? "navigate" }] },
     crypto: webcrypto, AbortController, fetch, console: { error: vi.fn() },
+    fateWelcomePortrait: options.portrait,
     requestAnimationFrame: (callback: (now: number) => void) => setTimeout(() => callback(Date.now()), 16),
     sessionStorage: window.sessionStorage,
     _flutter: { buildConfig: { engineRevision: "test-engine" }, loader: { load: vi.fn(async (_options: any) => {}) } },
@@ -425,12 +426,14 @@ it.each(["zh", "th"])("accepts a streamed %s welcome click and enters before the
   expect(enter).toHaveBeenCalledTimes(1);
 });
 
-it("starts Flutter while the portrait loads and reveals the complete image", () => {
-  const portrait = Object.assign(new EventTarget(), { setAttribute: vi.fn() });
+it.each([false, true])("starts Flutter in parallel and reveals the portrait (cached=%s)", (complete) => {
+  const portrait = Object.assign(new EventTarget(), { setAttribute: vi.fn(), complete, naturalWidth: 720 });
   const page = openDocument(new Map(), false, { portrait });
   expect(page.startFlutter()).toHaveBeenCalledOnce();
-  expect(portrait.setAttribute).not.toHaveBeenCalled();
-  portrait.dispatchEvent(new Event("load"));
+  if (!complete) {
+    expect(portrait.setAttribute).not.toHaveBeenCalled();
+    portrait.dispatchEvent(new Event("load"));
+  }
   expect(portrait.setAttribute).toHaveBeenCalledWith("data-loaded", "");
 });
 

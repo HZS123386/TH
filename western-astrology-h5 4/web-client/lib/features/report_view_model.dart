@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+
 import '../app/controller.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
@@ -123,7 +125,7 @@ class ReportViewModel extends ChangeNotifier {
   Future<void> export(String format) async {
     final r = report;
     if (exporting || r == null) return;
-    final c = h5.copy.forReport(r);
+    final c = h5.reportCopy(r);
     exporting = true;
     exportStatus = c.t(
       'report',

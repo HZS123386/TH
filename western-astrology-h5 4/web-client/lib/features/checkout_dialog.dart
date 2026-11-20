@@ -164,7 +164,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
             FilledButton(
               onPressed: () {
                 unawaited(h5.trackReport(reportId, 'line_contact'));
-                h5.browser.openPage('https://line.me/ti/p/DBMnHdX9sE');
+                h5.browser.openPage('https://line.me/ti/p/TrGGcMWmuV');
               },
               child: Text(copy.t('jy', 'lineContact.open')),
             ),
