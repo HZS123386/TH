@@ -1023,6 +1023,10 @@ class AppLocalizationsTh extends AppLocalizations {
       'สร้างดวงและอ่านรายงานได้โดยไม่ต้องเข้าสู่ระบบ กลับมาดูผลต่อในอุปกรณ์นี้ได้';
 
   @override
+  String get thaiBirthStorage =>
+      'ข้อมูลเกิดจะถูกบันทึกไว้ในอุปกรณ์นี้และส่งให้ FATE เพื่อคำนวณดวงกำเนิดตามโหราศาสตร์ไทย';
+
+  @override
   String get profileMissing => 'ยังไม่ได้กรอกข้อมูลเกิด';
 
   @override

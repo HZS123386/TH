@@ -7,12 +7,7 @@ def ready_config():
     return {
         "demo_login": False,
         "account_login": False,
-        "app_capabilities": {
-            "western_reports": True,
-            "apple_login": True,
-            "apple_iap": True,
-            "development_full_reports": False,
-        },
+        "modules": [{"id": "thai_astrology", "status": "ready"}],
     }
 
 
@@ -34,26 +29,28 @@ class ReleasePreflightTests(unittest.TestCase):
             with self.subTest(url=url), self.assertRaises(ValueError):
                 config_url(url)
 
-    def test_all_required_capabilities_must_be_true_booleans(self):
-        for key in ("western_reports", "apple_login", "apple_iap"):
-            for value in (False, "true", None):
+    def test_requires_the_thai_astrology_module_to_be_ready(self):
+        for modules in (
+            [],
+            [{"id": "thai_astrology", "status": "planned"}],
+            [{"id": "western_astrology", "status": "ready"}],
+        ):
+            with self.subTest(modules=modules):
                 config = ready_config()
-                config["app_capabilities"][key] = value
-                with self.subTest(key=key, value=value):
-                    self.assertIn(key + "_not_ready", release_blockers(config))
+                config["modules"] = modules
+                self.assertIn("thai_astrology_not_ready", release_blockers(config))
 
     def test_missing_or_active_development_flags_fail_closed(self):
         for key in ("demo_login", "account_login"):
             config = ready_config()
             config.pop(key)
             self.assertIn("development_login_not_disabled", release_blockers(config))
-        for value in (True, None, "false"):
-            config = ready_config()
-            config["app_capabilities"]["development_full_reports"] = value
-            self.assertIn("development_report_preview_not_disabled", release_blockers(config))
+            for value in (True, None, "false"):
+                config[key] = value
+                self.assertIn("development_login_not_disabled", release_blockers(config))
 
     def test_malformed_configs_do_not_pass(self):
-        for config in (None, [], {}, {"app_capabilities": []}):
+        for config in (None, [], {}, {"modules": [None]}):
             self.assertTrue(release_blockers(config))
 
     def test_valid_release_configuration_passes(self):

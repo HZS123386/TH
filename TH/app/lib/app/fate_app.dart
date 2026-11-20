@@ -49,12 +49,13 @@ class FateApp extends StatefulWidget {
 class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
   bool _firstFrameDeferred = false;
   final _rootNavigatorKey = GlobalKey<NavigatorState>();
+  bool get _thaiOnly => widget.dependencies.session.thaiAstrologyOnly;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (_showOpening) return;
+    if (_thaiOnly || _showOpening) return;
     _firstFrameDeferred = true;
     final binding = WidgetsBinding.instance;
     binding.deferFirstFrame();
@@ -86,7 +87,8 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
   }
 
   String get _startPath =>
-      widget.playOpening &&
+      !_thaiOnly &&
+          widget.playOpening &&
           widget.dependencies.session.drafts.preferences.getBool(
                 WelcomePage.seenKey,
               ) !=
@@ -97,6 +99,20 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
   late final GoRouter _router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: _startPath,
+    redirect: (_, state) {
+      if (!_thaiOnly ||
+          const {
+            '/fortune',
+            '/chart/thai',
+            '/birth',
+            '/more',
+            '/privacy',
+            '/support',
+          }.contains(state.uri.path)) {
+        return null;
+      }
+      return '/fortune';
+    },
     routes: [
       GoRoute(
         path: '/welcome',
@@ -137,11 +153,13 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
             pageBuilder: (context, state) => _motionPage(
               context,
               state,
-              HomePage(
-                initialGuide: ReadingGuide.fromName(
-                  state.uri.queryParameters['guide'],
-                ),
-              ),
+              _thaiOnly
+                  ? const ThaiChartPage()
+                  : HomePage(
+                      initialGuide: ReadingGuide.fromName(
+                        state.uri.queryParameters['guide'],
+                      ),
+                    ),
               tab: true,
             ),
             routes: [
@@ -376,6 +394,8 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
           ),
           GoRoute(
             path: '/purchases',
+            redirect: (_, _) =>
+                widget.dependencies.purchases.storeEnabled ? null : '/profile',
             pageBuilder: (context, state) =>
                 _motionPage(context, state, const PurchaseCenterPage()),
           ),
@@ -383,10 +403,12 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
       ),
       GoRoute(path: '/', redirect: (_, _) => _startPath),
     ],
-    errorBuilder: (_, _) => const HomePage(),
+    errorBuilder: (_, _) =>
+        _thaiOnly ? const ThaiChartPage() : const HomePage(),
   );
 
   late final bool _showOpening =
+      !_thaiOnly &&
       widget.playOpening &&
       const {
         '/',
@@ -499,16 +521,19 @@ class _AppShell extends StatelessWidget {
   final String? readingBack;
   final bool hideNavigation;
   static const _tabs = ['/fortune', '/action', '/live', '/shop', '/more'];
+  static const _thaiTabs = ['/fortune', '/more'];
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context), d = DependencyScope.of(context);
+    final thaiOnly = d.session.thaiAstrologyOnly;
+    final tabs = thaiOnly ? _thaiTabs : _tabs;
     final daily = path == DailyHoroscopePage.location;
     final chatting = path.startsWith('/companion/');
     final calendar = path == '/fortune/calendar';
     final guideChat = path.startsWith('/reading/');
-    final selected = _tabs.contains(path)
-        ? _tabs.indexOf(path)
+    final selected = tabs.contains(path)
+        ? tabs.indexOf(path)
         : const [
             '/profile',
             '/login',
@@ -517,9 +542,9 @@ class _AppShell extends StatelessWidget {
             '/delete-account',
             '/purchases',
           ].contains(path)
-        ? 4
+        ? tabs.length - 1
         : 0;
-    final showBack = !_tabs.contains(path) && (context.canPop() || !guideChat);
+    final showBack = !tabs.contains(path) && (context.canPop() || !guideChat);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return ColoredBox(
       color: const Color(0xFF0B0715),
@@ -547,7 +572,7 @@ class _AppShell extends StatelessWidget {
                                   : context.go(
                                       path.startsWith('/reports/h5/')
                                           ? '/reports'
-                                          : _tabs[selected],
+                                          : tabs[selected],
                                     ),
                             )
                           : null,
@@ -595,7 +620,7 @@ class _AppShell extends StatelessWidget {
                                 ),
                             ],
                           ),
-                        if (!daily)
+                        if (!daily && !thaiOnly)
                           TextButton.icon(
                             onPressed: () => showReportRecovery(context),
                             icon: const Icon(Icons.article_outlined, size: 17),
@@ -635,7 +660,7 @@ class _AppShell extends StatelessWidget {
                               );
                             },
                           )
-                        else if (!daily)
+                        else if (!daily && !thaiOnly)
                           IconButton(
                             tooltip: s.mine,
                             onPressed: () => context.go('/more'),
@@ -669,36 +694,42 @@ class _AppShell extends StatelessWidget {
                         ),
                         selectedIndex: selected,
                         onDestinationSelected: (index) =>
-                            context.go(_tabs[index]),
+                            context.go(tabs[index]),
                         destinations: [
                           NavigationDestination(
-                            icon: const Icon(Icons.wb_sunny_outlined),
-                            label: s.todayTab,
-                          ),
-                          NavigationDestination(
-                            icon: const Icon(
-                              Icons.eco_outlined,
-                              color: actionColor,
+                            icon: Icon(
+                              thaiOnly
+                                  ? Icons.explore_outlined
+                                  : Icons.wb_sunny_outlined,
                             ),
-                            selectedIcon: const CircleAvatar(
-                              radius: 13,
-                              backgroundColor: Color(0x38ADBF9A),
-                              child: Icon(
+                            label: thaiOnly ? s.thaiGuide : s.todayTab,
+                          ),
+                          if (!thaiOnly) ...[
+                            NavigationDestination(
+                              icon: const Icon(
                                 Icons.eco_outlined,
                                 color: actionColor,
-                                size: 19,
                               ),
+                              selectedIcon: const CircleAvatar(
+                                radius: 13,
+                                backgroundColor: Color(0x38ADBF9A),
+                                child: Icon(
+                                  Icons.eco_outlined,
+                                  color: actionColor,
+                                  size: 19,
+                                ),
+                              ),
+                              label: s.actionTab,
                             ),
-                            label: s.actionTab,
-                          ),
-                          NavigationDestination(
-                            icon: const Icon(Icons.ondemand_video_outlined),
-                            label: s.liveTab,
-                          ),
-                          NavigationDestination(
-                            icon: const Icon(Icons.shopping_bag_outlined),
-                            label: s.objectsTab,
-                          ),
+                            NavigationDestination(
+                              icon: const Icon(Icons.ondemand_video_outlined),
+                              label: s.liveTab,
+                            ),
+                            NavigationDestination(
+                              icon: const Icon(Icons.shopping_bag_outlined),
+                              label: s.objectsTab,
+                            ),
+                          ],
                           NavigationDestination(
                             icon: const Icon(Icons.person_outline),
                             label: s.mine,

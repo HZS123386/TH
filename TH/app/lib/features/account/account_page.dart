@@ -15,6 +15,7 @@ class AccountPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = DependencyScope.of(context), s = AppLocalizations.of(context);
+    final thaiOnly = d.session.thaiAstrologyOnly;
     return ListenableBuilder(
       listenable: Listenable.merge([d.session, d.companion]),
       builder: (context, _) => SingleChildScrollView(
@@ -22,16 +23,21 @@ class AccountPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'YOUR SPACE',
-              style: TextStyle(
-                color: goldColor,
-                letterSpacing: 1.8,
-                fontSize: 9,
+            if (!thaiOnly) ...[
+              const Text(
+                'YOUR SPACE',
+                style: TextStyle(
+                  color: goldColor,
+                  letterSpacing: 1.8,
+                  fontSize: 9,
+                ),
               ),
-            ),
-            const SizedBox(height: 7),
-            PageHeading(s.mySpace, s.mySpaceIntro),
+              const SizedBox(height: 7),
+              PageHeading(s.mySpace, s.mySpaceIntro),
+            ] else ...[
+              Text(s.mine, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 20),
+            ],
             FateCard(
               gold: true,
               padding: const EdgeInsets.all(15),
@@ -61,10 +67,11 @@ class AccountPage extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 19),
                         ),
-                        Text(
-                          d.auth.signedIn ? s.signedIn : s.guestReading,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                        if (!thaiOnly)
+                          Text(
+                            d.auth.signedIn ? s.signedIn : s.guestReading,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                       ],
                     ),
                   ),
@@ -79,79 +86,85 @@ class AccountPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: _AccountShortcut(
-                      Icons.article_outlined,
-                      s.recoverReports,
-                      () => showReportRecovery(context),
+            if (!thaiOnly) ...[
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _AccountShortcut(
+                        Icons.article_outlined,
+                        s.recoverReports,
+                        () => showReportRecovery(context),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _AccountShortcut(
-                      Icons.eco_outlined,
-                      s.actionsAndReviews,
-                      () => context.go('/action'),
-                      color: actionColor,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _AccountShortcut(
+                        Icons.eco_outlined,
+                        s.actionsAndReviews,
+                        () => context.go('/action'),
+                        color: actionColor,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _AccountShortcut(
-                      Icons.receipt_long_outlined,
-                      s.shopOrders,
-                      () => showShopOrders(context),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _AccountShortcut(
+                        Icons.receipt_long_outlined,
+                        s.shopOrders,
+                        () => showShopOrders(context),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 17),
-            const _ReadingLinks(),
-            TextButton.icon(
-              key: const ValueKey('profile-reading-history'),
-              onPressed: () => context.push('/chart/readings?from=profile'),
-              icon: const Icon(Icons.history),
-              label: Text(s.savedReadings),
-            ),
-            const SizedBox(height: 17),
-            FateCard(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              child: Column(
-                children: [
-                  if (!d.auth.signedIn)
+              const SizedBox(height: 17),
+              const _ReadingLinks(),
+              TextButton.icon(
+                key: const ValueKey('profile-reading-history'),
+                onPressed: () => context.push('/chart/readings?from=profile'),
+                icon: const Icon(Icons.history),
+                label: Text(s.savedReadings),
+              ),
+              const SizedBox(height: 17),
+              FateCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 5,
+                ),
+                child: Column(
+                  children: [
+                    if (!d.auth.signedIn)
+                      ListTile(
+                        leading: const Icon(Icons.login, color: goldColor),
+                        title: Text(s.optionalLogin),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/login'),
+                      ),
                     ListTile(
-                      leading: const Icon(Icons.login, color: goldColor),
-                      title: Text(s.optionalLogin),
+                      leading: const Icon(
+                        Icons.favorite_border,
+                        color: goldColor,
+                      ),
+                      title: Text(s.bondNav),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/login'),
+                      onTap: () => context.push('/profile'),
                     ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.favorite_border,
-                      color: goldColor,
-                    ),
-                    title: Text(s.bondNav),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/profile'),
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.workspace_premium_outlined,
-                      color: goldColor,
-                    ),
-                    title: Text(s.purchaseCenter),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/purchases'),
-                  ),
-                ],
+                    if (d.purchases.storeEnabled)
+                      ListTile(
+                        leading: const Icon(
+                          Icons.workspace_premium_outlined,
+                          color: goldColor,
+                        ),
+                        title: Text(s.purchaseCenter),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/purchases'),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
+            ],
             FateCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,7 +220,7 @@ class AccountPage extends StatelessWidget {
                 ],
               ),
             ),
-            if (d.auth.signedIn) ...[
+            if (!thaiOnly && d.auth.signedIn) ...[
               const SizedBox(height: 20),
               OutlinedButton(
                 onPressed: () async {

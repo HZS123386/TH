@@ -2022,6 +2022,12 @@ abstract class AppLocalizations {
   /// **'Create your chart and read your report without signing in. You can return to your results on this device.'**
   String get birthStorage;
 
+  /// No description provided for @thaiBirthStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your birth details are saved on this device and sent to FATE to calculate your Thai birth chart.'**
+  String get thaiBirthStorage;
+
   /// No description provided for @profileMissing.
   ///
   /// In en, this message translates to:

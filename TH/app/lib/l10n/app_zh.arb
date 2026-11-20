@@ -320,6 +320,7 @@
   "cancel": "取消",
   "back": "返回",
   "birthStorage": "无需登录即可排盘和阅读报告，当前设备可继续查看本次结果。",
+  "thaiBirthStorage": "出生资料保存在本机，并发送给 FATE 用于计算泰式星盘。",
   "profileMissing": "尚未填写出生资料",
   "connection": "服务连接暂不可用，仍可浏览示例。",
   "error": "暂时未能完成，请稍后重试。",

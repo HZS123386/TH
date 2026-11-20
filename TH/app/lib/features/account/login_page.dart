@@ -129,42 +129,30 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            FateCard(
-              child: Column(
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 24),
-                    child: Icon(
-                      Icons.auto_awesome_outlined,
-                      size: 42,
-                      color: goldColor,
+            if (d.session.capabilities.appleLogin &&
+                !kIsWeb &&
+                defaultTargetPlatform == TargetPlatform.iOS) ...[
+              const SizedBox(height: 18),
+              FateCard(
+                child: Column(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 24),
+                      child: Icon(
+                        Icons.auto_awesome_outlined,
+                        size: 42,
+                        color: goldColor,
+                      ),
                     ),
-                  ),
-                  FilledButton.icon(
-                    onPressed:
-                        busy ||
-                            !d.session.capabilities.appleLogin ||
-                            kIsWeb ||
-                            defaultTargetPlatform != TargetPlatform.iOS
-                        ? null
-                        : () => submit(apple: true),
-                    icon: const Icon(Icons.apple),
-                    label: Text(s.appleLogin),
-                  ),
-                  if (!d.session.capabilities.appleLogin ||
-                      kIsWeb ||
-                      defaultTargetPlatform != TargetPlatform.iOS) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      s.appleLoginUnavailable,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      textAlign: TextAlign.center,
+                    FilledButton.icon(
+                      onPressed: busy ? null : () => submit(apple: true),
+                      icon: const Icon(Icons.apple),
+                      label: Text(s.appleLogin),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
+            ],
             if (d.auth.canUseDevelopmentLogin &&
                 d.session.capabilities.developmentLogin) ...[
               const SizedBox(height: 22),

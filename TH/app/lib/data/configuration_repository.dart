@@ -39,6 +39,10 @@ class AppCapabilities {
           .join(' / ');
 
   factory AppCapabilities.fromJson(Map<String, dynamic> json) {
+    const enableAppleLogin = bool.fromEnvironment('FATE_ENABLE_APPLE_LOGIN');
+    const enableInAppPurchases = bool.fromEnvironment(
+      'FATE_ENABLE_IN_APP_PURCHASES',
+    );
     final modules = json['modules'];
     final app = json['app_capabilities'];
     final western =
@@ -70,9 +74,11 @@ class AppCapabilities {
     return AppCapabilities(
       western: western,
       reports: reports,
-      appleLogin: app is Map && app['apple_login'] == true,
-      applePurchase: reports && app['apple_iap'] == true,
-      googlePurchase: reports && app['google_play_billing'] == true,
+      appleLogin: enableAppleLogin && app is Map && app['apple_login'] == true,
+      applePurchase:
+          enableInAppPurchases && reports && app['apple_iap'] == true,
+      googlePurchase:
+          enableInAppPurchases && reports && app['google_play_billing'] == true,
       developmentLogin: json['account_login'] == true,
       guestReading: json['guest_reading'] == true,
       aiNoticeVersion: notice is String && notice.isNotEmpty ? notice : null,

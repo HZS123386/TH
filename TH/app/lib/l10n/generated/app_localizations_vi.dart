@@ -1030,6 +1030,10 @@ class AppLocalizationsVi extends AppLocalizations {
       'Tạo bản đồ sao và đọc báo cáo mà không cần đăng nhập. Bạn có thể xem lại kết quả trên thiết bị này.';
 
   @override
+  String get thaiBirthStorage =>
+      'Thông tin sinh được lưu trên thiết bị này và gửi tới FATE để lập lá số chiêm tinh Thái Lan.';
+
+  @override
   String get profileMissing => 'Chưa có thông tin sinh';
 
   @override

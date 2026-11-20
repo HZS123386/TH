@@ -117,6 +117,7 @@ class _PrivacyPageState extends State<PrivacyPage> {
   @override
   Widget build(BuildContext context) {
     final d = DependencyScope.of(context), s = AppLocalizations.of(context);
+    final thaiOnly = d.session.thaiAstrologyOnly;
     return ListenableBuilder(
       listenable: Listenable.merge([d.session, d.companion]),
       builder: (context, _) => ListView(
@@ -127,104 +128,115 @@ class _PrivacyPageState extends State<PrivacyPage> {
             s.privacyIntro,
             icon: Icons.shield_outlined,
           ),
-          FateCard(
-            gold: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const FateEmblem(Icons.verified_user_outlined, size: 52),
-                const SizedBox(height: 16),
-                Text(
-                  d.session.companionConsent ? s.aiEnabled : s.aiPaused,
-                  style: const TextStyle(fontSize: 18),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  s.dataChatBody,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (d.session.companionConsent) ...[
+          if (!thaiOnly) ...[
+            FateCard(
+              gold: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const FateEmblem(Icons.verified_user_outlined, size: 52),
                   const SizedBox(height: 16),
-                  OutlinedButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _action(
-                            s.aiRevoke,
-                            s.dataControlBody,
-                            d.session.revokeCompanion,
-                            success: s.aiRevoked,
-                          ),
-                    child: Text(s.aiRevoke),
+                  Text(
+                    d.session.companionConsent ? s.aiEnabled : s.aiPaused,
+                    style: const TextStyle(fontSize: 18),
                   ),
+                  const SizedBox(height: 12),
+                  Text(
+                    s.dataChatBody,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  if (d.session.companionConsent) ...[
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      onPressed: _busy
+                          ? null
+                          : () => _action(
+                              s.aiRevoke,
+                              s.dataControlBody,
+                              d.session.revokeCompanion,
+                              success: s.aiRevoked,
+                            ),
+                      child: Text(s.aiRevoke),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
+          ],
           for (final entry in [
-            (s.dataProfileTitle, s.dataProfileBody),
-            (s.dataPurchaseTitle, s.dataPurchaseBody),
-            (s.dataControlTitle, s.dataControlBody),
+            (
+              s.dataProfileTitle,
+              thaiOnly ? s.thaiBirthStorage : s.dataProfileBody,
+            ),
+            if (d.purchases.storeEnabled)
+              (s.dataPurchaseTitle, s.dataPurchaseBody),
+            if (!thaiOnly) (s.dataControlTitle, s.dataControlBody),
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: FateCard(child: ReadingParagraph(entry.$1, entry.$2)),
             ),
-          FateCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (d.session.profile != null)
-                  TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _action(
-                            s.clearBirth,
-                            s.clearConfirm,
-                            d.session.clearBirth,
-                          ),
-                    child: Text(s.clearBirth),
-                  ),
-                if (d.auth.hasSession)
-                  TextButton(
-                    onPressed:
-                        _busy || d.companion.sending || d.companion.loading
-                        ? null
-                        : () => _action(
-                            s.clearHistory,
-                            s.clearHistoryBody,
-                            d.companion.clearHistory,
-                            success: s.clearHistoryDone,
-                          ),
-                    child: Text(s.clearHistory),
-                  ),
-                TextButton(
-                  onPressed: _busy
-                      ? null
-                      : () => _action(
-                          s.clearPrototypeRecords,
-                          s.recordOnDevice,
-                          () async {
-                            final owner = d.session.owner;
-                            await d.actions.clear(owner);
-                            await d.session.drafts.remove(
-                              owner,
-                              LocalDraftStore.guideConversations,
-                            );
-                          },
-                        ),
-                  child: Text(s.clearPrototypeRecords),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.person_remove_outlined),
-                  title: Text(s.deleteAccount),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: _busy ? null : () => context.push('/delete-account'),
-                ),
-              ],
+          if (!thaiOnly || d.session.profile != null)
+            FateCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (d.session.profile != null)
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => _action(
+                              s.clearBirth,
+                              s.clearConfirm,
+                              d.session.clearBirth,
+                            ),
+                      child: Text(s.clearBirth),
+                    ),
+                  if (!thaiOnly && d.auth.hasSession)
+                    TextButton(
+                      onPressed:
+                          _busy || d.companion.sending || d.companion.loading
+                          ? null
+                          : () => _action(
+                              s.clearHistory,
+                              s.clearHistoryBody,
+                              d.companion.clearHistory,
+                              success: s.clearHistoryDone,
+                            ),
+                      child: Text(s.clearHistory),
+                    ),
+                  if (!thaiOnly) ...[
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => _action(
+                              s.clearPrototypeRecords,
+                              s.recordOnDevice,
+                              () async {
+                                final owner = d.session.owner;
+                                await d.actions.clear(owner);
+                                await d.session.drafts.remove(
+                                  owner,
+                                  LocalDraftStore.guideConversations,
+                                );
+                              },
+                            ),
+                      child: Text(s.clearPrototypeRecords),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.person_remove_outlined),
+                      title: Text(s.deleteAccount),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _busy
+                          ? null
+                          : () => context.push('/delete-account'),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 16),
           if (d.accountServices.privacyUrl != null)
             OutlinedButton(

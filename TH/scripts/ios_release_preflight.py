@@ -40,16 +40,15 @@ def config_url(base: str) -> str:
 def release_blockers(config: object) -> list[str]:
     if not isinstance(config, dict):
         return ["invalid_config_response"]
-    capabilities = config.get("app_capabilities")
-    if not isinstance(capabilities, dict):
-        return ["missing_app_capabilities"]
-    blockers = [
-        key + "_not_ready"
-        for key in ("western_reports", "apple_login", "apple_iap")
-        if capabilities.get(key) is not True
-    ]
-    if capabilities.get("development_full_reports") is not False:
-        blockers.append("development_report_preview_not_disabled")
+    blockers = []
+    modules = config.get("modules")
+    if not isinstance(modules, list) or not any(
+        isinstance(module, dict)
+        and module.get("id") == "thai_astrology"
+        and module.get("status") == "ready"
+        for module in modules
+    ):
+        blockers.append("thai_astrology_not_ready")
     if config.get("demo_login") is not False or config.get("account_login") is not False:
         blockers.append("development_login_not_disabled")
     return blockers
@@ -73,7 +72,7 @@ def main() -> int:
     if blockers:
         print("Release check failed: " + ", ".join(blockers), file=sys.stderr)
         return 1
-    print("Release configuration checks passed; native login and purchase acceptance still required")
+    print("Release configuration checks passed for Thai astrology")
     return 0
 
 

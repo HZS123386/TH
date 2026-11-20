@@ -129,27 +129,33 @@ class _SupportPageState extends State<SupportPage> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        for (final entry in [
-          (s.faqReportTitle, s.faqReportBody),
-          (s.faqChatTitle, s.faqChatBody),
-          (s.faqPurchaseTitle, s.faqPurchaseBody),
-        ])
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: FateCard(
-              padding: EdgeInsets.zero,
-              child: ExpansionTile(
-                title: Text(entry.$1),
-                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                children: [
-                  Text(entry.$2, style: Theme.of(context).textTheme.bodySmall),
-                ],
+        if (!d.session.thaiAstrologyOnly) ...[
+          const SizedBox(height: 24),
+          for (final entry in [
+            (s.faqReportTitle, s.faqReportBody),
+            (s.faqChatTitle, s.faqChatBody),
+            if (d.purchases.storeEnabled)
+              (s.faqPurchaseTitle, s.faqPurchaseBody),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FateCard(
+                padding: EdgeInsets.zero,
+                child: ExpansionTile(
+                  title: Text(entry.$1),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                  children: [
+                    Text(
+                      entry.$2,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        const SizedBox(height: 12),
-        FateCard(child: ReadingParagraph(s.termsTitle, s.termsBody)),
+          const SizedBox(height: 12),
+          FateCard(child: ReadingParagraph(s.termsTitle, s.termsBody)),
+        ],
         if (d.accountServices.termsUrl != null)
           TextButton(
             onPressed: () =>

@@ -8,7 +8,13 @@ import '../data/profile_repository.dart';
 import '../core/network/api_client.dart';
 
 class SessionViewModel extends ChangeNotifier {
-  SessionViewModel(this.auth, this.profiles, this.configuration, this.drafts) {
+  SessionViewModel(
+    this.auth,
+    this.profiles,
+    this.configuration,
+    this.drafts, {
+    this.thaiAstrologyOnly = false,
+  }) {
     final saved = drafts.preferences.getString('fate.locale');
     if (['th', 'en', 'zh', 'vi'].contains(saved)) locale = Locale(saved!);
     auth.api.locale = locale.languageCode;
@@ -20,6 +26,7 @@ class SessionViewModel extends ChangeNotifier {
   final ProfileRepository profiles;
   final ConfigurationRepository configuration;
   final LocalDraftStore drafts;
+  final bool thaiAstrologyOnly;
   Locale locale = const Locale('th');
   AppCapabilities capabilities = const AppCapabilities();
   BirthProfile? profile;
@@ -78,7 +85,7 @@ class SessionViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       capabilities = await configuration.load();
-      if (!auth.hasSession) await auth.restore();
+      if (!thaiAstrologyOnly && !auth.hasSession) await auth.restore();
     } catch (_) {
       offline = true;
     }
@@ -123,7 +130,8 @@ class SessionViewModel extends ChangeNotifier {
   }
 
   Future<void> saveProfile(BirthProfile value) async {
-    if (capabilities.western && !auth.hasSession) {
+    final useServerProfile = !thaiAstrologyOnly && capabilities.western;
+    if (useServerProfile && !auth.hasSession) {
       if (!capabilities.guestReading) {
         throw const ApiFailure('service_unavailable');
       }
@@ -132,7 +140,7 @@ class SessionViewModel extends ChangeNotifier {
     final currentOwner = owner;
     final sessionVersion = auth.api.sessionVersion;
     var candidate = value;
-    if (capabilities.western && auth.hasSession && value.revision == null) {
+    if (useServerProfile && auth.hasSession && value.revision == null) {
       final existing = await profiles.remote();
       if (owner != currentOwner || auth.api.sessionVersion != sessionVersion) {
         throw const ApiFailure('session_changed');
@@ -148,7 +156,7 @@ class SessionViewModel extends ChangeNotifier {
     final saved = await profiles.save(
       currentOwner,
       candidate,
-      serverContractReady: capabilities.western,
+      serverContractReady: useServerProfile,
     );
     if (currentOwner != owner || auth.api.sessionVersion != sessionVersion) {
       throw const ApiFailure('session_changed');

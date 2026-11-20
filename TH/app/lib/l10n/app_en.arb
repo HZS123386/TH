@@ -348,6 +348,7 @@
   "cancel": "Cancel",
   "back": "Back",
   "birthStorage": "Create your chart and read your report without signing in. You can return to your results on this device.",
+  "thaiBirthStorage": "Your birth details are saved on this device and sent to FATE to calculate your Thai birth chart.",
   "profileMissing": "No birth details yet",
   "connection": "The service is temporarily unavailable. Examples remain available.",
   "error": "We could not finish this. Please try again later.",

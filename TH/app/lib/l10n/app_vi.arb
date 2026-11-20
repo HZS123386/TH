@@ -320,6 +320,7 @@
   "cancel": "Hủy",
   "back": "Quay lại",
   "birthStorage": "Tạo bản đồ sao và đọc báo cáo mà không cần đăng nhập. Bạn có thể xem lại kết quả trên thiết bị này.",
+  "thaiBirthStorage": "Thông tin sinh được lưu trên thiết bị này và gửi tới FATE để lập lá số chiêm tinh Thái Lan.",
   "profileMissing": "Chưa có thông tin sinh",
   "connection": "Dịch vụ tạm thời không kết nối được. Bạn vẫn có thể xem ví dụ.",
   "error": "Chưa thể hoàn tất, vui lòng thử lại sau.",

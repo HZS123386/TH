@@ -1034,6 +1034,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Create your chart and read your report without signing in. You can return to your results on this device.';
 
   @override
+  String get thaiBirthStorage =>
+      'Your birth details are saved on this device and sent to FATE to calculate your Thai birth chart.';
+
+  @override
   String get profileMissing => 'No birth details yet';
 
   @override

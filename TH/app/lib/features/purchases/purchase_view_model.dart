@@ -15,6 +15,7 @@ class PurchaseViewModel extends ChangeNotifier {
   bool restoring = false, restoreChecked = false, _disposed = false;
   String _owner = '';
   bool get storeEnabled =>
+      !session.thaiAstrologyOnly &&
       !kIsWeb &&
       switch (defaultTargetPlatform) {
         TargetPlatform.iOS => session.capabilities.applePurchase,

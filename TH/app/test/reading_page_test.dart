@@ -103,6 +103,9 @@ void main() {
                   ],
                   'app_capabilities': {
                     'western_reports': true,
+                    'apple_login': true,
+                    'apple_iap': true,
+                    'google_play_billing': true,
                     'ai_notice_version': 'notice-1',
                   },
                 };
@@ -385,14 +388,15 @@ void main() {
           calculation['result_id'],
         );
         expect(find.text('Your personal chart summary'), findsOneWidget);
+        expect(d.session.capabilities.appleLogin, isFalse);
+        expect(d.session.capabilities.applePurchase, isFalse);
+        expect(d.session.capabilities.googlePurchase, isFalse);
         expect(
           find.text('personality personal interpretation'),
           findsOneWidget,
         );
-        expect(
-          find.byKey(const ValueKey('unlock-report')),
-          full ? findsNothing : findsOneWidget,
-        );
+        expect(find.byKey(const ValueKey('unlock-report')), findsNothing);
+        expect(find.text(s.lockedTitle), findsNothing);
         expect(
           find.text('actions personal interpretation'),
           full ? findsOneWidget : findsNothing,

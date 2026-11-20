@@ -984,6 +984,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get birthStorage => '无需登录即可排盘和阅读报告，当前设备可继续查看本次结果。';
 
   @override
+  String get thaiBirthStorage => '出生资料保存在本机，并发送给 FATE 用于计算泰式星盘。';
+
+  @override
   String get profileMissing => '尚未填写出生资料';
 
   @override

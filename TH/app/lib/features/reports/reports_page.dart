@@ -168,7 +168,11 @@ class _ReportsPageState extends State<ReportsPage> {
             widget.fromChart && d.reports.report?.resultId != d.chart.result?.id
             ? null
             : d.reports.report;
-        final full = widget.example ? exampleExpanded : report?.full == true;
+        final storeEnabled = d.purchases.storeEnabled;
+        final full = widget.example
+            ? !storeEnabled || exampleExpanded
+            : report?.full == true;
+        final showPaywall = !full && storeEnabled;
         if (report?.generating != true) movingToProgress = false;
         if (widget.detail &&
             widget.backLocation != '/reports' &&
@@ -415,7 +419,12 @@ class _ReportsPageState extends State<ReportsPage> {
               Positioned.fill(
                 child: SingleChildScrollView(
                   key: const ValueKey('reading-scroll'),
-                  padding: EdgeInsets.fromLTRB(20, 12, 20, full ? 28 : 100),
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    12,
+                    20,
+                    showPaywall ? 100 : 28,
+                  ),
                   child: Column(
                     children: [
                       Align(
@@ -645,15 +654,17 @@ class _ReportsPageState extends State<ReportsPage> {
                                   section: section,
                                   number: sections.indexOf(section) + 1,
                                 ),
-                            const Divider(),
-                            Text(
-                              widget.example ? s.watch : s.fullReading,
-                              style: const TextStyle(
-                                fontSize: 19,
-                                fontWeight: FontWeight.w600,
+                            if (full || showPaywall) ...[
+                              const Divider(),
+                              Text(
+                                widget.example ? s.watch : s.fullReading,
+                                style: const TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 24),
+                              const SizedBox(height: 24),
+                            ],
                             if (full)
                               FateEntrance(
                                 key: const ValueKey('unlocked-reading'),
@@ -676,7 +687,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                   ],
                                 ),
                               )
-                            else
+                            else if (showPaywall)
                               Stack(
                                 children: [
                                   ExcludeSemantics(
@@ -778,7 +789,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   ),
                 ),
               ),
-              if (!full)
+              if (showPaywall)
                 Positioned(
                   bottom: 0,
                   left: 0,

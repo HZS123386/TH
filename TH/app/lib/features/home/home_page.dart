@@ -175,12 +175,13 @@ class HomePage extends StatelessWidget {
                       Icons.menu_book_outlined,
                       '/reports',
                     ),
-                    (
-                      s.fullReport,
-                      s.fullNote,
-                      Icons.workspace_premium_outlined,
-                      'purchase',
-                    ),
+                    if (dependencies.purchases.storeEnabled)
+                      (
+                        s.fullReport,
+                        s.fullNote,
+                        Icons.workspace_premium_outlined,
+                        'purchase',
+                      ),
                     (
                       s.birth,
                       s.birthNote,

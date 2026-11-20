@@ -88,7 +88,9 @@ class _BirthPageState extends State<BirthPage> {
         ),
       );
       if (mounted) {
-        if (widget.openThaiChart) {
+        if (session.thaiAstrologyOnly) {
+          context.go('/fortune');
+        } else if (widget.openThaiChart) {
           context.pushReplacement('/chart/thai');
         } else if (widget.returnToPrevious && context.canPop()) {
           context.pop();
@@ -111,6 +113,7 @@ class _BirthPageState extends State<BirthPage> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final thaiOnly = DependencyScope.of(context).session.thaiAstrologyOnly;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Form(
@@ -222,7 +225,7 @@ class _BirthPageState extends State<BirthPage> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    s.birthStorage,
+                    thaiOnly ? s.thaiBirthStorage : s.birthStorage,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +15,7 @@ import 'package:fate_app/core/network/api_client.dart';
 import 'package:fate_app/core/storage/session_store.dart';
 import 'package:fate_app/features/actions/action_ledger.dart';
 import 'package:fate_app/features/actions/action_page.dart';
+import 'package:fate_app/features/chart/thai_chart_page.dart';
 import 'package:fate_app/features/reports/h5_report_page.dart';
 import 'package:fate_app/features/reports/reports_page.dart';
 import 'package:fate_app/l10n/generated/app_localizations.dart';
@@ -398,6 +400,7 @@ void main() {
               'modules': [
                 {'id': 'western_astrology', 'status': 'planned'},
               ],
+              'app_capabilities': {'apple_login': true},
               'account_login': true,
             }),
             200,
@@ -420,6 +423,7 @@ void main() {
       expect(find.byType(NavigationDestination), findsNWidgets(5));
       final s = AppLocalizationsEn();
       expect(find.text(s.todayQuestion), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-entry-purchase')), findsNothing);
       expect(find.text(s.thaiGuide), findsWidgets);
       expect(find.text(s.loveGuardian), findsOneWidget);
       expect(find.text(s.careerGuardian), findsOneWidget);
@@ -431,7 +435,6 @@ void main() {
       for (final title in [
         s.thaiCalendarTitle,
         s.chart,
-        s.fullReport,
         s.birth,
         s.luckyNumbers,
         s.start,
@@ -484,6 +487,16 @@ void main() {
         1,
       );
       await tester.tap(find.byType(NavigationDestination).at(4));
+      await tester.pumpAndSettle();
+      expect(find.text(s.purchaseCenter), findsNothing);
+      final login = find.widgetWithText(ListTile, s.optionalLogin);
+      await tester.ensureVisible(login);
+      await tester.tap(login);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('h5-code-input')), findsOneWidget);
+      expect(find.text(s.appleLogin), findsNothing);
+      expect(find.text(s.appleLoginUnavailable), findsNothing);
+      await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text(s.fortunePeriods));
       await tester.tap(find.text(s.fortunePeriods));
@@ -581,18 +594,9 @@ void main() {
       await tester.ensureVisible(read);
       await tester.tap(read);
       await tester.pumpAndSettle();
-      final unlock = find.byKey(const ValueKey('unlock-report'));
-      expect(unlock, findsOneWidget);
-      await tester.tap(unlock);
-      await tester.pumpAndSettle();
-      final nativeBuy = find.widgetWithText(FilledButton, s.storeBuy);
-      expect(tester.widget<FilledButton>(nativeBuy).onPressed, isNull);
-      final preview = find.textContaining(AppLocalizationsEn().previewFull);
-      expect(preview, findsOneWidget);
-      await tester.ensureVisible(preview);
-      await tester.tap(preview);
-      await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('unlock-report')), findsNothing);
+      expect(find.byKey(const ValueKey('unlocked-reading')), findsOneWidget);
+      expect(find.text(s.storeBuy), findsNothing);
       expect(d.reports.report, isNull);
       expect(d.purchaseRepository.intent, isNull);
       expect(
@@ -603,6 +607,110 @@ void main() {
           '/api/daily-horoscope/today',
         ]),
       );
+      await tester.pumpWidget(const SizedBox.shrink());
+      d.dispose();
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.iOS}),
+  );
+  testWidgets(
+    'Thai review build opens the Thai chart and redirects hidden feature routes',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
+      final requests = <http.Request>[];
+      final d = AppDependencies(
+        await SharedPreferences.getInstance(),
+        client: ApiClient(
+          'https://api.example.test',
+          client: MockClient((request) async {
+            requests.add(request);
+            final response = switch (request.url.path) {
+              '/api/config' => {
+                'guest_reading': true,
+                'modules': [
+                  {'id': 'thai_astrology', 'status': 'ready'},
+                  {'id': 'western_astrology', 'status': 'ready'},
+                ],
+                'app_capabilities': {'western_reports': true},
+              },
+              '/api/thai-chart/preview' => {
+                'status': 'ready',
+                'chart': {
+                  'points': {
+                    'ascendant': {'signName': 'Aries', 'degrees': 12.5},
+                  },
+                },
+              },
+              _ => null,
+            };
+            return http.Response(
+              jsonEncode(response),
+              response == null ? 404 : 200,
+            );
+          }),
+        ),
+        secureStore: MemorySessionStore(),
+        thaiAstrologyOnly: true,
+      );
+      await d.session.initialize();
+      await d.session.saveProfile(
+        const BirthProfile(
+          date: '1990-01-01',
+          time: '12:00',
+          timezone: 'Asia/Bangkok',
+          place: 'Bangkok, TH',
+          countryCode: 'TH',
+        ),
+      );
+      await tester.pumpWidget(
+        DependencyScope(
+          dependencies: d,
+          child: FateApp(dependencies: d, playOpening: true),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final chart = find.byType(ThaiChartPage);
+      final router = GoRouter.of(tester.element(chart));
+      final s = AppLocalizationsEn();
+      expect(find.text('Aries  12.5°'), findsOneWidget);
+      expect(find.byType(NavigationDestination), findsNWidgets(2));
+      expect(find.byType(HomePage), findsNothing);
+      for (final path in [
+        '/live',
+        '/action',
+        '/shop',
+        '/divination',
+        '/fortune/tarot',
+        '/fortune/lucky-numbers',
+        '/chart',
+        '/reports/h5/old',
+        '/profile',
+        '/login',
+        '/purchases',
+      ]) {
+        router.go(path);
+        await tester.pumpAndSettle();
+        expect(router.routeInformationProvider.value.uri.path, '/fortune');
+        expect(chart, findsOneWidget);
+      }
+      router.go('/more');
+      await tester.pumpAndSettle();
+      expect(find.text(s.language), findsOneWidget);
+      expect(find.text(s.recoverReports), findsNothing);
+      expect(find.text(s.optionalLogin), findsNothing);
+      expect(find.text(s.shopOrders), findsNothing);
+      router.go('/privacy');
+      await tester.pumpAndSettle();
+      expect(find.text(s.thaiBirthStorage), findsOneWidget);
+      expect(find.text(s.clearBirth), findsOneWidget);
+      expect(find.text(s.deleteAccount), findsNothing);
+      expect(requests.map((request) => request.url.path).toSet(), {
+        '/api/config',
+        '/api/thai-chart/preview',
+      });
       await tester.pumpWidget(const SizedBox.shrink());
       d.dispose();
     },

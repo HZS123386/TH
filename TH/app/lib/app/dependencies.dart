@@ -25,6 +25,9 @@ class AppDependencies {
     SharedPreferences preferences, {
     ApiClient? client,
     SessionStore? secureStore,
+    bool thaiAstrologyOnly = const bool.fromEnvironment(
+      'FATE_THAI_ASTROLOGY_ONLY',
+    ),
   }) {
     api =
         client ??
@@ -42,6 +45,7 @@ class AppDependencies {
       ProfileRepository(api, drafts),
       ConfigurationRepository(api),
       drafts,
+      thaiAstrologyOnly: thaiAstrologyOnly,
     );
     dailyHoroscope = DailyHoroscopeViewModel(
       DailyHoroscopeRepository(api),
