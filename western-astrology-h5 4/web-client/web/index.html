@@ -14,31 +14,35 @@
     <!-- FATE_FONT_PRELOADS -->
     <link rel="preload" href="assets/FontManifest.json" as="fetch" fetchpriority="low" crossorigin>
     <link rel="preload" href="assets/AssetManifest.bin.json" as="fetch" fetchpriority="low" crossorigin>
-    <link rel="preload" href="assets/assets/copy.json" as="fetch" fetchpriority="low" crossorigin>
   </template>
   <script>
     document.documentElement.lang=new URLSearchParams(location.search).get('lang')==='zh'?'zh':'th';
     document.documentElement.dataset.welcome=String(!/(report|privacy|support)\.html$/.test(location.pathname));
-    function priorityPreload(href, as) {
+    function priorityPreload(href, as, priority = 'high') {
       const link = document.createElement('link');
       link.rel = 'preload';
       link.as = as;
       link.href = href;
       link.crossOrigin = 'anonymous';
-      link.fetchPriority = 'high';
+      link.fetchPriority = priority;
       return link;
     }
     const preloadEngineAssets = () => {
-      const fontFile = document.documentElement.lang === 'zh' ? 'FateChineseUI.otf' : 'NotoSansThai.ttf';
+      const language = document.documentElement.lang;
+      const fontFile = language === 'zh' ? 'FateChineseUI.otf' : 'NotoSansThai.ttf';
       document.head.append(priorityPreload('assets/assets/fonts/' + fontFile, 'fetch'));
+      document.head.append(priorityPreload('assets/assets/copy/' + language + '.json', 'fetch', 'low'));
       document.head.append(document.getElementById('fate-engine-preloads').content);
     };
-    if (document.documentElement.dataset.welcome === 'true') {
-      const portrait = priorityPreload('assets/assets/images/astrologer-900.webp', 'image');
-      // Give the visible portrait bandwidth before warming Flutter's supporting assets.
-      portrait.addEventListener('load', preloadEngineAssets, {once: true});
-      portrait.addEventListener('error', preloadEngineAssets, {once: true});
-      document.head.append(portrait);
+    const fateWelcomePortrait = document.documentElement.dataset.welcome === 'true' ? new Image(1199, 1312) : null;
+    if (fateWelcomePortrait) {
+      // Start the actual image request early and mount the same element in the welcome page.
+      Object.assign(fateWelcomePortrait, {
+        id: 'fate-welcome-portrait', alt: '', fetchPriority: 'high', decoding: 'async', crossOrigin: 'anonymous',
+        sizes: 'clamp(min(118vw, 660.8px), 64vh, min(144vw, 806.4px))',
+        srcset: 'assets/assets/images/astrologer-720.webp 720w, assets/assets/images/astrologer-900.webp 900w',
+        src: 'assets/assets/images/astrologer-900.webp',
+      });
     } else {
       preloadEngineAssets();
     }
@@ -99,7 +103,7 @@
 <body>
   <div id="fate-startup" role="status" aria-live="polite">
     <div id="fate-welcome">
-      <img id="fate-welcome-portrait" width="1199" height="1312" alt="" fetchpriority="high" decoding="async" crossorigin="anonymous">
+      <span id="fate-welcome-portrait-slot"></span>
       <div class="fate-welcome-shade"></div>
       <span class="fate-welcome-star" aria-hidden="true">✦</span>
       <div class="fate-welcome-signature">

@@ -36,6 +36,24 @@ for (const { welcome: { name } } of Object.values(copy.jy)) {
 await mkdir(path.join(target,'assets','images'),{recursive:true});
 await mkdir(path.join(target,'assets','fonts'),{recursive:true});
 await writeFile(path.join(target,'assets','copy.json'),JSON.stringify(copy));
+const languages = Object.keys(copy.jy);
+const copyDirectory = path.join(target, 'assets', 'copy');
+await mkdir(copyDirectory, {recursive: true});
+for (const language of languages) {
+  const keepLanguage = group => Object.fromEntries(Object.entries(group).filter(([key, value]) =>
+    key === language || !languages.includes(key) || value === null || typeof value !== 'object'
+  ));
+  const localized = Object.fromEntries(Object.entries(copy).map(([group, value]) =>
+    [group, Array.isArray(value) ? value : keepLanguage(value)]
+  ));
+  localized.topics = copy.topics.map(keepLanguage);
+  localized.jyThemes = Object.fromEntries(Object.entries(copy.jyThemes).map(([group, themes]) =>
+    [group, themes.map(keepLanguage)]
+  ));
+  const name = copy.jy[language].welcome.name;
+  localized.welcomeStrokes = Object.hasOwn(copy.welcomeStrokes, name) ? {[name]: copy.welcomeStrokes[name]} : {};
+  await writeFile(path.join(copyDirectory, language + '.json'), JSON.stringify(localized));
+}
 const fontSubset=JSON.parse(await readFile(path.join(target,'assets','fonts','subsets.json'),'utf8'));
 const supported=new Set([...fontSubset.ui]);
 const dartFiles=(await readdir(path.join(target,'lib'),{recursive:true})).filter(name=>name.endsWith('.dart')&&!name.endsWith('chinese_coverage.dart'));

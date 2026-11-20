@@ -599,7 +599,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     listenable: _model,
     builder: (context, _) {
       final r = _model.report,
-          c = r == null ? widget.h5.copy : widget.h5.copy.forReport(r);
+          c = r == null ? widget.h5.copy : widget.h5.reportCopy(r);
       if (r == null) {
         return Center(
           child: SingleChildScrollView(

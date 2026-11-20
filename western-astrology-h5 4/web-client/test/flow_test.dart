@@ -312,7 +312,7 @@ void main() {
     expect(find.text(h5.copy.t('jy', 'lineContact.scan')), findsOneWidget);
     expect(browser.openedPages, isEmpty);
     await click(tester, find.text(h5.copy.t('jy', 'lineContact.open')));
-    expect(browser.openedPages, ['https://line.me/ti/p/DBMnHdX9sE']);
+    expect(browser.openedPages, ['https://line.me/ti/p/TrGGcMWmuV']);
     browser.openedPages.clear();
     await click(tester, find.widgetWithText(TextButton, h5.copy.t('jy', 'close')));
     expect(find.byType(AlertDialog), findsNothing);
@@ -732,7 +732,7 @@ void main() {
         ),
       );
       final wheel = find.byType(GenerationVideo);
-      final wheelState = tester.state(wheel);
+      final wheelElement = tester.element(wheel);
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(tester.getTopLeft(wheel).dy, greaterThanOrEqualTo(320));
       expect(find.text('准备中'), findsOneWidget);
@@ -745,8 +745,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 2600));
       state.update(report, 99, 'preview');
       await tester.pump(const Duration(seconds: 12));
-      expect(tester.state(wheel), same(wheelState));
-      expect(tester.widget<GenerationVideo>(wheel).finishing, isFalse);
+      expect(tester.element(wheel), same(wheelElement));
+      expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(completed, 0);
       expect(find.text('正在校验并保存解读内容'), findsOneWidget);
       state.fail('连接中断');
@@ -759,12 +759,11 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, '取消等待'));
       expect(cancelled, 1);
       state.ready(report);
-      await tester.pump(const Duration(milliseconds: 600));
       await tester.pump();
-      expect(find.text(h5.copy.t('jy', 'generation.basis')), findsOneWidget);
+      expect(find.text(h5.copy.t('jy', 'interpretation.complete')), findsOneWidget);
+      expect(find.text('100%'), findsOneWidget);
       expect(find.textContaining(RegExp('Qwen|RoxyAPI', caseSensitive: false)), findsNothing);
-      expect(tester.widget<GenerationVideo>(wheel).finishing, isTrue);
-      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 320));
       await tester.pump();
       expect(completed, 1);
       expect(tester.takeException(), isNull);
@@ -773,6 +772,38 @@ void main() {
       h5.dispose();
     },
   );
+  testWidgets('an already readable report skips the remaining stages', (tester) async {
+    phone(tester);
+    tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: false);
+    final browser = TestBrowser();
+    final h5 = H5Controller(translations(), ReportRepository(browser), browser);
+    final report = LifeReport.parse(fixture(language: 'th'));
+    final state = GenerationState()..ready(report);
+    final displayed = <LifeReport>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GenerationDialog(
+          h5: h5,
+          state: state,
+          full: false,
+          onCancel: () {},
+          onRetry: () {},
+          onComplete: displayed.add,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 319));
+    expect(displayed, isEmpty);
+    state.ready(report);
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(displayed, [report]);
+    await tester.pump(const Duration(seconds: 3));
+    expect(displayed, [report]);
+    await tester.pumpWidget(const SizedBox.shrink());
+    state.dispose();
+    h5.dispose();
+  });
 
   testWidgets(
     'Thai birth picker fits a small phone and language switching preserves the entry URL',
@@ -1054,22 +1085,34 @@ void main() {
     },
   );
   test(
-    'latest language request wins after an earlier slow font download',
+    'latest language request wins and the downloaded copy is reused',
     () async {
-      final gate = Completer<void>();
+      final gate = Completer<Json>();
       final browser = TestBrowser();
       final repo = ReportRepository(browser);
+      final thai = translations();
+      final translated = <String, dynamic>{
+        'jy': {'zh': object(thai['jy'])['zh']},
+      };
+      var requests = 0;
       final h5 = H5Controller(
-        translations(),
+        thai,
         repo,
         browser,
-        ensureFont: (lang) => lang == 'zh' ? gate.future : Future.value(),
+        loadTranslations: (_) {
+          requests++;
+          return gate.future;
+        },
       );
       final chinese = h5.changeLanguage('zh');
       await h5.changeLanguage('th');
-      gate.complete();
+      gate.complete(translated);
       expect(await chinese, isFalse);
       expect(h5.language, 'th');
+      expect(h5.translations, same(thai));
+      expect(await h5.changeLanguage('zh'), isTrue);
+      expect(h5.translations, same(translated));
+      expect(requests, 1);
       h5.dispose();
     },
   );

@@ -195,15 +195,15 @@ class GenerationDialog extends StatefulWidget {
 }
 
 class _GenerationDialogState extends State<GenerationDialog> {
-  Timer? _reviewTimer, _stageTimer, _detailsTimer, _fallback;
+  Timer? _reviewTimer, _stageTimer, _detailsTimer, _finishTimer;
   int _step = 0, _detail = 0;
   bool _prepared = false,
       _reduced = false,
       _reviewDone = false,
-      _presentationDone = false,
-      _loading = false,
-      _playbackStarted = false,
+      _finishing = false,
       _navigating = false;
+  Duration get _finishDuration =>
+      _reduced ? Duration.zero : const Duration(milliseconds: 320);
   @override
   void initState() {
     super.initState();
@@ -225,10 +225,9 @@ class _GenerationDialogState extends State<GenerationDialog> {
     if (_reduced) {
       _step = 2;
       _reviewDone = true;
-      _presentationDone = true;
     } else {
       _detailsTimer = Timer.periodic(const Duration(milliseconds: 650), (_) {
-        if (mounted && !_loading && widget.state.error.isEmpty) {
+        if (mounted && widget.state.error.isEmpty) {
           setState(() => _detail = (_detail + 1) % count);
         }
       });
@@ -241,50 +240,52 @@ class _GenerationDialogState extends State<GenerationDialog> {
   }
 
   void _changed() {
-    if (!mounted || !_prepared) return;
-    if (widget.state.error.isNotEmpty) {
+    if (!mounted || !_prepared || widget.state.error.isNotEmpty) return;
+    if (!widget.state.complete) {
+      _advance();
       return;
     }
-    _advance();
+    if (_finishing) return;
+    // A readable report ends the wait independently of the current animation.
+    _reviewTimer?.cancel();
+    _stageTimer?.cancel();
+    _detailsTimer?.cancel();
+    setState(() => _finishing = true);
+    _finishTimer = Timer(_finishDuration, _finish);
   }
 
   void _advance() {
-    if (!mounted || !_reviewDone || widget.state.error.isNotEmpty) return;
+    if (!mounted ||
+        !_reviewDone ||
+        _finishing ||
+        widget.state.error.isNotEmpty) {
+      return;
+    }
     if (!_reduced && _step == 0 && widget.state.report != null) {
       setState(() => _step = 1);
       _stageTimer = Timer(const Duration(milliseconds: 2400), () {
         if (!mounted) return;
         setState(() => _step = 2);
-        _stageTimer = Timer(const Duration(milliseconds: 2600), () {
-          _presentationDone = true;
-          _advance();
-        });
       });
     }
-    if (_presentationDone && widget.state.complete && !_loading) {
-      _loading = true;
-      _detailsTimer?.cancel();
-      setState(() {});
-      _stageTimer = Timer(Duration(milliseconds: _reduced ? 250 : 500), () {
-        if (!mounted) return;
-        if (_reduced) {
-          _finishSoon();
-          return;
-        }
-        setState(() => _playbackStarted = true);
-      });
-    }
-  }
-
-  void _finishSoon() {
-    _fallback ??= Timer(const Duration(milliseconds: 550), _finish);
   }
 
   void _finish() {
-    if (!mounted || _navigating || !widget.state.complete) return;
+    if (!mounted ||
+        _navigating ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        !widget.state.complete ||
+        widget.state.error.isNotEmpty) {
+      return;
+    }
     _navigating = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.onComplete(widget.state.report!);
+      if (mounted &&
+          ModalRoute.of(context)?.isCurrent == true &&
+          widget.state.complete &&
+          widget.state.error.isEmpty) {
+        widget.onComplete(widget.state.report!);
+      }
     });
     WidgetsBinding.instance.scheduleFrame();
   }
@@ -292,7 +293,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
   @override
   void dispose() {
     widget.state.removeListener(_changed);
-    for (final timer in [_reviewTimer, _stageTimer, _detailsTimer, _fallback]) {
+    for (final timer in [_reviewTimer, _stageTimer, _detailsTimer, _finishTimer]) {
       timer?.cancel();
     }
     super.dispose();
@@ -421,9 +422,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                         milliseconds: _reduced ? 0 : 380,
                                       ),
                                       child: JYCard(
-                                        key: ValueKey(
-                                          _loading ? 'loading' : _step,
-                                        ),
+                                        key: ValueKey(_step),
                                         child: ConstrainedBox(
                                           constraints: const BoxConstraints(
                                             minHeight: 122,
@@ -435,9 +434,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                               Text(
                                                 c.t(
                                                   'jy',
-                                                  _loading
-                                                      ? 'generation.method'
-                                                      : 'interpretation.steps.${keys[_step]}.title',
+                                                  'interpretation.steps.${keys[_step]}.title',
                                                 ),
                                                 style: const TextStyle(
                                                   color: Color(0xFFF4D399),
@@ -458,41 +455,11 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                                   report: report,
                                                   copy: c,
                                                 ),
-                                              if (_step == 2 && !_loading)
+                                              if (_step == 2)
                                                 ReportFactors(
                                                   report: report,
                                                   copy: c,
                                                 ),
-                                              if (_loading) ...[
-                                                Text(
-                                                  c.t('jy', 'chart.wheel'),
-                                                  style: const TextStyle(
-                                                    fontSize: 17,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 5),
-                                                Text(
-                                                  c.t(
-                                                    'jy',
-                                                    report?.estimated == true
-                                                        ? 'chart.dateOnly'
-                                                        : 'chart.exact',
-                                                  ),
-                                                  style: const TextStyle(
-                                                    color: gold,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  c.t('jy', 'generation.basis'),
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: lavender,
-                                                  ),
-                                                ),
-                                              ],
                                             ],
                                           ),
                                         ),
@@ -588,23 +555,17 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                             color: Color(0x33E4BC78),
                                           ),
                                           const SizedBox(height: 14),
-                                          AnimatedOpacity(
-                                            opacity: _loading ? 0 : 1,
-                                            duration: Duration(
-                                              milliseconds: _reduced ? 0 : 550,
-                                            ),
-                                            child: Text(
-                                              c.t('jy', status),
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                color: Color(0xFFFFF1D9),
-                                              ),
+                                          Text(
+                                            c.t('jy', status),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFFFFF1D9),
                                             ),
                                           ),
                                           const SizedBox(height: 10),
                                           ReadingProgress(
                                             percent: state.percent,
-                                            reduced: _reduced,
+                                            reduced: _reduced || complete,
                                             label: c.t('jy', 'progress'),
                                             waiting: waiting,
                                             waitingLabel: c.t(
@@ -664,13 +625,13 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                   aspectRatio: 3 / 2,
                                   child: ListenableBuilder(
                                     listenable: widget.state,
-                                    builder: (context, _) => GenerationVideo(
-                                      active: widget.state.error.isEmpty,
-                                      finishing:
-                                          _loading &&
-                                          (_reduced || _playbackStarted),
-                                      reduced: _reduced,
-                                      onFinished: _finish,
+                                    builder: (context, _) => AnimatedOpacity(
+                                      opacity: _finishing ? 0 : 1,
+                                      duration: _finishDuration,
+                                      child: GenerationVideo(
+                                        active: widget.state.error.isEmpty,
+                                        reduced: _reduced,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -683,7 +644,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                           right: 8,
                           child: HomeArrow(h5: widget.h5, onLeaving: widget.onCancel),
                         ),
-                        if (!_loading)
+                        if (!_finishing)
                           Positioned(
                             left: 0,
                             right: 0,

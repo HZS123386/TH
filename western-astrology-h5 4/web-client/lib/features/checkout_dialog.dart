@@ -105,7 +105,7 @@ class ReportPreview extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () => h5.browser.openPage(
-              'https://line.me/ti/p/DBMnHdX9sE',
+              'https://line.me/ti/p/TrGGcMWmuV',
             ),
             child: Text(copy.t('jy', 'lineContact.open')),
           ),
@@ -282,7 +282,7 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
   String? _paypalUrl;
   String _error = '';
 
-  Copy get _copy => widget.h5.copy.forReport(widget.report);
+  Copy get _copy => widget.h5.reportCopy(widget.report);
 
   @override
   void initState() {

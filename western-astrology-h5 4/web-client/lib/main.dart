@@ -21,15 +21,19 @@ Future<void> main() async {
   }
 }
 
-Future<Json> _loadTranslations() async {
+Future<Json> _loadTranslations(String language) async {
   for (var attempt = 0; ; attempt++) {
     try {
       // Do not reuse a failed loadString future from the asset bundle cache.
-      return object(
+      final translations = object(
         jsonDecode(
-          await rootBundle.loadString('assets/copy.json', cache: false),
+          await rootBundle.loadString('assets/copy/$language.json', cache: false),
         ),
       );
+      if (object(translations['jy'])[language] is! Map) {
+        throw const FormatException('Missing H5 translations');
+      }
+      return translations;
     } catch (_) {
       if (attempt == 2) rethrow;
       await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
@@ -43,7 +47,7 @@ Future<void> _startApp(WebBrowserPort browser) async {
   final fonts = LanguageFonts();
   // Both are required before runApp, but neither depends on the other's result.
   final (translations, _) = await (
-    _loadTranslations(),
+    _loadTranslations(language),
     fonts.ensure(language),
   ).wait;
   LicenseRegistry.addLicense(() async* {
@@ -67,6 +71,7 @@ Future<void> _startApp(WebBrowserPort browser) async {
     repository,
     browser,
     language: language,
+    loadTranslations: _loadTranslations,
     ensureFont: fonts.ensureCommon,
     ensureTextFont: fonts.ensureText,
   );

@@ -18,7 +18,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   const start = { setAttribute: vi.fn(), addEventListener: vi.fn() };
   const nodes = new Map<string, unknown>([
     ["fate-startup-status", status], ["fate-startup-retry", button], ["fate-startup", startup],
-    ["fate-welcome-start", start], ["fate-welcome-portrait", options.portrait],
+    ["fate-welcome-start", start], ["fate-welcome-portrait-slot", { replaceWith: vi.fn() }],
   ]);
   if (options.welcome) nodes.set("fate-welcome", { querySelector: vi.fn(), addEventListener: vi.fn() });
   const window = { dispatchEvent: vi.fn(), addEventListener: vi.fn() } as any;
@@ -51,7 +51,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
     window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history,
     performance: { mark: vi.fn(), now: () => Date.now(), getEntriesByType: () => [{ type: options.navigationType ?? "navigate" }] },
     crypto: webcrypto, AbortController,
-    sessionStorage: window.sessionStorage, fetch,
+    sessionStorage: window.sessionStorage, fetch, fateWelcomePortrait: options.portrait,
   });
   return { boot: window.fateBoot, h5: window.fateH5, window, document, fetch, location, status, button, start, startup, storage, local, cookie };
 }

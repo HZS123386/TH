@@ -439,7 +439,7 @@ function writeWelcomeName(welcome){
   paint(performance.now());
 }
 if(document.documentElement.dataset.welcome==='true'){
-  const welcome=document.getElementById('fate-welcome'),image=document.getElementById('fate-welcome-portrait');
+  const welcome=document.getElementById('fate-welcome'),image=fateWelcomePortrait;
   if(welcome){
     fateWelcomeStartedAt=performance.now();
     writeWelcomeName(welcome);
@@ -469,13 +469,19 @@ if(document.documentElement.dataset.welcome==='true'){
       // Give the actual portrait one paint before Flutter downloads, with an early-click and slow-image escape.
       const deadline = setTimeout(finish, 800);
       resumeWelcomeBoot = finish;
-      image.addEventListener('load', () => {
+      const painted = () => {
         window.fateH5.pageReady('welcome-visible');
         requestAnimationFrame(() => requestAnimationFrame(finish));
-      }, {once: true});
-      image.addEventListener('error', finish, {once: true});
+      };
+      if (image.complete) {
+        if (image.naturalWidth) painted();
+        else finish();
+      } else {
+        image.addEventListener('load', painted, {once: true});
+        image.addEventListener('error', finish, {once: true});
+      }
     });
-    image.src='assets/assets/images/astrologer-900.webp';
+    document.getElementById('fate-welcome-portrait-slot').replaceWith(image);
   }
   document.getElementById('fate-welcome-start')?.addEventListener('click',()=>window.fateBoot.enterWelcome());
   let touchStart;

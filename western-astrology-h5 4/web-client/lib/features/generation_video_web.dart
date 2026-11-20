@@ -9,12 +9,9 @@ class GenerationVideo extends StatefulWidget {
   const GenerationVideo({
     required this.active,
     required this.reduced,
-    required this.onFinished,
-    this.finishing = false,
     super.key,
   });
-  final bool active, reduced, finishing;
-  final VoidCallback onFinished;
+  final bool active, reduced;
   @override
   State<GenerationVideo> createState() => _GenerationVideoState();
 }
@@ -23,9 +20,8 @@ class _GenerationVideoState extends State<GenerationVideo>
     with WidgetsBindingObserver {
   web.HTMLVideoElement? _video;
   final _events = <StreamSubscription<web.Event>>[];
-  Timer? _watchdog, _fallback, _playRetry, _imageRetry;
-  bool _finished = false,
-      _failed = false,
+  Timer? _watchdog, _playRetry, _imageRetry;
+  bool _failed = false,
       _playPending = false,
       _imageFailed = false;
   int _playAttempts = 0, _imageAttempts = 0;
@@ -48,7 +44,7 @@ class _GenerationVideoState extends State<GenerationVideo>
       ..muted = true
       ..playsInline = true
       ..autoplay = widget.active
-      ..loop = !widget.finishing
+      ..loop = true
       ..preload = 'auto';
     video.setAttribute('aria-hidden', 'true');
     video.setAttribute('webkit-playsinline', 'true');
@@ -60,11 +56,7 @@ class _GenerationVideoState extends State<GenerationVideo>
     _events.add(video.onPlaying.listen((_) => _playAttempts = 0));
     _events.add(
       video.onEnded.listen((_) {
-        if (widget.finishing) {
-          _finish();
-        } else if (widget.active) {
-          unawaited(_play());
-        }
+        if (widget.active) unawaited(_play());
       }),
     );
     _events.add(video.onError.listen((_) => _playbackFailed()));
@@ -99,14 +91,14 @@ class _GenerationVideoState extends State<GenerationVideo>
     image.setAttribute('aria-hidden', 'true');
     _events.add(
       image.onError.listen((_) {
-        if (!mounted || !widget.active || _finished) return;
+        if (!mounted || !widget.active) return;
         if (++_imageAttempts > 3) {
           setState(() => _imageFailed = true);
           return;
         }
         _imageRetry?.cancel();
         _imageRetry = Timer(Duration(milliseconds: 500 * _imageAttempts), () {
-          if (mounted && widget.active && !_finished) {
+          if (mounted && widget.active) {
             image.src = source
                 .replace(queryParameters: {'retry': '$_imageAttempts'})
                 .toString();
@@ -139,8 +131,6 @@ class _GenerationVideoState extends State<GenerationVideo>
   @override
   void didUpdateWidget(covariant GenerationVideo oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _video?.loop = !widget.finishing;
-    if (widget.finishing && !oldWidget.finishing && _failed) _finishSoon();
     if (oldWidget.active != widget.active) {
       if (widget.active) {
         _start();
@@ -154,14 +144,10 @@ class _GenerationVideoState extends State<GenerationVideo>
 
   void _start() {
     final video = _video;
-    if (video == null || !mounted || _finished) return;
+    if (video == null || !mounted || _failed) return;
     video.style.visibility = 'visible';
     video.style.opacity = '1';
     _advanced = DateTime.now();
-    if (_failed) {
-      if (widget.finishing) _finishSoon();
-      return;
-    }
     unawaited(_play());
     _watchdog?.cancel();
     _watchdog = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -182,14 +168,14 @@ class _GenerationVideoState extends State<GenerationVideo>
   }
 
   Future<void> _play() async {
-    if (!mounted || _finished || _failed || _playPending || !widget.active) {
+    if (!mounted || _failed || _playPending || !widget.active) {
       return;
     }
     _playPending = true;
     try {
       await _video?.play().toDart;
     } catch (_) {
-      if (mounted && widget.active && !_finished && !_failed) {
+      if (mounted && widget.active && !_failed) {
         if (++_playAttempts < 3) {
           _playRetry?.cancel();
           _playRetry = Timer(const Duration(milliseconds: 300), () {
@@ -211,18 +197,6 @@ class _GenerationVideoState extends State<GenerationVideo>
     _video?.pause();
     _video?.style.visibility = 'hidden';
     if (!_failed) setState(() => _failed = true);
-    if (widget.finishing) _finishSoon();
-  }
-
-  void _finishSoon() {
-    _fallback ??= Timer(const Duration(milliseconds: 550), _finish);
-  }
-
-  void _finish() {
-    if (!mounted || !widget.active || !widget.finishing || _finished) return;
-    _finished = true;
-    _watchdog?.cancel();
-    widget.onFinished();
   }
 
   @override
@@ -237,10 +211,8 @@ class _GenerationVideoState extends State<GenerationVideo>
 
   @override
   void dispose() {
-    _finished = true;
     WidgetsBinding.instance.removeObserver(this);
     _watchdog?.cancel();
-    _fallback?.cancel();
     _playRetry?.cancel();
     _imageRetry?.cancel();
     for (final event in _events) {

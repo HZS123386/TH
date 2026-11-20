@@ -47,10 +47,10 @@ export async function buildLanding({release=false}={}){
   const browserSource=await readFile(path.join(flutterRoot,'web','browser.js'),'utf8');
   const indexPath=path.join(generated,'index.html');
   let index=await readFile(indexPath,'utf8');
-  // Preload the small Dart module and let Flutter choose the compatible main binary.
+  // Warm the small Dart module during the welcome without competing with the portrait.
   const runtimeSlot='<!-- FATE_WASM_RUNTIME_PRELOAD -->';
   if(!index.includes(runtimeSlot))throw Error('Missing Wasm runtime preload slot');
-  index=index.replace(runtimeSlot,'<link rel="modulepreload" href="main.dart.mjs" crossorigin fetchpriority="high">');
+  index=index.replace(runtimeSlot,'<link rel="modulepreload" href="main.dart.mjs" crossorigin fetchpriority="low">');
   // The first paint and Flutter welcome use the same translated content.
   const copy=JSON.parse(await readFile(path.join(flutterRoot,'assets','copy.json'),'utf8'));
   const welcomeCopy=copy.jy;
