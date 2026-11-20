@@ -31,12 +31,18 @@
       return link;
     }
     const switchFonts = {zh:'FateChineseUI.otf',my:'NotoSansMyanmar-Regular.ttf',km:'NotoSansKhmer-Regular.ttf',lo:'NotoSansLao-Regular.ttf'};
+    const welcomeFonts = {th:'FateWelcomeThai.ttf',zh:'FateWelcomeChinese.otf'};
     const preloadedFonts = new Set();
-    const preloadFateLanguage = language => {
-      const file = switchFonts[language];
+    const preloadFateFont = (file, as) => {
       if (!file || preloadedFonts.has(file)) return;
       preloadedFonts.add(file);
-      document.head.append(priorityPreload('assets/assets/fonts/' + file, 'fetch'));
+      document.head.append(priorityPreload('assets/assets/fonts/' + file, as));
+    };
+    const preloadFateLanguage = language => {
+      if (document.documentElement.dataset.welcome === 'true') {
+        preloadFateFont(welcomeFonts[language], 'font');
+      }
+      preloadFateFont(switchFonts[language], 'fetch');
     };
     if (document.documentElement.dataset.welcome === 'true') {
       document.head.append(priorityPreload('assets/assets/images/astrologer-900.webp', 'image'));
@@ -58,19 +64,23 @@
     .fate-startup-zh,.fate-startup-th,.fate-startup-en,.fate-startup-vi,.fate-startup-my,.fate-startup-km,.fate-startup-lo,.fate-startup-ms,.fate-startup-id{display:none}
     html:lang(zh) .fate-startup-zh,html:lang(th) .fate-startup-th,html:lang(en) .fate-startup-en,html:lang(vi) .fate-startup-vi,html:lang(my) .fate-startup-my,html:lang(km) .fate-startup-km,html:lang(lo) .fate-startup-lo,html:lang(ms) .fate-startup-ms,html:lang(id) .fate-startup-id{display:inline}
     #fate-welcome{display:none}
-    @font-face{font-family:FateWelcomeThai;src:url('assets/assets/fonts/FateWelcomeThai.ttf') format('truetype');font-display:swap}
-    @font-face{font-family:FateWelcomeChinese;src:url('assets/assets/fonts/FateWelcomeChinese.otf') format('opentype');font-display:swap}
-    html[data-welcome=true] #fate-startup{display:block;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:#0b0715;box-sizing:border-box}
+    @font-face{font-family:FateWelcomeThai;src:url('assets/assets/fonts/FateWelcomeThai.ttf') format('truetype');font-weight:100 900;font-display:optional}
+    @font-face{font-family:FateWelcomeChinese;src:url('assets/assets/fonts/FateWelcomeChinese.otf') format('opentype');font-display:optional}
+    html[data-welcome=true] flutter-view{visibility:hidden}
+    html[data-welcome=true] #fate-startup{display:block;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:#0b0715;box-sizing:border-box;transform:translateZ(0)}
     html[data-welcome=true] #fate-startup>img,html[data-welcome=true] .fate-startup-track{display:none}
     html[data-welcome=true] #fate-welcome{display:block;position:relative;width:100%;height:100%;max-width:900px;margin:auto;overflow:hidden;container-type:size;background:radial-gradient(circle at 50% 24%,#271342,#0a0612);font-family:FateWelcomeThai,system-ui,sans-serif;--fate-portrait-width:clamp(min(118cqw,660.8px),64cqh,min(144cqw,806.4px))}
     html[data-welcome=true]:lang(zh) #fate-welcome{font-family:FateWelcomeChinese,system-ui,sans-serif}
-    #fate-welcome #fate-welcome-portrait{position:absolute;top:0;left:50%;transform:translateX(-50%);width:var(--fate-portrait-width);height:auto;max-width:none}
+    #fate-welcome #fate-welcome-portrait{position:absolute;top:0;left:50%;transform:translateX(-50%);width:var(--fate-portrait-width);height:auto;max-width:none;visibility:hidden}
+    #fate-welcome #fate-welcome-portrait[data-loaded]{visibility:visible}
     .fate-welcome-shade{position:absolute;inset:0;background:linear-gradient(transparent 34%,#11071d22 49%,#120820b5 66%,#100717 83%);pointer-events:none}
     .fate-welcome-star{position:absolute;top:25px;left:23px;font-size:22px;color:#f8da9d;text-shadow:0 0 16px #ffa3fb}
-    .fate-welcome-language{position:absolute;z-index:1;top:16px;right:16px;display:flex;align-items:center;gap:6px;padding:0 8px 0 10px;color:#f8da9d}
-    #fate-welcome-language{min-height:42px;max-width:150px;padding:4px 0;border:0;border-radius:8px;background:transparent;color:inherit;font:600 13px system-ui,sans-serif;cursor:pointer}
+    .fate-welcome-language{position:absolute;z-index:1;top:16px;right:16px;display:flex;align-items:center;gap:7px;min-height:44px;padding:0 10px;color:#e4bc78;font-size:12.3px;white-space:nowrap}
+    .fate-welcome-language svg{width:20px;height:20px;flex:none}
+    .fate-welcome-language-arrow{width:6px;height:6px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-2px) rotate(45deg);margin-inline-start:1px}
+    #fate-welcome-language{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
     #fate-welcome-language option{color:#f8da9d;background:#211630}
-    #fate-welcome-language:focus-visible{outline:2px solid #f8da9d;outline-offset:2px}
+    .fate-welcome-language:focus-within{outline:2px solid #f8da9d;outline-offset:2px;border-radius:8px}
     .fate-welcome-content{position:absolute;left:20px;right:20px;bottom:22px;max-height:calc(100% - 44px);overflow-y:auto;text-align:center}
     .fate-welcome-signature{position:absolute;right:max(var(--fate-signature-edge,13px),calc((100cqw - var(--fate-portrait-width))/2 + var(--fate-portrait-width)*var(--fate-signature-inset,.1)));top:min(calc(var(--fate-portrait-width)*var(--fate-signature-top,.33)),max(18px,calc(100cqh - 245px)));width:clamp(124px,32cqw,164px);padding:9px 6px;box-sizing:border-box;text-align:center;transform:rotate(-2deg);transform-origin:right center;pointer-events:none}
     html:lang(th) .fate-welcome-signature{--fate-signature-edge:10px;--fate-signature-inset:.075;--fate-signature-top:.3;width:clamp(112px,29cqw,144px)}
@@ -114,8 +124,13 @@
       <img id="fate-welcome-portrait" width="1199" height="1312" alt="" fetchpriority="high" decoding="async" crossorigin="anonymous">
       <div class="fate-welcome-shade"></div>
       <span class="fate-welcome-star" aria-hidden="true">✦</span>
-      <div class="fate-welcome-language">
-        <span aria-hidden="true">◎</span>
+      <label class="fate-welcome-language">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="10" cy="10" r="8.5"/><ellipse cx="10" cy="10" rx="3.8" ry="8.5"/>
+          <path d="M2.1 7h15.8M2.1 13h15.8"/>
+        </svg>
+        <span id="fate-welcome-language-label" aria-hidden="true"></span>
+        <span class="fate-welcome-language-arrow" aria-hidden="true"></span>
         <select id="fate-welcome-language" aria-label="Language">
           <option value="th" lang="th">ภาษาไทย</option>
           <option value="en" lang="en">English</option>
@@ -127,8 +142,8 @@
           <option value="ms" lang="ms">Bahasa Melayu</option>
           <option value="id" lang="id">Bahasa Indonesia</option>
         </select>
-      </div>
-      <script>document.getElementById('fate-welcome-language').value=document.documentElement.lang;</script>
+      </label>
+      <script>updateFateWelcomeLanguagePicker();</script>
       <div class="fate-welcome-signature">
         <p class="fate-welcome-name"><!-- FATE_WELCOME_NAME --></p>
         <p class="fate-welcome-role"><!-- FATE_WELCOME_ROLE --></p>

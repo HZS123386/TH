@@ -97,7 +97,9 @@ Future<void> _startApp(WebBrowserPort browser) async {
     controller.changeLanguage,
     language,
   );
-  runApp(H5App(controller: controller));
+  runApp(
+    H5App(controller: controller, browserWelcome: browser.hasBrowserWelcome),
+  );
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(
       WidgetsBinding.instance.waitUntilFirstFrameRasterized

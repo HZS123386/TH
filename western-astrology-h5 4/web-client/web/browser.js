@@ -81,7 +81,7 @@ const fateBootLabels={
   "ms":{"engine": "Membuka langit anda", "app": "Membuka langit anda", "slow": "Rangkaian perlahan. Sila tunggu", "retry": "Sambungan terputus. Memuatkan semula", "failed": "Halaman tidak dapat dimuatkan. Semak sambungan dan cuba lagi"},
   "id":{"engine": "Membuka langit Anda", "app": "Membuka langit Anda", "slow": "Jaringan lambat. Silakan tunggu", "retry": "Koneksi terputus. Memuat ulang", "failed": "Halaman belum dapat dimuat. Periksa koneksi dan coba lagi"}
 };
-let fateBootFinished=false,fateBootFinishing=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
+let fateAppReady=false,fateRevealingApp=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
 let fateWelcomeRequested=false,fateWelcomeEnter,fateWelcomeSetLanguage,fateFlutterLanguage;
 let fateWelcomeLanguage=document.documentElement.lang;
 function showFateStartupStatus(stage) {
@@ -91,11 +91,17 @@ function showFateStartupStatus(stage) {
   if (status) status.textContent = labels[stage] ?? labels.app;
   if (progress) progress.textContent = labels.app;
 }
+function updateFateWelcomeLanguagePicker() {
+  const select = document.getElementById('fate-welcome-language');
+  if (!select) return;
+  select.value = fateWelcomeLanguage;
+  const label = document.getElementById('fate-welcome-language-label');
+  if (label) label.textContent = select.selectedOptions[0]?.textContent ?? '';
+}
 function selectFateWelcomeLanguage(language) {
   fateWelcomeLanguage = language;
   document.documentElement.lang = language;
-  const select = document.getElementById('fate-welcome-language');
-  if (select) select.value = language;
+  updateFateWelcomeLanguagePicker();
   const url = new URL(location.href);
   url.searchParams.set('lang', language);
   history.replaceState(history.state, '', url);
@@ -109,6 +115,28 @@ function deliverFateWelcome() {
   fateWelcomeEnter = undefined;
   enter();
 }
+function nextFatePaint() {
+  return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+}
+async function revealFateApp(afterEntry = false) {
+  if (fateRevealingApp) return;
+  fateRevealingApp = true;
+  if (afterEntry) await nextFatePaint();
+  while (fateWelcomeSetLanguage && fateWelcomeLanguage !== fateFlutterLanguage) {
+    const requested = fateWelcomeLanguage;
+    let changed = false;
+    try { changed = await fateWelcomeSetLanguage(requested); } catch {}
+    if (changed) fateFlutterLanguage = requested;
+    if (!changed && requested === fateWelcomeLanguage) selectFateWelcomeLanguage(fateFlutterLanguage);
+    document.documentElement.lang = fateWelcomeLanguage;
+    await nextFatePaint();
+  }
+  document.documentElement.dataset.welcome = 'false';
+  document.getElementById('fate-startup')?.remove();
+  performance.mark('fate-page-visible');
+  fateWelcomeEnter = undefined;
+  fateWelcomeSetLanguage = undefined;
+}
 const fateBootRetryKey='fate-startup-recovery-at';
 // Consume a queued retry even if navigation stalled, then latch the path preference before its TTL expires.
 const fateBootRetry=(()=>{
@@ -120,14 +148,14 @@ const fateBootRetry=(()=>{
     return previous;
   }catch{return null;}
 })();
-const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateBootFinished){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
+const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateAppReady){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
 // A truncated HTML stream may render the overlay without ever reaching the inline bootstrap.
 const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail();},20000);
 const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBoot.fail(),90000);
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
   compatibility:fateBootRetry?.compatibility===true,
-  stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage==='engine'||stage==='app'?(fateWelcomeRequested?'waiting':stage):stage;showFateStartupStatus(stage);},
+  stage(stage){if(fateAppReady||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage==='engine'||stage==='app'?(fateWelcomeRequested?'waiting':stage):stage;showFateStartupStatus(stage);},
   connectWelcome(enter, setLanguage, language) {
     fateWelcomeEnter=enter;
     fateWelcomeSetLanguage=setLanguage;
@@ -135,15 +163,17 @@ window.fateBoot={
     deliverFateWelcome();
   },
   enterWelcome(){
-    if(fateBootFinished||fateBootFailed||fateWelcomeRequested||document.documentElement.dataset.welcome!=='true')return;
+    if(fateBootFailed||fateWelcomeRequested||document.documentElement.dataset.welcome!=='true')return;
     fateWelcomeRequested=true;
     performance.mark('fate-welcome-accepted');
     document.getElementById('fate-welcome-start')?.setAttribute('aria-busy','true');
     this.stage('waiting');
+    showFateStartupStatus('waiting');
     deliverFateWelcome();
+    if (fateAppReady) void revealFateApp(true);
   },
   fail(){
-    if(fateHttpsUpgrading||fateBootFinished||fateBootFailed)return;
+    if(fateHttpsUpgrading||fateAppReady||fateBootFailed)return;
     fateBootFailed=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);
     // A failed ES-module import stays rejected for this document; retry it once in a fresh document.
     let recover=false;
@@ -156,24 +186,26 @@ window.fateBoot={
     if(recover){this.stage('retry');fateBootRecovery=setTimeout(()=>location.reload(),700);return;}
     this.stage('failed');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;
   },
-  async ready(){
-    if(fateBootFinished||fateBootFinishing)return;
-    fateBootFinishing=true;
-    // The HTML picker remains usable until Flutter draws the chosen language.
-    while(fateWelcomeSetLanguage && fateWelcomeLanguage!==fateFlutterLanguage) {
-      const requested=fateWelcomeLanguage;
-      let changed=false;
-      try { changed=await fateWelcomeSetLanguage(requested); } catch {}
-      if(changed) fateFlutterLanguage=requested;
-      if(!changed && requested===fateWelcomeLanguage) selectFateWelcomeLanguage(fateFlutterLanguage);
-      document.documentElement.lang=fateWelcomeLanguage;
-      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  async ready() {
+    if (fateAppReady) return;
+    fateAppReady = true;
+    fateBootFailed = false;
+    clearTimeout(fateBootSlow);
+    clearTimeout(fateBootHtml);
+    clearTimeout(fateBootWatchdog);
+    clearTimeout(fateBootRecovery);
+    try { sessionStorage.removeItem(fateBootRetryKey); } catch {}
+    const startup = document.getElementById('fate-startup');
+    if (startup) startup.dataset.state = 'ready';
+    const retry = document.getElementById('fate-startup-retry');
+    if (retry) retry.hidden = true;
+    performance.mark('fate-app-ready');
+    window.dispatchEvent(new Event('fate-app-ready'));
+    // The browser owns the welcome until the visitor enters the form.
+    if (fateWelcomeRequested || document.documentElement.dataset.welcome !== 'true' ||
+        !document.getElementById('fate-welcome')) {
+      await revealFateApp();
     }
-    fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);clearTimeout(fateBootRecovery);
-    try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
-    document.getElementById('fate-startup')?.remove();performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));
-    fateWelcomeEnter=undefined;
-    fateWelcomeSetLanguage=undefined;
   }
 };
 function preloadFateWasm(engineRevision) {
@@ -212,7 +244,8 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('change',event=>{
   const select=event.target;
-  if(select?.id==='fate-welcome-language' && !fateBootFinished && Object.hasOwn(fateBootLabels,select.value)) {
+  if(select?.id==='fate-welcome-language' && document.documentElement.dataset.welcome==='true' &&
+      Object.hasOwn(fateBootLabels,select.value)) {
     selectFateWelcomeLanguage(select.value);
   }
 });
@@ -565,7 +598,10 @@ function mountFateWelcome(){
     else document.addEventListener('visibilitychange', trackWelcome);
   }
   if(image){
-    image.addEventListener('load',()=>window.fateH5.pageReady('welcome-visible'),{once:true});
+    image.addEventListener('load',()=>{
+      image.setAttribute('data-loaded','');
+      window.fateH5.pageReady('welcome-visible');
+    },{once:true});
     image.src='assets/assets/images/astrologer-900.webp';
   }
   let touchStart;

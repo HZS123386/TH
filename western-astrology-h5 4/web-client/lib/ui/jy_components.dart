@@ -7,9 +7,15 @@ import 'theme.dart';
 
 /// Keep failed artwork recoverable without changing the surrounding layout.
 class FateImage extends StatefulWidget {
-  const FateImage(this.asset, {this.fit = BoxFit.contain, super.key});
+  const FateImage(
+    this.asset, {
+    this.fit = BoxFit.contain,
+    this.onPainted,
+    super.key,
+  });
   final String asset;
   final BoxFit fit;
+  final VoidCallback? onPainted;
   @override
   State<FateImage> createState() => _FateImageState();
 }
@@ -17,6 +23,7 @@ class FateImage extends StatefulWidget {
 class _FateImageState extends State<FateImage> {
   int _attempt = 0;
   Timer? _retry;
+  bool _paintReported = false;
 
   @override
   void didUpdateWidget(covariant FateImage oldWidget) {
@@ -25,7 +32,17 @@ class _FateImageState extends State<FateImage> {
       _retry?.cancel();
       _retry = null;
       _attempt = 0;
+      _paintReported = false;
     }
+  }
+
+  void _reportPaint() {
+    if (_paintReported || widget.onPainted == null) return;
+    _paintReported = true;
+    final asset = widget.asset;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.asset == asset) widget.onPainted?.call();
+    });
   }
 
   void _scheduleRetry() {
@@ -67,12 +84,14 @@ class _FateImageState extends State<FateImage> {
       if (frame != null || synchronous) {
         _retry?.cancel();
         _retry = null;
+        _reportPaint();
         return child;
       }
       return const ColoredBox(color: panel, child: SizedBox.expand());
     },
     errorBuilder: (context, error, stack) {
       _scheduleRetry();
+      if (_attempt >= 3) _reportPaint();
       return ColoredBox(
         color: panel,
         child: Center(

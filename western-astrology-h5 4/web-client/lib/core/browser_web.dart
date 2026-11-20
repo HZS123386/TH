@@ -36,6 +36,9 @@ class WebBrowserPort implements BrowserPort {
   void startupFailed() => _startupFailed();
   String? get startupLanguage =>
       web.document.documentElement?.getAttribute('lang');
+  bool get hasBrowserWelcome =>
+      web.document.documentElement?.getAttribute('data-welcome') == 'true' &&
+      web.document.getElementById('fate-welcome') != null;
 
   void connectWelcome(
     void Function() enter,

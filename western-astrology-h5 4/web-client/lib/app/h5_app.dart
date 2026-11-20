@@ -11,21 +11,33 @@ import 'localizations.dart';
 import 'languages.dart';
 
 class H5App extends StatefulWidget {
-  const H5App({required this.controller, this.initialLocation, super.key});
+  const H5App({
+    required this.controller,
+    this.initialLocation,
+    this.browserWelcome = false,
+    super.key,
+  });
   final H5Controller controller;
   final String? initialLocation;
+  final bool browserWelcome;
   @override
   State<H5App> createState() => _H5AppState();
 }
 
 class _H5AppState extends State<H5App> {
   Timer? _timingFrame;
+  bool _reportedReady = false;
+  bool _welcomePortraitPainted = false;
   late final _router = GoRouter(
     initialLocation: widget.initialLocation,
     routes: [
       ShellRoute(
-        builder: (context, state, child) =>
-            _Shell(landing: state.uri.path == '/', child: child),
+        builder: (context, state, child) => _Shell(
+          landing: state.uri.path == '/',
+          browserWelcome: widget.browserWelcome,
+          onWelcomePortraitPainted: _welcomePortraitDidPaint,
+          child: child,
+        ),
         routes: [
           GoRoute(
             path: '/',
@@ -64,7 +76,7 @@ class _H5AppState extends State<H5App> {
   @override
   void initState() {
     super.initState();
-    // The welcome image already resolves itself; it must not defer the whole UI.
+    widget.controller.addListener(_reportAppReady);
     WidgetsBinding.instance.addPostFrameCallback((_) => _observeFirstFrame());
   }
 
@@ -81,24 +93,47 @@ class _H5AppState extends State<H5App> {
     unawaited(
       WidgetsBinding.instance.waitUntilFirstFrameRasterized.then((_) {
         _timingFrame?.cancel();
-        if (!mounted) return;
-        widget.controller.browser.pageReady('app-ready');
-        // Warm the form artwork after the welcome is visible, without blocking it.
-        if (!(widget.initialLocation ?? Uri.base.path).contains('.html')) {
-          unawaited(
-            precacheImage(
-              const AssetImage('assets/images/theme-thai-artwork.jpg'),
-              context,
-              onError: (error, stack) {},
-            ),
-          );
-        }
+        _reportAppReady();
       }),
     );
   }
 
+  void _welcomePortraitDidPaint() {
+    _welcomePortraitPainted = true;
+    _reportAppReady();
+  }
+
+  void _reportAppReady() {
+    if (!mounted ||
+        _reportedReady ||
+        !WidgetsBinding.instance.firstFrameRasterized) {
+      return;
+    }
+    final h5 = widget.controller;
+    final landing = _router.routeInformationProvider.value.uri.path == '/';
+    if (landing &&
+        h5.welcomeOpen &&
+        !widget.browserWelcome &&
+        !_welcomePortraitPainted) {
+      return;
+    }
+    _reportedReady = true;
+    h5.removeListener(_reportAppReady);
+    h5.browser.pageReady('app-ready');
+    if (landing) {
+      unawaited(
+        precacheImage(
+          const AssetImage('assets/images/theme-thai-artwork.jpg'),
+          context,
+          onError: (error, stack) {},
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
+    widget.controller.removeListener(_reportAppReady);
     _timingFrame?.cancel();
     _router.dispose();
     super.dispose();
@@ -123,9 +158,16 @@ class _H5AppState extends State<H5App> {
 }
 
 class _Shell extends StatelessWidget {
-  const _Shell({required this.child, this.landing = false});
+  const _Shell({
+    required this.child,
+    required this.onWelcomePortraitPainted,
+    required this.landing,
+    required this.browserWelcome,
+  });
   final Widget child;
+  final VoidCallback onWelcomePortraitPainted;
   final bool landing;
+  final bool browserWelcome;
   @override
   Widget build(BuildContext context) {
     final h5 = H5Scope.of(context);
@@ -158,7 +200,13 @@ class _Shell extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (showWelcome) Positioned.fill(child: WelcomePage(h5: h5)),
+                  if (showWelcome && !browserWelcome)
+                    Positioned.fill(
+                      child: WelcomePage(
+                        h5: h5,
+                        onPortraitPainted: onWelcomePortraitPainted,
+                      ),
+                    ),
                 ],
               ),
             ),

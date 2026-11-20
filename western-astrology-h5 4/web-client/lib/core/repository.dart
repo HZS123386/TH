@@ -66,6 +66,7 @@ class ReportRepository {
   final DeviceStore store;
   final http.Client client;
   final String baseUrl;
+  final _firstCityPages = <String, Future<Json>>{};
   String language = 'th';
   Json Function()? visitContext;
   void Function(String, String, String)? onClientFailure;
@@ -421,12 +422,56 @@ class ReportRepository {
     }
   }
 
+  Future<void> warmCities(String country) async {
+    try {
+      await _firstCityPage(country);
+    } on ApiFailure {
+      // An unsuccessful preload is retried when the visitor opens the list.
+    }
+  }
+
+  Future<Json> _firstCityPage(String country) =>
+      _firstCityPages.putIfAbsent(country, () async {
+        try {
+          return await _fetchCities(
+            country,
+            '',
+            0,
+            CancelToken(),
+            timeout: const Duration(seconds: 12),
+          );
+        } catch (_) {
+          _firstCityPages.remove(country);
+          rethrow;
+        }
+      });
+
   Future<Json> cities(
     String country,
     String query,
     int offset,
     CancelToken token,
   ) async {
+    token.check();
+    if (query.isEmpty && offset == 0) {
+      // A closed menu cancels its own wait. The next menu can reuse the request.
+      final result = await Future.any<Json>([
+        _firstCityPage(country),
+        token.future.then<Json>((_) => throw const Cancelled()),
+      ]);
+      token.check();
+      return result;
+    }
+    return _fetchCities(country, query, offset, token);
+  }
+
+  Future<Json> _fetchCities(
+    String country,
+    String query,
+    int offset,
+    CancelToken token, {
+    Duration? timeout,
+  }) async {
     final params = Uri(
       queryParameters: {
         'country': country,
@@ -436,7 +481,12 @@ class ReportRepository {
       },
     ).query;
     return object(
-      await request('/api/thai-locations?$params', token, owned: false),
+      await request(
+        '/api/thai-locations?$params',
+        token,
+        owned: false,
+        timeout: timeout,
+      ),
     );
   }
 }

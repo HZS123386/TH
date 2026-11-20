@@ -425,10 +425,13 @@ it.each(["zh", "th"])("accepts a streamed %s welcome click and enters before the
   expect(enter).toHaveBeenCalledTimes(1);
 });
 
-it("starts Flutter while the welcome portrait is still loading", () => {
-  const portrait = new EventTarget();
+it("starts Flutter while the portrait loads and reveals the complete image", () => {
+  const portrait = Object.assign(new EventTarget(), { setAttribute: vi.fn() });
   const page = openDocument(new Map(), false, { portrait });
   expect(page.startFlutter()).toHaveBeenCalledOnce();
+  expect(portrait.setAttribute).not.toHaveBeenCalled();
+  portrait.dispatchEvent(new Event("load"));
+  expect(portrait.setAttribute).toHaveBeenCalledWith("data-loaded", "");
 });
 
 it("starts the same Flutter Wasm downloads early without spending bandwidth on incompatible browsers", () => {
@@ -449,6 +452,7 @@ it("keeps early language choices and waits for the latest choice before handing 
     language: "th",
     url: "http://127.0.0.1/thai-landing/?lang=th&utm_source=story#start",
     streamingHtml: true,
+    welcome: true,
   });
   page.selectLanguage("zh");
   expect(page.document.documentElement.lang).toBe("zh");
@@ -456,13 +460,14 @@ it("keeps early language choices and waits for the latest choice before handing 
   const enter = vi.fn();
   const change = vi.fn(async (_language: string) => true);
   page.boot.connectWelcome(enter, change, "th");
-  const ready = page.boot.ready();
+  await page.boot.ready();
   expect(page.startup.remove).not.toHaveBeenCalled();
+  expect(change).not.toHaveBeenCalled();
   page.selectLanguage("vi");
   page.clickStart();
+  page.clickStart();
   await vi.advanceTimersByTimeAsync(80);
-  await ready;
-  expect(change.mock.calls).toEqual([["zh"], ["vi"]]);
+  expect(change.mock.calls).toEqual([["vi"]]);
   expect(enter).toHaveBeenCalledOnce();
   expect(page.document.documentElement.lang).toBe("vi");
   expect(page.location.href).toContain("lang=vi&utm_source=story#start");
@@ -471,12 +476,15 @@ it("keeps early language choices and waits for the latest choice before handing 
 
 it("keeps the welcome open without a click and leaves deep links on their original route", () => {
   for (const route of ["", "report.html?id=retained-report", "privacy.html", "support.html"]) {
-    const page = openDocument(new Map(), false, { url: `http://127.0.0.1/thai-landing/${route}` });
+    const page = openDocument(new Map(), false, {
+      url: `http://127.0.0.1/thai-landing/${route}`, welcome: !route,
+    });
     const enter = vi.fn();
     page.boot.connectWelcome(enter);
     if (route) page.boot.enterWelcome();
     page.boot.ready();
     expect(enter).not.toHaveBeenCalled();
+    expect(page.startup.remove).toHaveBeenCalledTimes(route ? 1 : 0);
     expect(page.location.replace).not.toHaveBeenCalled();
   }
 });
