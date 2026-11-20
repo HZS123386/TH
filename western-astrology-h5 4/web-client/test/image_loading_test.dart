@@ -22,18 +22,22 @@ class InterruptedArtwork extends CachingAssetBundle {
 }
 
 void main() {
-  Widget artwork(InterruptedArtwork bundle) => DefaultAssetBundle(
-    bundle: bundle,
-    child: const MaterialApp(
-      home: Center(
-        child: SizedBox(
-          width: 240,
-          height: 160,
-          child: FateImage('assets/images/fate-brand.png'),
+  Widget artwork(InterruptedArtwork bundle, {VoidCallback? onPainted}) =>
+      DefaultAssetBundle(
+        bundle: bundle,
+        child: MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 240,
+              height: 160,
+              child: FateImage(
+                'assets/images/fate-brand.png',
+                onPainted: onPainted,
+              ),
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   testWidgets(
     'artwork recovers when manifest resolution also fails during a retry',
@@ -69,13 +73,16 @@ void main() {
     'artwork stops retrying, permits a manual retry, and disposes cleanly',
     (tester) async {
       final bundle = InterruptedArtwork()..remainingFailures = 20;
-      await tester.pumpWidget(artwork(bundle));
+      var painted = 0;
+      await tester.pumpWidget(artwork(bundle, onPainted: () => painted++));
+      expect(painted, 0);
       await tester.pumpAndSettle();
       for (final delay in [500, 1000, 1500]) {
         await tester.pump(Duration(milliseconds: delay));
         await tester.pumpAndSettle();
       }
       expect(bundle.requests, 4);
+      expect(painted, 1);
       expect(find.byType(IconButton), findsOneWidget);
       await tester.pump(const Duration(seconds: 10));
       expect(bundle.requests, 4);

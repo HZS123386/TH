@@ -12,8 +12,13 @@ import '../ui/theme.dart';
 
 /// JY's welcome interaction rendered by the existing Flutter application.
 class WelcomePage extends StatefulWidget {
-  const WelcomePage({required this.h5, super.key});
+  const WelcomePage({
+    required this.h5,
+    required this.onPortraitPainted,
+    super.key,
+  });
   final H5Controller h5;
+  final VoidCallback onPortraitPainted;
   @override
   State<WelcomePage> createState() => _WelcomePageState();
 }
@@ -146,9 +151,10 @@ class _WelcomePageState extends State<WelcomePage>
                               (to.height - heroHeight - 11).clamp(0.0, 1000.0) *
                                   t,
                             ),
-                            child: const FateImage(
+                            child: FateImage(
                               'assets/images/astrologer-900.webp',
                               fit: BoxFit.fill,
+                              onPainted: widget.onPortraitPainted,
                             ),
                           ),
                         ),

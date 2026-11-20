@@ -33,6 +33,7 @@ class _BirthplaceFieldsState extends State<BirthplaceFields> {
   @override
   void initState() {
     super.initState();
+    unawaited(widget.h5.repository.warmCities(widget.country));
     final place = widget.initialPlace;
     if (place == null || place.country != widget.country) return;
     _restorePlace(place);

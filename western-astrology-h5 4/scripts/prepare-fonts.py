@@ -50,6 +50,8 @@ def main():
     paths += [p for p in (ROOT / 'web-client/lib').rglob('*.dart') if p.name != 'chinese_coverage.dart']
     for path in paths:
         ui.update(map(ord, path.read_text(encoding='utf8')))
+    # Glyphs in searchBirthCities('CN', '', '', 0), the dropdown's first page.
+    ui.update(map(ord, (ROOT / 'scripts/fonts/first-city-page-characters.txt').read_text(encoding='utf8')))
     common = set(ui)
     # Legal prose and the public controller identity must not enlarge the startup font.
     for path in (ROOT / 'src/content/privacy').glob('*.json'):
