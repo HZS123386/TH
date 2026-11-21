@@ -1,0 +1,842 @@
+{
+  "my": {
+    "language_name": "natural everyday Burmese (Myanmar Unicode, not Zawgyi)",
+    "reading": {
+      "category": "ထိုင်းဗေဒင်",
+      "title": "သင့်ထိုင်းဗေဒင်ဖတ်ချက်",
+      "intro": "ကိုယ်ရည်ကိုယ်သွေး၊ သတိပြုရန်နှင့် လက်တွေ့အဆင့်များ လေ့လာရန် အကြောင်းအရာရွေးပါ။",
+      "categoryTitle": "ထိုင်းမွေးဇာတာ · ကိုယ်ပိုင်အကြောင်းအရာများ",
+      "categoryIntro": "ကိုယ်ပိုင်အမူအကျင့်မှ နေ့စဉ်ရွေးချယ်မှုဆီ",
+      "birth": "မွေးဖွားမှုအချက်အလက်",
+      "required": "ဇာတာတွက်ရန် မွေးရက်၊ အချိန်အတိအကျနှင့် နေရာ ထည့်ပါ။",
+      "generate": "ဇာတာနှင့် ဖတ်ချက် ဖန်တီးမယ်",
+      "loading": "ဇာတာတွက်ပြီး ဖတ်ချက် ပြင်ဆင်နေသည်…",
+      "cancel": "ဖန်တီးမှု ပယ်ဖျက်မယ်",
+      "cancelNote": "ပယ်ဖျက်ပြီး အချက်အလက်ပြင်နိုင်သည်။ စတင်ပြီးသော ဖန်တီးမှုသည် နောက်ခံတွင် ပြီးနိုင်ပြီး တူညီအချက်အလက်ဖြင့် သိမ်းရလဒ် ပြန်သုံးမည်။",
+      "results": "အသုံးပြုထားသော မွေးဖွားမှုအချက်အလက်",
+      "report": "ကိုယ်ပိုင်ဖတ်ချက်အစီရင်ခံစာ",
+      "summary": "အဓိကအနှစ်ချုပ်",
+      "download": "အစီရင်ခံစာ သိမ်းမယ်",
+      "downloadPreview": "အစမ်းဖတ်ချက် သိမ်းမယ်",
+      "unlock": "အားလုံးဖတ်ရန် ဖွင့်မယ်",
+      "lockedHint": "အသေးစိတ်သတိပြုချက်နှင့် အပြည့်အစုံအစီအစဉ်ကို ဖွင့်ပါ",
+      "lockedSave": "အသေးစိတ်သတိပြုချက်နှင့် အစီအစဉ် ပိတ်ထားဆဲဖြစ်သည်။ အပြည့်အစုံမသိမ်းမီ စာမျက်နှာသို့ပြန်၍ ဖွင့်ပါ။",
+      "example": "နေ့စဉ်ဘဝ ဥပမာ",
+      "signals": "လက်တွေ့တွေ့နိုင်သည့် လက္ခဏာများ",
+      "response": "ဦးစွာ စမ်းသင့်သည့်အရာ",
+      "pitfall": "လွတ်သွားနိုင်သည့်အချက်",
+      "check": "ရလဒ်ကို ပြန်သုံးသပ်နည်း",
+      "retry": "အခမဲ့ဖတ်ချက် ပြန်ဖန်တီးမယ်",
+      "year": "ကိုးကားနှစ်",
+      "error": "ဖတ်ချက်ဝန်ဆောင်မှုသို့ မချိတ်နိုင်ပါ။ နောက်မှကြိုးစားပါ။",
+      "yearNote": "တစ်နှစ်အတွင်း ဦးစားပေးနှင့် လက်တွေ့လုပ်ဆောင်မှု လေ့လာပါ။",
+      "sections": {
+        "interpretation": "သင့်အတွက် ဆိုလိုနိုင်သည့်အရာ",
+        "opportunities": "သတိပြုရမည့်အရာ",
+        "advice": "လက်တွေ့အကြံပြုချက်များ"
+      },
+      "states": {
+        "unconfigured": "ဇာတာအဆင်သင့်ဖြစ်သော်လည်း ဖတ်ချက်ဝန်ဆောင်မှု မပြင်ဆင်ရသေးပါ။",
+        "pending": "တူညီသောအစီရင်ခံစာ ဖန်တီးနေသည်။ နောက်မှကြိုးစားပါ။",
+        "limited": "ဖတ်ချက်ဝန်ဆောင်မှု ယာယီကန့်သတ်ချက် ပြည့်နေသည်။ ပြီးသောအရာများ သိမ်းထားသည်။ နောက်မှဆက်ပါ။",
+        "unavailable": "ဖတ်ချက် မပြည့်စုံပါ။ ပြန်ကြိုးစားပါ။"
+      },
+      "readings": {
+        "overview": {
+          "title": "မွေးဇာတာ",
+          "subtitle": "ကိုယ်ရည်ကိုယ်သွေး · အလုပ်လုပ်ပုံ · ဆက်ဆံရေး"
+        },
+        "annual": {
+          "title": "နှစ်အလိုက် အကြောင်းအရာများ",
+          "subtitle": "ဦးစားပေး · ပြင်ဆင်မှု"
+        },
+        "money": {
+          "title": "ငွေကြေး",
+          "subtitle": "ဝင်ငွေ · အရင်းအမြစ် · အမူအကျင့်"
+        },
+        "love": {
+          "title": "အချစ်",
+          "subtitle": "ဆွဲဆောင်မှု · ဆက်သွယ်မှု · ရင်းနှီးမှု"
+        },
+        "work": {
+          "title": "အလုပ်အကိုင်",
+          "subtitle": "ကျွမ်းကျင်မှု · ပူးပေါင်းမှု · ဦးတည်ချက်"
+        },
+        "family": {
+          "title": "မိသားစု",
+          "subtitle": "အိမ် · အထောက်အပံ့ · တာဝန်မျှဝေမှု"
+        }
+      },
+      "planets": {
+        "ascendant": "လဂ်",
+        "sun": "နေ",
+        "moon": "လ",
+        "mars": "အင်္ဂါ",
+        "mercury": "ဗုဒ္ဓဟူး",
+        "jupiter": "ကြာသပတေး",
+        "venus": "သောကြာ",
+        "saturn": "စနေ",
+        "rahu": "ရာဟု",
+        "ketu": "ကိတ်",
+        "uranus": "ယူရေးနပ်စ်",
+        "neptune": "နက်ပကျွန်း",
+        "pluto": "ပလူတို",
+        "midheaven": "မိုးကောင်းကင်ထိပ်"
+      },
+      "signs": [
+        "မိဿ",
+        "ပြိဿ",
+        "မေထုန်",
+        "ကရကဋ်",
+        "သိဟ်",
+        "ကန်",
+        "တူ",
+        "ဗြိစ္ဆာ",
+        "ဓနု",
+        "မကရ",
+        "ကုမ်",
+        "မိန်"
+      ]
+    },
+    "house": "အိမ် {number}",
+    "western_titles": [
+      "ကိုယ်ပိုင်အမူအကျင့်များ",
+      "အလုပ်အကိုင်",
+      "ငွေကြေး",
+      "အချစ်နှင့် လက်တွဲမှု",
+      "သတိပြုသင့်သည့် အမူအကျင့်များ",
+      "လက်တွေ့အကြံပြုချက်များ"
+    ],
+    "western_questions": [
+      "ကိုယ့်အားသာချက်ကို ဘယ်လိုအသုံးချမလဲ",
+      "ဘယ်အလုပ်လုပ်ပုံနှင့် ပူးပေါင်းမှုက သင့်တော်မလဲ",
+      "ဝင်ငွေ၊ အသုံးစရိတ်နှင့် မျှဝေငွေကို ဘယ်လိုစီမံမလဲ",
+      "လိုအပ်ချက်ကို ပြောပြီး သဘောမတူမှုကို ဘယ်လိုကိုင်တွယ်မလဲ",
+      "ဘယ်အမူအကျင့်ကို ပြင်ဆင်နိုင်မလဲ"
+    ],
+    "life_titles": [
+      "အလုပ်အကိုင်တိုးတက်မှု",
+      "ငွေကြေး",
+      "ဆက်ဆံရေးနှင့် မိသားစု",
+      "ဆက်ဆံရေးနှင့် မိသားစု",
+      "လက်ရှိဦးစားပေးမှု"
+    ],
+    "life_questions": [
+      [
+        "အလုပ်အကိုင်တိုးတက်မှု",
+        "အလုပ်လုပ်ပုံနှင့် တိုးတက်မှု",
+        "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+      ],
+      [
+        "ငွေကြေး",
+        "အမူအကျင့်နှင့် စီမံကိန်း",
+        "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+      ],
+      [
+        "ဆက်ဆံရေးနှင့် မိသားစု",
+        "လိုအပ်ချက်နှင့် ဆက်သွယ်မှု",
+        "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+      ],
+      [
+        "လက်ရှိဦးစားပေးမှု",
+        "အကြောင်းအရာနှင့် လက်တွေ့အဆင့်များ",
+        "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+      ],
+      [
+        "လက်ရှိအကြောင်းအရာများ",
+        "လက်တွေ့အဆင့်များ",
+        "ရလဒ်ကို ပြန်သုံးသပ်နည်း"
+      ]
+    ],
+    "report_title": "ကိုယ်ပိုင်ဖတ်ချက်",
+    "life_title": "ဘဝအစီရင်ခံစာ",
+    "aspects": {
+      "CONJUNCTION": "ပူးယှဉ်ထောင့်",
+      "OPPOSITION": "ဆန့်ကျင်ထောင့်",
+      "TRINE": "တြိဂံထောင့်",
+      "SQUARE": "စတုရန်းထောင့်",
+      "SEXTILE": "ဆဋ္ဌမထောင့်"
+    },
+    "extra_planets": {
+      "North Node": "မြောက်ဆုံမှတ်",
+      "South Node": "တောင်ဆုံမှတ်",
+      "Chiron": "ခိုင်ရွန်",
+      "Black Moon Lilith": "လီလစ်"
+    },
+    "estimated": "ခန့်မှန်း ဒေသစံတော်ချိန် 12:00",
+    "retrograde": "နောက်ပြန်သွား",
+    "annual_title": "နှစ်အလိုက်အကြောင်းအရာ {year}"
+  },
+  "km": {
+    "language_name": "natural everyday Khmer",
+    "reading": {
+      "category": "ហោរាសាស្ត្រថៃ",
+      "title": "ការបកស្រាយហោរាសាស្ត្រថៃរបស់អ្នក",
+      "intro": "ជ្រើសប្រធានបទដើម្បីស្វែងយល់ចរិតលក្ខណៈ ការប្រុងប្រយ័ត្ន និងជំហានអនុវត្ត។",
+      "categoryTitle": "ផែនទីកំណើតថៃ · ប្រធានបទផ្ទាល់ខ្លួន",
+      "categoryIntro": "ពីលំនាំផ្ទាល់ខ្លួនដល់ជម្រើសប្រចាំថ្ងៃ",
+      "birth": "ព័ត៌មានកំណើត",
+      "required": "បញ្ចូលថ្ងៃ ម៉ោងច្បាស់ និងទីកន្លែងកំណើតដើម្បីគណនា។",
+      "generate": "បង្កើតផែនទី និងការបកស្រាយ",
+      "loading": "កំពុងគណនាផែនទី និងរៀបចំការបកស្រាយ…",
+      "cancel": "បោះបង់ការបង្កើត",
+      "cancelNote": "អាចកែព័ត៌មានក្រោយបោះបង់។ ការបង្កើតដែលចាប់ផ្ដើមអាចបន្តនៅផ្ទៃខាងក្រោយ ហើយព័ត៌មានដូចគ្នានឹងប្រើលទ្ធផលរក្សាទុក។",
+      "results": "ព័ត៌មានកំណើតដែលបានប្រើ",
+      "report": "របាយការណ៍បកស្រាយផ្ទាល់ខ្លួន",
+      "summary": "ចំណុចសំខាន់",
+      "download": "រក្សាទុករបាយការណ៍",
+      "downloadPreview": "រក្សាទុកការអានសាកល្បង",
+      "unlock": "ដោះសោដើម្បីអានទាំងអស់",
+      "lockedHint": "ដោះសោការប្រុងប្រយ័ត្នលម្អិត និងផែនការពេញ",
+      "lockedSave": "ការប្រុងប្រយ័ត្ន និងផែនការនៅជាប់សោ។ ត្រឡប់ទៅទំព័រដើម្បីដោះសោមុនរក្សារបាយការណ៍ពេញ។",
+      "example": "ឧទាហរណ៍ប្រចាំថ្ងៃ",
+      "signals": "សញ្ញាដែលអាចសង្កេតបាន",
+      "response": "អ្វីដែលគួរសាកល្បងមុន",
+      "pitfall": "អ្វីដែលអាចមើលរំលង",
+      "check": "របៀបពិនិត្យលទ្ធផល",
+      "retry": "បង្កើតការអានឥតគិតថ្លៃម្ដងទៀត",
+      "year": "ឆ្នាំយោង",
+      "error": "មិនអាចភ្ជាប់សេវាបកស្រាយ។ សូមសាកល្បងពេលក្រោយ។",
+      "yearNote": "ស្វែងយល់អាទិភាព និងជំហានអនុវត្តក្នុងឆ្នាំ។",
+      "sections": {
+        "interpretation": "អត្ថន័យដែលអាចទាក់ទងអ្នក",
+        "opportunities": "អ្វីដែលគួរយកចិត្តទុកដាក់",
+        "advice": "សំណើសម្រាប់អនុវត្ត"
+      },
+      "states": {
+        "unconfigured": "ផែនទីរួចរាល់ ប៉ុន្តែសេវាបកស្រាយមិនទាន់បានកំណត់។",
+        "pending": "របាយការណ៍ដូចគ្នាកំពុងរៀបចំ។ សូមសាកល្បងពេលក្រោយ។",
+        "limited": "សេវាអានដល់កម្រិតបណ្ដោះអាសន្ន។ ខ្លឹមសាររួចបានរក្សាទុក សូមបន្តពេលក្រោយ។",
+        "unavailable": "ការបកស្រាយមិនពេញលេញ។ សូមសាកល្បងម្ដងទៀត។"
+      },
+      "readings": {
+        "overview": {
+          "title": "ផែនទីកំណើត",
+          "subtitle": "ចរិតលក្ខណៈ · របៀបធ្វើការ · ទំនាក់ទំនង"
+        },
+        "annual": {
+          "title": "ប្រធានបទប្រចាំឆ្នាំ",
+          "subtitle": "អាទិភាព · ការរៀបចំ"
+        },
+        "money": {
+          "title": "ហិរញ្ញវត្ថុ",
+          "subtitle": "ចំណូល · ធនធាន · ទម្លាប់"
+        },
+        "love": {
+          "title": "ស្នេហា",
+          "subtitle": "ការទាក់ទាញ · ការប្រាស្រ័យ · ភាពស្និទ្ធស្នាល"
+        },
+        "work": {
+          "title": "អាជីព",
+          "subtitle": "ជំនាញ · កិច្ចសហការ · ទិសដៅ"
+        },
+        "family": {
+          "title": "គ្រួសារ",
+          "subtitle": "ផ្ទះ · ការគាំទ្រ · ការចែករំលែកទំនួលខុសត្រូវ"
+        }
+      },
+      "planets": {
+        "ascendant": "លគ្នា",
+        "sun": "ព្រះអាទិត្យ",
+        "moon": "ព្រះចន្ទ",
+        "mars": "អង្គារ",
+        "mercury": "ពុធ",
+        "jupiter": "ព្រហស្បតិ៍",
+        "venus": "សុក្រ",
+        "saturn": "សៅរ៍",
+        "rahu": "រាហូ",
+        "ketu": "កេតុ",
+        "uranus": "អ៊ុយរ៉ានុស",
+        "neptune": "ណិបទូន",
+        "pluto": "ភ្លុយតូ",
+        "midheaven": "ចំណុចកំពូលមេឃ"
+      },
+      "signs": [
+        "មេស",
+        "ឧសភ",
+        "មិថុន",
+        "កក្កដា",
+        "សីហៈ",
+        "កញ្ញា",
+        "តុលា",
+        "វិច្ឆិកា",
+        "ធ្នូ",
+        "មករ",
+        "កុម្ភៈ",
+        "មីន"
+      ]
+    },
+    "house": "ភពទី {number}",
+    "western_titles": [
+      "លំនាំផ្ទាល់ខ្លួន",
+      "អាជីព",
+      "ហិរញ្ញវត្ថុ",
+      "ស្នេហា និងដៃគូ",
+      "លំនាំដែលគួរយកចិត្តទុកដាក់",
+      "សំណើសម្រាប់អនុវត្ត"
+    ],
+    "western_questions": [
+      "តើប្រើចំណុចខ្លាំង និងជ្រើសរើសឱ្យសមយ៉ាងដូចម្ដេច?",
+      "តើរបៀបធ្វើការ និងបរិយាកាសសហការណាសមនឹងខ្ញុំ?",
+      "តើគ្រប់គ្រងចំណូល ចំណាយ និងធនធានរួមយ៉ាងដូចម្ដេច?",
+      "តើបង្ហាញតម្រូវការ និងដោះស្រាយភាពខុសគ្នាយ៉ាងដូចម្ដេច?",
+      "តើលំនាំណាដែលអាចកែសម្រួលបាន?"
+    ],
+    "life_titles": [
+      "ការអភិវឌ្ឍអាជីព",
+      "ហិរញ្ញវត្ថុ",
+      "ទំនាក់ទំនង និងគ្រួសារ",
+      "ទំនាក់ទំនង និងគ្រួសារ",
+      "អាទិភាពបច្ចុប្បន្ន"
+    ],
+    "life_questions": [
+      [
+        "ការអភិវឌ្ឍអាជីព",
+        "របៀបធ្វើការ និងការអភិវឌ្ឍ",
+        "របៀបពិនិត្យលទ្ធផល"
+      ],
+      [
+        "ហិរញ្ញវត្ថុ",
+        "ទម្លាប់ និងផែនការ",
+        "របៀបពិនិត្យលទ្ធផល"
+      ],
+      [
+        "ទំនាក់ទំនង និងគ្រួសារ",
+        "តម្រូវការ និងការប្រាស្រ័យ",
+        "របៀបពិនិត្យលទ្ធផល"
+      ],
+      [
+        "អាទិភាពបច្ចុប្បន្ន",
+        "ប្រធានបទ និងជំហានអនុវត្ត",
+        "របៀបពិនិត្យលទ្ធផល"
+      ],
+      [
+        "ប្រធានបទបច្ចុប្បន្ន",
+        "ជំហានអនុវត្ត",
+        "របៀបពិនិត្យលទ្ធផល"
+      ]
+    ],
+    "report_title": "ការបកស្រាយផ្ទាល់ខ្លួន",
+    "life_title": "របាយការណ៍ជីវិត",
+    "aspects": {
+      "CONJUNCTION": "មុំរួម",
+      "OPPOSITION": "មុំទល់មុខ",
+      "TRINE": "មុំត្រីកោណ",
+      "SQUARE": "មុំកែង",
+      "SEXTILE": "មុំហុកសិប"
+    },
+    "extra_planets": {
+      "North Node": "ចំណុចប្រសព្វខាងជើង",
+      "South Node": "ចំណុចប្រសព្វខាងត្បូង",
+      "Chiron": "ឈីរ៉ុន",
+      "Black Moon Lilith": "លីលីត"
+    },
+    "estimated": "ប៉ាន់ស្មានម៉ោង 12:00 ក្នុងតំបន់",
+    "retrograde": "ថយក្រោយ",
+    "annual_title": "ប្រធានបទឆ្នាំ {year}"
+  },
+  "lo": {
+    "language_name": "natural everyday Lao",
+    "reading": {
+      "category": "ໂຫລາສາດໄທ",
+      "title": "ຄຳອ່ານໂຫລາສາດໄທຂອງທ່ານ",
+      "intro": "ເລືອກຫົວຂໍ້ເພື່ອສຳຫຼວດລັກສະນະ ຂໍ້ຄວນລະວັງ ແລະຂັ້ນຕອນ.",
+      "categoryTitle": "ດວງເກີດໄທ · ຫົວຂໍ້ສ່ວນຕົວ",
+      "categoryIntro": "ຈາກຮູບແບບສ່ວນຕົວໄປສູ່ທາງເລືອກປະຈຳວັນ",
+      "birth": "ຂໍ້ມູນເກີດ",
+      "required": "ໃສ່ວັນ ເວລາແນ່ນອນ ແລະສະຖານທີ່ເກີດເພື່ອຄຳນວນ.",
+      "generate": "ສ້າງດວງ ແລະຄຳອ່ານ",
+      "loading": "ກຳລັງຄຳນວນດວງ ແລະກຽມຄຳອ່ານ…",
+      "cancel": "ຍົກເລີກການສ້າງ",
+      "cancelNote": "ແກ້ຂໍ້ມູນຫຼັງຍົກເລີກໄດ້. ການສ້າງທີ່ເລີ່ມແລ້ວອາດສຳເລັດໃນພື້ນຫຼັງ; ຂໍ້ມູນເດີມໃຊ້ຜົນບັນທຶກ.",
+      "results": "ຂໍ້ມູນເກີດທີ່ໃຊ້",
+      "report": "ລາຍງານຄຳອ່ານສ່ວນຕົວ",
+      "summary": "ຂໍ້ສະຫຼຸບຫຼັກ",
+      "download": "ບັນທຶກລາຍງານ",
+      "downloadPreview": "ບັນທຶກຕົວຢ່າງ",
+      "unlock": "ປົດລັອກເພື່ອອ່ານທັງໝົດ",
+      "lockedHint": "ປົດລັອກຂໍ້ຄວນລະວັງລະອຽດ ແລະແຜນເຕັມ",
+      "lockedSave": "ຂໍ້ຄວນລະວັງ ແລະແຜນຍັງລັອກ. ກັບໜ້າເວັບເພື່ອປົດລັອກກ່ອນບັນທຶກສະບັບເຕັມ.",
+      "example": "ຕົວຢ່າງໃນຊີວິດປະຈຳວັນ",
+      "signals": "ສັນຍານທີ່ສັງເກດໄດ້",
+      "response": "ສິ່ງທີ່ຄວນລອງກ່ອນ",
+      "pitfall": "ສິ່ງທີ່ອາດມອງຂ້າມ",
+      "check": "ວິທີທົບທວນຜົນ",
+      "retry": "ສ້າງຄຳອ່ານຟຣີອີກຄັ້ງ",
+      "year": "ປີອ້າງອີງ",
+      "error": "ເຊື່ອມຕໍ່ບໍລິການຄຳອ່ານບໍ່ໄດ້. ລອງພາຍຫຼັງ.",
+      "yearNote": "ສຳຫຼວດບຸລິມະສິດ ແລະຂັ້ນຕອນຕະຫຼອດປີ.",
+      "sections": {
+        "interpretation": "ຄວາມໝາຍທີ່ອາດກ່ຽວກັບທ່ານ",
+        "opportunities": "ສິ່ງທີ່ຄວນໃສ່ໃຈ",
+        "advice": "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+      },
+      "states": {
+        "unconfigured": "ດວງພ້ອມແລ້ວ ແຕ່ຍັງບໍ່ຕັ້ງຄ່າບໍລິການຄຳອ່ານ.",
+        "pending": "ລາຍງານດຽວກັນກຳລັງກຽມ. ລອງພາຍຫຼັງ.",
+        "limited": "ບໍລິການຮອດຂີດຈຳກັດຊົ່ວຄາວ. ເກັບສ່ວນທີ່ສຳເລັດແລ້ວ ສືບຕໍ່ພາຍຫຼັງ.",
+        "unavailable": "ຄຳອ່ານບໍ່ຄົບ. ລອງໃໝ່."
+      },
+      "readings": {
+        "overview": {
+          "title": "ດວງເກີດ",
+          "subtitle": "ລັກສະນະ · ຮູບແບບວຽກ · ຄວາມສຳພັນ"
+        },
+        "annual": {
+          "title": "ຫົວຂໍ້ປະຈຳປີ",
+          "subtitle": "ບຸລິມະສິດ · ການກຽມ"
+        },
+        "money": {
+          "title": "ການເງິນ",
+          "subtitle": "ລາຍຮັບ · ຊັບພະຍາກອນ · ນິໄສ"
+        },
+        "love": {
+          "title": "ຄວາມຮັກ",
+          "subtitle": "ແຮງດຶງດູດ · ການສື່ສານ · ຄວາມໃກ້ຊິດ"
+        },
+        "work": {
+          "title": "ອາຊີບ",
+          "subtitle": "ທັກສະ · ການຮ່ວມມື · ທິດທາງ"
+        },
+        "family": {
+          "title": "ຄອບຄົວ",
+          "subtitle": "ເຮືອນ · ການຊ່ວຍເຫຼືອ · ຄວາມຮັບຜິດຊອບຮ່ວມ"
+        }
+      },
+      "planets": {
+        "ascendant": "ລັກຄະນາ",
+        "sun": "ດວງອາທິດ",
+        "moon": "ດວງຈັນ",
+        "mars": "ດາວອັງຄານ",
+        "mercury": "ດາວພຸດ",
+        "jupiter": "ດາວພະຫັດ",
+        "venus": "ດາວສຸກ",
+        "saturn": "ດາວເສົາ",
+        "rahu": "ຣາຫູ",
+        "ketu": "ເກດ",
+        "uranus": "ດາວຢູເຣນັດ",
+        "neptune": "ດາວເນບຈູນ",
+        "pluto": "ດາວພລູໂຕ",
+        "midheaven": "ຈຸດຍອດຟ້າ"
+      },
+      "signs": [
+        "ເມດ",
+        "ພຶດສະພາ",
+        "ເມຖຸນ",
+        "ກໍລະກົດ",
+        "ສິງ",
+        "ກັນ",
+        "ຕຸນ",
+        "ພິຈິກ",
+        "ທະນູ",
+        "ມັງກອນ",
+        "ກຸມ",
+        "ມີນ"
+      ]
+    },
+    "house": "ເຮືອນທີ {number}",
+    "western_titles": [
+      "ຮູບແບບສ່ວນຕົວ",
+      "ອາຊີບ",
+      "ການເງິນ",
+      "ຄວາມຮັກ ແລະຄູ່ຄອງ",
+      "ຮູບແບບທີ່ຄວນໃສ່ໃຈ",
+      "ຄຳແນະນຳທີ່ເຮັດໄດ້ຈິງ"
+    ],
+    "western_questions": [
+      "ໃຊ້ຈຸດແຂງ ແລະເລືອກໃຫ້ເໝາະແນວໃດ?",
+      "ຮູບແບບວຽກ ແລະການຮ່ວມມືແບບໃດເໝາະ?",
+      "ຈັດການລາຍຮັບ ລາຍຈ່າຍ ແລະຊັບຮ່ວມແນວໃດ?",
+      "ບອກຄວາມຕ້ອງການ ແລະແກ້ຄວາມຕ່າງແນວໃດ?",
+      "ຮູບແບບໃດຄວນປັບ?"
+    ],
+    "life_titles": [
+      "ການພັດທະນາອາຊີບ",
+      "ການເງິນ",
+      "ຄວາມສຳພັນ ແລະຄອບຄົວ",
+      "ຄວາມສຳພັນ ແລະຄອບຄົວ",
+      "ບຸລິມະສິດປັດຈຸບັນ"
+    ],
+    "life_questions": [
+      [
+        "ການພັດທະນາອາຊີບ",
+        "ຮູບແບບວຽກ ແລະການພັດທະນາ",
+        "ວິທີທົບທວນຜົນ"
+      ],
+      [
+        "ການເງິນ",
+        "ນິໄສ ແລະແຜນການ",
+        "ວິທີທົບທວນຜົນ"
+      ],
+      [
+        "ຄວາມສຳພັນ ແລະຄອບຄົວ",
+        "ຄວາມຕ້ອງການ ແລະການສື່ສານ",
+        "ວິທີທົບທວນຜົນ"
+      ],
+      [
+        "ບຸລິມະສິດປັດຈຸບັນ",
+        "ຫົວຂໍ້ ແລະຂັ້ນຕອນ",
+        "ວິທີທົບທວນຜົນ"
+      ],
+      [
+        "ຫົວຂໍ້ປັດຈຸບັນ",
+        "ຂັ້ນຕອນທີ່ເຮັດໄດ້",
+        "ວິທີທົບທວນຜົນ"
+      ]
+    ],
+    "report_title": "ຄຳອ່ານສ່ວນຕົວ",
+    "life_title": "ລາຍງານຊີວິດ",
+    "aspects": {
+      "CONJUNCTION": "ມຸມຮ່ວມ",
+      "OPPOSITION": "ມຸມກົງຂ້າມ",
+      "TRINE": "ມຸມສາມຫຼ່ຽມ",
+      "SQUARE": "ມຸມສາກ",
+      "SEXTILE": "ມຸມຫົກສິບ"
+    },
+    "extra_planets": {
+      "North Node": "ຈຸດຕັດເໜືອ",
+      "South Node": "ຈຸດຕັດໃຕ້",
+      "Chiron": "ໄຄรອນ",
+      "Black Moon Lilith": "ລິລິດ"
+    },
+    "estimated": "ຄາດຄະເນ 12:00 ທ້ອງຖິ່ນ",
+    "retrograde": "ຖອຍຫຼັງ",
+    "annual_title": "ຫົວຂໍ້ປີ {year}"
+  },
+  "ms": {
+    "language_name": "natural everyday Malay (Malaysia)",
+    "reading": {
+      "category": "Astrologi Thai",
+      "title": "Bacaan astrologi Thai anda",
+      "intro": "Pilih tema untuk menerokai ciri diri, perhatian dan langkah praktikal.",
+      "categoryTitle": "Carta kelahiran Thai · Tema peribadi",
+      "categoryIntro": "Daripada corak diri kepada pilihan harian",
+      "birth": "Butiran kelahiran",
+      "required": "Masukkan tarikh, waktu tepat dan tempat lahir untuk mengira carta.",
+      "generate": "Jana carta dan bacaan",
+      "loading": "Mengira carta dan menyediakan bacaan…",
+      "cancel": "Batal penjanaan",
+      "cancelNote": "Anda boleh mengedit selepas membatalkan. Penjanaan yang bermula mungkin selesai di latar belakang; butiran sama menggunakan hasil tersimpan.",
+      "results": "Butiran lahir yang digunakan",
+      "report": "Laporan bacaan peribadi",
+      "summary": "Inti utama",
+      "download": "Simpan laporan",
+      "downloadPreview": "Simpan pratonton",
+      "unlock": "Buka untuk membaca semua kandungan",
+      "lockedHint": "Buka perhatian terperinci dan pelan tindakan lengkap",
+      "lockedSave": "Perhatian terperinci dan pelan masih dikunci. Kembali ke halaman untuk membukanya sebelum menyimpan laporan penuh.",
+      "example": "Contoh harian",
+      "signals": "Tanda yang boleh diperhatikan",
+      "response": "Perkara untuk dicuba dahulu",
+      "pitfall": "Perkara yang mungkin terlepas pandang",
+      "check": "Cara menilai hasil",
+      "retry": "Jana semula bacaan percuma",
+      "year": "Tahun rujukan",
+      "error": "Perkhidmatan bacaan tidak dapat dihubungi. Cuba kemudian.",
+      "yearNote": "Terokai keutamaan dan langkah praktikal sepanjang tahun.",
+      "sections": {
+        "interpretation": "Makna yang mungkin untuk anda",
+        "opportunities": "Perkara untuk diperhatikan",
+        "advice": "Cadangan praktikal"
+      },
+      "states": {
+        "unconfigured": "Carta siap tetapi perkhidmatan bacaan belum dikonfigurasi.",
+        "pending": "Laporan sama sedang disediakan. Cuba kemudian.",
+        "limited": "Had sementara bacaan dicapai. Kandungan siap disimpan; teruskan kemudian.",
+        "unavailable": "Bacaan tidak lengkap. Cuba lagi."
+      },
+      "readings": {
+        "overview": {
+          "title": "Carta kelahiran",
+          "subtitle": "Ciri · Gaya kerja · Hubungan"
+        },
+        "annual": {
+          "title": "Tema tahunan",
+          "subtitle": "Keutamaan · Persediaan"
+        },
+        "money": {
+          "title": "Kewangan",
+          "subtitle": "Pendapatan · Sumber · Tabiat"
+        },
+        "love": {
+          "title": "Cinta",
+          "subtitle": "Tarikan · Komunikasi · Keintiman"
+        },
+        "work": {
+          "title": "Kerjaya",
+          "subtitle": "Kemahiran · Kerjasama · Hala tuju"
+        },
+        "family": {
+          "title": "Keluarga",
+          "subtitle": "Rumah · Sokongan · Tanggungjawab bersama"
+        }
+      },
+      "planets": {
+        "ascendant": "Asenden",
+        "sun": "Matahari",
+        "moon": "Bulan",
+        "mars": "Marikh",
+        "mercury": "Utarid",
+        "jupiter": "Musytari",
+        "venus": "Zuhrah",
+        "saturn": "Zuhal",
+        "rahu": "Rahu",
+        "ketu": "Ketu",
+        "uranus": "Uranus",
+        "neptune": "Neptun",
+        "pluto": "Pluto",
+        "midheaven": "Puncak langit"
+      },
+      "signs": [
+        "Aries",
+        "Taurus",
+        "Gemini",
+        "Cancer",
+        "Leo",
+        "Virgo",
+        "Libra",
+        "Scorpio",
+        "Sagittarius",
+        "Capricorn",
+        "Aquarius",
+        "Pisces"
+      ]
+    },
+    "house": "Rumah {number}",
+    "western_titles": [
+      "Corak diri",
+      "Kerjaya",
+      "Kewangan",
+      "Cinta dan pasangan",
+      "Corak yang perlu diperhatikan",
+      "Cadangan praktikal"
+    ],
+    "western_questions": [
+      "Bagaimana menggunakan kekuatan dan membuat pilihan sesuai?",
+      "Gaya kerja dan suasana kerjasama apakah yang sesuai?",
+      "Bagaimana saya mengurus pendapatan, belanja dan sumber bersama?",
+      "Bagaimana menyatakan keperluan dan menangani perbezaan?",
+      "Corak diri manakah yang boleh disesuaikan?"
+    ],
+    "life_titles": [
+      "Perkembangan kerjaya",
+      "Kewangan",
+      "Hubungan dan keluarga",
+      "Hubungan dan keluarga",
+      "Keutamaan semasa"
+    ],
+    "life_questions": [
+      [
+        "Perkembangan kerjaya",
+        "Gaya kerja dan perkembangan",
+        "Cara menilai hasil"
+      ],
+      [
+        "Kewangan",
+        "Tabiat dan perancangan",
+        "Cara menilai hasil"
+      ],
+      [
+        "Hubungan dan keluarga",
+        "Keperluan dan komunikasi",
+        "Cara menilai hasil"
+      ],
+      [
+        "Keutamaan semasa",
+        "Tema dan langkah praktikal",
+        "Cara menilai hasil"
+      ],
+      [
+        "Tema semasa",
+        "Langkah praktikal",
+        "Cara menilai hasil"
+      ]
+    ],
+    "report_title": "Bacaan peribadi",
+    "life_title": "Laporan kehidupan",
+    "aspects": {
+      "CONJUNCTION": "Konjungsi",
+      "OPPOSITION": "Oposisi",
+      "TRINE": "Trigon",
+      "SQUARE": "Kuadrat",
+      "SEXTILE": "Sekstil"
+    },
+    "extra_planets": {
+      "North Node": "Nod utara",
+      "South Node": "Nod selatan",
+      "Chiron": "Chiron",
+      "Black Moon Lilith": "Lilith"
+    },
+    "estimated": "anggaran 12:00 tempatan",
+    "retrograde": "Retrograd",
+    "annual_title": "Tema tahun {year}"
+  },
+  "id": {
+    "language_name": "natural everyday Indonesian",
+    "reading": {
+      "category": "Astrologi Thai",
+      "title": "Pembacaan astrologi Thai Anda",
+      "intro": "Pilih tema untuk menjelajahi sifat diri, perhatian, dan langkah praktis.",
+      "categoryTitle": "Bagan kelahiran Thai · Tema pribadi",
+      "categoryIntro": "Dari pola diri menuju pilihan sehari-hari",
+      "birth": "Data kelahiran",
+      "required": "Masukkan tanggal, waktu tepat, dan tempat lahir untuk menghitung bagan.",
+      "generate": "Buat bagan dan pembacaan",
+      "loading": "Menghitung bagan dan menyiapkan pembacaan…",
+      "cancel": "Batalkan pembuatan",
+      "cancelNote": "Anda dapat mengedit setelah membatalkan. Pembuatan yang dimulai mungkin selesai di latar belakang; data yang sama memakai hasil tersimpan.",
+      "results": "Data kelahiran yang digunakan",
+      "report": "Laporan pembacaan pribadi",
+      "summary": "Inti utama",
+      "download": "Simpan laporan",
+      "downloadPreview": "Simpan pratinjau",
+      "unlock": "Buka untuk membaca semua isi",
+      "lockedHint": "Buka perhatian terperinci dan rencana tindakan lengkap",
+      "lockedSave": "Perhatian terperinci dan rencana masih terkunci. Kembali ke halaman untuk membukanya sebelum menyimpan laporan lengkap.",
+      "example": "Contoh sehari-hari",
+      "signals": "Tanda yang dapat diamati",
+      "response": "Hal yang dicoba dahulu",
+      "pitfall": "Hal yang mungkin terlewat",
+      "check": "Cara meninjau hasil",
+      "retry": "Buat ulang pembacaan gratis",
+      "year": "Tahun rujukan",
+      "error": "Layanan pembacaan tidak dapat dihubungi. Coba nanti.",
+      "yearNote": "Jelajahi prioritas dan langkah praktis sepanjang tahun.",
+      "sections": {
+        "interpretation": "Makna yang mungkin bagi Anda",
+        "opportunities": "Hal yang perlu diperhatikan",
+        "advice": "Saran praktis"
+      },
+      "states": {
+        "unconfigured": "Bagan siap tetapi layanan pembacaan belum dikonfigurasi.",
+        "pending": "Laporan yang sama sedang disiapkan. Coba lagi nanti.",
+        "limited": "Batas sementara layanan tercapai. Isi yang selesai tersimpan; lanjutkan nanti.",
+        "unavailable": "Pembacaan belum lengkap. Coba lagi."
+      },
+      "readings": {
+        "overview": {
+          "title": "Bagan kelahiran",
+          "subtitle": "Sifat · Gaya kerja · Hubungan"
+        },
+        "annual": {
+          "title": "Tema tahunan",
+          "subtitle": "Prioritas · Persiapan"
+        },
+        "money": {
+          "title": "Keuangan",
+          "subtitle": "Pendapatan · Sumber daya · Kebiasaan"
+        },
+        "love": {
+          "title": "Cinta",
+          "subtitle": "Ketertarikan · Komunikasi · Keintiman"
+        },
+        "work": {
+          "title": "Karier",
+          "subtitle": "Keterampilan · Kerja sama · Arah"
+        },
+        "family": {
+          "title": "Keluarga",
+          "subtitle": "Rumah · Dukungan · Tanggung jawab bersama"
+        }
+      },
+      "planets": {
+        "ascendant": "Asenden",
+        "sun": "Matahari",
+        "moon": "Bulan",
+        "mars": "Mars",
+        "mercury": "Merkurius",
+        "jupiter": "Jupiter",
+        "venus": "Venus",
+        "saturn": "Saturnus",
+        "rahu": "Rahu",
+        "ketu": "Ketu",
+        "uranus": "Uranus",
+        "neptune": "Neptunus",
+        "pluto": "Pluto",
+        "midheaven": "Puncak langit"
+      },
+      "signs": [
+        "Aries",
+        "Taurus",
+        "Gemini",
+        "Cancer",
+        "Leo",
+        "Virgo",
+        "Libra",
+        "Scorpio",
+        "Sagitarius",
+        "Kaprikornus",
+        "Akuarius",
+        "Pisces"
+      ]
+    },
+    "house": "Rumah {number}",
+    "western_titles": [
+      "Pola diri",
+      "Karier",
+      "Keuangan",
+      "Cinta dan pasangan",
+      "Pola yang perlu diperhatikan",
+      "Saran praktis"
+    ],
+    "western_questions": [
+      "Bagaimana menggunakan kekuatan dan membuat pilihan sesuai?",
+      "Gaya kerja dan lingkungan kerja sama apa yang sesuai?",
+      "Bagaimana saya mengelola pendapatan, pengeluaran, dan sumber daya bersama?",
+      "Bagaimana menyatakan kebutuhan dan menghadapi perbedaan?",
+      "Pola diri apa yang dapat disesuaikan?"
+    ],
+    "life_titles": [
+      "Perkembangan karier",
+      "Keuangan",
+      "Hubungan dan keluarga",
+      "Hubungan dan keluarga",
+      "Prioritas saat ini"
+    ],
+    "life_questions": [
+      [
+        "Perkembangan karier",
+        "Gaya kerja dan perkembangan",
+        "Cara meninjau hasil"
+      ],
+      [
+        "Keuangan",
+        "Kebiasaan dan perencanaan",
+        "Cara meninjau hasil"
+      ],
+      [
+        "Hubungan dan keluarga",
+        "Kebutuhan dan komunikasi",
+        "Cara meninjau hasil"
+      ],
+      [
+        "Prioritas saat ini",
+        "Tema dan langkah praktis",
+        "Cara meninjau hasil"
+      ],
+      [
+        "Tema saat ini",
+        "Langkah praktis",
+        "Cara meninjau hasil"
+      ]
+    ],
+    "report_title": "Pembacaan pribadi",
+    "life_title": "Laporan kehidupan",
+    "aspects": {
+      "CONJUNCTION": "Konjungsi",
+      "OPPOSITION": "Oposisi",
+      "TRINE": "Trigon",
+      "SQUARE": "Kuadrat",
+      "SEXTILE": "Sekstil"
+    },
+    "extra_planets": {
+      "North Node": "Simpul utara",
+      "South Node": "Simpul selatan",
+      "Chiron": "Chiron",
+      "Black Moon Lilith": "Lilith"
+    },
+    "estimated": "perkiraan 12:00 setempat",
+    "retrograde": "Retrograd",
+    "annual_title": "Tema tahun {year}"
+  }
+}

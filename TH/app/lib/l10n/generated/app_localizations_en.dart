@@ -827,10 +827,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unknownTime =>
-      'Birth time is unknown. The ascendant and time-dependent houses are not displayed.';
+      'Without a birth time, an estimated chart uses 12:00 local time at your birthplace. You can add your time later.';
 
   @override
-  String get chartRead => 'Read this chart';
+  String get chartRead => 'Full reading';
 
   @override
   String get house => 'House';
@@ -2077,7 +2077,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportFailedText =>
-      'This reading could not be completed. Return to Reports and generate it again. Sample content will never replace your result.';
+      'This reading could not be completed yet. Use the button below to try again. Your chart has been kept.';
 
   @override
   String get roxyUnavailable =>
@@ -2734,4 +2734,166 @@ class AppLocalizationsEn extends AppLocalizations {
     });
     return '$_temp0';
   }
+
+  @override
+  String get estimated => 'Estimated';
+
+  @override
+  String get estimatedChart => 'Estimated chart · 12:00 local time';
+
+  @override
+  String get estimatedChartNote =>
+      'No exact birth time was provided. This chart uses 12:00 local time at your birthplace. The Moon, ascendant, houses and aspects are estimates and may change with your actual birth time. Add your time to recalculate.';
+
+  @override
+  String get readingChart => 'The chart behind this reading';
+
+  @override
+  String get readingChartIntro =>
+      'The reading below is based on this natal chart. Tap a planet to see its position.';
+
+  @override
+  String get readingContents => 'In this reading';
+
+  @override
+  String get readingContentsHint => 'Choose a topic to jump to that section.';
+
+  @override
+  String get backToChart => 'Back to my chart';
+
+  @override
+  String get savedReadings => 'Reading history';
+
+  @override
+  String get noSavedReports => 'No reports yet';
+
+  @override
+  String get reportRecords => 'Report records';
+
+  @override
+  String get reportRecordsIntro =>
+      'Reports are sorted by generation time. Search by report number to find a record.';
+
+  @override
+  String get searchReportNumber => 'Search by report number';
+
+  @override
+  String get clearSearch => 'Clear search';
+
+  @override
+  String get noMatchingReports =>
+      'No report matches this number. Check the number and try again.';
+
+  @override
+  String get reportNumberLabel => 'Report number';
+
+  @override
+  String get generatedAt => 'Generated on';
+
+  @override
+  String get reportReady => 'Ready';
+
+  @override
+  String get reportRunning => 'Generating';
+
+  @override
+  String get reportFailedShort => 'Not completed';
+
+  @override
+  String get deleteReport => 'Delete report';
+
+  @override
+  String get deleteReportConfirm =>
+      'Delete this report record? You will no longer be able to open it from your records.';
+
+  @override
+  String get reportDeleted => 'Report record deleted';
+
+  @override
+  String get deleteReportFailed =>
+      'The report was kept because deletion failed. Please try again later.';
+
+  @override
+  String get reportDeleteBusy =>
+      'This report is still generating. Wait until it finishes before deleting it.';
+
+  @override
+  String get loadReportsFailed =>
+      'Report records could not be loaded. Please try again.';
+
+  @override
+  String get refreshRecords => 'Reload records';
+
+  @override
+  String get chartReportsLocation =>
+      'Chart readings have their own page. Open Chart to read yours.';
+
+  @override
+  String get progressTitle => 'Creating your reading';
+
+  @override
+  String get progressIntro =>
+      'Six topics are being prepared and checked. Your reading will open automatically when it is ready.';
+
+  @override
+  String get progressPreparing => 'Preparing your chart details';
+
+  @override
+  String get progressWriting => 'Writing your personal reading';
+
+  @override
+  String get progressChecking => 'Checking the complete report';
+
+  @override
+  String get progressRefining => 'Refining your reading and advice';
+
+  @override
+  String get progressComplete => 'Your report is ready. Opening it now';
+
+  @override
+  String get progressFailed => 'Your reading is not complete yet';
+
+  @override
+  String progressTopics(Object completed, Object total) {
+    return '$completed of $total topics prepared';
+  }
+
+  @override
+  String get progressReturn => 'Return to report';
+
+  @override
+  String get progressReconnect => 'Reconnect';
+
+  @override
+  String get progressDisconnected =>
+      'The latest progress is temporarily unavailable. Your background task has not been cancelled. Reconnect or come back later.';
+
+  @override
+  String get progressLater => 'Come back later';
+
+  @override
+  String get progressPersonality => 'Personality and strengths';
+
+  @override
+  String get progressCareer => 'Career development';
+
+  @override
+  String get progressMoney => 'Money habits';
+
+  @override
+  String get progressRelationships => 'Relationships and family';
+
+  @override
+  String get progressWatch => 'Patterns to watch';
+
+  @override
+  String get progressActions => 'Practical next steps';
+
+  @override
+  String get reportServiceBusy =>
+      'The reading service is temporarily busy, so your report is not ready yet. Your chart has been saved. Please try again later.';
+
+  @override
+  String get reportServiceTimeout =>
+      'The reading request timed out before your report was ready. Your chart has been saved. Please try again later.';
 }

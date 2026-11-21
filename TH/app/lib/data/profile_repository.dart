@@ -2,33 +2,29 @@ import '../core/models/birth_profile.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/session_store.dart';
 
-class LocationPage {
-  const LocationPage(this.items, this.total);
+class BirthLocationPage {
+  const BirthLocationPage(this.items, this.total);
   final List<Map<String, dynamic>> items;
   final int total;
 }
 
 class ProfileRepository {
   ProfileRepository(this.api, this.drafts);
-
   final ApiClient api;
   final LocalDraftStore drafts;
-
-  BirthProfile? local(String owner) {
-    final value = drafts.read(owner, 'birth');
-    if (value == null) return null;
-    try {
-      return BirthProfile.fromJson(value);
-    } on FormatException {
-      return null;
-    } on TypeError {
-      return null;
-    }
+  Future<BirthProfile?> remote() async {
+    final json = await api.get('/api/profile', allowEmpty: true);
+    return json.isEmpty ? null : BirthProfile.fromJson(json);
   }
 
-  Future<BirthProfile?> remote() async {
-    final value = await api.get('/api/profile', allowEmpty: true);
-    return value.isEmpty ? null : BirthProfile.fromJson(value);
+  BirthProfile? local(String owner) {
+    final json = drafts.read(owner, 'birth');
+    if (json == null) return null;
+    try {
+      return BirthProfile.fromJson(json);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<BirthProfile> save(
@@ -36,74 +32,81 @@ class ProfileRepository {
     BirthProfile profile, {
     required bool serverContractReady,
   }) async {
-    final saved = serverContractReady && owner != 'guest'
-        ? BirthProfile.fromJson(
-            await api.request(
-              'PUT',
-              '/api/profile',
-              body: {
-                'system': 'western_natal',
-                'birth_date': profile.date,
-                'birth_time': profile.time,
-                'location_id': profile.placeId,
-                'birthplace': profile.place,
-                'timezone': profile.timezone,
-                'country_code': profile.countryCode,
-                'latitude': profile.latitude,
-                'longitude': profile.longitude,
-                'language': api.locale,
-                'display_name': profile.name,
-                'expected_revision': profile.revision,
-              },
-            ),
-          )
-        : profile;
+    var saved = profile;
+    if (serverContractReady && owner != 'guest') {
+      saved = BirthProfile.fromJson(
+        await api.request(
+          'PUT',
+          '/api/profile',
+          body: {
+            'system': 'western_natal',
+            'birth_date': profile.date,
+            'birth_time': profile.time,
+            'location_id': profile.placeId,
+            'timezone': profile.timezone,
+            'birthplace': profile.place,
+            'display_name': profile.name,
+            'country_code': profile.countryCode,
+            'latitude': profile.latitude,
+            'longitude': profile.longitude,
+            'language': api.locale,
+            'expected_revision': profile.revision,
+          },
+        ),
+      );
+    }
     await drafts.write(owner, 'birth', saved.toJson());
     return saved;
   }
 
-  Future<void> clearLocal(String owner) => drafts.remove(owner, 'birth');
-
-  Future<LocationPage> locations(
+  Future<BirthLocationPage> locations(
     String query,
-    String language, {
+    String locale, {
     String country = 'TH',
     String? level,
     String province = '',
     int offset = 0,
   }) async {
-    final path = Uri(
-      path: '/api/thai-locations',
+    if (!['', 'TH', 'CN', 'VN', 'US'].contains(country)) {
+      throw const ApiFailure('unsupported_country');
+    }
+    final params = Uri(
       queryParameters: {
-        'query': query,
         'country': country,
-        'level':
-            level ?? (const ['TH', 'CN'].contains(country) ? 'auto' : 'city'),
-        if (province.isNotEmpty) 'province': province,
+        'level': level ?? (['TH', 'CN'].contains(country) ? 'auto' : 'city'),
+        'query': query,
+        'province': province,
         'offset': '$offset',
       },
+    ).query;
+    final response = await api.get(
+      '/api/thai-locations?$params',
+      authenticated: false,
     );
-    final response = await api.get(path.toString(), authenticated: false);
-    final items = response['items'];
-    if (items is! List) return const LocationPage([], 0);
-    final localizedField = switch (language) {
-      'zh' => 'nameChinese',
-      'th' => 'nameThai',
-      'vi' => 'nameVietnamese',
-      _ => 'nameEnglish',
-    };
-    final rows = [
-      for (final item in items.whereType<Map>())
-        if (item['id'] is String && item['timeZone'] is String)
-          {
-            ...Map<String, dynamic>.from(item),
-            'id': item['id'],
-            'label':
-                item[localizedField] ?? item['nameEnglish'] ?? item['nameThai'],
-            'timezone': item['timeZone'],
-          },
-    ];
-    final total = response['total'];
-    return LocationPage(rows, total is int && total >= 0 ? total : rows.length);
+    final rows = response['items'] ?? response['results'] ?? [];
+    if (rows is! List) throw const ApiFailure('invalid_locations');
+    final items = rows
+        .whereType<Map>()
+        .map((row) {
+          final name = locale == 'th'
+              ? row['nameThai']
+              : locale == 'zh'
+              ? row['nameChinese']
+              : locale == 'vi'
+              ? row['nameVietnamese']
+              : row['nameEnglish'];
+          return {
+            ...Map<String, dynamic>.from(row),
+            'label': name ?? row['nameEnglish'] ?? row['name'] ?? '',
+            'timezone': row['timeZone'] ?? row['tzid'] ?? row['timezone'],
+          };
+        })
+        .toList(growable: false);
+    return BirthLocationPage(
+      items,
+      (response['total'] as num?)?.toInt() ?? items.length,
+    );
   }
+
+  Future<void> clearLocal(String owner) => drafts.remove(owner, 'birth');
 }

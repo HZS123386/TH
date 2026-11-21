@@ -37,15 +37,8 @@ class AppCapabilities {
             },
           )
           .join(' / ');
-}
 
-class ConfigurationRepository {
-  ConfigurationRepository(this.api);
-
-  final ApiClient api;
-
-  Future<AppCapabilities> load() async {
-    final json = await api.get('/api/config', authenticated: false);
+  factory AppCapabilities.fromJson(Map<String, dynamic> json) {
     final modules = json['modules'];
     final app = json['app_capabilities'];
     final western =
@@ -91,6 +84,16 @@ class ConfigurationRepository {
           : [?provider],
     );
   }
+}
+
+class ConfigurationRepository {
+  ConfigurationRepository(this.api);
+
+  final ApiClient api;
+
+  Future<AppCapabilities> load() async => AppCapabilities.fromJson(
+    await api.get('/api/config', authenticated: false),
+  );
 
   Future<void> consent(String version) async {
     await api.request(

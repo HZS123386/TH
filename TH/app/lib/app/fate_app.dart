@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../features/account/account_page.dart';
 import '../features/account/birth_page.dart';
 import '../features/account/login_page.dart';
@@ -23,6 +24,8 @@ import '../features/companion/guardian.dart';
 import '../features/lucky_numbers/lucky_numbers_page.dart';
 import '../features/reports/h5_report_page.dart';
 import '../features/reports/reports_page.dart';
+import '../features/reports/report_progress_page.dart';
+import '../features/reports/report_records_page.dart';
 import '../features/reports/report_recovery_sheet.dart';
 import '../features/shop/shop_page.dart';
 import '../features/tarot/tarot_page.dart';
@@ -101,12 +104,33 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
             _motionPage(context, state, const WelcomePage()),
       ),
       ShellRoute(
-        builder: (context, state, child) => _AppShell(
-          path: state.uri.path == DailyHoroscopePage.location
-              ? '/fortune'
-              : state.uri.path,
-          child: child,
-        ),
+        builder: (context, state, child) {
+          final path = state.uri.path;
+          final parameters = state.uri.queryParameters;
+          final history = parameters['from'] == 'history';
+          final back = switch (path) {
+            '/chart/reading' || '/chart/generating' =>
+              history
+                  ? _recordsLocation(parameters['origin'])
+                  : parameters['example'] == '1'
+                  ? '/chart?example=1'
+                  : '/chart',
+            '/chart/readings' => switch (parameters['from']) {
+              'profile' => '/more',
+              'reports' => '/reports',
+              _ => '/chart',
+            },
+            _ => null,
+          };
+          return _AppShell(
+            path: path == DailyHoroscopePage.location ? '/fortune' : path,
+            readingBack: back,
+            hideNavigation:
+                back != null &&
+                !(path == '/chart/readings' && parameters['from'] == 'reports'),
+            child: child,
+          );
+        },
         routes: [
           GoRoute(
             path: '/fortune',
@@ -163,6 +187,63 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
               context,
               state,
               ChartPage(example: state.uri.queryParameters['example'] == '1'),
+            ),
+          ),
+          GoRoute(
+            path: '/chart/reading',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              ReportsPage(
+                detail: true,
+                example: state.uri.queryParameters['example'] == '1',
+                fromChart: ![
+                  'history',
+                  'generation',
+                ].contains(state.uri.queryParameters['from']),
+                backLocation: state.uri.queryParameters['from'] == 'history'
+                    ? _recordsLocation(state.uri.queryParameters['origin'])
+                    : '/chart',
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/chart/generating',
+            pageBuilder: (context, state) {
+              final query = Map<String, String>.of(state.uri.queryParameters);
+              final id = query.remove('report');
+              final history = query['from'] == 'history';
+              if (!history) query['from'] = 'generation';
+              final back = history
+                  ? _recordsLocation(query['origin'])
+                  : '/chart';
+              if (!history) query['from'] = 'generation';
+              return _motionPage(
+                context,
+                state,
+                ReportProgressPage(
+                  reportId: id,
+                  destination: Uri(
+                    path: '/chart/reading',
+                    queryParameters: query,
+                  ).toString(),
+                  backLocation: back,
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/chart/readings',
+            pageBuilder: (context, state) => _motionPage(
+              context,
+              state,
+              ReportRecordsPage(
+                origin: switch (state.uri.queryParameters['from']) {
+                  'profile' => ReportRecordsOrigin.profile,
+                  'reports' => ReportRecordsOrigin.reports,
+                  _ => ReportRecordsOrigin.chart,
+                },
+              ),
             ),
           ),
           GoRoute(
@@ -400,10 +481,23 @@ Page<void> _motionPage(
   );
 }
 
+String _recordsLocation(String? origin) => switch (origin) {
+  'profile' => '/chart/readings?from=profile',
+  'reports' => '/chart/readings?from=reports',
+  _ => '/chart/readings',
+};
+
 class _AppShell extends StatelessWidget {
-  const _AppShell({required this.path, required this.child});
+  const _AppShell({
+    required this.path,
+    required this.child,
+    this.readingBack,
+    this.hideNavigation = false,
+  });
   final String path;
   final Widget child;
+  final String? readingBack;
+  final bool hideNavigation;
   static const _tabs = ['/fortune', '/action', '/live', '/shop', '/more'];
 
   @override
@@ -441,7 +535,12 @@ class _AppShell extends StatelessWidget {
                   : AppBar(
                       backgroundColor: Colors.transparent,
                       automaticallyImplyLeading: false,
-                      leading: showBack
+                      leading: readingBack != null
+                          ? BackButton(
+                              key: const ValueKey('reading-back'),
+                              onPressed: () => context.go(readingBack!),
+                            )
+                          : showBack
                           ? BackButton(
                               onPressed: () => context.canPop()
                                   ? context.pop()
@@ -550,7 +649,8 @@ class _AppShell extends StatelessWidget {
                       ],
                     ),
               body: child,
-              bottomNavigationBar: daily || chatting || (guideChat && keyboard)
+              bottomNavigationBar:
+                  hideNavigation || daily || chatting || (guideChat && keyboard)
                   ? null
                   : DecoratedBox(
                       decoration: const BoxDecoration(
@@ -559,6 +659,7 @@ class _AppShell extends StatelessWidget {
                         ),
                       ),
                       child: NavigationBar(
+                        key: const ValueKey('app-bottom-navigation'),
                         height: 64,
                         backgroundColor: const Color(0xFF171222),
                         indicatorColor: Colors.transparent,

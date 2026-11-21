@@ -10,13 +10,24 @@ await build({stdin:{contents:`
 import {lifeCopy,careerCopy,westernCopy,generationCopy} from './src/lib/lifeReport';
 import {ui,readingCopy} from './src/lib/reading';
 import {fortuneTopics,fortuneCopy} from './src/lib/fortuneTopics';
-export default {life:lifeCopy,career:careerCopy,western:westernCopy,generation:generationCopy,ui,fortune:fortuneCopy,topics:fortuneTopics,reading:{zh:readingCopy('zh'),th:readingCopy('th')}};`,resolveDir:root},bundle:true,platform:'node',format:'esm',outfile:extracted});
+import {additionalLocales,languages} from './src/lib/locales';
+export default {life:lifeCopy,career:careerCopy,western:westernCopy,generation:generationCopy,ui,fortune:fortuneCopy,topics:fortuneTopics,additional:additionalLocales,reading:Object.fromEntries(languages.map(code=>[code,readingCopy(code)]))};`,resolveDir:root},bundle:true,platform:'node',format:'esm',outfile:extracted});
 const copy = (await import(pathToFileURL(extracted).href + '?v=' + Date.now())).default;
 copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checkout.json'),'utf8'));
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));
+copy.relationship = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','relationship-report.json'),'utf8'));
+copy.marriage = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','marriage-report.json'),'utf8'));
 const jy = JSON.parse(await readFile(path.join(root,'src','content','jy.json'),'utf8'));
 copy.jy = jy.jy;
+// Use key for identity: id is the supported Indonesian language code.
 copy.jyThemes = jy.jyThemes;
+const checkoutFallback = copy.checkout.en;
+for(const language of Object.keys(copy.additional)) {
+ for(const group of ['jy','experience'])copy[group][language]=copy.additional[language][group];
+ copy.checkout[language]={...copy.additional[language].checkout,...checkoutFallback};
+ for(const items of Object.values(copy.jyThemes))for(const item of items)item[language]=copy.additional[language].themes[item.key];
+}
+delete copy.additional;
 const handwriting = JSON.parse(await readFile(path.join(root,'src','content','welcome-strokes.json'),'utf8'));
 copy.welcomeStrokes = {};
 for (const { welcome: { name } } of Object.values(copy.jy)) {
@@ -35,6 +46,9 @@ for (const { welcome: { name } } of Object.values(copy.jy)) {
 }
 await mkdir(path.join(target,'assets','images'),{recursive:true});
 await mkdir(path.join(target,'assets','fonts'),{recursive:true});
+// Legal text is loaded only on the privacy route, outside the startup copy/font set.
+await cp(path.join(root,'src','content','privacy'),path.join(target,'assets','privacy'),{recursive:true});
+await cp(path.join(root,'src','content','support'),path.join(target,'assets','support'),{recursive:true});
 await writeFile(path.join(target,'assets','copy.json'),JSON.stringify(copy));
 const languages = Object.keys(copy.jy);
 const copyDirectory = path.join(target, 'assets', 'copy');
@@ -65,6 +79,10 @@ for(const name of ['NotoSansThai.ttf','NotoSansSC-Regular.otf','OFL.txt','OFL-CJ
 }
 await mkdir(path.join(target,'web','media'),{recursive:true});
 await cp(path.join(root,'dist','public','fonts'),path.join(target,'web','fonts'),{recursive:true});
+for(const script of ['Myanmar','Khmer','Lao']) {
+ await cp(path.join(target,'assets','fonts',`NotoSans${script}-Regular.ttf`),path.join(target,'web','fonts','pdf',`NotoSans${script}-Regular.ttf`));
+ await cp(path.join(target,'assets','fonts',`OFL-${script}.txt`),path.join(target,'web','fonts','pdf',`OFL-${script}.txt`));
+}
 await build({entryPoints:[path.join(root,'src','lib','pdfRuntime.ts')],bundle:true,splitting:true,format:'esm',minify:true,outdir:path.join(target,'web','runtime'),entryNames:'report-pdf',chunkNames:'[name]-[hash]'});
 // Synthetic fixtures stay inside tests, outside the Flutter asset manifest.
 const fixtureModule = path.join(root,'tmp','flutter-fixtures.mjs');

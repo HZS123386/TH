@@ -64,16 +64,23 @@ class AuthRepository extends ChangeNotifier {
     String username,
     String password, {
     bool register = false,
-  }) => _signIn(
-    () => api.request(
+  }) {
+    if (!canUseDevelopmentLogin) {
+      throw const ApiFailure('development_login_disabled');
+    }
+    final upgradeGuest = register && isGuest;
+    return _signIn(() => api.request(
       'POST',
       register ? '/api/auth/register' : '/api/auth/login',
-      authenticated: false,
-      body: {'username': username, 'password': password},
-    ),
-  );
+      authenticated: upgradeGuest,
+      body: {'username': username.trim(), 'password': password},
+    ), keepGuest: upgradeGuest);
+  }
 
   Future<void> signInApple() => _signIn(() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      throw const ApiFailure('native_apple_required');
+    }
     final random = Random.secure();
     final nonce = base64UrlEncode(
       List.generate(32, (_) => random.nextInt(256)),
@@ -125,8 +132,9 @@ class AuthRepository extends ChangeNotifier {
   Future<void> _signIn(
     Future<Map<String, dynamic>> Function() request, {
     Map<String, dynamic>? verifiedAccount,
+    bool keepGuest = false,
   }) async {
-    final clearing = clear();
+    final clearing = keepGuest ? Future<void>.value() : clear();
     final generation = api.sessionVersion;
     await clearing;
     if (generation != api.sessionVersion) {

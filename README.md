@@ -1,8 +1,8 @@
 # FATE 海外玄学
 
-本项目的唯一开发和启动目录是 `C:\Users\32668\Desktop\海外-玄学`。2026-11-13 已迁入合并远端更新后的 H5、App、共用后端、支付数据和 Git 历史，基准提交为 `e3a262e`。原 `TH-H` 目录仅保留迁移说明，旧独立原型保存在备份目录。
+APP、落地页和共用后台统一位于本仓库。当前本机目录为 `D:/desktop/FATE`；脚本根据自身位置寻找项目，换电脑时可整体移动。原桌面项目的配置、数据库、依赖和构建均已迁入，旧工作区与备份保存在 `output/`。
 
-在本目录执行 `node TH/scripts/dev.mjs`，会构建并启动 H5、App 网页预览和共用后端。构建完成后再次启动可用 `node TH/scripts/dev.mjs --skip-build`。配置统一读取 `TH/.env`；本机 Flutter SDK 路径由其中的 `FATE_FLUTTER_BIN` 指定。退出启动终端时按 Ctrl+C 可停止这三个服务。
+在仓库根目录执行 `pnpm dev` 或 `node TH/scripts/dev.mjs`，会构建并启动 H5、App 网页预览和共用后端。构建完成后再次启动可用 `pnpm dev:ready`。配置统一读取 `TH/.env`；本机 Flutter SDK 路径由其中的 `FATE_FLUTTER_BIN` 指定。退出启动终端时按 Ctrl+C 可停止这三个服务。
 
 | 目录 | 内容 |
 | --- | --- |
@@ -15,8 +15,8 @@
 
 - 点击生成时，只生成免费报告，播放动画并显示摘要与三个特点的内容进度；校验保存后达到 100%，打开独立报告页。
 - 当前尚德流程先用手机号创建订单，再打开官方收银台；后台查询并核对订单、金额、币种及到账状态后，才允许解锁并生成完整内容。
-- 当前 H5 商品价格为 ฿30。按钮点击、收银台跳转或未经查单确认的通知都不能直接解锁。旧支付测试分支不参与当前尚德配置。
-- 支持中文／泰语、中国／泰国出生地点联动、未知出生时间估算、历史报告、网页保存与 PDF 导出。
+- H5 价格由当前支付配置和报告币种决定。按钮点击、收银台跳转或未经查单确认的通知都不能直接解锁。旧支付测试分支不参与当前尚德配置。
+- 支持已配置的九种语言、中国／泰国出生地点联动、未知出生时间估算、历史报告、网页保存与 PDF 导出。
 
 ## 本地启动
 
@@ -43,7 +43,7 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }
 
 在 `TH/.env` 中填写本地使用的服务端模型配置。人生报告使用 `FORTUNE_PROVIDER` 选择提供商及相应的提供商配置；未配置时接口会说明生成服务不可用。地点索引命令会下载 GeoNames 的公开数据并在本机生成数据库。
 
-在 `TH/.env` 中设置 `DATABASE_URL` 指向已迁移的 PostgreSQL 业务库。本机复用原 PostgreSQL 容器 `fate-db-1`，业务库为 `fate_business`。本机使用 Docker 时可配置 `FATE_POSTGRES_CONTAINER=fate-db-1`，统一启动命令会等待这个数据库实例就绪。
+在 `TH/.env` 中设置 `DATABASE_URL` 指向已迁移的 PostgreSQL 业务库。通过 Docker 启动数据库时可配置 `FATE_POSTGRES_CONTAINER`，统一启动命令会等待这个数据库实例就绪。
 
 首次初始化已确认的 PostgreSQL 目标库，在 `TH/` 中执行 `node scripts/python.mjs -m alembic -c backend/alembic.ini upgrade head`。现有业务迁移须先备份和核对数据，再切换连接。后端启动时会检查数据库迁移版本。
 
@@ -61,6 +61,14 @@ node TH/scripts/dev.mjs
 - H5 运营后台：<http://127.0.0.1:8000/admin/>，页面、接口、测试和资料统一在 `TH/h5_admin/`，配置与数据口径见 [后台说明](TH/h5_admin/README.md)。
 
 H5 的真实入口是 `western-astrology-h5 4/web-client/lib/main.dart`，构建输出为 `western-astrology-h5 4/site/`。`dist/` 保留原有素材；修改页面请沿用 `web-client/` 的实际调用链。后端默认定位本仓库内的 `site/`，无需引用旧目录。
+
+## 固定部署输出
+
+配置目标库的 `FATE_DEPLOY_DATABASE_URL` 后，执行 `pnpm deploy:prepare` 构建落地页并准备服务器发布包。该命令仅在本地打包，不上传、不重启服务器。打包结果固定为 `output/deploy/latest/application.tar.gz`，版本号记录在 `manifest.json`，`runtime.env` 单独存放且不进入压缩包。再次打包轮换到 `previous/`，不在桌面复制新项目。
+
+首次打包及轮换安全检查：`pnpm test:deployment`。服务器仍使用现有版本目录与共享数据完成回滚，操作见 `western-astrology-h5 4/deploy/README.md`。
+
+迁移记录在 `output/organization/`。旧桌面路径若仍有迁移提示，是旧 Codex 会话占用的目录；后续应将 Codex 项目目录选择为本仓库。关闭旧会话／终端后，在本仓库执行 `pnpm cleanup:legacy` 可删除仅剩迁移提示的旧目录；命令不会递归删除，也不会删除含其他文件的目录。
 
 ## 检查
 

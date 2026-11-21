@@ -1,0 +1,76 @@
+# Manual workflows only. Configure the Apple integration and release group first.
+workflows:
+  ios-compile-check:
+    name: FATE iOS compile check
+    working_directory: TH/app
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      flutter: 3.47.9
+      xcode: latest
+    scripts:
+      - name: Resolve Flutter packages
+        script: flutter pub get
+      - name: Analyze and test the APP
+        script: |
+          set -euo pipefail
+          flutter analyze
+          flutter test
+      - name: Compile iOS without signing
+        script: |
+          flutter build ios --release --no-codesign \
+            --dart-define=FATE_DEVELOPMENT_PREVIEW=false
+    artifacts:
+      - /tmp/xcodebuild_logs/*.log
+
+  ios-app-store:
+    name: FATE iOS signed upload
+    working_directory: TH/app
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    integrations:
+      app_store_connect: FATEAppStoreConnect
+    environment:
+      flutter: 3.47.9
+      xcode: latest
+      groups:
+        - fate_ios_release
+      vars:
+        IOS_BUILD_NAME: "1.0.0"
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.fate.fateApp
+    scripts:
+      - name: Check release settings and backend capabilities
+        script: |
+          set -euo pipefail
+          : "${APP_STORE_APPLE_ID:?Set the numeric Apple ID in fate_ios_release}"
+          : "${IOS_BUILD_NUMBER:?Set a new positive build number in fate_ios_release}"
+          [[ "$APP_STORE_APPLE_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$IOS_BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          python3 ../scripts/ios_release_preflight.py
+      - name: Resolve Flutter packages
+        script: flutter pub get
+      - name: Analyze and test the APP
+        script: |
+          set -euo pipefail
+          flutter analyze
+          flutter test
+      - name: Apply App Store signing profiles
+        script: xcode-project use-profiles
+      - name: Build the signed IPA
+        script: |
+          flutter build ipa --release \
+            --build-name="$IOS_BUILD_NAME" \
+            --build-number="$IOS_BUILD_NUMBER" \
+            --dart-define="FATE_API_BASE_URL=$FATE_API_BASE_URL" \
+            --dart-define=FATE_DEVELOPMENT_PREVIEW=false \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - $CM_BUILD_DIR/TH/app/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false

@@ -1,8 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../core/browser_port.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
+import 'languages.dart';
 
 class H5Controller extends ChangeNotifier {
   H5Controller(
@@ -13,14 +16,17 @@ class H5Controller extends ChangeNotifier {
     this.loadTranslations,
     this.ensureFont,
     this.ensureTextFont,
-  }) : _language = language,
-       _translations = {language: translations} {
-    repository.language = language;
+    this.ensureReportFont,
+  }) : _language = h5Language(language),
+       _translations = {h5Language(language): translations} {
+    repository.language = _language;
     repository.visitContext = browser.visitContext;
     repository.onClientFailure = browser.trackFailure;
     welcomeOpen = true;
     noticeAccepted =
         browser.readSetting('fate-data-use-version') == noticeVersion;
+    returningVisitor = browser.readSetting('fate-welcome-seen') == '1';
+    browser.writeSetting('fate-welcome-seen', '1');
   }
   final Map<String, Json> _translations;
   final Future<Json> Function(String)? loadTranslations;
@@ -29,11 +35,16 @@ class H5Controller extends ChangeNotifier {
   final BrowserPort browser;
   final Future<void> Function(String)? ensureFont;
   final Future<void> Function(String, String)? ensureTextFont;
+  final Future<void> Function(String)? ensureReportFont;
+  late final bool returningVisitor;
   static const noticeVersion = 'h5-data-use-3';
   static const _visitTimeout = Duration(seconds: 8);
   late bool welcomeOpen, noticeAccepted;
   bool welcomePortraitRevealed = false;
   bool landingPrepared = false;
+  Json? landingInput;
+  Place? landingPlace;
+  LifeReport? _generatedPreview;
   Future<void>? _visitRequest;
   Json _visit = {};
   final _events = <String, Future<bool>>{};
@@ -71,6 +82,38 @@ class H5Controller extends ChangeNotifier {
   void trackActivity(String page, [String action = 'view']) =>
       browser.trackActivity(page, action);
 
+  void stageGeneratedPreview(LifeReport report) => _generatedPreview = report;
+
+  LifeReport? takeGeneratedPreview(String id) {
+    final report = _generatedPreview;
+    _generatedPreview = null;
+    return report?.id == id && report?.language == language ? report : null;
+  }
+
+  void restoreLandingFromReport(LifeReport? report) {
+    if (report != null) {
+      landingInput = report.input;
+      final location = object(report.json['location']);
+      final profile = report.profile;
+      landingPlace = Place({
+        ...location,
+        'id': text(profile['location_id']).isNotEmpty
+            ? profile['location_id']
+            : text(location['id']),
+        'countryCode': text(location['countryCode']).isNotEmpty
+            ? location['countryCode']
+            : text(profile['country_code']).isNotEmpty
+            ? profile['country_code']
+            : text(location['country']),
+        'timeZone': profile['timezone'] ?? location['timeZone'],
+        'nameEnglish': text(location['nameEnglish']).isEmpty
+            ? profile['birthplace']
+            : location['nameEnglish'],
+      });
+    }
+    enterLanding();
+  }
+
   void enterLanding() {
     landingPrepared = true;
     welcomeOpen = false;
@@ -78,8 +121,6 @@ class H5Controller extends ChangeNotifier {
     trackActivity('birth_form', 'enter_form');
     notifyListeners();
     unawaited(recordVisit());
-    // Warm later place/report text after the welcome is already visible.
-    unawaited(ensureFont?.call(language).catchError((_) {}));
   }
 
   void returnToWelcome() {
@@ -98,6 +139,13 @@ class H5Controller extends ChangeNotifier {
 
   Future<void> prepareText(String value, {String? language}) async {
     await ensureTextFont?.call(language ?? this.language, value);
+  }
+
+  void warmReportFont() {
+    final load = ensureReportFont;
+    if (language == 'zh' && load != null) {
+      unawaited(load(language).catchError((_) {}));
+    }
   }
 
   void revealLandingPortrait() {
@@ -211,11 +259,10 @@ class H5Controller extends ChangeNotifier {
   String _language;
   String get language => _language;
   Copy get copy => Copy(translations, language);
-  Copy reportCopy(LifeReport report) =>
-      Copy(
-        _translations[report.language] ?? translations,
-        report.language,
-      ).forReport(report);
+  Copy reportCopy(LifeReport report) => Copy(
+    _translations[report.language] ?? translations,
+    report.language,
+  ).forReport(report);
 
   Future<Json> _copyForLanguage(String language) async {
     final cached = _translations[language];
@@ -227,7 +274,7 @@ class H5Controller extends ChangeNotifier {
   }
 
   Future<bool> changeLanguage(String language) async {
-    if (!['zh', 'th'].contains(language)) return false;
+    if (!h5Languages.any((item) => item.$1 == language)) return false;
     final revision = ++_languageRevision;
     if (language == _language && !languageLoading) return true;
     languageLoading = true;
@@ -248,10 +295,7 @@ class H5Controller extends ChangeNotifier {
     languageLoading = false;
     _language = language;
     repository.language = language;
-    browser.setLanguage(
-      language,
-      language == 'zh' ? '运程解析 · FATE' : 'วิเคราะห์ดวงชะตา · FATE',
-    );
+    browser.setLanguage(language, copy.t('jy', 'title'));
     notifyListeners();
     return true;
   }
@@ -260,6 +304,12 @@ class H5Controller extends ChangeNotifier {
     final c = labels ?? copy;
     if (error is FormatException) return c.t('ui', 'badResult');
     if (error is ApiFailure) {
+      if (error.code == 'life_personal_time_required') {
+        return c.t('jy', 'personal.timeUnknown');
+      }
+      if (error.code == 'life_personal_periods_unavailable') {
+        return c.t('jy', 'personal.unavailable');
+      }
       for (final group in [
         'checkout',
         'experience',

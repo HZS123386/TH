@@ -59,7 +59,13 @@
   "voiceChat": "Voice chat",
   "voicePreviewNotice": "Voice chat is unavailable in this preview. You can continue by text.",
   "guideChatHeading": "Talk it through with {name}",
-  "@guideChatHeading": {"placeholders": {"name": {"type": "String"}}},
+  "@guideChatHeading": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "startReading": "Start reading",
   "guideChatDemo": "Demo chat · Replies and history stay on this device",
   "guideGreeting": "What’s on your mind today?",
@@ -68,7 +74,13 @@
   "guideWorkReply": "Separate what you know from what you’re waiting for. What could you clarify this week?",
   "guideLoveReply": "What would you like the other person to know? Start with a simple hello and notice how you feel.",
   "guideReflectReply": "Think about what you can control in “{question}”. What’s one thing you could do in ten minutes?",
-  "@guideReflectReply": {"placeholders": {"question": {"type": "String"}}},
+  "@guideReflectReply": {
+    "placeholders": {
+      "question": {
+        "type": "String"
+      }
+    }
+  },
   "continueSample": "Continue with your example reading",
   "readingSampleQuestion": "I’m waiting to hear back about work. What can I do this week?",
   "readingSampleLove": "What’s the next step in this relationship?",
@@ -135,9 +147,21 @@
   "offeringLotus": "Lotus offering",
   "offeringMarigold": "Marigold garland",
   "offeringCollected": "Collected {count}",
-  "@offeringCollected": {"placeholders":{"count":{"type":"int"}}},
+  "@offeringCollected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "offeringPerAction": "Complete an action to add {points} energy.",
-  "@offeringPerAction": {"placeholders":{"points":{"type":"int"}}},
+  "@offeringPerAction": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
   "offeringPresenting": "Presenting your offering…",
   "offeringComplete": "Offering presented",
   "offeringBlessing": "May your good deeds lift you up. May good fortune stay with you, and may your hopes come true.",
@@ -259,8 +283,8 @@
   "houses": "Twelve houses",
   "aspects": "Major aspects",
   "planetHint": "Tap a planet to explore its role in the chart.",
-  "unknownTime": "Birth time is unknown. The ascendant and time-dependent houses are not displayed.",
-  "chartRead": "Read this chart",
+  "unknownTime": "Without a birth time, an estimated chart uses 12:00 local time at your birthplace. You can add your time later.",
+  "chartRead": "Full reading",
   "house": "House",
   "emptyValue": "Pending",
   "reportTitle": "Personal birth report",
@@ -659,7 +683,13 @@
   "thaiCalendarRetry": "Retry",
   "dailyHoroscopeTitle": "Daily horoscope",
   "dailyHoroscopeToday": "{sign} today",
-  "@dailyHoroscopeToday": {"placeholders": {"sign": {"type": "String"}}},
+  "@dailyHoroscopeToday": {
+    "placeholders": {
+      "sign": {
+        "type": "String"
+      }
+    }
+  },
   "dailyHoroscopeMore": "See more",
   "dailyHoroscopeChooseSign": "Choose a zodiac sign",
   "dailyHoroscopeForecast": "Today’s reading",
@@ -674,15 +704,51 @@
   "dailyHoroscopeMoneyShort": "Money",
   "dailyHoroscopeHealth": "Health",
   "dailyHoroscopeReading": "{planet} transits house {house}. {advice}",
-  "@dailyHoroscopeReading": {"placeholders": {"planet": {"type": "String"}, "house": {"type": "int"}, "advice": {"type": "String"}}},
+  "@dailyHoroscopeReading": {
+    "placeholders": {
+      "planet": {
+        "type": "String"
+      },
+      "house": {
+        "type": "int"
+      },
+      "advice": {
+        "type": "String"
+      }
+    }
+  },
   "dailyHoroscopeLoveAdvice": "{tone, select, supportive{A good day to share how you feel and give the other person time to respond.} reflective{Pause before reading into a silence. Ask how the other person feels.} other{Make time for a relaxed conversation and listen to what matters to the other person.}}",
-  "@dailyHoroscopeLoveAdvice": {"placeholders": {"tone": {"type": "String"}}},
+  "@dailyHoroscopeLoveAdvice": {
+    "placeholders": {
+      "tone": {
+        "type": "String"
+      }
+    }
+  },
   "dailyHoroscopeWorkAdvice": "{tone, select, supportive{Pick a task you can move forward today and agree on the next step with your team.} reflective{Review the details of a task in progress before taking on a new commitment.} other{Set one clear priority and handle the rest in order.}}",
-  "@dailyHoroscopeWorkAdvice": {"placeholders": {"tone": {"type": "String"}}},
+  "@dailyHoroscopeWorkAdvice": {
+    "placeholders": {
+      "tone": {
+        "type": "String"
+      }
+    }
+  },
   "dailyHoroscopeMoneyAdvice": "{tone, select, supportive{Make time to review your spending and see what you can set aside.} reflective{Give yourself time to think through any unplanned purchase.} other{Check upcoming expenses and keep some room in your budget.}}",
-  "@dailyHoroscopeMoneyAdvice": {"placeholders": {"tone": {"type": "String"}}},
+  "@dailyHoroscopeMoneyAdvice": {
+    "placeholders": {
+      "tone": {
+        "type": "String"
+      }
+    }
+  },
   "dailyHoroscopeHealthAdvice": "{tone, select, supportive{A little movement or a short break can help you keep a steady rhythm today.} reflective{Leave some space between plans and take a break when you need one.} other{Keep your usual routine and step away from the screen for a moment.}}",
-  "@dailyHoroscopeHealthAdvice": {"placeholders": {"tone": {"type": "String"}}},
+  "@dailyHoroscopeHealthAdvice": {
+    "placeholders": {
+      "tone": {
+        "type": "String"
+      }
+    }
+  },
   "chartRules": "Tropical zodiac · Placidus houses · True node",
   "chartSource": "Calculated by RoxyAPI from your birth details",
   "dateOnlyRules": "Birth time unknown: planetary positions are noon estimates. Moon, angles, houses, aspects and uncertain sign placements are omitted.",
@@ -698,7 +764,7 @@
   "fullReading": "Your full reading",
   "developmentReport": "Local development preview: the full report is free here. No purchase or payment has taken place.",
   "reportGeneratingText": "We are preparing your reading from your planets, houses and aspects. It will appear automatically. You can leave and return to it later.",
-  "reportFailedText": "This reading could not be completed. Return to Reports and generate it again. Sample content will never replace your result.",
+  "reportFailedText": "This reading could not be completed yet. Use the button below to try again. Your chart has been kept.",
   "roxyUnavailable": "The chart service is unavailable. Please try again later.",
   "roxyQuota": "There are too many chart requests. Please try again later.",
   "profileChanged": "Your birth details changed. Open the birth details page, confirm and save them again.",
@@ -789,7 +855,13 @@
   "dataControlBody": "You can edit your profile and saved memories, clear conversation history, and withdraw permission for future AI chats. Clearing birth information here removes only the local copy. Account deletion is a separate action and requires confirmation from the service.",
   "aiPermission": "Before you talk",
   "aiPermissionBody": "Your message, birth profile, recent chats, saved memories and selected reading will be processed by the configured AI service ({provider}) to reply to you. Replies may be inaccurate. You can decline and still use other tools, or withdraw permission in Privacy at any time. Withdrawal stops future sharing on this device; it does not delete data already processed.",
-  "@aiPermissionBody": {"placeholders": {"provider": {"type": "String"}}},
+  "@aiPermissionBody": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
   "aiAllow": "Allow & continue",
   "aiEnabled": "AI chat permission is on",
   "aiPaused": "AI chat permission is off",
@@ -813,7 +885,6 @@
   "faqPurchaseTitle": "Paid but still locked?",
   "faqPurchaseBody": "Do not buy again while verification is pending. Open Purchases & restore and retry verification, then refresh your report. Restoring requests a store check; only the server can confirm access.",
   "licenses": "Open-source licenses",
-  "deleteAccount": "Delete account",
   "deleteAccountBody": "This permanently removes the current account and associated profile, conversations and memories from the service. Data required for transaction records may be retained. Deletion does not issue a refund. A guest session cannot be recovered after deletion.",
   "deleteUnavailable": "Account deletion is not available from the service yet. Nothing has been deleted. Clearing local information or signing out does not delete your account.",
   "deleteAcknowledge": "I understand that this cannot be undone.",
@@ -836,7 +907,13 @@
   "reportSend": "Submit report",
   "reportUnavailable": "Reporting is temporarily unavailable. No report has been sent. You can try again later or check Help & support.",
   "reportReceived": "Report received · {receipt}",
-  "@reportReceived": {"placeholders": {"receipt": {"type": "String"}}},
+  "@reportReceived": {
+    "placeholders": {
+      "receipt": {
+        "type": "String"
+      }
+    }
+  },
   "purchaseCenter": "Purchases & restore",
   "purchaseCenterIntro": "Check access and recover an existing purchase.",
   "restoreCheck": "Checking your purchases…",
@@ -853,21 +930,57 @@
   "calendarToday": "Today",
   "calendarSubtitle": "A little space to plan your days",
   "calendarYears": "B.E. {be} · C.E. {ce}",
-  "@calendarYears": {"placeholders":{"be":{"type":"int"},"ce":{"type":"int"}}},
+  "@calendarYears": {
+    "placeholders": {
+      "be": {
+        "type": "int"
+      },
+      "ce": {
+        "type": "int"
+      }
+    }
+  },
   "calendarSmallEra": "Chula Sakarat {year}",
-  "@calendarSmallEra": {"placeholders":{"year":{"type":"int"}}},
+  "@calendarSmallEra": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
   "calendarSelectHint": "Choose a date to explore its five details",
   "calendarLoading": "Opening your calendar…",
   "calendarUnavailable": "This month could not be loaded. Please try again.",
   "calendarRange": "Available offline · {start}–{end} C.E.",
-  "@calendarRange": {"placeholders":{"start":{"type":"int"},"end":{"type":"int"}}},
+  "@calendarRange": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      }
+    }
+  },
   "calendarOutOfRange": "This date is outside the available calendar.",
   "calendarWanPhra": "Buddhist observance",
   "calendarKalayokTitle": "Kalayok · day indications",
   "calendarFlag": "{kind, select, thongchai{Thongchai · victory} athibodi{Athibodi · authority} ubat{Ubat · caution} other{Lokawinas · caution}}",
-  "@calendarFlag": {"placeholders":{"kind":{"type":"String"}}},
+  "@calendarFlag": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
   "calendarFlagBody": "{kind, select, thongchai{Traditionally associated with a new beginning.} athibodi{Traditionally associated with leading and organising.} ubat{Traditionally a day to review plans with care.} other{Traditionally a day to avoid rushing major commitments.}}",
-  "@calendarFlagBody": {"placeholders":{"kind":{"type":"String"}}},
+  "@calendarFlagBody": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
   "calendarNoKalayok": "No Kalayok day indication",
   "calendarMixedNote": "More than one tradition applies today; all indications are shown.",
   "calendarLunarTitle": "Lunar day",
@@ -878,13 +991,92 @@
   "calendarDaylight": "Daytime · 06:00–18:00 · Bangkok",
   "calendarMansion": "The 27 lunar mansions",
   "calendarMansionPosition": "Mansion {index} of 27 · quarter {quarter}",
-  "@calendarMansionPosition": {"placeholders":{"index":{"type":"int"},"quarter":{"type":"int"}}},
+  "@calendarMansionPosition": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "quarter": {
+        "type": "int"
+      }
+    }
+  },
   "calendarMansionReference": "Moon position at Bangkok noon; the mansion may change within the day.",
   "calendarReference": "Traditional Thai calendar · for cultural reference and entertainment.",
   "calendarLunarShort": "{phase, select, waxing{W} other{D}}{day}",
-  "@calendarLunarShort": {"placeholders":{"phase":{"type":"String"},"day":{"type":"int"}}},
+  "@calendarLunarShort": {
+    "placeholders": {
+      "phase": {
+        "type": "String"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
   "calendarMonth": "{month, select, 1{January} 2{February} 3{March} 4{April} 5{May} 6{June} 7{July} 8{August} 9{September} 10{October} 11{November} 12{December} other{}}",
-  "@calendarMonth": {"placeholders":{"month":{"type":"String"}}},
+  "@calendarMonth": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
   "calendarMansionName": "{index, select, 1{Ashwini} 2{Bharani} 3{Krittika} 4{Rohini} 5{Mrigashira} 6{Ardra} 7{Punarvasu} 8{Pushya} 9{Ashlesha} 10{Magha} 11{Purva Phalguni} 12{Uttara Phalguni} 13{Hasta} 14{Chitra} 15{Swati} 16{Vishakha} 17{Anuradha} 18{Jyeshtha} 19{Mula} 20{Purva Ashadha} 21{Uttara Ashadha} 22{Shravana} 23{Dhanishta} 24{Shatabhisha} 25{Purva Bhadrapada} 26{Uttara Bhadrapada} 27{Revati} other{}}",
-  "@calendarMansionName": {"placeholders": {"index": {"type": "String"}}}
+  "@calendarMansionName": {
+    "placeholders": {
+      "index": {
+        "type": "String"
+      }
+    }
+  },
+  "estimated": "Estimated",
+  "estimatedChart": "Estimated chart · 12:00 local time",
+  "estimatedChartNote": "No exact birth time was provided. This chart uses 12:00 local time at your birthplace. The Moon, ascendant, houses and aspects are estimates and may change with your actual birth time. Add your time to recalculate.",
+  "readingChart": "The chart behind this reading",
+  "readingChartIntro": "The reading below is based on this natal chart. Tap a planet to see its position.",
+  "readingContents": "In this reading",
+  "readingContentsHint": "Choose a topic to jump to that section.",
+  "backToChart": "Back to my chart",
+  "savedReadings": "Reading history",
+  "noSavedReports": "No reports yet",
+  "reportRecords": "Report records",
+  "reportRecordsIntro": "Reports are sorted by generation time. Search by report number to find a record.",
+  "searchReportNumber": "Search by report number",
+  "clearSearch": "Clear search",
+  "noMatchingReports": "No report matches this number. Check the number and try again.",
+  "reportNumberLabel": "Report number",
+  "generatedAt": "Generated on",
+  "reportReady": "Ready",
+  "reportRunning": "Generating",
+  "reportFailedShort": "Not completed",
+  "deleteReport": "Delete report",
+  "deleteReportConfirm": "Delete this report record? You will no longer be able to open it from your records.",
+  "reportDeleted": "Report record deleted",
+  "deleteReportFailed": "The report was kept because deletion failed. Please try again later.",
+  "reportDeleteBusy": "This report is still generating. Wait until it finishes before deleting it.",
+  "loadReportsFailed": "Report records could not be loaded. Please try again.",
+  "refreshRecords": "Reload records",
+  "chartReportsLocation": "Chart readings have their own page. Open Chart to read yours.",
+  "progressTitle": "Creating your reading",
+  "progressIntro": "Six topics are being prepared and checked. Your reading will open automatically when it is ready.",
+  "progressPreparing": "Preparing your chart details",
+  "progressWriting": "Writing your personal reading",
+  "progressChecking": "Checking the complete report",
+  "progressRefining": "Refining your reading and advice",
+  "progressComplete": "Your report is ready. Opening it now",
+  "progressFailed": "Your reading is not complete yet",
+  "progressTopics": "{completed} of {total} topics prepared",
+  "progressReturn": "Return to report",
+  "progressReconnect": "Reconnect",
+  "progressDisconnected": "The latest progress is temporarily unavailable. Your background task has not been cancelled. Reconnect or come back later.",
+  "progressLater": "Come back later",
+  "progressPersonality": "Personality and strengths",
+  "progressCareer": "Career development",
+  "progressMoney": "Money habits",
+  "progressRelationships": "Relationships and family",
+  "progressWatch": "Patterns to watch",
+  "progressActions": "Practical next steps",
+  "reportServiceBusy": "The reading service is temporarily busy, so your report is not ready yet. Your chart has been saved. Please try again later.",
+  "reportServiceTimeout": "The reading request timed out before your report was ready. Your chart has been saved. Please try again later."
 }

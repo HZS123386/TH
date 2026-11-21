@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../core/models.dart';
+import '../app/languages.dart';
 import '../ui/theme.dart';
 
 String birthDateLabel(String value, String language) {
   final date = DateTime.tryParse(value);
-  return date == null ? value : DateFormat.yMMMd(language).format(date);
+  return date == null
+      ? value
+      : DateFormat.yMMMd(h5DateLocale(language)).format(date);
 }
 
 Future<String?> chooseBirthDate(
@@ -77,7 +80,7 @@ class _BirthDateDialogState extends State<BirthDateDialog> {
                 key: const ValueKey('birth-year'),
                 initialValue: _date.year,
                 decoration: InputDecoration(
-                  labelText: zh ? '年' : 'ปี ค.ศ.',
+                  labelText: widget.copy.t('jy', 'dateParts.year'),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 16,
@@ -114,7 +117,7 @@ class _BirthDateDialogState extends State<BirthDateDialog> {
                       ),
                       style: fieldStyle,
                       decoration: InputDecoration(
-                        labelText: zh ? '月' : 'เดือน',
+                        labelText: widget.copy.t('jy', 'dateParts.month'),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 16,
@@ -126,7 +129,7 @@ class _BirthDateDialogState extends State<BirthDateDialog> {
                             value: month,
                             child: Text(
                               DateFormat.MMM(
-                                widget.copy.language,
+                                h5DateLocale(widget.copy.language),
                               ).format(DateTime(2000, month)),
                             ),
                           ),
@@ -147,7 +150,7 @@ class _BirthDateDialogState extends State<BirthDateDialog> {
                       ),
                       style: fieldStyle,
                       decoration: InputDecoration(
-                        labelText: zh ? '日' : 'วัน',
+                        labelText: widget.copy.t('jy', 'dateParts.day'),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 16,

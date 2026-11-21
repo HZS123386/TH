@@ -81,7 +81,10 @@ class WebBrowserPort implements BrowserPort {
       if (visit.isEmpty) return;
       const base = String.fromEnvironment('FATE_API_BASE_URL');
       _activity(
-        jsonEncode({...visit, 'activity': {'page': page, 'action': action}}).toJS,
+        jsonEncode({
+          ...visit,
+          'activity': {'page': page, 'action': action},
+        }).toJS,
         ownerKey().toJS,
         '$base/api/landing/visits'.toJS,
       );
@@ -93,7 +96,9 @@ class WebBrowserPort implements BrowserPort {
   @override
   void trackFailure(String path, String code, String method) {
     try {
-      if (visitContext().isNotEmpty) _failure(path.toJS, code.toJS, method.toJS);
+      if (visitContext().isNotEmpty) {
+        _failure(path.toJS, code.toJS, method.toJS);
+      }
     } catch (_) {
       // Diagnostics must not change the original request result.
     }

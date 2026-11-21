@@ -8,6 +8,13 @@ double landingHeroHeight(double width) =>
     (width.clamp(0.0, h5PortraitMaxWidth) * .78).clamp(276.0, 420.0);
 
 const h5FontFallback = [
+  'FateLatin',
+  'NotoMyanmar',
+  'NotoKhmer',
+  'NotoLao',
+  'FateMyanmarLabel',
+  'FateKhmerLabel',
+  'FateLaoLabel',
   'FateLanguageLabel',
   'NotoSansSC',
   'NotoSansSCCommon',

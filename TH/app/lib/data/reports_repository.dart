@@ -8,16 +8,31 @@ class ReportReference {
     this.resultId,
     this.locale, {
     this.profileRevision,
+    this.number,
+    this.createdAt,
+    this.state = 'ready',
   });
-
   final String id, resultId, locale;
   final int? profileRevision;
-
-  factory ReportReference.fromJson(Map<String, dynamic> value) {
-    final id = value['report_id'];
-    final resultId = value['calculation_result_id'] ?? value['result_id'];
-    final locale = value['locale'];
-    final revision = value['profile_revision'];
+  final String? number;
+  final DateTime? createdAt;
+  final String state;
+  Map<String, dynamic> toJson() => {
+    'report_id': id,
+    'result_id': resultId,
+    'locale': locale,
+    'profile_revision': profileRevision,
+    'report_number': number,
+    'created_at': createdAt == null
+        ? null
+        : createdAt!.millisecondsSinceEpoch / 1000,
+    'state': state,
+  };
+  factory ReportReference.fromJson(Map<String, dynamic> json) {
+    final id = json['report_id'];
+    final resultId = json['calculation_result_id'] ?? json['result_id'];
+    final locale = json['locale'];
+    final revision = json['profile_revision'];
     if (id is! String ||
         id.isEmpty ||
         resultId is! String ||
@@ -32,15 +47,16 @@ class ReportReference {
       resultId,
       locale,
       profileRevision: revision as int?,
+      number: json['report_number'] as String?,
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              ((json['created_at'] as num) * 1000).round(),
+              isUtc: true,
+            ),
+      state: json['state'] as String? ?? 'ready',
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    'report_id': id,
-    'calculation_result_id': resultId,
-    'locale': locale,
-    'profile_revision': profileRevision,
-  };
 }
 
 class H5ReportReference {
@@ -84,64 +100,62 @@ class H5HistoryPage {
 
 class ReportsRepository {
   ReportsRepository(this.api, this.drafts);
-
   final ApiClient api;
   final LocalDraftStore drafts;
-
   bool exampleSaved(String owner) =>
-      drafts.read(owner, 'example-report') != null;
-
-  Future<void> saveExample(String owner) =>
-      drafts.write(owner, 'example-report', {'saved': true});
-
-  Future<void> removeExample(String owner) =>
-      drafts.remove(owner, 'example-report');
-
-  ReportReference? active(String owner) {
-    final value = drafts.read(owner, 'active-report');
-    if (value == null) return null;
-    try {
-      return ReportReference.fromJson(value);
-    } on FormatException {
-      return null;
-    }
+      drafts.read(owner, LocalDraftStore.exampleBookmark) != null ||
+      drafts.read(owner, LocalDraftStore.legacyExampleBookmark) != null;
+  Future<void> saveExample(String owner) => drafts.write(
+    owner,
+    LocalDraftStore.exampleBookmark,
+    {'saved_at': DateTime.now().toUtc().toIso8601String()},
+  );
+  Future<void> removeExample(String owner) async {
+    await drafts.remove(owner, LocalDraftStore.exampleBookmark);
+    await drafts.remove(owner, LocalDraftStore.legacyExampleBookmark);
   }
-
-  Future<void> remember(String owner, ReportReference ref) =>
-      drafts.write(owner, 'active-report', ref.toJson());
 
   Future<ReportReference> create(
     String owner,
     String resultId,
     int revision,
     String locale,
-    String key,
+    String requestKey,
   ) async {
-    final value = await api.request(
+    final response = await api.request(
       'POST',
       '/api/western/reports',
-      requestKey: key,
+      requestKey: requestKey,
       body: {
-        'topic': 'natal',
         'profile_revision': revision,
         'calculation_result_id': resultId,
+        'topic': 'natal',
         'locale': locale,
       },
     );
-    final ref = ReportReference.fromJson({
-      'calculation_result_id': resultId,
-      'locale': locale,
-      'profile_revision': revision,
-      ...value,
-    });
-    if (ref.resultId != resultId ||
-        ref.locale != locale ||
-        ref.profileRevision != revision) {
-      throw const FormatException('invalid_report_reference');
+    final reportId = response['report_id'];
+    final returnedResultId =
+        response['calculation_result_id'] ?? response['result_id'];
+    if (reportId is! String ||
+        reportId.isEmpty ||
+        (returnedResultId != null && returnedResultId != resultId) ||
+        (response['locale'] ?? locale) != locale ||
+        (response['profile_revision'] ?? revision) != revision) {
+      throw const ApiFailure('invalid_report_reference');
     }
+    final ref = ReportReference(
+      reportId,
+      resultId,
+      locale,
+      profileRevision: revision,
+      number: response['report_number'] as String?,
+    );
     await remember(owner, ref);
     return ref;
   }
+
+  Future<void> remember(String owner, ReportReference ref) =>
+      drafts.write(owner, 'active-report', ref.toJson());
 
   Future<ReportSnapshot> read(ReportReference ref) async {
     final value = await api.get(
@@ -157,14 +171,43 @@ class ReportsRepository {
     );
   }
 
-  Future<List<ReportReference>> list() async {
-    final value = await api.get('/api/western/reports');
-    final items = value['items'];
-    if (items is! List) return const [];
-    return [
-      for (final item in items.whereType<Map<String, dynamic>>())
-        ReportReference.fromJson(item),
-    ];
+  ReportReference? active(String owner) {
+    final value = drafts.read(owner, 'active-report');
+    try {
+      return value == null ? null : ReportReference.fromJson(value);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> delete(ReportReference reference) async {
+    await api.request(
+      'DELETE',
+      '/api/western/reports/${Uri.encodeComponent(reference.id)}',
+    );
+  }
+
+  Future<void> forget(String owner, String id) async {
+    if (active(owner)?.id == id) await drafts.remove(owner, 'active-report');
+  }
+
+  Future<List<ReportReference>> list({
+    String query = '',
+    String? locale,
+  }) async {
+    final uri = Uri(
+      path: '/api/western/reports',
+      queryParameters: {if (query.isNotEmpty) 'q': query, 'locale': ?locale},
+    );
+    final response = await api.get(uri.toString());
+    final items = response['items'];
+    if (items is! List) throw const ApiFailure('invalid_report_list');
+    return items
+        .map(
+          (item) =>
+              ReportReference.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList(growable: false);
   }
 
   Future<H5HistoryPage> listH5([Map<String, String>? cursor]) async {

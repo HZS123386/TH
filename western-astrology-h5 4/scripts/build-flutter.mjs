@@ -24,14 +24,14 @@ async function moveBuild(source,target){
     }
   }
 }
-export async function buildLanding({release=false}={}){
+export async function buildLanding({release=false,noPub=false}={}){
   await import('./prepare-flutter.mjs');
   const temporary=path.resolve(projectRoot,'tmp'),destination=path.resolve(projectRoot,'site');
   await mkdir(temporary,{recursive:true});
   const generated=await mkdtemp(path.join(temporary,'flutter-site-'));
   const previous=path.join(temporary,`site-previous-${Date.now()}`);
   if(!generated.startsWith(temporary+path.sep)||!previous.startsWith(temporary+path.sep)||destination!==path.join(projectRoot,'site'))throw Error('Unexpected build directory');
-  await flutter(['build','web','--release','--wasm','--enable-wasm-deferred-loading','--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
+  await flutter(['build','web','--release','--wasm','--enable-wasm-deferred-loading',...(noPub?['--no-pub']:[]),'--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
   const compiledFiles=await readdir(generated);
   if (!compiledFiles.some(file=>/^main\.dart_module\d+\.wasm$/.test(file)) ||
       !compiledFiles.some(file=>/^main\.dart\.js_\d+.*\.part\.js$/.test(file))) {
@@ -58,7 +58,7 @@ export async function buildLanding({release=false}={}){
   for(const key of ['name','role','headline','note','start','swipe']){
     const slot=`<!-- FATE_WELCOME_${key.toUpperCase()} -->`;
     if(!index.includes(slot))throw Error(`Missing welcome copy slot: ${key}`);
-    index=index.replace(slot,['zh','th'].map(lang=>`<span class="fate-startup-${lang}">${escapeHtml(welcomeCopy[lang].welcome[key])}</span>`).join(''));
+    index=index.replace(slot,Object.entries(welcomeCopy).map(([lang, {welcome}])=>`<span class="fate-startup-${lang}">${escapeHtml(welcome[key] ?? '')}</span>`).join(''));
   }
   const strokeSlot='<!-- FATE_WELCOME_STROKES -->';
   if(!index.includes(strokeSlot))throw Error('Missing welcome stroke data slot');
@@ -66,7 +66,9 @@ export async function buildLanding({release=false}={}){
   // Discover engine fonts during the HTML request instead of after the Wasm download.
   const fontManifest=JSON.parse(await readFile(path.join(generated,'assets','FontManifest.json'),'utf8'));
   const fontAssets=new Set(fontManifest.flatMap(family=>family.fonts.map(font=>font.asset)));
-  fontAssets.delete('assets/fonts/NotoSansThai.ttf'); // Already a high-priority preload.
+  for (const file of ['NotoSansThai.ttf','FateChineseUI.otf','NotoSansMyanmar-Regular.ttf','NotoSansKhmer-Regular.ttf','NotoSansLao-Regular.ttf']) {
+    fontAssets.delete('assets/fonts/'+file); // Scheduled after the welcome portrait.
+  }
   const fallbackFont='fonts/fallback/Roboto-Regular.ttf';
   if(existsSync(path.join(generated,'assets',fallbackFont)))fontAssets.add(fallbackFont);
   if(!index.includes('<!-- FATE_FONT_PRELOADS -->'))throw Error('Missing font preload slot');
@@ -77,7 +79,7 @@ export async function buildLanding({release=false}={}){
   for (const page of ['report.html','privacy.html','support.html']) {
     await cp(path.join(generated,'index.html'),path.join(generated,page));
   }
-  for(const file of ['main.dart.wasm','main.dart.mjs','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
+  for(const file of ['main.dart.wasm','main.dart.mjs','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','fonts/pdf/NotoSansMyanmar-Regular.ttf','fonts/pdf/NotoSansKhmer-Regular.ttf','fonts/pdf/NotoSansLao-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
   const compressible=new Set(['.html','.js','.mjs','.css','.json','.svg','.wasm','.ttf','.otf']);
   for(const relative of await readdir(generated,{recursive:true})){
     if(!compressible.has(path.extname(relative)))continue;

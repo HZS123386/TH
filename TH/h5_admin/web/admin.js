@@ -72,13 +72,13 @@ const formProgress = {
   form_progress_empty: '尚无已确认的字段',
   form_progress_date: '未填完 · 需填写有效出生日期',
   form_progress_time: '未填完 · 还缺出生时间',
-  form_progress_place: '未填完 · 还缺出生府州',
+  form_progress_place: '未填完 · 还缺出生地',
   form_progress_complete: '资料已填完',
 };
 const visitActions = {
   ...formProgress,
   view: '打开页面', enter_form: '进入资料填写', edit_form: '修改资料', invalid_form: '提交资料未通过校验',
-  select_birth_date: '打开出生日期选择', select_birth_time: '打开出生时间选择', select_birthplace: '打开出生府州选择',
+  select_birth_date: '打开出生日期选择', select_birth_time: '打开出生时间选择', select_birthplace: '打开出生地选择',
   consent_accept: '确认数据使用', consent_cancel: '取消数据使用确认', generate: '开始生成报告',
   generation_failed: '报告生成失败', retry_generation: '重试生成', cancel_generation: '返回 / 取消生成',
   report_ready: '报告内容已显示', report_failed: '报告加载失败', open_payment: '打开支付', close_payment: '关闭支付弹窗',

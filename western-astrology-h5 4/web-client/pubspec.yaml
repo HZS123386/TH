@@ -26,18 +26,38 @@ flutter:
   uses-material-design: true
   assets:
     - assets/copy/
+    - assets/privacy/
+    - assets/support/
     - assets/images/
     - assets/images/badges/
     - assets/licenses/welcome-strokes.txt
     - assets/fonts/OFL.txt
     - assets/fonts/OFL-CJK.txt
     - assets/fonts/OFL-Symbols.txt
+    - assets/fonts/OFL-Myanmar.txt
+    - assets/fonts/OFL-Khmer.txt
+    - assets/fonts/OFL-Lao.txt
+    - assets/fonts/NotoSansMyanmar-Regular.ttf
+    - assets/fonts/NotoSansKhmer-Regular.ttf
+    - assets/fonts/NotoSansLao-Regular.ttf
     - assets/fonts/NotoSansSC-Regular.otf
     - assets/fonts/FateChineseUI.otf
     - assets/fonts/FateChineseCommon.otf
     - assets/fonts/FateWelcomeThai.ttf
     - assets/fonts/FateWelcomeChinese.otf
   fonts:
+    - family: FateMyanmarLabel
+      fonts:
+        - asset: assets/fonts/FateMyanmarLabel.ttf
+    - family: FateKhmerLabel
+      fonts:
+        - asset: assets/fonts/FateKhmerLabel.ttf
+    - family: FateLaoLabel
+      fonts:
+        - asset: assets/fonts/FateLaoLabel.ttf
+    - family: FateLatin
+      fonts:
+        - asset: assets/fonts/FateLatin.otf
     - family: NotoSansThai
       fonts:
         - asset: assets/fonts/NotoSansThai.ttf

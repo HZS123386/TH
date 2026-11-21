@@ -264,7 +264,7 @@ def create_app(settings: Settings | None = None):
             "liff_id": None,
             "modules": module_catalog(),
             "roxy": roxy.public(),
-            "app_capabilities": {"western_reports": roxy.enabled and western_app.writer.enabled,
+            "app_capabilities": {"western_reports": roxy.enabled and western_app.enabled,
                                  "apple_login": False, "apple_iap": False,
                                  "ai_notice_version": WESTERN_NOTICE,
                                  "development_full_reports": settings.app_env == "development"},

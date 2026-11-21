@@ -134,6 +134,28 @@ def test_countrywide_city_directory_can_browse_every_indexed_place(client, count
     assert all(row["countryCode"] == country for row in first["items"] + second["items"])
 
 
+@pytest.mark.parametrize(("country", "local", "foreign", "identifier"), [
+    ("CN", "邯郸市", "เชียงใหม่", "geonames:1808963"),
+    ("TH", "เชียงใหม่", "邯郸市", "geonames:1153671"),
+])
+def test_countrywide_city_search_does_not_fall_back_to_another_country(client, country, local, foreign, identifier):
+    params = {"country": country, "level": "locality"}
+    items = client.get("/api/thai-locations", params={**params, "query": local}).json()["items"]
+    assert identifier in {row["id"] for row in items}
+    assert all(row["countryCode"] == country for row in items)
+    assert client.get("/api/thai-locations", params={**params, "query": foreign}).json()["items"] == []
+
+
+@pytest.mark.parametrize("country", ["SG", "VN", "MM", "KH", "LA", "MY", "ID"])
+def test_city_catalog_selection_resolves_for_report_generation(client, country):
+    listing = client.get("/api/thai-locations", params={"country": country, "level": "city"}).json()
+    assert listing["items"] and all(row["countryCode"] == country for row in listing["items"])
+    city = listing["items"][0]
+    query = {"country": country, "level": "detail", "query": city["id"]}
+    assert client.get("/api/thai-locations", params=query).json()["resolved"] == city
+    assert client.get("/api/thai-locations", params={**query, "country": "CN"}).json()["resolved"] is None
+
+
 def test_index_contains_cities_for_all_34_chinese_and_77_thai_provinces():
     import json
     import sqlite3

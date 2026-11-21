@@ -114,6 +114,10 @@ void main() {
       final draft = {'date': '1995-02-03'};
       await d.session.drafts.write('owner-a', 'birth', draft);
       await d.session.drafts.write('owner-b', 'birth', draft);
+      for (final kind in ['example-report', 'example-bookmark']) {
+        await d.session.drafts.write('owner-a', kind, {'saved': true});
+        await d.session.drafts.write('owner-b', kind, {'saved': true});
+      }
       await expectLater(
         d.accountServices.deleteAccount(
           expectedOwner: 'owner-a',
@@ -140,6 +144,10 @@ void main() {
       expect(d.auth.hasSession, isFalse);
       expect(d.session.drafts.read('owner-a', 'birth'), isNull);
       expect(d.session.drafts.read('owner-b', 'birth'), isNotNull);
+      for (final kind in ['example-report', 'example-bookmark']) {
+        expect(d.session.drafts.read('owner-a', kind), isNull);
+        expect(d.session.drafts.read('owner-b', kind), isNotNull);
+      }
     },
   );
 

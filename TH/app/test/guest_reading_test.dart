@@ -8,9 +8,11 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fate_app/app/dependencies.dart';
 import 'package:fate_app/core/models/birth_profile.dart';
+import 'package:fate_app/core/models/calculation.dart';
 import 'package:fate_app/core/network/api_client.dart';
 import 'package:fate_app/core/storage/session_store.dart';
 import 'package:fate_app/data/reports_repository.dart';
+import 'package:fate_app/data/configuration_repository.dart';
 
 class GuestSessionStore implements SessionStore {
   Map<String, dynamic>? value;
@@ -31,6 +33,215 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => debugDefaultTargetPlatformOverride = TargetPlatform.windows);
   tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+  test('JY example bookmarks and active reports survive an upgrade', () async {
+    SharedPreferences.setMockInitialValues({
+      'fate.example-report.jy-owner': '{"saved":true}',
+      'fate.example-bookmark.local-owner': '{"saved_at":"2026-11-19"}',
+      'fate.active-report.jy-owner': jsonEncode({
+        'report_id': 'r1',
+        'calculation_result_id': 'c1',
+        'locale': 'en',
+        'profile_revision': 1,
+      }),
+    });
+    var responseId = 'r1';
+    final repository = ReportsRepository(
+      ApiClient(
+        'https://api.example.test',
+        client: MockClient((request) async {
+          expect(request.url.path, '/api/western/reports/r1');
+          return http.Response(
+            jsonEncode({
+              'system': 'western_natal',
+              'report_id': responseId,
+              'calculation_result_id': 'c1',
+              'locale': 'en',
+              'access': 'preview',
+              'preview': [],
+              'sections': [],
+            }),
+            200,
+          );
+        }),
+      ),
+      LocalDraftStore(await SharedPreferences.getInstance()),
+    );
+
+    expect(repository.exampleSaved('jy-owner'), isTrue);
+    final reference = repository.active('jy-owner');
+    expect(reference?.resultId, 'c1');
+    expect((await repository.read(reference!)).id, 'r1');
+    responseId = 'another-report';
+    await expectLater(repository.read(reference), throwsFormatException);
+
+    await repository.removeExample('jy-owner');
+    expect(repository.exampleSaved('jy-owner'), isFalse);
+    expect(repository.exampleSaved('local-owner'), isTrue);
+  });
+
+  test('creating a report validates any returned chart reference', () async {
+    SharedPreferences.setMockInitialValues({});
+    var response = {'report_id': 'r1', 'calculation_result_id': 'other-chart'};
+    final repository = ReportsRepository(
+      ApiClient(
+        'https://api.example.test',
+        client: MockClient(
+          (_) async => http.Response(jsonEncode(response), 202),
+        ),
+      ),
+      LocalDraftStore(await SharedPreferences.getInstance()),
+    );
+
+    await expectLater(
+      repository.create('owner', 'c1', 1, 'en', 'request-key'),
+      throwsA(isA<ApiFailure>()),
+    );
+    expect(repository.active('owner'), isNull);
+    response = {'report_id': 'r1', 'report_number': 'FATE-EXAMPLE'};
+    final saved = await repository.create(
+      'owner',
+      'c1',
+      1,
+      'en',
+      'request-key',
+    );
+    expect(saved.number, 'FATE-EXAMPLE');
+    expect(repository.active('owner')?.resultId, 'c1');
+  });
+
+  test(
+    'late searches cannot replace newer results or restore a deleted record',
+    () async {
+      SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
+      final delayed = <Completer<http.Response>>[];
+      final requested = <Completer<void>>[Completer<void>(), Completer<void>()];
+      final record = {
+        'report_id': 'record',
+        'result_id': 'chart',
+        'locale': 'en',
+        'report_number': 'FATE-A1B2C3D4E5',
+        'profile_revision': 1,
+      };
+      http.Response rows() => http.Response(
+        jsonEncode({
+          'items': [record],
+        }),
+        200,
+      );
+      final d = AppDependencies(
+        await SharedPreferences.getInstance(),
+        secureStore: GuestSessionStore()..value = {'token': 'records-token'},
+        client: ApiClient(
+          'https://api.example.test',
+          client: MockClient((request) async {
+            if (request.url.path == '/api/auth/me') {
+              return http.Response(
+                '{"user_id":"records-owner","kind":"guest"}',
+                200,
+              );
+            }
+            if (request.method == 'DELETE') return http.Response('', 204);
+            if (request.url.queryParameters['q'] == 'slow') {
+              final response = Completer<http.Response>();
+              delayed.add(response);
+              requested[delayed.length - 1].complete();
+              return response.future;
+            }
+            return rows();
+          }),
+        ),
+      );
+      await d.auth.restore();
+      d.session.capabilities = const AppCapabilities(reports: true);
+      final old = d.reports.loadHistory(query: 'slow');
+      await requested[0].future;
+      await d.reports.loadHistory(query: 'new');
+      delayed[0].complete(http.Response('{"items":[]}', 200));
+      await old;
+      expect(d.reports.history.single.id, 'record');
+      final stale = d.reports.loadHistory(query: 'slow');
+      await requested[1].future;
+      await d.reports.deleteRecord(d.reports.history.single);
+      delayed[1].complete(rows());
+      await stale;
+      expect(d.reports.history, isEmpty);
+      expect(d.reports.historyLoading, isFalse);
+      d.dispose();
+    },
+  );
+
+  test(
+    'a slow historical report cannot block or overwrite a new chart reading',
+    () async {
+      SharedPreferences.setMockInitialValues({'fate.locale': 'en'});
+      final oldRequested = Completer<void>();
+      final oldResponse = Completer<http.Response>();
+      Map<String, dynamic> report(String id, String result) => {
+        'system': 'western_natal',
+        'report_id': id,
+        'calculation_result_id': result,
+        'locale': 'en',
+        'access': 'preview',
+        'summary': id,
+        'preview': [],
+        'sections': [],
+      };
+      final d = AppDependencies(
+        await SharedPreferences.getInstance(),
+        secureStore: GuestSessionStore(),
+        client: ApiClient(
+          'https://api.example.test',
+          client: MockClient((request) async {
+            if (request.url.path == '/api/western/reports/old') {
+              oldRequested.complete();
+              return oldResponse.future;
+            }
+            if (request.url.path == '/api/western/reports') {
+              expect(request.method, 'POST');
+              expect(
+                (jsonDecode(request.body) as Map)['calculation_result_id'],
+                'new-chart',
+              );
+              return http.Response('{"report_id":"new"}', 202);
+            }
+            expect(request.url.path, '/api/western/reports/new');
+            return http.Response(jsonEncode(report('new', 'new-chart')), 200);
+          }),
+        ),
+      );
+      d.session.capabilities = const AppCapabilities(reports: true);
+      d.session.profile = const BirthProfile(
+        date: '1992-04-15',
+        time: '07:15',
+        timezone: 'Asia/Bangkok',
+        place: 'Bangkok',
+        id: 'p1',
+        revision: 2,
+      );
+      final old = d.reports.resume(
+        const ReportReference('old', 'old-chart', 'en', profileRevision: 1),
+      );
+      await oldRequested.future;
+      await d.reports.generate(
+        const CalculationSnapshot(
+          id: 'new-chart',
+          engineVersion: 'test',
+          rulesetVersion: 'test',
+          exactTime: false,
+          planets: [],
+        ),
+      );
+      expect(d.reports.report!.id, 'new');
+      oldResponse.complete(
+        http.Response(jsonEncode(report('old', 'old-chart')), 200),
+      );
+      await old;
+      expect(d.reports.report!.id, 'new');
+      expect(d.reports.reference!.resultId, 'new-chart');
+      d.dispose();
+    },
+  );
 
   test(
     'an outgoing reports page cannot cancel polling for the incoming reading page',

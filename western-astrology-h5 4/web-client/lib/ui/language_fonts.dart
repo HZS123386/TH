@@ -35,19 +35,35 @@ class LanguageFonts {
   }
 
   Future<void> ensure(String language) async {
+    final regional = {
+      'my': ('NotoMyanmar', 'NotoSansMyanmar-Regular.ttf'),
+      'km': ('NotoKhmer', 'NotoSansKhmer-Regular.ttf'),
+      'lo': ('NotoLao', 'NotoSansLao-Regular.ttf'),
+    }[language];
+    if (regional != null) {
+      await _ensure(regional.$1, 'assets/fonts/${regional.$2}');
+    }
     if (language != 'zh') return;
     await _ensure('NotoSansSC', 'assets/fonts/FateChineseUI.otf');
   }
 
+  Future<void> warmSwitchLanguages() async {
+    // Register the small switch fonts after first paint; large CJK sets stay on demand.
+    await Future.wait([
+      for (final language in ['zh', 'my', 'km', 'lo'])
+        ensure(language).catchError((_) {}),
+    ]);
+  }
+
   Future<void> ensureCommon(String language) async {
-    if (language != 'zh') return;
     await ensure(language);
+    if (language != 'zh') return;
     await _ensure('NotoSansSCCommon', 'assets/fonts/FateChineseCommon.otf');
   }
 
   Future<void> ensureText(String language, String value) async {
-    if (language != 'zh') return;
     await ensure(language);
+    if (language != 'zh') return;
     final codes = value.runes.where(_isChinese).toSet();
     if (codes.every(_ui.contains)) return;
     await ensureCommon(language);

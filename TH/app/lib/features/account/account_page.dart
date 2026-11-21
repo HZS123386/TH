@@ -112,6 +112,12 @@ class AccountPage extends StatelessWidget {
             ),
             const SizedBox(height: 17),
             const _ReadingLinks(),
+            TextButton.icon(
+              key: const ValueKey('profile-reading-history'),
+              onPressed: () => context.push('/chart/readings?from=profile'),
+              icon: const Icon(Icons.history),
+              label: Text(s.savedReadings),
+            ),
             const SizedBox(height: 17),
             FateCard(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),

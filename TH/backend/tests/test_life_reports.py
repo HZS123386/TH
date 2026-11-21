@@ -242,6 +242,40 @@ def sunlands_order_only(app, monkeypatch, handler):
     return payments
 
 
+@pytest.mark.parametrize("environment,gateway,allowed", [
+    ("production", "https://api-prod.sunlands.com", True),
+    ("production", "https://api-test.sunlands.com", False),
+    ("development", "https://api-prod.sunlands.com", True),
+    ("development", "https://api-test.sunlands.com", True),
+    ("production", "http://api-prod.sunlands.com", False),
+    ("development", "https://payments.example.test", False),
+])
+def test_sunlands_gateway_is_bound_to_environment(client, environment, gateway, allowed):
+    from backend.app.life_card_payments import LifeCardPayments
+
+    _, app, _, _ = client
+    settings = Settings(app_env=environment, sunlands_order_only=True, sunlands_base_url=gateway,
+                        sunlands_app_secret="synthetic-secret", sunlands_order_mobile="13000000000",
+                        sunlands_province_id="4")
+    if allowed:
+        payments = LifeCardPayments(app.state.life_reports.store, settings)
+        assert payments.order_only and not payments.enabled
+    else:
+        with pytest.raises(RuntimeError, match="allowed gateway"):
+            LifeCardPayments(app.state.life_reports.store, settings)
+
+
+def test_production_sunlands_does_not_enable_payso_demo(client):
+    from backend.app.life_card_payments import LifeCardPayments
+
+    _, app, _, _ = client
+    settings = Settings(app_env="production", sunlands_order_only=True,
+                        payso_test_merchant_id="12345678", payso_test_api_key="test-key",
+                        payso_test_secret_key="test-secret")
+    with pytest.raises(RuntimeError, match="Payso Demo requires development mode"):
+        LifeCardPayments(app.state.life_reports.store, settings)
+
+
 @pytest.fixture
 def sunlands_phone_response():
     return json.dumps({"flag": "1", "data": {
@@ -620,7 +654,8 @@ def sunlands_settlement(client, monkeypatch, sunlands_phone_response, request):
     http, app, _, _ = client
     calls = []
     number = "OFFLINE_PHONE_ORDER_001"
-    price, language = getattr(request, "param", (10, "zh"))
+    default_price = life_card_payments.SUNLANDS_AMOUNT // 100
+    price, language = getattr(request, "param", (default_price, "zh"))
     amount = f"{price:.2f}"
     return_page = "https://fate.example.test/thai-landing/report.html"
     phone_response = json.loads(sunlands_phone_response)
@@ -691,7 +726,7 @@ def sunlands_settlement(client, monkeypatch, sunlands_phone_response, request):
     report = preview(http, language=language)
     path = f"/api/life-reports/{report['id']}"
     with monkeypatch.context() as previous_pricing:
-        if price != 10:
+        if price != default_price:
             previous_pricing.setattr(life_card_payments, "SUNLANDS_AMOUNT", price * 100)
         created = http.post(path + "/payment", headers={**HEADERS, "Origin": "https://fate.example.test"},
                             json={"returnUrl": "https://other.example.test/", "lang": "en"})
@@ -1361,6 +1396,9 @@ def test_postgres_import_preserves_sunlands_receipt_and_unlock(tmp_path, postgre
     from backend.app.life_card_payments import LifeCardPayments
     from backend.app.storage import Storage
 
+    migration = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    migration.attributes["database_url"] = postgres_url
+    command.downgrade(migration, "20261116_postgres")
     store = Storage(postgres_url)
     gateway = "https://api-prod.sunlands.com"
     receipt = json.dumps({"state": "CREATED", "gateway": gateway, "orderNumber": "LEGACY_ORDER",
@@ -1392,9 +1430,7 @@ def test_postgres_import_preserves_sunlands_receipt_and_unlock(tmp_path, postgre
     assert job.returncode == 0, job.stderr
     imported = json.loads(job.stdout)
     assert imported["unlocked_life_reports"] == imported["recorded_receipts"] == imported["sunlands_paid"] == 1
-    config = Config(str(script.parents[1] / "backend/alembic.ini"))
-    config.attributes["database_url"] = postgres_url
-    command.upgrade(config, "head")
+    command.upgrade(migration, "head")
     store.verify_schema()
     payments = LifeCardPayments(Storage(postgres_url), Settings())
     old = payments.order_for("report-a")
@@ -2507,7 +2543,8 @@ def test_async_free_report_returns_early_and_streams_progress_without_paid_work(
     response = http.post("/api/life-reports?wait=false", json=body, headers=HEADERS)
     assert response.status_code == 200
     result = response.json()
-    assert result["preview"] is None and result["preview_state"] == "generating"
+    assert result["preview"] is None and result["preview_state"] == "queued"
+    assert result["chart"] is None
     http.portal.call(first.wait)
     initial = http.get(f"/api/life-reports/{result['id']}", headers=HEADERS).json()
     percent = initial["preview_generation_progress"]["percent"]

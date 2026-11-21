@@ -1,5 +1,6 @@
 from pathlib import PurePosixPath
 import mimetypes
+import re
 
 from starlette.exceptions import HTTPException
 from starlette.responses import Response
@@ -41,6 +42,10 @@ class LandingStaticFiles(StaticFiles):
         suffix = PurePosixPath(asset).suffix.lower()
         if response.status_code not in (200, 206, 304):
             return response
+        # Stable app URLs must revalidate; only revisioned engine files are immutable.
+        cache_control = ('public, max-age=31536000, immutable'
+                         if re.match(r'^engine/[a-f0-9]{40}/', asset.replace('\\', '/')) else 'no-cache')
+        response.headers['Cache-Control'] = cache_control
         headers = {key.lower(): value for key, value in scope['headers']}
         encodings = accepted_encodings(headers.get(b'accept-encoding', b'').decode('latin1'))
         if b'range' in headers or suffix not in {'.html', '.js', '.mjs', '.css', '.json', '.svg', '.wasm', '.ttf', '.otf'}:
@@ -61,6 +66,7 @@ class LandingStaticFiles(StaticFiles):
                     return response
                 compressed.headers['Content-Encoding'] = encoding
                 compressed.headers['Content-Type'] = response.headers.get('content-type') or mimetypes.guess_type(asset)[0] or 'application/octet-stream'
+                compressed.headers['Cache-Control'] = cache_control
                 compressed.headers.add_vary_header('Accept-Encoding')
                 return compressed
         return Response(status_code=406, headers={'Vary': 'Accept-Encoding'})

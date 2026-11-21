@@ -16,7 +16,9 @@
     <link rel="preload" href="assets/AssetManifest.bin.json" as="fetch" fetchpriority="low" crossorigin>
   </template>
   <script>
-    document.documentElement.lang=new URLSearchParams(location.search).get('lang')==='zh'?'zh':'th';
+    const requestedLanguage=new URLSearchParams(location.search).get('lang');
+    const supportedLanguages=['th','en','zh','vi','my','km','lo','ms','id'];
+    document.documentElement.lang=supportedLanguages.includes(requestedLanguage)?requestedLanguage:'th';
     document.documentElement.dataset.welcome=String(!/(report|privacy|support)\.html$/.test(location.pathname));
     function priorityPreload(href, as, priority = 'high') {
       const link = document.createElement('link');
@@ -29,8 +31,11 @@
     }
     const preloadEngineAssets = () => {
       const language = document.documentElement.lang;
-      const fontFile = language === 'zh' ? 'FateChineseUI.otf' : 'NotoSansThai.ttf';
-      document.head.append(priorityPreload('assets/assets/fonts/' + fontFile, 'fetch'));
+      const switchFonts = {th:'NotoSansThai.ttf',zh:'FateChineseUI.otf',my:'NotoSansMyanmar-Regular.ttf',km:'NotoSansKhmer-Regular.ttf',lo:'NotoSansLao-Regular.ttf'};
+      const selectedFont = switchFonts[language];
+      if (selectedFont) {
+        document.head.append(priorityPreload('assets/assets/fonts/' + selectedFont, 'fetch'));
+      }
       document.head.append(priorityPreload('assets/assets/copy/' + language + '.json', 'fetch', 'low'));
       document.head.append(document.getElementById('fate-engine-preloads').content);
     };
@@ -47,6 +52,7 @@
       preloadEngineAssets();
     }
   </script>
+  <script src="browser.js"></script>
   <!-- FATE_WASM_RUNTIME_PRELOAD -->
   <style>
     html,body{margin:0;background:#130c24;color-scheme:dark}
@@ -56,7 +62,8 @@
     .fate-startup-track{width:132px;height:3px;background:#463655;overflow:hidden;border-radius:4px}
     .fate-startup-track:after{content:"";display:block;width:40%;height:100%;background:#e4bc78;border-radius:4px;animation:fate-startup-motion 1.3s ease-in-out infinite alternate}
     #fate-startup-retry{padding:8px 22px;border:1px solid #806548;border-radius:8px;background:transparent;color:#f4d399;font:inherit;cursor:pointer}
-    html:lang(zh) .fate-startup-th,html:lang(th) .fate-startup-zh{display:none}
+    .fate-startup-zh,.fate-startup-th,.fate-startup-en,.fate-startup-vi,.fate-startup-my,.fate-startup-km,.fate-startup-lo,.fate-startup-ms,.fate-startup-id{display:none}
+    html:lang(zh) .fate-startup-zh,html:lang(th) .fate-startup-th,html:lang(en) .fate-startup-en,html:lang(vi) .fate-startup-vi,html:lang(my) .fate-startup-my,html:lang(km) .fate-startup-km,html:lang(lo) .fate-startup-lo,html:lang(ms) .fate-startup-ms,html:lang(id) .fate-startup-id{display:inline}
     #fate-welcome{display:none}
     @font-face{font-family:FateWelcomeThai;src:url('assets/assets/fonts/FateWelcomeThai.ttf') format('truetype');font-display:swap}
     @font-face{font-family:FateWelcomeChinese;src:url('assets/assets/fonts/FateWelcomeChinese.otf') format('opentype');font-display:swap}
@@ -119,11 +126,11 @@
     </div>
     <img src="assets/assets/images/fate-brand-gold.png" alt="FATE" width="112" height="26">
     <div class="fate-startup-track" aria-hidden="true"></div>
-    <p id="fate-startup-status"><span class="fate-startup-zh">正在开启你的星空</span><span class="fate-startup-th">กำลังเปิดท้องฟ้าของคุณ</span></p>
-    <button id="fate-startup-retry" type="button" hidden><span class="fate-startup-zh">重新加载</span><span class="fate-startup-th">ลองโหลดใหม่</span></button>
+    <p id="fate-startup-status"><span class="fate-startup-zh">正在开启你的星空</span><span class="fate-startup-th">กำลังเปิดท้องฟ้าของคุณ</span><span class="fate-startup-en">Opening your sky</span><span class="fate-startup-vi">Đang mở bầu trời của bạn</span><span class="fate-startup-my">သင့်ကြယ်ကောင်းကင်ကို ဖွင့်နေသည်</span><span class="fate-startup-km">កំពុងបើកមេឃរបស់អ្នក</span><span class="fate-startup-lo">ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ</span><span class="fate-startup-ms">Membuka langit anda</span><span class="fate-startup-id">Membuka langit Anda</span></p>
+    <button id="fate-startup-retry" type="button" hidden><span class="fate-startup-zh">重新加载</span><span class="fate-startup-th">ลองโหลดใหม่</span><span class="fate-startup-en">Reload</span><span class="fate-startup-vi">Tải lại</span><span class="fate-startup-my">ပြန်တင်မယ်</span><span class="fate-startup-km">ផ្ទុកឡើងវិញ</span><span class="fate-startup-lo">ໂຫຼດໃໝ່</span><span class="fate-startup-ms">Muat semula</span><span class="fate-startup-id">Muat ulang</span></button>
   </div>
   <script type="application/json" id="fate-welcome-strokes"><!-- FATE_WELCOME_STROKES --></script>
-  <script src="browser.js"></script>
+  <script>mountFateWelcome();</script>
   <script>{{flutter_bootstrap_js}}</script>
 </body>
 </html>

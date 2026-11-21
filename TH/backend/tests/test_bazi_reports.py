@@ -66,6 +66,7 @@ def client_with_writer(postgres_url, monkeypatch):
                     factor["detail"] = text
             return httpx.Response(200, json=value)
         assert request.url.host == "model.example"
+        assert request.extensions["timeout"]["read"] == 25
         assert request.headers["authorization"] == "Bearer model-private-key"
         assert "x-api-key" not in request.headers
         bundle = json.loads(payload["messages"][1]["content"])

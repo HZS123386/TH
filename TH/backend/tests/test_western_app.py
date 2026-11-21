@@ -1,7 +1,11 @@
 import copy
 import json
+import re
+import time
 from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,6 +13,7 @@ from backend.app.astrology import RoxyError, validate_natal
 from backend.app import thai
 from backend.app.config import ProviderConfig, Settings
 from backend.app.main import create_app
+from backend.app.storage import Storage
 from backend.app.western_app import NOTICE, TOPICS, WesternWriter, report_bundle, snapshot
 from backend.app.bazi_reports import InvalidBaziReport
 
@@ -26,12 +31,14 @@ def chart(known=True):
 def story(bundle):
     sections = []
     for key in TOPICS:
+        citations = bundle["topic_ids"][key][:2]
+        citations += [identifier for identifier in bundle["evidence"] if identifier not in citations][:2 - len(citations)]
         sections.append({"key": key,
                          "interpretation": f"For {key}, your chart suggests a preference for clear arrangements. If this fits your experience, use that preference to define a manageable responsibility before accepting more work.",
                          "example": f"In a situation involving {key}, you might prefer checking the details before committing to a shared plan.",
                          "advice": [f"For {key}, write down the part you can realistically complete and discuss this boundary with the people involved.",
                                     f"For {key}, review how that arrangement worked and adjust the next step using your actual experience."],
-                         "evidence_ids": bundle["topic_ids"][key][:2]})
+                         "evidence_ids": citations})
     return {"language": "en", "reading": "natal", "summary": "Your chart points to a practical approach to commitments. Start with a clear boundary, then review what works in your own experience.", "sections": sections}
 
 
@@ -79,16 +86,64 @@ def test_place_id_without_country_uses_the_global_geographic_lookup(app, monkeyp
         assert response.json()["profile"]["latitude"] == 13.75398
 
 
-def test_date_only_omits_unreliable_facts_and_house_interpretations():
+def test_unknown_time_displays_noon_estimates_but_keeps_unreliable_facts_out_of_interpretation():
     raw = chart(False)
     raw["raw"]["planets"][0].update(longitude=29.9, degree=29.9)
     result = snapshot(raw, "c1")
     assert result["status"] == "partial"
-    assert {row["kind"] for row in result["facts"]} == {"planet"}
-    assert all(row["value"]["key"] not in ("moon", "sun") and "house" not in row["value"] for row in result["facts"])
+    assert result["input_precision"] == "estimated_time" and result["rules"]["assumed_local_time"] == "12:00"
+    assert {"planet", "ascendant", "midheaven", "house", "aspect"} <= {row["kind"] for row in result["facts"]}
+    assert {"moon", "sun"} <= {row["value"].get("key") for row in result["facts"]}
+    assert sum(row["kind"] == "house" for row in result["facts"]) == 12
+    assert all(row["value"]["estimated"] for row in result["facts"])
     bundle = report_bundle(result, raw, "th")
+    assert bundle["input_precision"] == "date_only"
+    assert all(fact["kind"] == "planet" and fact["key"] not in ("moon", "sun") and "house" not in fact
+               for fact in bundle["evidence"].values())
     assert not any("roxy_interpretation" in fact for fact in bundle["evidence"].values())
-    assert {"moon", "sun", "houses", "aspects"} <= set(result["missing_fields"])
+    assert {"moon", "sun", "houses", "aspects"} <= set(bundle["missing_fields"])
+    assert result["missing_fields"] == ["birth_time"]
+
+
+def test_cached_unknown_time_chart_and_report_use_the_current_display_without_another_roxy_call(app, monkeypatch):
+    calls = []
+
+    async def calculate(profile, *args):
+        assert profile.birth_time is None
+        calls.append(True)
+        return chart(False)
+
+    async def generate(bundle, *args):
+        assert bundle["input_precision"] == "date_only" and "p_moon" not in bundle["evidence"]
+        draft = story(bundle)
+        for section in draft["sections"]:
+            if len(section["evidence_ids"]) == 1:
+                section["evidence_ids"].append(next(key for key in bundle["evidence"] if key not in section["evidence_ids"]))
+        return {"state": "ready", "story": WesternWriter.validate(json.dumps(draft), bundle)}
+
+    monkeypatch.setattr(app.state.western_app.adapter, "calculate", calculate)
+    monkeypatch.setattr(app.state.western_app.writer, "generate", generate)
+    with TestClient(app) as client:
+        headers = login(client)
+        profile = save(client, headers, birth_time=None)
+        request = {"system": "western_natal", "profile_id": profile["profile_id"], "profile_revision": profile["revision"]}
+        first = client.post("/api/calculations", headers=headers, json=request).json()
+        old = {**first, "input_precision": "date_only", "facts": []}
+        with app.state.store.connect() as db:
+            db.execute("UPDATE western_calculations SET payload=%s WHERE id=%s", (json.dumps(old), first["result_id"]))
+        cached = client.post("/api/calculations", headers=headers, json=request).json()
+        assert cached == first and len(calls) == 1
+        client.post("/api/privacy/consents", headers=headers, json={"purpose": "ai_reading", "notice_version": NOTICE, "granted": True})
+        created = client.post("/api/western/reports", headers=headers, json={
+            "profile_revision": profile["revision"], "calculation_result_id": first["result_id"], "locale": "en"})
+        assert created.status_code == 202, created.text
+        for _ in range(20):
+            report = client.get("/api/western/reports/" + created.json()["report_id"], headers=headers).json()
+            if report["preview_state"] != "running":
+                break
+        assert report["preview_state"] == "ready"
+        assert report["calculation"]["input_precision"] == "estimated_time"
+        assert any(row["fact_id"] == "p_moon" for row in report["calculation"]["facts"])
 
 
 def test_account_chart_cache_revision_and_no_bazi_calculation(app, monkeypatch):
@@ -136,17 +191,64 @@ def test_western_report_is_bound_to_consent_owner_revision_and_locale(app, monke
         assert value["preview_state"] == "ready"
         assert value["locale"] == "en" and value["calculation_result_id"] == c["result_id"]
         assert value["access_reason"] == "development_preview"
+        assert value["calculation"] == c
+        number = value["report_number"]
+        assert re.fullmatch(r"FATE-[A-F0-9]{10}", number)
+        assert response.json()["report_number"] == number
         assert len(value["preview"]) == 1 and len(value["sections"]) == 5
         saved = client.get("/api/western/reports", headers=headers).json()["items"][0]
         assert saved["report_id"] == identifier and saved["profile_revision"] == 1
+        assert saved["report_number"] == number and saved["state"] == "ready"
+        assert isinstance(saved["created_at"], (int, float))
         assert client.post("/api/western/reports", headers=headers, json=body).json()["report_id"] == identifier
         other = login(client)
+        search = {"q": number.replace("-", "").lower(), "locale": "en"}
+        assert client.get("/api/western/reports", headers=headers, params=search).json()["items"][0]["report_id"] == identifier
+        assert client.get("/api/western/reports", headers=other, params=search).json()["items"] == []
+        assert client.get("/api/western/reports", headers=headers, params={"q": "%"}).json()["items"] == []
+        assert client.get("/api/western/reports", headers=headers, params={"q": number, "locale": "th"}).json()["items"] == []
+        assert client.delete("/api/western/reports/" + identifier, headers=other).status_code == 404
         assert client.get("/api/western/reports/" + identifier, headers=other).status_code == 404
         assert client.post("/api/western/reports", headers=other, json=body).status_code == 422
         service = app.state.western_app
         service.settings.app_env = "production"
         restricted = service.report(identifier, app.state.store.authenticate(headers["Authorization"][7:]))
         assert restricted["access"] == "preview" and restricted["sections"] == []
+        assert restricted["calculation"] == c
+        save(client, headers, expected_revision=1, birth_time="08:15")
+        historical = client.get("/api/western/reports/" + identifier, headers=headers).json()
+        assert historical["calculation"] == c  # A saved report keeps its original chart.
+        assert historical["report_number"] == number
+        with app.state.store.connect() as db:
+            db.execute("UPDATE western_reports SET state='running',started=%s WHERE id=%s", (time.time(), identifier))
+        assert client.delete("/api/western/reports/" + identifier, headers=headers).status_code == 409
+        with app.state.store.connect() as db:
+            db.execute("UPDATE western_reports SET state='ready' WHERE id=%s", (identifier,))
+        assert client.delete("/api/western/reports/" + identifier, headers=headers).status_code == 204
+        assert client.get("/api/western/reports/" + identifier, headers=headers).status_code == 404
+        assert client.get("/api/western/reports", headers=headers, params=search).json()["items"] == []
+        with app.state.store.connect() as db:
+            assert db.execute("SELECT 1 FROM western_calculations WHERE id=%s", (c["result_id"],)).fetchone()
+
+
+def test_report_numbers_migrate_existing_records_once_without_replacing_content(postgres_url):
+    alembic = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    alembic.attributes["database_url"] = postgres_url
+    command.downgrade(alembic, "20261118_h5_app_login")
+    store = Storage(postgres_url)
+    with store.connect() as db:
+        for i in range(2):
+            db.execute("INSERT INTO western_reports VALUES(%s,%s,%s,%s,%s,%s,%s,%s)",
+                       (f"r{i}", "owner", f"c{i}", "en", "ready", '{"summary":"keep me"}', 1, "old"))
+    command.upgrade(alembic, "head")
+    with store.connect() as db:
+        first = db.execute("SELECT id,report_number,payload FROM western_reports ORDER BY id").fetchall()
+    assert len({row["report_number"] for row in first}) == 2
+    assert all(re.fullmatch(r"FATE-[A-F0-9]{10}", row["report_number"]) for row in first)
+    assert all(row["payload"] == '{"summary":"keep me"}' for row in first)
+    command.upgrade(alembic, "head")
+    with store.connect() as db:
+        assert db.execute("SELECT id,report_number,payload FROM western_reports ORDER BY id").fetchall() == first
 
 
 def test_report_validation_rejects_wrong_language_and_cross_topic_citations():

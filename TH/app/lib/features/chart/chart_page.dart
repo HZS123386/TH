@@ -124,6 +124,17 @@ class _ChartPageState extends State<ChartPage> {
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
+                      if (result.estimatedTime)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            s.estimatedChart,
+                            style: const TextStyle(
+                              color: goldColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                       ChartWheel(
                         result: result,
                         selected: selected,
@@ -154,7 +165,9 @@ class _ChartPageState extends State<ChartPage> {
                                 child: Column(
                                   children: [
                                     Text(
-                                      entry.$1,
+                                      result.estimatedTime
+                                          ? '${entry.$1} · ${s.estimated}'
+                                          : entry.$1,
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
@@ -193,7 +206,7 @@ class _ChartPageState extends State<ChartPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${planet.symbol}  ${s.planetName(planet.key)}',
+                            '${planet.symbol}  ${s.planetName(planet.key)}${planet.estimated ? ' · ${s.estimated}' : ''}',
                             style: const TextStyle(
                               fontSize: 19,
                               color: goldColor,
@@ -215,7 +228,11 @@ class _ChartPageState extends State<ChartPage> {
                     result.ascendant == null ||
                     result.houses.isEmpty)
                   Text(
-                    result.exactTime ? s.missingAngles : s.dateOnlyRules,
+                    result.estimatedTime
+                        ? s.estimatedChartNote
+                        : result.exactTime
+                        ? s.missingAngles
+                        : s.dateOnlyRules,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 const SizedBox(height: 18),
@@ -330,10 +347,19 @@ class _ChartPageState extends State<ChartPage> {
                 const SizedBox(height: 20),
                 FilledButton(
                   onPressed: () => context.go(
-                    widget.example ? '/reports/reading?example=1' : '/reports',
+                    widget.example
+                        ? '/chart/reading?example=1'
+                        : '/chart/reading',
                   ),
                   child: Text(s.chartRead),
                 ),
+                if (!widget.example)
+                  TextButton.icon(
+                    key: const ValueKey('chart-reading-history'),
+                    onPressed: () => context.push('/chart/readings'),
+                    icon: const Icon(Icons.history),
+                    label: Text(s.savedReadings),
+                  ),
               ],
               if (d.session.profile != null && !widget.example)
                 Padding(

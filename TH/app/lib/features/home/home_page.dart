@@ -195,6 +195,7 @@ class HomePage extends StatelessWidget {
                     ),
                   ])
                     ListTile(
+                      key: ValueKey('home-entry-${entry.$4}'),
                       leading: Icon(entry.$3, color: goldColor, size: 22),
                       title: Text(
                         entry.$1,

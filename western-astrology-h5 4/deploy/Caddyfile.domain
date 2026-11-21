@@ -1,0 +1,19 @@
+    # BEGIN FATE landing routes
+    @fateLanding path /thai-landing /thai-landing/*
+    @fateEngine path_regexp fateEngine ^/thai-landing/engine/[a-f0-9]{40}/
+    @fateRevalidated {
+        not path /thai-landing/engine/*
+    }
+    handle @fateLanding {
+        header @fateRevalidated Cache-Control "no-cache"
+        header @fateEngine Cache-Control "public, max-age=31536000, immutable"
+        reverse_proxy astro-life-report:8000
+    }
+    @fateReportApi path /api/life-reports /api/life-reports/* /api/thai-locations /api/landing/*
+    handle @fateReportApi {
+        header Cache-Control "no-store"
+        reverse_proxy astro-life-report:8000 {
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+    # END FATE landing routes

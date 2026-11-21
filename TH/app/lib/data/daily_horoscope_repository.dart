@@ -67,11 +67,13 @@ class DailyHoroscopeDay {
   final Duration refreshAfter;
 
   factory DailyHoroscopeDay.fromJson(Map<String, dynamic> json) {
-    if (json case {
-      'date': final String date,
-      'signs': final List<Object?> signs,
-      'refresh_after_seconds': final int seconds,
-    } when signs.length == 12 && seconds >= 1 && seconds <= 86400) {
+    if (json
+        case {
+          'date': final String date,
+          'signs': final List<Object?> signs,
+          'refresh_after_seconds': final int seconds,
+        }
+        when signs.length == 12 && seconds >= 1 && seconds <= 86400) {
       final parsed = DateTime.tryParse('${date}T00:00:00Z');
       if (parsed != null && parsed.toIso8601String().substring(0, 10) == date) {
         return DailyHoroscopeDay._(

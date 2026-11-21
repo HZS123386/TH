@@ -1,17 +1,31 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../app/dependencies.dart';
+import '../../data/reports_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
 import '../purchases/purchase_sheet.dart';
 import '../companion/guardian.dart';
 import 'reports_view_model.dart';
 import 'content_report_sheet.dart';
+import '../../core/models/calculation.dart';
+import '../../core/models/report.dart';
+import '../../ui/strings.dart';
+import '../chart/chart_wheel.dart';
 
 class ReportsPage extends StatefulWidget {
-  const ReportsPage({this.detail = false, this.example = false, super.key});
-  final bool detail, example;
+  const ReportsPage({
+    this.detail = false,
+    this.fromChart = false,
+    this.example = false,
+    this.backLocation = '/reports',
+    super.key,
+  });
+  final String backLocation;
+  final bool detail, example, fromChart;
   @override
   State<ReportsPage> createState() => _ReportsPageState();
 }
@@ -19,6 +33,10 @@ class ReportsPage extends StatefulWidget {
 class _ReportsPageState extends State<ReportsPage> {
   ReportsViewModel? model;
   bool exampleExpanded = false;
+  bool opening = false, movingToProgress = false;
+  String? openedScope;
+  final sectionKeys = <String, GlobalKey>{};
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -31,10 +49,49 @@ class _ReportsPageState extends State<ReportsPage> {
         model!.loadHistory();
         model!.setH5HistoryView(this, active: true);
       }
-      if (widget.detail && !widget.example && model!.reference == null) {
-        model!.resume();
-      }
     });
+  }
+
+  Future<void> openReading() async {
+    final d = DependencyScope.of(context), scope = d.session.scope;
+    bool current() => mounted && scope == d.session.scope;
+    setState(() => opening = true);
+    try {
+      if (!widget.fromChart) {
+        if (d.reports.reference == null) await d.reports.resume();
+        return;
+      }
+      if (d.session.profile?.isServerRevision != true) {
+        context.go('/birth');
+        return;
+      }
+      if (d.chart.loading) {
+        openedScope = null;
+        return;
+      }
+      if (d.chart.result == null) await d.chart.calculate();
+      if (!current() || d.chart.result == null) return;
+      final calculation = d.chart.result!;
+      bool matches(ReportReference? ref) =>
+          ref?.resultId == calculation.id &&
+          ref?.locale == d.session.locale.languageCode;
+      if (matches(d.reports.reference)) return;
+      final saved = d.reports.repository.active(d.session.owner);
+      if (matches(saved)) {
+        await d.reports.resume(saved);
+        return;
+      }
+      await d.reports.loadHistory();
+      if (!current()) return;
+      final previous = d.reports.history.where(matches).firstOrNull;
+      if (previous != null) {
+        await d.reports.resume(previous);
+      } else {
+        await generate();
+      }
+    } finally {
+      if (mounted) setState(() => opening = false);
+    }
   }
 
   Future<void> generate() async {
@@ -78,7 +135,9 @@ class _ReportsPageState extends State<ReportsPage> {
       await d.session.configuration.consent(noticeVersion);
       if (d.session.scope != scope) return;
       await d.reports.generate(result);
-      if (mounted) context.go('/reports/reading');
+      if (mounted && !widget.detail && d.session.scope == scope) {
+        context.go('/reports/reading');
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -92,10 +151,54 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget build(BuildContext context) {
     final d = DependencyScope.of(context), s = AppLocalizations.of(context);
     return ListenableBuilder(
-      listenable: Listenable.merge([d.reports, d.session]),
+      listenable: Listenable.merge([d.reports, d.chart, d.session]),
       builder: (context, _) {
-        final report = d.reports.report,
-            full = widget.example ? exampleExpanded : report?.full == true;
+        if (widget.detail &&
+            !widget.example &&
+            !d.session.loading &&
+            (!widget.fromChart || !d.chart.loading) &&
+            !opening &&
+            openedScope != d.session.scope) {
+          openedScope = d.session.scope;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) openReading();
+          });
+        }
+        final report =
+            widget.fromChart && d.reports.report?.resultId != d.chart.result?.id
+            ? null
+            : d.reports.report;
+        final full = widget.example ? exampleExpanded : report?.full == true;
+        if (report?.generating != true) movingToProgress = false;
+        if (widget.detail &&
+            widget.backLocation != '/reports' &&
+            !widget.example &&
+            report?.generating == true &&
+            !movingToProgress) {
+          movingToProgress = true;
+          final current = GoRouterState.of(context).uri;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted ||
+                d.reports.report?.id != report!.id ||
+                d.reports.report?.generating != true) {
+              return;
+            }
+            context.go(
+              Uri(
+                path: '/chart/generating',
+                queryParameters: {
+                  ...current.queryParameters,
+                  'report': report.id,
+                },
+              ).toString(),
+            );
+          });
+        }
+        final failureText = switch (report?.failureReason) {
+          'service_busy' => s.reportServiceBusy,
+          'service_timeout' => s.reportServiceTimeout,
+          _ => s.reportFailedText,
+        };
         void unlock() => showPurchaseSheet(
           context,
           reportId: report?.id,
@@ -113,6 +216,12 @@ class _ReportsPageState extends State<ReportsPage> {
                   s.reports,
                   s.reportIntro,
                   icon: Icons.menu_book_outlined,
+                ),
+                TextButton.icon(
+                  key: const ValueKey('reports-saved-readings'),
+                  onPressed: () => context.push('/chart/readings?from=reports'),
+                  icon: const Icon(Icons.history),
+                  label: Text(s.savedReadings),
                 ),
                 if (d.auth.hasH5Reports) ...[
                   _H5History(model: d.reports),
@@ -244,13 +353,15 @@ class _ReportsPageState extends State<ReportsPage> {
                 children: [
                   if (d.reports.loading) const CircularProgressIndicator(),
                   const SizedBox(height: 20),
-                  Text(d.reports.loading ? s.reportPending : s.reportEmpty),
+                  Text(
+                    opening || d.reports.loading
+                        ? s.reportPending
+                        : s.reportEmpty,
+                  ),
                   const SizedBox(height: 16),
-                  OutlinedButton(
-                    onPressed: d.reports.loading
-                        ? null
-                        : () => d.reports.resume(),
-                    child: Text(s.resumeReport),
+                  FilledButton(
+                    onPressed: opening || d.reports.loading ? null : generate,
+                    child: Text(s.generate),
                   ),
                   TextButton(
                     onPressed: () => context.go('/reports/reading?example=1'),
@@ -271,7 +382,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   if (report.generating) const CircularProgressIndicator(),
                   const SizedBox(height: 24),
                   Text(
-                    report.generating ? s.reportPending : s.reportFailedText,
+                    report.generating ? s.reportPending : failureText,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -281,8 +392,13 @@ class _ReportsPageState extends State<ReportsPage> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                  if (report.failed)
+                    FilledButton(
+                      onPressed: d.reports.loading ? null : generate,
+                      child: Text(s.generate),
+                    ),
                   TextButton(
-                    onPressed: () => context.go('/reports'),
+                    onPressed: () => context.go(widget.backLocation),
                     child: Text(s.reports),
                   ),
                 ],
@@ -290,18 +406,22 @@ class _ReportsPageState extends State<ReportsPage> {
             ),
           );
         }
+        final sections = [...?report?.preview, if (full) ...?report?.sections];
+        GlobalKey sectionKey(String key) =>
+            sectionKeys.putIfAbsent(key, GlobalKey.new);
         return FateEntrance(
           child: Stack(
             children: [
               Positioned.fill(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+                  key: const ValueKey('reading-scroll'),
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, full ? 28 : 100),
                   child: Column(
                     children: [
                       Align(
                         alignment: Alignment.centerLeft,
                         child: TextButton.icon(
-                          onPressed: () => context.go('/reports'),
+                          onPressed: () => context.go(widget.backLocation),
                           icon: const Icon(Icons.arrow_back, size: 17),
                           label: Text(s.reports),
                         ),
@@ -316,6 +436,61 @@ class _ReportsPageState extends State<ReportsPage> {
                             ),
                           ),
                         ),
+                      if (sections.isNotEmpty) ...[
+                        FateCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.readingContents,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                s.readingContentsHint,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 14),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final section in sections)
+                                    ActionChip(
+                                      key: ValueKey(
+                                        'reading-jump-${section.key}',
+                                      ),
+                                      label: Text(section.title),
+                                      onPressed: () {
+                                        final target = sectionKey(
+                                          section.key,
+                                        ).currentContext;
+                                        if (target != null) {
+                                          Scrollable.ensureVisible(
+                                            target,
+                                            alignment: .03,
+                                            duration:
+                                                MediaQuery.disableAnimationsOf(
+                                                  context,
+                                                )
+                                                ? Duration.zero
+                                                : const Duration(
+                                                    milliseconds: 300,
+                                                  ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                       FateCard(
                         gold: true,
                         child: Column(
@@ -418,6 +593,33 @@ class _ReportsPageState extends State<ReportsPage> {
                                 label: Text(s.continueReading),
                               ),
                             ],
+                            if (report?.number case final number?)
+                              SelectableText(
+                                '${s.reportNumberLabel} · $number',
+                              ),
+                            if (widget.example || report?.calculation != null)
+                              _ReadingChart(
+                                result: widget.example
+                                    ? teachingChart
+                                    : report!.calculation!,
+                              ),
+                            if (!widget.example)
+                              TextButton.icon(
+                                key: const ValueKey('chart-reading-history'),
+                                onPressed: () {
+                                  final location =
+                                      widget.backLocation.startsWith(
+                                        '/chart/readings',
+                                      )
+                                      ? widget.backLocation
+                                      : widget.backLocation == '/reports'
+                                      ? '/chart/readings?from=reports'
+                                      : '/chart/readings';
+                                  context.go(location);
+                                },
+                                icon: const Icon(Icons.history),
+                                label: Text(s.savedReadings),
+                              ),
                             const Divider(),
                             Text(
                               s.traits,
@@ -438,9 +640,10 @@ class _ReportsPageState extends State<ReportsPage> {
                               ),
                             ] else
                               for (final section in report!.preview)
-                                ReadingParagraph(
-                                  section.title,
-                                  section.paragraphs.join('\n\n'),
+                                _ReadingSection(
+                                  key: sectionKey(section.key),
+                                  section: section,
+                                  number: sections.indexOf(section) + 1,
                                 ),
                             const Divider(),
                             Text(
@@ -464,9 +667,10 @@ class _ReportsPageState extends State<ReportsPage> {
                                       if (report!.generating)
                                         Text(s.reportPending),
                                       for (final section in report.sections)
-                                        ReadingParagraph(
-                                          section.title,
-                                          section.paragraphs.join('\n\n'),
+                                        _ReadingSection(
+                                          key: sectionKey(section.key),
+                                          section: section,
+                                          number: sections.indexOf(section) + 1,
                                         ),
                                     ],
                                   ],
@@ -678,6 +882,200 @@ class _H5History extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReadingChart extends StatefulWidget {
+  const _ReadingChart({required this.result});
+  final CalculationSnapshot result;
+
+  @override
+  State<_ReadingChart> createState() => _ReadingChartState();
+}
+
+class _ReadingChartState extends State<_ReadingChart> {
+  String selected = 'sun';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context), result = widget.result;
+    final planet = result.planets.where((p) => p.key == selected).firstOrNull;
+    return FateCard(
+      key: const ValueKey('reading-chart'),
+      gold: true,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            s.readingChart,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          if (result.estimatedTime) ...[
+            const SizedBox(height: 8),
+            Text(
+              s.estimatedChart,
+              style: const TextStyle(color: goldColor, fontSize: 12),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            s.readingChartIntro,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          Semantics(
+            label: s.readingChart,
+            child: ChartWheel(
+              result: result,
+              selected: selected,
+              onSelected: (key) => setState(() => selected = key),
+            ),
+          ),
+          if (planet != null) ...[
+            Center(
+              child: Text(
+                '${s.planetName(planet.key)} · ${s.position(planet.longitude)}${planet.estimated ? ' · ${s.estimated}' : ''}',
+                style: const TextStyle(color: goldColor, fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final row in [
+                (
+                  s.sun,
+                  result.planets
+                      .where((p) => p.key == 'sun')
+                      .firstOrNull
+                      ?.longitude,
+                ),
+                (
+                  s.moon,
+                  result.planets
+                      .where((p) => p.key == 'moon')
+                      .firstOrNull
+                      ?.longitude,
+                ),
+                (s.ascendant, result.ascendant),
+              ])
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Column(
+                      children: [
+                        Text(
+                          result.estimatedTime
+                              ? '${row.$1} · ${s.estimated}'
+                              : row.$1,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          row.$2 == null
+                              ? '—'
+                              : s.zodiacNames[(row.$2! / 30).floor()],
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: goldColor,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (!result.exactTime ||
+              result.ascendant == null ||
+              result.houses.isEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              result.estimatedTime
+                  ? s.estimatedChartNote
+                  : result.exactTime
+                  ? s.missingAngles
+                  : s.dateOnlyRules,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadingSection extends StatelessWidget {
+  const _ReadingSection({
+    required this.section,
+    required this.number,
+    super.key,
+  });
+  final ReportSection section;
+  final int number;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 8, bottom: 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(),
+        Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: goldColor.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text('$number', style: const TextStyle(color: goldColor)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                section.title,
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        for (var index = 0; index < section.paragraphs.length; index++) ...[
+          if (index == 0)
+            Text(section.paragraphs[index])
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: goldColor.withValues(alpha: index == 1 ? .04 : .08),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Builder(
+                builder: (context) {
+                  final paragraph = section.paragraphs[index];
+                  final split = paragraph.indexOf('\n');
+                  if (split <= 0 || split > 80) return Text(paragraph);
+                  return ReadingParagraph(
+                    paragraph.substring(0, split),
+                    paragraph.substring(split + 1),
+                  );
+                },
+              ),
+            ),
+          const SizedBox(height: 18),
+        ],
+      ],
+    ),
+  );
 }
 
 class _LockedLines extends StatelessWidget {

@@ -8,6 +8,7 @@
     "dev": "node scripts/serve-flutter.mjs",
     "build": "node scripts/build-flutter.mjs",
     "build:release": "node scripts/build-flutter.mjs release",
+    "deploy:prepare": "pnpm build:release && node ../TH/scripts/python.mjs -X utf8 deploy/prepare_release.py",
     "check": "pnpm check:documents && node scripts/build-flutter.mjs analyze",
     "check:documents": "tsc --noEmit",
     "test": "pnpm test:contracts && pnpm test:flutter",

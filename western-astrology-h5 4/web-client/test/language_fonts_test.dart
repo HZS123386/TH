@@ -5,7 +5,50 @@ import 'package:fate_h5/ui/language_fonts.dart';
 
 void main() {
   test(
-    'startup loads only the small UI font; Thai does not download Chinese',
+    'switch warmup shares in-flight UI fonts and never loads common CJK fonts',
+    () async {
+      final chinese = Completer<void>();
+      final loaded = <String>[];
+      final fonts = LanguageFonts(
+        loadFont: (family, asset) async {
+          loaded.add(family);
+          if (family == 'NotoSansSC') await chinese.future;
+        },
+      );
+      final warmup = fonts.warmSwitchLanguages();
+      final selected = fonts.ensure('zh');
+      await Future<void>.delayed(Duration.zero);
+      expect(loaded, ['NotoSansSC', 'NotoMyanmar', 'NotoKhmer', 'NotoLao']);
+      chinese.complete();
+      await Future.wait([warmup, selected]);
+      await fonts.warmSwitchLanguages();
+      expect(loaded, hasLength(4));
+    },
+  );
+  test(
+    'regional fonts reuse downloads and Latin languages need no extra font',
+    () async {
+      final loaded = <String>[];
+      final fonts = LanguageFonts(
+        loadFont: (family, asset) async => loaded.add(asset),
+      );
+      for (final language in ['th', 'en', 'vi', 'ms', 'id']) {
+        await fonts.ensure(language);
+      }
+      expect(loaded, isEmpty);
+      await Future.wait([fonts.ensure('my'), fonts.ensureCommon('my')]);
+      expect(loaded, ['assets/fonts/NotoSansMyanmar-Regular.ttf']);
+      await fonts.ensureText('km', 'ខ្មែរ');
+      await fonts.ensure('lo');
+      expect(loaded, [
+        'assets/fonts/NotoSansMyanmar-Regular.ttf',
+        'assets/fonts/NotoSansKhmer-Regular.ttf',
+        'assets/fonts/NotoSansLao-Regular.ttf',
+      ]);
+    },
+  );
+  test(
+    'initial language preparation requests only its small UI font',
     () async {
       final assets = <String>[];
       final fonts = LanguageFonts(

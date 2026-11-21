@@ -2,7 +2,9 @@
 
 部署目标为 `ubuntu@129.226.126.212`。使用当前本地落地页及相邻的 `TH` 后端源码，保留服务器已有的 `ipplay.top` 网站。
 
-- 访问入口：`http://129.226.126.212/thai-landing/?lang=zh`
+- 域名入口：`https://fatehoro.top/`，进入 `/thai-landing/` 后默认泰语；中文入口为 `https://fatehoro.top/thai-landing/?lang=zh`。
+- `www.fatehoro.top` 自动跳转至主域名；旧域名入口 `https://ipplay.top/thai-landing/` 继续保留。
+- 原 IP 入口：`https://129.226.126.212/thai-landing/?lang=zh`。
 - 健康检查：`http://129.226.126.212/health`
 - 应用容器：`astro-life-report`，Python 3.12、Node.js 24、单个 Uvicorn worker。
 - 当前发布目录：`/opt/astro-life-report/current`，指向 `releases/` 中的版本。
@@ -11,7 +13,7 @@
 - 入口配置：`/opt/astro-life-report/shared/Caddyfile`，沿用现有 Caddy 网关，另外增加公网 IP 站点。
 - 网关修改前的备份：`/opt/astro-life-report/shared/backups/ingress-*`。
 
-正式环境开启集团支付后，报告在服务端核验到账后解锁。TH 的本地开发登录入口在 production 环境关闭，公网入口转发落地页、地点查询、人生报告、访问统计接口和健康检查。
+配置 Sunlands 后使用手机号建单、官方收银台和服务端查单核验，核对订单、币种和到账金额后才解锁报告。production 仅允许 Sunlands 正式网关；测试网关和 Payso Demo 仍限 development。TH 的本地开发登录入口在 production 环境关闭，公网入口转发落地页、地点查询、人生报告、访问统计接口和健康检查。
 
 ## 日常查看
 
@@ -27,11 +29,13 @@ sudo docker compose logs --tail 80 app
 
 ## 制作新版本
 
-先在落地页目录安装 `scripts/release-requirements.txt` 中的构建工具并执行 `pnpm build:release`，再运行 `deploy/prepare_release.py`。生成结果在被 Git 忽略的 `output/deploy/` 下。普通本地构建仍可使用 `pnpm build`。
+在统一仓库总目录执行 `pnpm deploy:prepare`，或在落地页目录执行同名命令。已有最新构建时，可在落地页目录执行 `node ../TH/scripts/python.mjs -X utf8 deploy/prepare_release.py` 仅打包。生成结果固定为总目录的 `output/deploy/latest/`，上一份保留在 `output/deploy/previous/`；不在桌面创建项目副本。发布版本号仍写入 manifest，服务器端的版本和回滚流程保持原样。普通本地构建可使用 `pnpm build`。
 
 发布包包含后端、排盘脚本及库、`TH/src/content`、`TH/src/locales`、`TH/src/data` 中的运行资源，以及落地页 `site` 构建目录。报告校验代码会读取这些语言资源，不能只复制 Python 文件。
 
 `runtime.env` 与应用压缩包分开生成和上传，不进入 Docker 构建上下文。打包程序会检查构建文件中是否包含本机已配置的密钥，并排除原有用户数据库。地点索引单独复制，后续版本复用服务器已有文件。
+
+更新现有服务器时，保留线上已有的模型、数据库路径和环境模式，只合并本次明确要发布的配置项；不要用包含本机代理地址的开发配置整体覆盖线上 `runtime.env`。支付凭据同样只放在该私有配置文件中，发布前备份旧配置，失败时连同应用版本一起恢复。部署验收不创建真实订单或付款。
 
 正式付费镜像自带启动校验，要求 `APP_ENV=production`、`SUNLANDS_ORDER_ONLY=true` 和完整有效的集团支付配置。打包程序检查开关及必需项，优先使用当前进程的 `SUNLANDS_*` 配置，再从 `TH/.env` 读取相应值，并将所需的支付配置写入单独的 `runtime.env`。已有 `shared/runtime.env` 的服务器需先按原流程更新运行配置，`stage_server.sh` 会核对配置一致后继续。
 
@@ -41,6 +45,12 @@ sudo docker compose logs --tail 80 app
 
 首次部署依次使用 `stage_server.sh`、`start_server.sh` 和 `publish_proxy.py`。后续更新只需构建和启动新应用版本。需要修改已有 IP 入口时，向网关脚本额外提供上个版本的 `Caddyfile.ip` 路径；只有旧配置逐字匹配时才替换该站点，避免重复添加或改动其他网站。
 
+复用 `ipplay.top` 时，`Caddyfile.domain` 仅包含落地页静态资源及报告接口路由，插入原站域名配置，不接管 `/`、`/api/v1/` 或管理后台。通过 `publish_proxy.py <本次IP配置> <现有IP配置> --domain-routes Caddyfile.domain --release vYYYY.MM.DD.N` 校验后热重载，所有容器保持运行。配置更新也使用独立版本，回执写入 `/opt/ipplay/shared/releases/`，原网关备份放在 `/opt/ipplay/shared/config-releases/<版本>/`，同步更新原站 `deploy/server/releases.json`。后续更换独立域名时只调整网关和 DNS，应用继续使用同源接口及 `/thai-landing/` base 路径。
+
+独立域名使用 `Caddyfile.fatehoro`，复用现有 `astro_landing_routes`，不改变原 `APP_DOMAIN=ipplay.top`。DNSPod 将 `@` 和 `www` 指向 `129.226.126.212`；Caddy 沿用证书持久化卷自动签发和续期免费 HTTPS。解析生效后，通过 `publish_proxy.py <本次IP配置> <现有IP配置> --site-routes Caddyfile.fatehoro --release vYYYY.MM.DD.N` 校验、备份并热重载。根路径跳转保留语言等查询参数，`www` 统一跳到裸域；落地页和报告接口保持同源。此次不更换应用镜像、模型配置或数据库。
+
+新旧域名和原 IP 属于不同浏览器来源，已有报告访问凭证不会自动转到新域名。保留旧域名及原 IP 入口供已有访客查看历史报告，不把访问凭证放进 URL，也不强制将历史报告链接跳到新域名。
+
 ## 首屏资源
 
 本地构建现已切换为 Flutter Web。发布时继续复制 `site/`，不需要在服务器安装 Flutter；后端挂载 `/thai-landing/` 的方式和报告数据库位置保持一致。构建必须使用相同的 base 路径。`.mjs` 应返回 JavaScript MIME，`.wasm` 应返回 `application/wasm`，字体和视频须能从同源访问。下述旧版响应式图片方案仅适用于历史 React 构建；新版使用本地 Flutter 渲染引擎与字体，实际校验记录见 `../docs/FLUTTER_H5_MIGRATION.md`。
@@ -49,7 +59,7 @@ Flutter 版首屏预加载欢迎页主图、所需字体和资源清单，翻译
 
 构建时把现有 browser.js 与启动代码一起写入 HTML，减少启动所需的独立请求。文案和中文字库加载失败时最多尝试三次；启动失败最多自动重新加载一次，成功后清除本次恢复标记，持续失败则显示手动重载入口。JavaScript 入口请求失败和 Dart 初始化失败都接入同一加载状态，慢网不会单独触发自动刷新。HTML 加载提示在真实首帧完成后移除。
 
-中文首屏使用 348 KB 精简 OTF；常用字库在进入表单后预备，完整字库只在后续文本需要时读取。符号字体约 24 KB，泰文首页不加载中文字库。原字体格式和渲染方式保持一致。Python 静态服务显式注册 font/otf、font/ttf、font/woff2 与 image/webp MIME，避免精简 Linux 镜像返回错误类型。PDF 字体独立保留。
+中文界面使用约 358 KB 精简 OTF。HTML 启动阶段预加载中文界面以及缅甸语、高棉语、老挝语的小字库：当前语言为高优先级，其余为低优先级，并在首帧绘制后注册，首次切换复用同一请求。进入表单或切换中文不再主动下载约 2 MB 的常用中文字库；只有城市名、报告等实际文本超出界面字库时才按需加载常用或完整字库。符号字体约 24 KB，原字体格式和渲染方式保持一致。Python 静态服务显式注册 font/otf、font/ttf、font/woff2 与 image/webp MIME，避免精简 Linux 镜像返回错误类型。PDF 字体独立保留。
 
 Flutter 的入口、业务文件和资源清单继续使用 no-cache 与 ETag 验证。引擎资源位于 /thai-landing/engine/<40位SDK revision>/，该地址可以缓存一年并标记 immutable；升级 SDK 会更换目录。构建脚本移动原引擎目录，必须部署整个 site，包括预压缩的 .gz 文件。发布构建为脚本与 Wasm 使用更紧凑的 gzip，生产静态挂载和本地预览直接发送这些文件；网关已有压缩作为没有预压缩文件时的处理。压缩响应保留 Vary、表示对应的 ETag 和 HEAD 长度，视频 Range 响应不压缩。报告接口使用 no-store。页面和欢迎页保持 Flutter 实现。
 
@@ -63,7 +73,7 @@ Flutter 的入口、业务文件和资源清单继续使用 no-cache 与 ETag �
 
 2026-11-11 的 `20261111-181148` 发布将新报告切换为 RoxyAPI 西洋排盘、Qwen 解读，资料说明版本为 `h5-data-use-2`；历史泰式报告保留原计算依据。运行配置新增 `LIFE_ASTROLOGY_PROVIDER=roxy`、`ROXY_ENABLED=true` 及仅保存在服务器的 `ROXY_API_KEY`。数据库中出现西洋报告后，不能直接回退到尚不支持该格式的旧后端；应保留同时支持 `legacy` 和 `western-compact` 的读取能力。失败回退须先停止写入、等待服务退出再检查记录，不能用旧数据库备份覆盖新报告。发布与验证记录位于 `../output/local-release-20261111-1752/deployment-result.json`。
 
-公网推荐入口为 `https://129.226.126.212/thai-landing/?lang=zh`。`Caddyfile.ip` 使用 Let's Encrypt `shortlived` profile 申请免费公网 IP 证书，自动续期依赖现有持久化 `ipplay_caddy_data` 卷。Docker 网关必须在全局设置 `default_sni 129.226.126.212`，否则不发送 SNI 的 IP 客户端会选不到证书。`publish_proxy.py` 在保留其他域名站点的前提下放置全局选项、校验后热重载，遇到其他全局配置会停止而不覆盖。
+公网推荐入口为 `https://fatehoro.top/`。原 IP 仍可使用 `https://129.226.126.212/thai-landing/?lang=zh`；`Caddyfile.ip` 使用 Let's Encrypt `shortlived` profile 申请免费公网 IP 证书，自动续期依赖现有持久化 `ipplay_caddy_data` 卷。Docker 网关必须在全局设置 `default_sni 129.226.126.212`，否则不发送 SNI 的 IP 客户端会选不到证书。`publish_proxy.py` 在保留其他域名站点的前提下放置全局选项、校验后热重载，遇到其他全局配置会停止而不覆盖。
 
 部署整个 `site`，包括 `.br` 与 `.gz` 文件。发布构建离线生成最高级别 Brotli，服务端根据 `Accept-Encoding` 的质量值选择 Brotli、gzip 或原文件，缺少压缩文件时继续协商回退；保留各表示的 ETag、HEAD 长度与 `Vary`。视频 Range 使用原文件，报告接口仍为 `no-store`。
 

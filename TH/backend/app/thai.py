@@ -3,7 +3,7 @@ import hashlib
 import json
 import shutil
 import subprocess
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -39,7 +39,10 @@ def offset_for(profile: dict):
 
 def natal(profile: dict):
     offset = offset_for(profile)
-    result = _run({"operation": "natal", "profile": profile, "offset_seconds": offset})
+    return _with_calculation_input(profile, offset, _run({"operation": "natal", "profile": profile, "offset_seconds": offset}))
+
+
+def _with_calculation_input(profile, offset, result):
     if result["status"] == "ready":
         local = localize(datetime.combine(datetime.fromisoformat(profile["birth_date"]).date(), time.fromisoformat(profile["birth_time"])), ZoneInfo(profile["timezone"]))
         result["calculation_input"] = {
@@ -79,6 +82,10 @@ def career_window(start: str, ascendant: int):
     return _run({"operation": "career-window", "start": start, "ascendant": ascendant})
 
 
+def marriage_windows(start, days, ascendant):
+    return _run({"operation": "marriage-windows", "start": start.isoformat(), "days": days, "ascendant": ascendant})
+
+
 def civil_day_window(profile: dict):
     """Retain the first and last real civil minutes, including DST fold bounds."""
     zone = ZoneInfo(profile["timezone"])
@@ -98,15 +105,34 @@ def civil_day_window(profile: dict):
     return [endpoint(range(1440), True), endpoint(range(1439, -1, -1), False)]
 
 
+def _birth_zone_known(profile):
+    return bool(profile.get("birthplace") or profile.get("location_id") or profile.get("latitude") is not None)
+
+
+def _birth_time_window(profile, zone_known):
+    if zone_known:
+        return ([{"time": profile["birth_time"], "offset_seconds": offset_for(profile)}]
+                if profile.get("birth_time") else civil_day_window(profile))
+    # Preserve the complete possible UTC interval when only a civil date or time is available.
+    return [
+        {"time": profile.get("birth_time") or "00:00", "offset_seconds": 50400},
+        {"time": profile.get("birth_time") or "23:59", "offset_seconds": -43200},
+    ]
+
+
+def marriage_preview_chart(profile: dict, start: date):
+    offset = offset_for(profile)
+    request = {"operation": "marriage-preview", "profile": profile, "start": start.isoformat(), "offset_seconds": offset}
+    if offset is None:
+        request["birth_window"] = _birth_time_window(profile, _birth_zone_known(profile))
+    result = _run(request)
+    return _with_calculation_input(profile, offset, result) if offset is not None else result
+
+
 def fortune(profile: dict, period: str, now: datetime | None = None):
     now = (now or datetime.now(ZoneInfo("Asia/Bangkok"))).astimezone(ZoneInfo("Asia/Bangkok"))
-    zone_known = bool(profile.get("birthplace") or profile.get("location_id") or profile.get("latitude") is not None)
-    if zone_known:
-        window = [{"time": profile["birth_time"], "offset_seconds": offset_for(profile)}] if profile.get("birth_time") else civil_day_window(profile)
-    else:
-        # Preserve the full possible UTC interval instead of assuming Bangkok
-        # when the user only supplied a local date (and perhaps a clock time).
-        window = [{"time": profile.get("birth_time") or "00:00", "offset_seconds": 50400}, {"time": profile.get("birth_time") or "23:59", "offset_seconds": -43200}]
+    zone_known = _birth_zone_known(profile)
+    window = _birth_time_window(profile, zone_known)
     result = _run({"operation": "fortune", "profile": profile, "period": period, "birth_window": window, "zone_known": zone_known, "now": {"date": now.date().isoformat(), "time": now.strftime("%H:%M"), "iso": now.isoformat()}})
     result["analysis"] = analyze(result, result.pop("analysis_samples"))
     return result

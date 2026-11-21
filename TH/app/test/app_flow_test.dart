@@ -577,7 +577,7 @@ void main() {
         find.textContaining('not calculated from your birth details'),
         findsOneWidget,
       );
-      final read = find.widgetWithText(FilledButton, 'Read this chart');
+      final read = find.widgetWithText(FilledButton, s.chartRead);
       await tester.ensureVisible(read);
       await tester.tap(read);
       await tester.pumpAndSettle();

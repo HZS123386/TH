@@ -83,9 +83,17 @@ class _FateImageState extends State<FateImage> {
                   child: CircularProgressIndicator(strokeWidth: 1.5),
                 )
               : IconButton(
-                  tooltip: Localizations.localeOf(context).languageCode == 'zh'
-                      ? '点击重试'
-                      : 'ลองโหลดภาพใหม่',
+                  tooltip: const {
+                    'zh': '点击重试',
+                    'th': 'ลองโหลดภาพใหม่',
+                    'en': 'Reload image',
+                    'vi': 'Tải lại ảnh',
+                    'my': 'ပုံ ပြန်တင်မယ်',
+                    'km': 'ផ្ទុករូបភាពម្ដងទៀត',
+                    'lo': 'ໂຫຼດຮູບໃໝ່',
+                    'ms': 'Muat semula imej',
+                    'id': 'Muat ulang gambar',
+                  }[Localizations.localeOf(context).languageCode],
                   icon: const Icon(Icons.refresh_rounded, color: gold),
                   onPressed: () => unawaited(_reload(manual: true)),
                 ),
@@ -188,12 +196,13 @@ class JYButton extends StatefulWidget {
     this.bounce = false,
     this.pulse = false,
     this.dimDisabled = true,
+    this.large = false,
     super.key,
   });
   final String label;
   final String? icon;
   final VoidCallback? onPressed;
-  final bool bounce, pulse, dimDisabled;
+  final bool bounce, pulse, dimDisabled, large;
   @override
   State<JYButton> createState() => _JYButtonState();
 }
@@ -298,15 +307,15 @@ class _JYButtonState extends State<JYButton>
                       : const Color(0xFF341D38),
                   disabledForegroundColor: const Color(0xFF341D38),
                   shadowColor: Colors.transparent,
-                  minimumSize: const Size.fromHeight(51),
+                  minimumSize: Size.fromHeight(widget.large ? 63 : 51),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 9,
                   ),
-                  textStyle: const TextStyle(
+                  textStyle: TextStyle(
                     fontFamily: h5FontFamily,
                     fontFamilyFallback: h5FontFallback,
-                    fontSize: 14,
+                    fontSize: widget.large ? 17 : 14,
                     fontWeight: FontWeight.w800,
                     height: 1.4,
                   ),
@@ -318,7 +327,7 @@ class _JYButtonState extends State<JYButton>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (widget.icon != null) ...[
-                      LandingIcon(widget.icon!),
+                      LandingIcon(widget.icon!, size: widget.large ? 22 : 19),
                       const SizedBox(width: 9),
                     ],
                     Flexible(
@@ -336,15 +345,16 @@ class _JYButtonState extends State<JYButton>
 }
 
 class ThemeBoards extends StatelessWidget {
-  const ThemeBoards({required this.copy, super.key});
+  const ThemeBoards({required this.copy, this.showHeading = true, super.key});
   final Copy copy;
+  final bool showHeading;
   @override
   Widget build(BuildContext context) => Stack(
     clipBehavior: Clip.none,
     children: [
       Container(
-        margin: const EdgeInsets.only(top: 15),
-        padding: const EdgeInsets.fromLTRB(8, 22, 8, 9),
+        margin: EdgeInsets.only(top: showHeading ? 15 : 0),
+        padding: EdgeInsets.fromLTRB(8, showHeading ? 22 : 8, 8, 9),
         decoration: BoxDecoration(
           border: Border.all(color: const Color(0xFFD9B06B)),
           borderRadius: BorderRadius.circular(12),
@@ -362,53 +372,61 @@ class ThemeBoards extends StatelessWidget {
           ],
         ),
       ),
-      Positioned(
-        top: 0,
-        left: 6,
-        right: 6,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFFFE48F)),
-            borderRadius: BorderRadius.circular(14),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFECAA28), Color(0xFFFFDC65), Color(0xFFF3B830)],
+      if (showHeading)
+        Positioned(
+          top: 0,
+          left: 6,
+          right: 6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFFFE48F)),
+              borderRadius: BorderRadius.circular(14),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFECAA28),
+                  Color(0xFFFFDC65),
+                  Color(0xFFF3B830),
+                ],
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const LandingIcon('cloud', size: 21, color: Color(0xFF341D38)),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  copy.t('jy', 'topicLabel'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF341D38),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    height: 1.4,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const LandingIcon('cloud', size: 21, color: Color(0xFF341D38)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    copy.t('jy', 'topicLabel'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF341D38),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Transform.flip(
-                flipX: true,
-                child: const LandingIcon(
-                  'cloud',
-                  size: 21,
-                  color: Color(0xFF341D38),
+                const SizedBox(width: 8),
+                Transform.flip(
+                  flipX: true,
+                  child: const LandingIcon(
+                    'cloud',
+                    size: 21,
+                    color: Color(0xFF341D38),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
     ],
   );
+
   Widget _board(String key, Rect crop, bool reverse) {
-    final themes = objects(object(copy.data['jyThemes'])[key]);
+    final titles = objects(
+      object(copy.data['jyThemes'])[key],
+    ).map((item) => text(item[copy.language]));
     final art = Expanded(
       child: ClipPath(
         clipper: _Corners(),
@@ -444,55 +462,53 @@ class ThemeBoards extends StatelessWidget {
         ),
       ),
     );
-    final labels = Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final item in themes)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(vertical: 2.5),
-              padding: const EdgeInsets.all(2),
+    final labels = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final title in titles)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(vertical: 2.5),
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(40),
+              gradient: LinearGradient(
+                colors: reverse
+                    ? const [
+                        Color(0xFF805D9C),
+                        Color(0xFFC6A2DB),
+                        Color(0xFF805D9C),
+                      ]
+                    : const [
+                        Color(0xFFA57246),
+                        Color(0xFFF1CD90),
+                        Color(0xFFAD7D52),
+                      ],
+              ),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(40),
-                gradient: LinearGradient(
-                  colors: reverse
-                      ? const [
-                          Color(0xFF805D9C),
-                          Color(0xFFC6A2DB),
-                          Color(0xFF805D9C),
-                        ]
-                      : const [
-                          Color(0xFFA57246),
-                          Color(0xFFF1CD90),
-                          Color(0xFFAD7D52),
-                        ],
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF553767), Color(0xFF38244B)],
                 ),
               ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(40),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF553767), Color(0xFF38244B)],
-                  ),
-                ),
-                child: Text(
-                  text(item[copy.language]),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    height: 1.35,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFFFE1AB),
-                  ),
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFFFE1AB),
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
     return Container(
       padding: const EdgeInsets.all(6),
@@ -503,8 +519,8 @@ class ThemeBoards extends StatelessWidget {
       ),
       child: Row(
         children: reverse
-            ? [labels, const SizedBox(width: 7), art]
-            : [art, const SizedBox(width: 7), labels],
+            ? [Expanded(child: labels), const SizedBox(width: 7), art]
+            : [art, const SizedBox(width: 7), Expanded(child: labels)],
       ),
     );
   }
@@ -532,6 +548,7 @@ class ReportBadges extends StatelessWidget {
     this.themes,
     this.locked = true,
     this.western = false,
+    this.labelsInside = false,
     this.onTap,
     super.key,
   });
@@ -539,50 +556,74 @@ class ReportBadges extends StatelessWidget {
   final List<Json>? themes;
   final bool locked;
   final bool western;
+  final bool labelsInside;
   final ValueChanged<String>? onTap;
   @override
   Widget build(BuildContext context) {
-    final items = themes ?? (locked
-        ? [
-            ...objects(object(copy.data['jyThemes'])['outlook']),
-            ...objects(object(copy.data['jyThemes'])['highlights']),
-          ]
-        : [
-            for (final key
-                in western
-                    ? ['natal', 'career', 'wealth', 'love', 'risk', 'plan']
-                    : [
-                        'overall',
-                        'natal',
-                        'love',
-                        'career',
-                        'opportunities',
-                        'partnership',
-                      ])
-              {
-                'id': key,
-                copy.language: copy.t(
-                  'jy',
-                  'report.${western ? 'westernSections' : 'sections'}.$key',
-                ),
-                'icon': {
-                  'overall': '✦',
-                  'natal': '☉',
-                  'love': '♡',
-                  'career': '◇',
-                  'opportunities': '✧',
-                  'partnership': '☽',
-                  'wealth': '◇',
-                  'risk': '✧',
-                  'plan': '✦',
-                }[key],
-              },
-          ]);
+    final items =
+        themes ??
+        (locked
+            ? [
+                ...objects(object(copy.data['jyThemes'])['outlook']),
+                ...objects(object(copy.data['jyThemes'])['highlights']),
+              ]
+            : [
+                for (final key
+                    in western
+                        ? ['natal', 'career', 'wealth', 'love', 'risk', 'plan']
+                        : [
+                            'overall',
+                            'natal',
+                            'love',
+                            'career',
+                            'opportunities',
+                            'partnership',
+                          ])
+                  {
+                    'key': key,
+                    copy.language: copy.t(
+                      'jy',
+                      'report.${western ? 'westernSections' : 'sections'}.$key',
+                    ),
+                  },
+              ]);
     return LayoutBuilder(
       builder: (context, box) {
+        if (!locked) {
+          final columns = box.maxWidth < 250 ? 1 : 2;
+          return Column(
+            children: [
+              for (
+                var row = 0;
+                row < (items.length / columns).ceil();
+                row++
+              ) ...[
+                if (row > 0) const SizedBox(height: 10),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var column = 0; column < columns; column++) ...[
+                        if (column > 0) const SizedBox(width: 10),
+                        Expanded(
+                          child: row * columns + column < items.length
+                              ? _sectionLink(
+                                  items[row * columns + column],
+                                  row * columns + column + 1,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          );
+        }
         const gap = 10.0;
-        final columns = box.maxWidth < 300 ? 2 : 3;
-        final width = (box.maxWidth - gap * (columns - 1)) / columns;
+        final badgeColumns = labelsInside || box.maxWidth >= 300 ? 3 : 2;
+        final width = (box.maxWidth - gap * (badgeColumns - 1)) / badgeColumns;
         return Wrap(
           spacing: gap,
           runSpacing: 14,
@@ -590,7 +631,10 @@ class ReportBadges extends StatelessWidget {
             for (final item in items)
               SizedBox(
                 width: width,
-                child: _badge(item, math.min(width, 88)),
+                child: _badge(
+                  item,
+                  math.min(width, labelsInside ? 124.0 : 88.0),
+                ),
               ),
           ],
         );
@@ -598,16 +642,130 @@ class ReportBadges extends StatelessWidget {
     );
   }
 
+  List<Color> _colors(String id) => switch (id) {
+    'natal' => const [Color(0xFF368693), Color(0xFF12313F)],
+    'love' => const [Color(0xFFAA526B), Color(0xFF3C1631)],
+    'career' => const [Color(0xFF3B8464), Color(0xFF102E2C)],
+    'warning' ||
+    'risk' ||
+    'opportunities' => const [Color(0xFFA15A45), Color(0xFF421F27)],
+    'advice' || 'plan' => const [Color(0xFF526FBD), Color(0xFF1B244E)],
+    'partnership' => const [Color(0xFF9075B8), Color(0xFF30203F)],
+    _ => const [Color(0xFFA97631), Color(0xFF3B230E)],
+  };
+
+  String _art(String id) => switch (id) {
+    'judgment' => 'love',
+    'basis' => 'natal',
+    'wealth' => 'finance',
+    'warning' || 'risk' => 'opportunities',
+    'plan' => 'advice',
+    _ => id,
+  };
+
+  Widget _sectionLink(Json item, int number) {
+    final id = text(item['key']), label = text(item[copy.language]);
+    final colors = _colors(id);
+    final action = onTap == null ? null : () => onTap!(id);
+    return Semantics(
+      button: action != null,
+      label: label,
+      child: Material(
+        key: ValueKey('report-section-$id'),
+        color: const Color(0xFF291D3A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: colors.first.withValues(alpha: .45)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: action,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 72),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: colors),
+                      border: Border.all(
+                        color: colors.first.withValues(alpha: .6),
+                      ),
+                    ),
+                    child: ClipOval(
+                      child: SvgPicture.asset(
+                        'assets/images/badges/${_art(id)}.svg',
+                        width: 30,
+                        height: 30,
+                        excludeFromSemantics: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          number.toString().padLeft(2, '0'),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            height: 1.1,
+                            color: lavender,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.4,
+                            color: cream,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 14,
+                    color: gold,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _badge(Json item, double size) {
-    final id = text(item['id']);
-    final colors = switch (id) {
-      'natal' => const [Color(0xFF368693), Color(0xFF12313F)],
-      'love' => const [Color(0xFFAA526B), Color(0xFF3C1631)],
-      'career' => const [Color(0xFF3B8464), Color(0xFF102E2C)],
-      'warning' => const [Color(0xFFA15A45), Color(0xFF421F27)],
-      'advice' => const [Color(0xFF526FBD), Color(0xFF1B244E)],
-      _ => const [Color(0xFFA97631), Color(0xFF3B230E)],
-    };
+    final id = text(item['key']);
+    final colors = _colors(id);
+    final label = Text(
+      text(item[copy.language]),
+      textAlign: TextAlign.center,
+      maxLines: labelsInside ? 2 : null,
+      overflow: labelsInside ? TextOverflow.ellipsis : null,
+      style: TextStyle(
+        fontSize: labelsInside ? 14 : 12,
+        height: 1.35,
+        color: const Color(0xFFFFF0D2),
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    final symbol = Text(
+      text(item['icon']),
+      style: const TextStyle(color: Color(0xFFF6D096), fontSize: 18),
+    );
     return Semantics(
       button: onTap != null,
       label: text(item[copy.language]),
@@ -633,36 +791,68 @@ class ReportBadges extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
+                  if (labelsInside)
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0x65F5D08F)),
+                        ),
+                      ),
+                    ),
                   ClipOval(
                     child: SvgPicture.asset(
-                      'assets/images/badges/${id == 'warning' ? 'opportunities' : id}.svg',
+                      'assets/images/badges/${_art(id)}.svg',
                       width: size,
                       height: size,
                     ),
                   ),
-                  Text(
-                    text(item['icon']),
-                    style: const TextStyle(color: Color(0xFFF6D096), fontSize: 18),
-                  ),
-                  if (locked)
-                    const Positioned(
-                      bottom: 4,
-                      child: LandingIcon('lock', size: 16, color: Color(0xFFFFE5A3)),
-                    ),
+                  if (labelsInside)
+                    SizedBox(
+                      width: size * .8,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          symbol,
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: SizedBox(width: size * .8, child: label),
+                            ),
+                          ),
+                          if (locked)
+                            Container(
+                              margin: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF573476),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const LandingIcon(
+                                'lock',
+                                size: 13,
+                                color: Color(0xFFFFE5A3),
+                              ),
+                            ),
+                        ],
+                      ),
+                    )
+                  else ...[
+                    symbol,
+                    if (locked)
+                      const Positioned(
+                        bottom: 4,
+                        child: LandingIcon(
+                          'lock',
+                          size: 16,
+                          color: Color(0xFFFFE5A3),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              text(item[copy.language]),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.35,
-                color: Color(0xFFFFF0D2),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            if (!labelsInside) ...[const SizedBox(height: 6), label],
           ],
         ),
       ),

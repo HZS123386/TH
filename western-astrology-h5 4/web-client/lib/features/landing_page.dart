@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../app/controller.dart';
+import '../app/languages.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
 import '../ui/theme.dart';
@@ -29,9 +31,21 @@ class LandingPage extends StatefulWidget {
 }
 
 class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
+  static const _stages = ['unspecified', 'considering', 'searching', 'offer'];
   String _date = '', _time = '', _error = '';
-  bool _unknown = false, _confirming = false, _noticeOutdated = false;
+  bool _unknown = false,
+      _confirming = false,
+      _noticeOutdated = false,
+      _custom = false,
+      _restored = false,
+      _restoringCareer = false;
   Place? _place;
+  String? _question;
+  final _questionText = TextEditingController();
+  bool get _marriageMode => widget.topic != 'career' && !_restoringCareer;
+  late final _questionPages = PageController(
+    initialPage: _stages.indexOf(_question ?? '').clamp(0, _stages.length - 1),
+  );
   CancelToken? _request;
   bool _generating = false, _openingHistory = false;
   bool _recordedPage = false;
@@ -40,9 +54,29 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final h5 = H5Scope.of(context);
+    if (!_restored) {
+      _restored = true;
+      final input = h5.landingInput;
+      if (input != null) {
+        final profile = object(input['profile']);
+        _date = text(profile['birth_date']);
+        _time = text(profile['birth_time']);
+        _unknown = _time.isEmpty;
+        _place = h5.landingPlace;
+        final stage = text(object(input['career_question'])['stage']);
+        _question = _stages.contains(stage) ? stage : null;
+        _restoringCareer = _question != null;
+        if (!_marriageMode) {
+          _questionText.text = text(input['user_question']);
+          _custom = _questionText.text.isNotEmpty;
+        }
+      }
+    }
+    if (_place?.country != h5BirthCountry(h5.language)) _place = null;
     if (!_resumeChecked) {
       _resumeChecked = true;
-      final saved = h5.browser.readSetting('active-preview', session: true) ?? '';
+      final saved =
+          h5.browser.readSetting('active-preview', session: true) ?? '';
       if (RegExp(r'^[A-Za-z0-9_-]{8,128}$').hasMatch(saved)) {
         h5.browser.writeSetting('active-preview', '', session: true);
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -61,6 +95,8 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     _request?.cancel();
+    _questionText.dispose();
+    _questionPages.dispose();
     super.dispose();
   }
 
@@ -113,11 +149,16 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     if (_date.isEmpty && _time.isEmpty && !_unknown && _place == null) {
       return _BirthFormProgress.empty;
     }
-    if (!validBirthDate(_date, h5.browser.today(_place?.zone ?? 'Asia/Bangkok'))) {
+    if (!validBirthDate(
+      _date,
+      h5.browser.today(_place?.zone ?? 'Asia/Bangkok'),
+    )) {
       return _BirthFormProgress.date;
     }
     if (!_unknown && _time.isEmpty) return _BirthFormProgress.time;
-    if (_place == null) return _BirthFormProgress.place;
+    if (_place?.country != h5BirthCountry(h5.language)) {
+      return _BirthFormProgress.place;
+    }
     return _BirthFormProgress.complete;
   }
 
@@ -127,21 +168,36 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   }
 
   Json _input(H5Controller h5) {
+    final start = h5.browser.today('Asia/Bangkok');
+    final previous = object(h5.landingInput?['profile']);
+    final samePlace =
+        h5.landingPlace != null &&
+        _place!.id == h5.landingPlace!.id &&
+        _place!.zone == h5.landingPlace!.zone;
     return {
-      'report_kind': 'fortune',
+      'report_kind': _marriageMode ? 'marriage' : 'fortune',
       'profile': {
         'display_name': '',
         'birth_date': _date,
         'birth_time': _unknown ? null : _time,
-        'birthplace': '${_place!.english}, ${_place!.country}',
+        'birthplace': samePlace && text(previous['birthplace']).isNotEmpty
+            ? previous['birthplace']
+            : '${_place!.english}, ${_place!.country}',
         'timezone': _place!.zone,
         'language': h5.language,
-        'country_code': _place!.country,
-        'location_id': _place!.id,
-        'latitude': null,
-        'longitude': null,
+        'country_code': _place!.country.isEmpty ? null : _place!.country,
+        'location_id': _place!.id.isEmpty ? null : _place!.id,
+        // Keep original coordinates until the user selects a different location.
+        'latitude': samePlace ? previous['latitude'] : null,
+        'longitude': samePlace ? previous['longitude'] : null,
       },
-      'year': DateTime.now().year,
+      'year': !_marriageMode && _question != null && !_custom
+          ? int.parse(start.substring(0, 4))
+          : DateTime.now().year,
+      if (!_marriageMode && _question != null && !_custom)
+        'career_question': {'stage': _question, 'start': start},
+      if (!_marriageMode && _custom && _questionText.text.trim().isNotEmpty)
+        'user_question': _questionText.text.trim(),
     };
   }
 
@@ -152,9 +208,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       await history.loadLibrary();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(h5.copy.t('ui', 'network'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(h5.copy.t('ui', 'network'))));
       }
       return;
     } finally {
@@ -209,13 +265,17 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     if (!mounted) return;
     final state = generation.GenerationState();
     _generating = true;
+    h5.warmReportFont();
     var attempts = 0;
     Future<void> run() async {
       _request?.cancel();
       final token = CancelToken();
       _request = token;
       state.retry();
-      h5.trackActivity('generating_preview', attempts++ == 0 ? 'generate' : 'retry_generation');
+      h5.trackActivity(
+        'generating_preview',
+        attempts++ == 0 ? 'generate' : 'retry_generation',
+      );
       try {
         final report = await h5.repository.generate(input, token, (
           report,
@@ -246,26 +306,29 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       PageRouteBuilder<void>(
         opaque: true,
         transitionDuration: const Duration(milliseconds: 260),
-        pageBuilder: (context, animation, secondaryAnimation) => generation.GenerationDialog(
-          h5: h5,
-          state: state,
-          full: false,
-          input: input,
-          onCancel: () {
-            _request?.cancel();
-            h5.browser.writeSetting('active-preview', '', session: true);
-            h5.trackActivity('birth_form', 'cancel_generation');
-            Navigator.of(context, rootNavigator: true).pop();
-          },
-          onRetry: () => unawaited(run()),
-          onComplete: (report) {
-            h5.browser.writeSetting('active-preview', '', session: true);
-            Navigator.of(context, rootNavigator: true).pop();
-            context.go(
-              '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}',
-            );
-          },
-        ),
+        reverseTransitionDuration: const Duration(milliseconds: 120),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            generation.GenerationDialog(
+              h5: h5,
+              state: state,
+              full: false,
+              input: input,
+              onCancel: () {
+                _request?.cancel();
+                h5.browser.writeSetting('active-preview', '', session: true);
+                h5.trackActivity('birth_form', 'cancel_generation');
+                Navigator.of(context, rootNavigator: true).pop();
+              },
+              onRetry: () => unawaited(run()),
+              onComplete: (report) {
+                h5.stageGeneratedPreview(report);
+                h5.browser.writeSetting('active-preview', '', session: true);
+                Navigator.of(context, rootNavigator: true).pop();
+                context.go(
+                  '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}',
+                );
+              },
+            ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -304,6 +367,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final h5 = H5Scope.of(context), c = h5.copy;
+    final prompts = (c.value('jy', 'questions') as List).cast<List>();
     return LayoutBuilder(
       builder: (context, box) {
         final compact = box.maxWidth <= 360;
@@ -413,7 +477,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      c.t('jy', 'formTitle'),
+                      _marriageMode
+                          ? c.t('marriage', 'title')
+                          : c.t('jy', 'formTitle'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -424,7 +490,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      c.t('jy', 'formCaption'),
+                      _marriageMode
+                          ? c.t('marriage', 'form_hint')
+                          : c.t('jy', 'formCaption'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 10,
@@ -436,11 +504,15 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     Align(
                       alignment: Alignment.centerRight,
                       child: OutlinedButton.icon(
-                        onPressed: _openingHistory ? null : () => _openHistory(h5),
+                        onPressed: _openingHistory
+                            ? null
+                            : () => _openHistory(h5),
                         icon: _openingHistory
                             ? const SizedBox.square(
                                 dimension: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const LandingIcon('history', size: 14),
                         label: Text(c.t('jy', 'history')),
@@ -454,17 +526,25 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                           style: TextStyle(color: gold, fontSize: 16),
                         ),
                         const SizedBox(width: 7),
-                        Text(
-                          c.t('jy', 'date'),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            c.t('jy', 'date'),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                        Text(
-                          c.t('jy', 'calendar'),
-                          style: const TextStyle(fontSize: 10, color: lavender),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            c.t('jy', 'calendar'),
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: lavender,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -472,7 +552,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     _field(
                       'birth-date',
                       birthDateLabel(_date, c.language),
-                      c.language == 'zh' ? '年 / 月 / 日' : 'วัน / เดือน / ปี',
+                      c.t('jy', 'dateParts.placeholder'),
                       Icons.calendar_today_outlined,
                       () => _datePicker(h5),
                     ),
@@ -552,28 +632,165 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       Icons.schedule,
                       _unknown ? null : () => _timePicker(h5),
                     ),
-                    if (_unknown)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 7),
-                        child: Text(
-                          c.t('jy', 'unknownNote'),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            height: 1.8,
-                            color: lavender,
-                          ),
-                        ),
-                      ),
                     const SizedBox(height: 13),
                     BirthplaceFields(
+                      key: ValueKey('birthplace-${h5.language}'),
                       h5: h5,
+                      country: h5BirthCountry(h5.language),
+                      initialPlace: _place,
                       onSelected: (place) {
                         if (place == null && _place == null) return;
                         setState(() => _place = place);
                         _recordFormProgress(h5);
                       },
                     ),
-                    const SizedBox(height: 8),
+                    if (!_marriageMode) ...[
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              c.t('jy', 'questionTitle'),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                height: 1.67,
+                                color: gold,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              c.t('jy', 'questionHint'),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                height: 1.45,
+                                color: lavender,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _custom
+                                ? TextField(
+                                    key: const ValueKey('custom-question'),
+                                    controller: _questionText,
+                                    maxLength: 120,
+                                    style: const TextStyle(fontSize: 12),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.deny(
+                                        RegExp(r'[\x00-\x1f\x7f]'),
+                                        replacementString: ' ',
+                                      ),
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: c.t('jy', 'questionTitle'),
+                                      counterText: '',
+                                    ),
+                                  )
+                                : SizedBox(
+                                    height: 44,
+                                    child: PageView.builder(
+                                      controller: _questionPages,
+                                      scrollDirection: Axis.vertical,
+                                      itemCount: 4,
+                                      itemBuilder: (context, index) => InkWell(
+                                        key: ValueKey('question-$index'),
+                                        onTap: () => setState(
+                                          () => _question =
+                                              _question == _stages[index]
+                                              ? null
+                                              : _stages[index],
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Text(
+                                                '${prompts[index][0]}',
+                                                style: const TextStyle(
+                                                  fontSize: 10,
+                                                  color: gold,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  '${prompts[index][1]}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    height: 1.4,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        _question ==
+                                                            _stages[index]
+                                                        ? gold
+                                                        : cream,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (_question == _stages[index])
+                                                Text(
+                                                  c.t('jy', 'selected'),
+                                                  style: const TextStyle(
+                                                    fontSize: 9,
+                                                    color: gold,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (_custom)
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _custom = false;
+                                _question = null;
+                                _questionText.clear();
+                              }),
+                              child: Text(
+                                c.t('jy', 'browseQuestions'),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: gold,
+                                ),
+                              ),
+                            )
+                          else
+                            SizedBox(
+                              width: 84,
+                              height: 46,
+                              child: TextField(
+                                readOnly: true,
+                                key: const ValueKey('write-question'),
+                                onTap: () => setState(() {
+                                  _custom = true;
+                                  _question = null;
+                                }),
+                                textAlign: TextAlign.center,
+                                decoration: InputDecoration(
+                                  hintText: c.t('jy', 'writeQuestion'),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                     errorMessage(_error),
                     const SizedBox(height: 15),
                     if (!_noticeOutdated) ...[
@@ -598,7 +815,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       ),
                       icon: 'book',
                       bounce: true,
-                      onPressed: h5.languageLoading || _confirming
+                      onPressed: h5.languageLoading
                           ? null
                           : _noticeOutdated
                           ? () => h5.browser.openPage(
@@ -608,15 +825,6 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 19),
                     ThemeBoards(copy: c),
-                    const SizedBox(height: 16),
-                    Text(
-                      c.t('jy', 'formHint'),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        height: 1.8,
-                        color: lavender,
-                      ),
-                    ),
                   ],
                 ),
               ),

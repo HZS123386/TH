@@ -190,6 +190,80 @@ class _WelcomePageState extends State<WelcomePage>
                           ),
                         ),
                       ),
+                      if (signatureName.isEmpty &&
+                          c.t('jy', 'welcome.guideName').isNotEmpty)
+                        Positioned(
+                          top: image.top + image.height * .265,
+                          right: (w * .045).clamp(14.0, 20.0),
+                          width: (w * .24).clamp(78.0, 108.0),
+                          child: IgnorePointer(
+                            child: Opacity(
+                              opacity: fade,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 28,
+                                    height: 1,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.transparent,
+                                          Color(0xA8E4BC78),
+                                          Colors.transparent,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      c.t('jy', 'welcome.guideName'),
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: const Color(0xFFF0DEBF),
+                                        fontSize: (w * .035).clamp(13.0, 15.5),
+                                        fontWeight: FontWeight.w400,
+                                        letterSpacing: 2,
+                                        height: 1.3,
+                                        shadows: const [
+                                          Shadow(
+                                            color: Color(0xCC160B26),
+                                            offset: Offset(0, 1),
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      c.t('jy', 'welcome.guideTitle'),
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: const Color(0xFFD1BBD8),
+                                        fontSize: (w * .0255).clamp(10.0, 11.5),
+                                        fontWeight: FontWeight.w400,
+                                        letterSpacing: 1.2,
+                                        height: 1.4,
+                                        shadows: const [
+                                          Shadow(
+                                            color: Color(0xCC160B26),
+                                            offset: Offset(0, 1),
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       Positioned(
                         right: math.max(
                           thaiSignature ? 10 : 13,

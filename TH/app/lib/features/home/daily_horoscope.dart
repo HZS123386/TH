@@ -17,6 +17,21 @@ const _outline = Color(0xFF42394E);
 const _bodyColor = Color(0xFFD0C6D8);
 const _readingDuration = Duration(milliseconds: 140);
 
+const _zodiacSigns = [
+  'aries',
+  'taurus',
+  'gemini',
+  'cancer',
+  'leo',
+  'virgo',
+  'libra',
+  'scorpio',
+  'sagittarius',
+  'capricorn',
+  'aquarius',
+  'pisces',
+];
+
 const _zodiacGlyphs = [
   '♈︎',
   '♉︎',
@@ -180,7 +195,7 @@ class _ZodiacPickerState extends State<_ZodiacPicker> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _SignGlyph(sign: sign, size: 27),
+                        _SignArtwork(sign: sign, size: 44),
                         const SizedBox(height: 7),
                         Text(
                           names[sign],
@@ -395,18 +410,7 @@ class _ForecastHeading extends StatelessWidget {
         : name;
     return Row(
       children: [
-        Container(
-          width: 46,
-          height: 46,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [Color(0xFF77618C), Color(0xFF3C2B56)],
-            ),
-          ),
-          child: _SignGlyph(sign: sign, size: 25),
-        ),
+        _SignArtwork(sign: sign, size: 46),
         const SizedBox(width: 11),
         Expanded(
           child: Column(
@@ -432,21 +436,28 @@ class _ForecastHeading extends StatelessWidget {
   }
 }
 
-class _SignGlyph extends StatelessWidget {
-  const _SignGlyph({required this.sign, required this.size});
+class _SignArtwork extends StatelessWidget {
+  const _SignArtwork({required this.sign, required this.size});
 
   final int sign;
   final double size;
 
   @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: Text(
-      _zodiacGlyphs[sign],
-      style: TextStyle(
-        fontFamily: 'NotoSansSymbols',
-        color: goldColor,
-        fontSize: size,
-        height: 1.1,
+  Widget build(BuildContext context) => Image.asset(
+    'assets/images/zodiac/${_zodiacSigns[sign]}.webp',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+    excludeFromSemantics: true,
+    errorBuilder: (_, _, _) => ExcludeSemantics(
+      child: Text(
+        _zodiacGlyphs[sign],
+        style: TextStyle(
+          fontFamily: 'NotoSansSymbols',
+          color: goldColor,
+          fontSize: size,
+          height: 1.1,
+        ),
       ),
     ),
   );

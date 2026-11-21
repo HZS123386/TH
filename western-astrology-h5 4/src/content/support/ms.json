@@ -1,0 +1,78 @@
+{
+  "intro": "Untuk masalah menjana, melihat atau menguruskan bacaan, hubungi kami melalui e-mel di bawah atau semak soalan lazim ini dahulu.",
+  "labels": {
+    "contactTitle": "Hubungi sokongan FATE",
+    "emailAction": "Gubah e-mel",
+    "emailSubject": "Permintaan sokongan laman web FATE",
+    "operator": "Pengendali",
+    "address": "Alamat hubungan",
+    "noContact": "Butiran hubungan buat sementara waktu tidak tersedia. Sila cuba lagi kemudian.",
+    "requestTitle": "Apa yang perlu disertakan dalam e-mel anda",
+    "faqTitle": "Soalan lazim",
+    "privacyLink": "Baca Dasar Privasi",
+    "privacyHint": "Gunakan e-mel yang sama untuk akses, pembetulan, pemadaman, penarikan balik persetujuan atau aduan privasi. Rujuk Dasar Privasi untuk hak dan tempoh tindak balas yang berkenaan."
+  },
+  "requestDetails": [
+    "Huraikan isu dan anggaran masa ia berlaku. Sertakan ID laporan jika ada.",
+    "Beritahu kami peranti dan pelayar anda serta ralat yang dipaparkan. Anda boleh memuat naik tangkapan skrin dengan butiran peribadi disembunyikan.",
+    "Jangan hantar butiran kelahiran lengkap, dokumen pengenalan diri, butiran kad, kata laluan pembayaran, kunci API atau kredential akses laporan yang disimpan dalam pelayar anda."
+  ],
+  "sections": [
+    {
+      "id": "generation",
+      "title": "Apakah yang perlu dilakukan jika laporan sentiasa memuat atau penjanaan gagal?",
+      "paragraphs": [
+        "Semak sambungan anda, kemudian gunakan Cuba Lagi atau Teruskan Penjanaan pada halaman. Bahagian yang disimpan kekal tersedia, jadi mencuba semula biasanya tidak memerlukan anda memasukkan semua butiran sekali lagi. Batal Menunggu terutamanya menghentikan penantian halaman, bukan semestinya tugas latar belakang, dan tidak memadam data. Jika ia masih gagal, e-mel ralat, masa dan ID laporan daripada menghantar berulang kali."
+      ]
+    },
+    {
+      "id": "history",
+      "title": "Di mana saya boleh mencari laporan sedia ada?",
+      "paragraphs": [
+        "Kembali ke halaman utama dan buka Laporan Saya, atau buka semula halaman laporan asal. Gunakan peranti, pelayar dan alamat tapak yang sama jika mungkin. Akses bergantung pada kredential rawak yang disimpan oleh pelayar; mengosongkan data tapak, menukar pelayar atau menggunakan mod persendirian boleh menghalang pengecaman. Pautan laporan sahaja bukanlah kebenaran akses."
+      ]
+    },
+    {
+      "id": "birth-time",
+      "title": "Bolehkah saya meneruskan tanpa masa kelahiran yang tepat?",
+      "paragraphs": [
+        "Ya. Pilih bahawa masa tepat tidak diketahui. Sistem menggunakan 12:00 tengah hari tempatan sebagai rujukan pengiraan dan mengehadkan atau menandakan kesimpulan yang sensitif terhadap masa. Ascendant, rumah dan butiran berkaitan mungkin tidak tersedia atau tidak pasti. Tengah hari bukanlah masa kelahiran anda yang disahkan."
+      ]
+    },
+    {
+      "id": "change-details",
+      "title": "Apakah yang perlu dilakukan jika saya memasukkan butiran kelahiran yang salah?",
+      "paragraphs": [
+        "Semak borang di halaman utama dan jana laporan baharu dengan maklumat yang dibetulkan. Laporan sedia ada mencerminkan input asal mereka dan tidak berubah secara automatik apabila anda mengedit borang kemudian. Pilih negara, wilayah/negeri dan bandar yang sepadan; gunakan tempat lahir anda dan bukannya tempat tinggal semasa."
+      ]
+    },
+    {
+      "id": "unlock",
+      "title": "Adakah membuka kunci akan mengenakan caj kepada saya?",
+      "paragraphs": [
+        "Versi semasa adalah ujian. Jumlah yang dipaparkan adalah contoh, dan menekan kawalan pembayaran/buka kunci tidak membuat caj sebenar; ia menjana dan membuka bacaan penuh. Buat masa ini tiada aliran pengumpulan sebenar atau bayaran balik dalam talian. Sebarang daftar keluar langsung pada masa hadapan mesti menjelaskan harga sebenar, penyedia pembayaran dan terma sebelum pengesahan."
+      ]
+    },
+    {
+      "id": "app",
+      "title": "Mengapa butang APP tidak memulakan muat turun?",
+      "paragraphs": [
+        "APP masih dalam ujian dan muat turun tidak dibuka. Butang hanya memaparkan notis ujian. Ia tidak memuat turun, memasang atau membuka kunci laporan secara automatik. Pautan dan maklumat berkaitan akan dikemas kini apabila pengedaran dibuka."
+      ]
+    },
+    {
+      "id": "delete",
+      "title": "Bagaimana saya memadam laporan atau membuat permintaan privasi?",
+      "paragraphs": [
+        "Gunakan Padam pada laporan atau dalam Laporan Saya. Tugas penjanaan aktif mungkin perlu diselesaikan dahulu. Mengosongkan storan pelayar tidak memadam data pelayan. E-mel hubungan halaman ini untuk akses lanjut, pembetulan, pemadaman atau aduan, bermula dengan ID laporan dan jenis permintaan. Dasar Privasi menerangkan skop dan had storan sementara/sandaran."
+      ]
+    },
+    {
+      "id": "meaning",
+      "title": "Bolehkah saya mengandalkan laporan untuk keputusan besar?",
+      "paragraphs": [
+        "Laporan menggabungkan pengiraan astrologi Barat dan bahasa AI untuk hiburan dan penerokaan kendiri. Ia mungkin tidak tepat atau tidak sesuai dan tidak menjamin peristiwa masa depan. Ia tidak menggantikan nasihat perubatan, undang-undang atau kewangan dan tidak seharusnya menjadi asas tunggal untuk keputusan pekerjaan, pinjaman atau hubungan yang besar."
+      ]
+    }
+  ]
+}

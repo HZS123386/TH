@@ -70,17 +70,40 @@ const fateHttpsUpgrading=(()=>{
   return false;
 })();
 const fatePerfEnabled=new URLSearchParams(location.search).get('startup')==='1';
-const fateBootLabels=document.documentElement.lang==='zh'
-  ?{engine:'正在准备星空画面',app:'正在载入你的专属页面',slow:'网络有点慢，请稍候',retry:'连接暂时中断，正在重新加载',failed:'页面加载失败，请检查网络后重试'}
-  :{engine:'กำลังเตรียมภาพดวงดาว',app:'กำลังเปิดหน้าส่วนตัวของคุณ',slow:'เครือข่ายช้าเล็กน้อย กรุณารอสักครู่',retry:'การเชื่อมต่อขัดข้อง กำลังโหลดใหม่',failed:'โหลดไม่สำเร็จ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่'};
-let fateBootFinished=false,fateBootFailed=false,fateBootRecovery,fateWelcomeRequested=false,fateWelcomeEnter;
+const fateBootLabels={
+  zh:{engine:'正在准备星空画面',app:'正在载入你的专属页面',slow:'网络有点慢，请稍候',retry:'连接暂时中断，正在重新加载',failed:'页面加载失败，请检查网络后重试'},
+  th:{engine:'กำลังเตรียมภาพดวงดาว',app:'กำลังเปิดหน้าส่วนตัวของคุณ',slow:'เครือข่ายช้าเล็กน้อย กรุณารอสักครู่',retry:'การเชื่อมต่อขัดข้อง กำลังโหลดใหม่',failed:'โหลดไม่สำเร็จ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่'},
+  en:{engine:'Preparing your sky',app:'Loading your page',slow:'The network is slow. Please wait',retry:'Connection interrupted. Reloading',failed:'The page could not load. Check your connection and try again'},
+  vi:{engine:'Đang chuẩn bị bầu trời của bạn',app:'Đang tải trang của bạn',slow:'Mạng hơi chậm. Vui lòng đợi',retry:'Kết nối gián đoạn. Đang tải lại',failed:'Chưa tải được trang. Hãy kiểm tra mạng và thử lại'},
+  "my":{"engine": "သင့်ကြယ်ကောင်းကင်ကို ဖွင့်နေသည်", "app": "သင့်ကြယ်ကောင်းကင်ကို ဖွင့်နေသည်", "slow": "ကွန်ရက်နှေးနေသည်။ ခဏစောင့်ပါ", "retry": "ချိတ်ဆက်မှုပြတ်သွားသည်။ ပြန်တင်နေသည်", "failed": "စာမျက်နှာ မတင်နိုင်ပါ။ ကွန်ရက်စစ်ပြီး ပြန်ကြိုးစားပါ"},
+  "km":{"engine": "កំពុងបើកមេឃរបស់អ្នក", "app": "កំពុងបើកមេឃរបស់អ្នក", "slow": "បណ្ដាញយឺត។ សូមរង់ចាំ", "retry": "ការតភ្ជាប់ដាច់។ កំពុងផ្ទុកឡើងវិញ", "failed": "មិនអាចផ្ទុកទំព័រ។ ពិនិត្យបណ្ដាញ ហើយសាកល្បងម្ដងទៀត"},
+  "lo":{"engine": "ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ", "app": "ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ", "slow": "ເຄືອຂ່າຍຊ້າ. ກະລຸນາລໍຖ້າ", "retry": "ການເຊື່ອມຕໍ່ຂາດ. ກຳລັງໂຫຼດໃໝ່", "failed": "ໂຫຼດໜ້າບໍ່ໄດ້. ກວດເຄືອຂ່າຍ ແລະລອງໃໝ່"},
+  "ms":{"engine": "Membuka langit anda", "app": "Membuka langit anda", "slow": "Rangkaian perlahan. Sila tunggu", "retry": "Sambungan terputus. Memuatkan semula", "failed": "Halaman tidak dapat dimuatkan. Semak sambungan dan cuba lagi"},
+  "id":{"engine": "Membuka langit Anda", "app": "Membuka langit Anda", "slow": "Jaringan lambat. Silakan tunggu", "retry": "Koneksi terputus. Memuat ulang", "failed": "Halaman belum dapat dimuat. Periksa koneksi dan coba lagi"}
+}[document.documentElement.lang];
+let fateBootFinished=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
+let fateWelcomeRequested=false,fateWelcomeEnter;
 let resumeWelcomeBoot;
 const fateBootRetryKey='fate-startup-recovery-at';
-const fateBootSlow=setTimeout(()=>{if(!fateBootFinished){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
+// Consume a queued retry even if navigation stalled, then latch the path preference before its TTL expires.
+const fateBootRetry=(()=>{
+  try{
+    const previous=JSON.parse(sessionStorage.getItem(fateBootRetryKey)||'null');
+    const age=Date.now()-previous?.at;
+    if(previous?.path!==location.pathname||(!previous.pending&&!(age>=0&&age<120000)))return null;
+    if(previous.pending){try{sessionStorage.setItem(fateBootRetryKey,JSON.stringify({at:Date.now(),path:location.pathname,pending:false,compatibility:previous.compatibility===true}));}catch{}}
+    return previous;
+  }catch{return null;}
+})();
+const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateBootFinished){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
+// A truncated HTML stream may render the overlay without ever reaching the inline bootstrap.
+const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail();},20000);
+const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBoot.fail(),90000);
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
+  compatibility:fateBootRetry?.compatibility===true,
   welcomePaint:Promise.resolve(),
-  stage(stage){const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage==='engine'||stage==='app'?(fateWelcomeRequested?'waiting':stage):stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
+  stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage==='engine'||stage==='app'?(fateWelcomeRequested?'waiting':stage):stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
   connectWelcome(enter){fateWelcomeEnter=enter;},
   enterWelcome(){
     if(fateBootFinished||fateBootFailed||document.documentElement.dataset.welcome!=='true')return;
@@ -90,20 +113,22 @@ window.fateBoot={
     resumeWelcomeBoot?.();
   },
   fail(){
-    if(fateBootFinished||fateBootFailed)return;
-    fateBootFailed=true;clearTimeout(fateBootSlow);
+    if(fateHttpsUpgrading||fateBootFinished||fateBootFailed)return;
+    fateBootFailed=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);
     // A failed ES-module import stays rejected for this document; retry it once in a fresh document.
     let recover=false;
-    try{
-      const previous=Number(sessionStorage.getItem(fateBootRetryKey)||0);
-      if(Date.now()-previous>120000){sessionStorage.setItem(fateBootRetryKey,String(Date.now()));recover=true;}
-    }catch{}
+    if(!fateBootRetry){try{
+      // App assets can fail after the engine is ready; those retries retain the normal renderer.
+      const marker=JSON.stringify({at:Date.now(),path:location.pathname,pending:true,compatibility:fateBootPhase!=='app'});
+      sessionStorage.setItem(fateBootRetryKey,marker);
+      recover=sessionStorage.getItem(fateBootRetryKey)===marker;
+    }catch{}}
     if(recover){this.stage('retry');fateBootRecovery=setTimeout(()=>location.reload(),700);return;}
     this.stage('failed');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;
   },
   ready(){
     if(fateBootFinished)return;
-    fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootRecovery);
+    fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);clearTimeout(fateBootRecovery);
     try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
     document.getElementById('fate-startup')?.remove();performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));
     // Deliver an early click to the existing Flutter landing flow exactly once.
@@ -113,9 +138,11 @@ window.fateBoot={
 };
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
 window.addEventListener('error',event=>{
-  if(event.target?.tagName==='SCRIPT'&&/\/main\.dart\.js(?:\?|$)/.test(event.target.src))window.fateBoot.fail();
+  if(event.error||event.message||(event.target?.tagName==='SCRIPT'&&/\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src)))window.fateBoot.fail();
 },true);
-document.addEventListener('DOMContentLoaded',()=>document.getElementById('fate-startup-retry')?.addEventListener('click',()=>location.reload()),{once:true});
+window.addEventListener('unhandledrejection',()=>window.fateBoot.fail());
+// The HTML response can stall after rendering the button but before DOMContentLoaded.
+document.addEventListener('click',event=>{if(event.target?.closest?.('#fate-startup-retry'))location.reload();});
 const fatePendingKey = 'fate-activity-pending';
 let fateActivity, fateActivitySequence = 0, fatePending = [], fateDropped = {};
 let fateUnstored = new Map(), fateRemoved = new Set(), fateStoredKeys = new Set(), fateStoredDropped = {}, fateOverflow = {};
@@ -438,8 +465,9 @@ function writeWelcomeName(welcome){
   }
   paint(performance.now());
 }
-if(document.documentElement.dataset.welcome==='true'){
-  const welcome=document.getElementById('fate-welcome'),image=fateWelcomePortrait;
+function mountFateWelcome(){
+  if(document.documentElement.dataset.welcome!=='true')return;
+  const welcome=document.getElementById('fate-welcome'),image=typeof fateWelcomePortrait==='undefined'?null:fateWelcomePortrait;
   if(welcome){
     fateWelcomeStartedAt=performance.now();
     writeWelcomeName(welcome);

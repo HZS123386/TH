@@ -182,13 +182,17 @@ class ReportRepository {
     return data;
   }
 
-  Future<LifeReport> load(String id, CancelToken token) async {
+  Future<LifeReport> load(
+    String id,
+    CancelToken token, {
+    bool waitForPreview = false,
+  }) async {
     if (!RegExp(r'^[A-Za-z0-9_-]{8,128}$').hasMatch(id)) {
       throw const ApiFailure('missing');
     }
     return LifeReport.parse(
       await request(
-        '/api/life-reports/$id',
+        '/api/life-reports/$id${waitForPreview ? '?wait_preview=true' : ''}',
         token,
         timeout: const Duration(seconds: 15),
       ),
@@ -392,6 +396,8 @@ class ReportRepository {
     String? id,
   }) async {
     var failures = 0;
+    const interval = Duration(seconds: 2);
+    var previousReadSeconds = interval.inSeconds;
     while (true) {
       token.check();
       final report = LifeReport.parse(value, id: id, expectedInput: input);
@@ -413,11 +419,21 @@ class ReportRepository {
       if (!(full ? report.fullInProgress : report.previewInProgress)) {
         throw ApiFailure('${full ? 'states' : 'previewStates'}.$state');
       }
-      var delay = const Duration(seconds: 2);
+      // Count the server's wait toward the polling budget.
+      var delay = full
+          ? interval
+          : Duration(
+              seconds: (interval.inSeconds - previousReadSeconds).clamp(
+                0,
+                interval.inSeconds,
+              ),
+            );
       while (true) {
         await token.pause(delay);
         try {
-          value = (await load(id, token)).json;
+          final started = Stopwatch()..start();
+          value = (await load(id, token, waitForPreview: !full)).json;
+          previousReadSeconds = started.elapsed.inSeconds;
           failures = 0;
           break;
         } on ApiFailure catch (error) {
@@ -438,14 +454,22 @@ class ReportRepository {
     }
   }
 
-  Future<List<Place>> provinces(String country, CancelToken token) async =>
-      objects(
-        object(
-          await request(
-            '/api/thai-locations?country=$country&level=province',
-            token,
-            owned: false,
-          ),
-        )['items'],
-      ).map(Place.new).toList();
+  Future<Json> cities(
+    String country,
+    String query,
+    int offset,
+    CancelToken token,
+  ) async {
+    final params = Uri(
+      queryParameters: {
+        'country': country,
+        'level': country == 'CN' || country == 'TH' ? 'locality' : 'city',
+        'query': query,
+        'offset': '$offset',
+      },
+    ).query;
+    return object(
+      await request('/api/thai-locations?$params', token, owned: false),
+    );
+  }
 }

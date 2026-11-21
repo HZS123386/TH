@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
-import '../core/repository.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
+import 'privacy_policy.dart';
+import 'support_content.dart';
 
 class InformationPage extends StatefulWidget {
   const InformationPage({this.support = false, super.key});
@@ -15,10 +16,11 @@ class InformationPage extends StatefulWidget {
 }
 
 class _InformationPageState extends State<InformationPage> {
-  final _request = CancelToken();
-  bool _loaded = false;
+  Json? _content;
+  String? _language;
+  Object? _error;
+  int _revision = 0;
   bool _recordedPage = false;
-  String _email = '';
 
   @override
   void didChangeDependencies() {
@@ -27,32 +29,74 @@ class _InformationPageState extends State<InformationPage> {
       _recordedPage = true;
       H5Scope.of(context).trackActivity(widget.support ? 'support' : 'privacy');
     }
-    if (widget.support && !_loaded) {
-      _loaded = true;
-      unawaited(_load());
-    }
-  }
-
-  Future<void> _load() async {
-    try {
-      final h5 = H5Scope.of(context);
-      final data = object(
-        await h5.repository.request(
-          '/api/landing/config',
-          _request,
-          owned: false,
-        ),
-      );
-      if (mounted) setState(() => _email = text(data['support_email']));
-    } catch (_) {
-      // The data-use explanation is readable even when support is unavailable.
+    final language = H5Scope.of(context).language;
+    if (_language != language) {
+      _language = language;
+      unawaited(_load(language));
     }
   }
 
   @override
-  void dispose() {
-    _request.cancel();
-    super.dispose();
+  void didUpdateWidget(InformationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.support != widget.support) {
+      unawaited(_load(H5Scope.of(context).language));
+    }
+  }
+
+  Future<void> _load(String language) async {
+    final h5 = H5Scope.of(context), bundle = DefaultAssetBundle.of(context);
+    final revision = ++_revision,
+        directory = widget.support ? 'support' : 'privacy';
+    setState(() {
+      _content = null;
+      _error = null;
+    });
+    try {
+      final index = object(
+        jsonDecode(
+          await bundle.loadString('assets/$directory/index.json', cache: false),
+        ),
+      );
+      final source = text(object(index['languages'])[language]);
+      if (!RegExp(r'^[a-z]{2}$').hasMatch(source)) {
+        throw const FormatException('Unknown information language');
+      }
+      final data = object(
+        jsonDecode(
+          await bundle.loadString(
+            'assets/$directory/$source.json',
+            cache: false,
+          ),
+        ),
+      );
+      final controller = object(
+        jsonDecode(
+          await bundle.loadString(
+            'assets/privacy/controller.json',
+            cache: false,
+          ),
+        ),
+      );
+      final localized = object(object(controller['localizations'])[language]);
+      if (text(localized['controller_name']).isEmpty ||
+          text(localized['controller_address']).isEmpty) {
+        throw const FormatException('Missing operator translation');
+      }
+      data['controller'] = {
+        'contact_email': controller['contact_email'],
+        'effective_date': controller['effective_date'],
+        ...localized,
+      };
+      if (objects(data['sections']).isEmpty) {
+        throw const FormatException('Incomplete information page');
+      }
+      // Legal/help content remains readable without a working report API or account.
+      await h5.prepareText(jsonEncode(data), language: language);
+      if (mounted && revision == _revision) setState(() => _content = data);
+    } catch (error) {
+      if (mounted && revision == _revision) setState(() => _error = error);
+    }
   }
 
   @override
@@ -80,34 +124,24 @@ class _InformationPageState extends State<InformationPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (widget.support)
-                    SelectableText(
-                      _email.isEmpty ? c.t('jy', 'noSupport') : _email,
-                      style: TextStyle(
-                        color: _email.isEmpty ? cream : gold,
-                        fontSize: 14,
-                        height: 1.55,
+                  if (_content == null)
+                    if (_error == null)
+                      const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else ...[
+                      Text(c.t('ui', 'network')),
+                      TextButton.icon(
+                        onPressed: () => unawaited(_load(h5.language)),
+                        icon: const Icon(Icons.refresh),
+                        label: Text(c.t('jy', 'regionRetry')),
                       ),
-                    )
-                  else ...[
-                    for (final paragraph in c.list('jy', 'privacyDetails'))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          paragraph,
-                          style: const TextStyle(fontSize: 14, height: 1.55),
-                        ),
-                      ),
-                    Text(c.t('jy', 'privacyContact')),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: () =>
-                            context.go('/support.html?lang=${h5.language}'),
-                        child: Text(c.t('jy', 'support')),
-                      ),
-                    ),
-                  ],
+                    ]
+                  else if (widget.support)
+                    SupportContent(content: _content!)
+                  else
+                    PrivacyPolicy(policy: _content!),
                   const SizedBox(height: 16),
                   Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,

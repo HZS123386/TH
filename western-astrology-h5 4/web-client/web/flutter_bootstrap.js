@@ -3,6 +3,8 @@
 
 // Keep the original Flutter loader, including its JavaScript compatibility build.
 const fateFlutterConfig = { canvasKitBaseUrl: 'engine/' + _flutter.buildConfig.engineRevision + '/' };
+// The official loader selects the shipped JavaScript build for this one recovery document.
+if(window.fateBoot.compatibility)fateFlutterConfig.renderer='canvaskit';
 if(!window.fateBoot.upgrading)window.fateBoot.welcomePaint.then(() => {
   // Start supporting downloads with Flutter so they do not compete with the portrait.
   if (document.documentElement.dataset.welcome === 'true') preloadEngineAssets();
@@ -20,7 +22,7 @@ if(!window.fateBoot.upgrading)window.fateBoot.welcomePaint.then(() => {
       }
     }
   });
-}).catch((error) => {
+}).catch(() => {
   window.fateBoot.fail();
-  console.error('FATE loader failed', error);
+  console.error('FATE loader failed');
 });
