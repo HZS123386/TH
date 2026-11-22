@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +10,7 @@ import 'package:fate_h5/core/models.dart';
 import 'package:fate_h5/core/repository.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/ui/jy_components.dart';
+
 import 'support.dart';
 
 void main() {
@@ -170,9 +172,7 @@ void main() {
       },
     );
   }
-  testWidgets('saved Chinese marriage preview shows current headings', (
-    tester,
-  ) async {
+  testWidgets('saved marriage preview hides birth details', (tester) async {
     tester.view.physicalSize = const Size(360, 740);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -183,6 +183,7 @@ void main() {
       '1990-05-20 · 10:30 · Asia/Shanghai',
       'Sample City, CN',
       '上升 · 巨蟹座',
+      '出生时间说明',
     ];
     const oldTitles = [
       '你的感情里，藏着一个你没发现的“隐形卡点”',
@@ -218,7 +219,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    for (final title in controller.copy.list('marriage', 'preview')) {
+    final titles = controller.copy.list('marriage', 'preview');
+    expect(find.text(titles.first), findsNothing);
+    for (final title in titles.skip(1)) {
       expect(
         find.text(title),
         title == '感情模式快照' ? findsNothing : findsOneWidget,
@@ -228,10 +231,10 @@ void main() {
       expect(find.text(title), findsNothing);
     }
     expect(find.text('Free marriage section 3.'), findsOneWidget);
-    expect(find.text('1990-05-20 · 10:30'), findsOneWidget);
-    expect(find.text('上升 · 巨蟹座'), findsOneWidget);
-    expect(find.textContaining('Asia/Shanghai'), findsNothing);
-    expect(find.text('Sample City, CN'), findsNothing);
+    expect(find.textContaining('1990-05-20'), findsNothing);
+    for (final paragraph in preview.first['paragraphs'] as List<String>) {
+      expect(find.text(paragraph), findsNothing);
+    }
     expect(find.text(controller.copy.t('jy', 'appLogin.title')), findsNothing);
     expect(find.text(controller.copy.t('life', 'exportPdf')), findsNothing);
     expect(tester.takeException(), isNull);

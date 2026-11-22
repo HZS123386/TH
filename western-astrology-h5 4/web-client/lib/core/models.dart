@@ -99,9 +99,8 @@ class Copy {
     };
     if (report.western) {
       labels['methodValue'] = forLanguage(language).t('jy', 'chart.western');
-      labels['plan'] = forLanguage(
-        language,
-      ).t('jy', 'report.westernSections.plan');
+      labels['plan'] = forLanguage(language)
+          .t('jy', 'report.westernSections.plan');
     }
     final question = object(report.input['career_question']);
     if (question.isNotEmpty) {
@@ -274,7 +273,8 @@ class LifeReport {
           : const <String>[];
       return [
         for (final (index, section) in sections.indexed)
-          if (section['visible'] != false)
+          if (section['visible'] != false &&
+              (showFull || section['key'] != 'birth_details'))
             {
               ...section,
               if (titles.length == sections.length &&
@@ -282,22 +282,6 @@ class LifeReport {
                   (section['key'] != 'relationship_style' ||
                       text(profile['birth_time']).isNotEmpty))
                 'title': titles[index],
-              // Saved previews store the time zone on line one and the city on line two.
-              if (section['paragraphs']
-                  case [
-                    String birth,
-                    String _,
-                    String placement,
-                    ...final notes,
-                  ]
-                  when !showFull &&
-                      section['key'] == 'birth_details' &&
-                      birth.split(' · ').length > 2)
-                'paragraphs': [
-                  birth.split(' · ').take(2).join(' · '),
-                  placement,
-                  ...notes,
-                ],
             },
       ];
     }
@@ -441,9 +425,8 @@ class LifeReport {
       final traits = personal['traits'];
       final opportunityAction = personal['opportunity_action'];
       final relationship = report.relationshipPreview;
-      final relationshipVersion = RegExp(
-        r'^western-personal-(\d+)$',
-      ).firstMatch(text(row['version']));
+      final relationshipVersion = RegExp(r'^western-personal-(\d+)$')
+          .firstMatch(text(row['version']));
       final requiresRelationship =
           (int.tryParse(relationshipVersion?.group(1) ?? '') ?? 0) >= 8;
       if (personal['relationship'] != null ||
@@ -541,9 +524,8 @@ class LifeReport {
             nodes.map((item) => item['month']).toSet().length != 3 ||
             nodes.any(
               (item) =>
-                  !RegExp(
-                    r'^\d{4}-(0[1-9]|1[0-2])$',
-                  ).hasMatch(text(item['month'])) ||
+                  !RegExp(r'^\d{4}-(0[1-9]|1[0-2])$')
+                      .hasMatch(text(item['month'])) ||
                   [
                     'theme',
                     'benefit',

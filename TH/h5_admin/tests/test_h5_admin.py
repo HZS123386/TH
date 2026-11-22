@@ -181,6 +181,40 @@ def test_line_delivery_counts_and_paginates_by_send_date_on_both_pages(admin):
     assert (all_time["reports"], all_time["line_sent"]) == (7, 2)
 
 
+def test_line_report_counts_filter_first_contact_and_group_current_status(admin):
+    http, app = admin
+    beijing = timezone(timedelta(hours=8))
+    contact_day = datetime.now(beijing) - timedelta(days=10)
+    midnight = int(contact_day.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+    noon = midnight + 12 * 3600
+    with app.state.store.connect() as db:
+        db.cursor().executemany(
+            "UPDATE life_reports SET line_contact_at=%s, line_confirmed_at=%s, line_sent_at=%s WHERE id=%s",
+            [
+                (midnight, None, None, "report-1"),
+                (noon - 1, noon + 60, None, "report-2"),
+                (noon - 2, noon + 60, noon + 120, "report-3"),
+                (noon, None, None, "report-4"),
+                (midnight - 1, midnight + 60, midnight + 120, "report-5"),
+                (None, midnight + 60, midnight + 120, "report-7"),
+            ],
+        )
+    path = "/api/admin/line-contacts"
+    morning = {"contact_start": midnight, "contact_end": noon}
+    assert http.get(path, params=morning).status_code == 401
+    login(http, "support-test")
+
+    result = http.get(path, params={**morning, "report_id": "report-7", "days": 7})
+    assert result.status_code == 200
+    assert result.json()["report_counts"] == {"total": 3, "unconfirmed": 1, "pending": 1, "sent": 1}
+    assert [row["id"] for row in result.json()["items"]] == ["report-7"]
+    assert result.json()["total"] == 1 and result.json()["metrics"]["line_sent"] == 0
+    result = http.get(path, params={"contact_start": noon, "contact_end": midnight + 86400})
+    assert result.json()["report_counts"] == {"total": 1, "unconfirmed": 1, "pending": 0, "sent": 0}
+    assert http.get(path, params={"contact_start": midnight}).status_code == 422
+    assert http.get(path, params={"contact_start": noon, "contact_end": noon}).status_code == 422
+
+
 def test_support_can_deliver_full_report_without_unlocking_h5(client):
     http, app, _, _ = client
     http.base_url = httpx.URL("https://testserver")

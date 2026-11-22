@@ -184,6 +184,7 @@ const errors = {
   life_payment_verification_failed: '到账凭据未通过订单、金额或币种核验，请查看支付检查记录。',
   life_payment_unavailable: '当前支付配置不支持核验这笔订单。',
   life_report_generating: '这份报告仍在生成中，请稍后刷新。',
+  admin_line_range_invalid: '请选择有效的起止时间，结束时间须晚于开始时间。',
   admin_retry_limited: '生成请求触发限额，请稍后再试。',
   life_report_not_found: '这份报告已不存在。',
   too_many_requests: '刷新过于频繁，请稍后再试。',
@@ -209,6 +210,7 @@ const state = {
   category: '',
   caseStatus: '',
   lineDelivery: 'pending',
+  lineRange: { preset: 'today' },
   overview: null,
   overviewDays: null,
   records: null,
@@ -278,6 +280,7 @@ function showLogin() {
   state.records = null;
   state.detail = null;
   state.detailRequest = null;
+  state.lineRange = { preset: 'today' };
   $('#content').replaceChildren();
   $('#detail-content').replaceChildren();
   $('#detail-dialog').close();
@@ -323,6 +326,23 @@ function showPageError(error) {
   $('#page-error').textContent = error.message;
   $('#page-error').hidden = false;
 }
+function lineRangeValues() {
+  if (!state.lineRange.preset) return state.lineRange;
+  const beijingDay = new Date(Date.now() + 8 * 3_600_000);
+  const today = beijingDay.toISOString().slice(0, 10);
+  beijingDay.setUTCDate(beijingDay.getUTCDate() + 1);
+  const tomorrow = beijingDay.toISOString().slice(0, 10);
+  return {
+    start: today + 'T00:00',
+    end: state.lineRange.preset === 'morning' ? today + 'T12:00' : tomorrow + 'T00:00',
+  };
+}
+const lineEpoch = (value) => Date.parse(value + '+08:00') / 1000;
+function renderLineCounts(counts) {
+  $('#line-report-counts').querySelectorAll('[data-line-count]').forEach((element) => {
+    element.textContent = counts ? number(counts[element.dataset.lineCount]) + ' 份' : '—';
+  });
+}
 async function loadView({ refresh = false } = {}) {
   if (!state.session) return;
   const revision = ++state.revision,
@@ -332,6 +352,19 @@ async function loadView({ refresh = false } = {}) {
   $('#page-title').textContent = views[view][0];
   $('#breadcrumb-title').textContent = views[view][0];
   $('#page-description').textContent = views[view][1];
+  const lineRange = view === 'line-contacts' ? lineRangeValues() : null;
+  $('#line-stats').hidden = !lineRange;
+  if (lineRange) {
+    $('#line-range-start').value = lineRange.start;
+    $('#line-range-end').value = lineRange.end;
+    $('#line-range-error').hidden = true;
+    $('#line-applied-range').textContent =
+      `${lineRange.start.replace('T', ' ')} 至 ${lineRange.end.replace('T', ' ')}（结束时间不计入）`;
+    document.querySelectorAll('[data-line-range]').forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.dataset.lineRange === state.lineRange.preset));
+    });
+    renderLineCounts(null);
+  }
   $('#page-error').hidden = true;
   $('#content').innerHTML = '<div class="loading">正在读取业务数据…</div>';
   try {
@@ -353,6 +386,7 @@ async function loadView({ refresh = false } = {}) {
     else if (view === 'line-contacts') {
       const params = new URLSearchParams({
         days, page: state.page, report_id: state.q, delivery: state.lineDelivery,
+        contact_start: lineEpoch(lineRange.start), contact_end: lineEpoch(lineRange.end),
       });
       data = await api('/line-contacts?' + params);
     }
@@ -373,7 +407,10 @@ async function loadView({ refresh = false } = {}) {
     if (revision !== state.revision || !state.session) return;
     if (view === 'overview') renderOverview(data.items);
     else if (view === 'sources') renderSources(data.items);
-    else if (view === 'line-contacts') renderLineContacts(data);
+    else if (view === 'line-contacts') {
+      renderLineCounts(data.report_counts);
+      renderLineContacts(data);
+    }
     else {
       state.records = data;
       renderRecords(data);
@@ -431,7 +468,7 @@ function renderLineContacts(data) {
       <p class="stat-hint">点击「添加好友」，同一浏览器只计一人</p>
     </section>
   </div>
-  <p class="data-note">日期筛选作用于已发送列表和联系统计。待办展示全部日期，输入领取编号可跨日期查询。联系统计最多保留最近 30 天。发出 PDF 后请点「标记已发送」。</p>
+  <p class="data-note">页面顶部的「时间范围」筛选已发送列表和联系统计。待办和领取编号查询覆盖全部日期。联系统计最多保留最近 30 天。发出 PDF 后请点「标记已发送」。</p>
   <section class="panel table-panel">
     <div class="line-delivery-tabs" role="group" aria-label="报告发放分类">
       ${Object.entries(lineDeliveryTabs).map(([key, title]) =>
@@ -991,6 +1028,27 @@ $('#refresh').addEventListener('click', async () => {
 $('#days').addEventListener('change', () => {
   state.days = Number($('#days').value);
   state.page = 1;
+  loadView();
+});
+document.querySelectorAll('[data-line-range]').forEach((button) => {
+  button.addEventListener('click', () => {
+    state.lineRange = { preset: button.dataset.lineRange };
+    loadView();
+  });
+});
+$('#line-range-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const start = $('#line-range-start').value;
+  const end = $('#line-range-end').value;
+  const from = lineEpoch(start);
+  const until = lineEpoch(end);
+  if (!Number.isFinite(from) || !Number.isFinite(until) || from < 0 || from >= until) {
+    const error = $('#line-range-error');
+    error.textContent = errors.admin_line_range_invalid;
+    error.hidden = false;
+    return;
+  }
+  state.lineRange = { start, end };
   loadView();
 });
 window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
