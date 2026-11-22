@@ -963,7 +963,7 @@ void main() {
             state: state,
             full: true,
             onCancel: () => cancelled++,
-            onRetry: () {},
+            onRetry: state.retry,
             onComplete: (_) => completed++,
           ),
         ),
@@ -986,11 +986,18 @@ void main() {
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(completed, 0);
       expect(find.text('正在校验并保存解读内容'), findsOneWidget);
+      expect(find.byType(AppLoginCodePanel), findsOneWidget);
       state.fail('连接中断');
       await tester.pump();
       expect(find.text('本次生成暂未完成，请重试'), findsOneWidget);
+      expect(find.byType(AppLoginCodePanel), findsNothing);
       expect(tester.widget<GenerationVideo>(wheel).active, isFalse);
-      state.retry();
+      final retry = find.widgetWithText(
+        OutlinedButton,
+        h5.copy.t('jy', 'interpretation.retryFull'),
+      );
+      await tester.ensureVisible(retry);
+      await tester.tap(retry);
       await tester.pump();
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       await tester.tap(find.widgetWithText(TextButton, '取消等待'));

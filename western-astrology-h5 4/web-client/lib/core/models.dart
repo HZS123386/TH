@@ -275,13 +275,30 @@ class LifeReport {
       return [
         for (final (index, section) in sections.indexed)
           if (section['visible'] != false)
-            if (titles.length == sections.length &&
-                index > 0 &&
-                (section['key'] != 'relationship_style' ||
-                    text(profile['birth_time']).isNotEmpty))
-              {...section, 'title': titles[index]}
-            else
-              section,
+            {
+              ...section,
+              if (titles.length == sections.length &&
+                  index > 0 &&
+                  (section['key'] != 'relationship_style' ||
+                      text(profile['birth_time']).isNotEmpty))
+                'title': titles[index],
+              // Saved previews store the time zone on line one and the city on line two.
+              if (section['paragraphs']
+                  case [
+                    String birth,
+                    String _,
+                    String placement,
+                    ...final notes,
+                  ]
+                  when !showFull &&
+                      section['key'] == 'birth_details' &&
+                      birth.split(' · ').length > 2)
+                'paragraphs': [
+                  birth.split(' · ').take(2).join(' · '),
+                  placement,
+                  ...notes,
+                ],
+            },
       ];
     }
     final content = showFull

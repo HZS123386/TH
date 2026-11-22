@@ -217,7 +217,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
               ),
               const SizedBox(height: 20),
               widget.freePreview,
-              if (relationship) ...[
+              if (widget.report.relationshipReport) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: widget.onExportPdf,

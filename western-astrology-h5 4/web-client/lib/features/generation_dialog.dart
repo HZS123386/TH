@@ -418,7 +418,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                       ),
                                     ),
                                     const SizedBox(height: 15),
-                                    if (report != null)
+                                    if (report != null && state.error.isEmpty)
                                       Padding(
                                         padding: const EdgeInsets.only(
                                           bottom: 12,

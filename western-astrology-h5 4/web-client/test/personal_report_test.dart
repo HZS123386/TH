@@ -58,6 +58,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump();
+      expect(find.widgetWithText(JYButton, '查看解析'), findsOneWidget);
       final board = find.byType(ThemeBoards);
       for (final label in ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议']) {
         expect(
@@ -178,6 +179,11 @@ void main() {
     final data = marriageFixture();
     final marriage = object(data['marriage']);
     final preview = objects(marriage['preview']);
+    preview.first['paragraphs'] = [
+      '1990-05-20 · 10:30 · Asia/Shanghai',
+      'Sample City, CN',
+      '上升 · 巨蟹座',
+    ];
     const oldTitles = [
       '你的感情里，藏着一个你没发现的“隐形卡点”',
       '接下来的30天，你的感情搅局者正在发力',
@@ -222,6 +228,12 @@ void main() {
       expect(find.text(title), findsNothing);
     }
     expect(find.text('Free marriage section 3.'), findsOneWidget);
+    expect(find.text('1990-05-20 · 10:30'), findsOneWidget);
+    expect(find.text('上升 · 巨蟹座'), findsOneWidget);
+    expect(find.textContaining('Asia/Shanghai'), findsNothing);
+    expect(find.text('Sample City, CN'), findsNothing);
+    expect(find.text(controller.copy.t('jy', 'appLogin.title')), findsNothing);
+    expect(find.text(controller.copy.t('life', 'exportPdf')), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -263,6 +275,12 @@ void main() {
       lessThan(tester.getTopLeft(find.text(titles[4])).dy),
     );
     expect(find.text('Free marriage section 3.'), findsNothing);
+    final pdf = find.widgetWithText(
+      OutlinedButton,
+      controller.reportCopy(LifeReport.parse(data)).t('report', 'exportPdf'),
+    );
+    expect(pdf, findsOneWidget);
+    expect(tester.widget<OutlinedButton>(pdf).onPressed, isNotNull);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -511,6 +529,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ReportCheckout), findsNothing);
       expect(find.text('Synthetic free line one.'), findsNothing);
+      expect(
+        find.text(controller.copy.t('jy', 'appLogin.title')),
+        findsNothing,
+      );
       expect(
         find.text(
           controller.copy
