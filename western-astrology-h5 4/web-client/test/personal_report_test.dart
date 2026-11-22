@@ -173,7 +173,7 @@ void main() {
       },
     );
   }
-  testWidgets('saved Chinese marriage preview shows current headings', (
+  testWidgets('saved marriage preview hides birth details', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 740);
@@ -186,6 +186,7 @@ void main() {
       '1990-05-20 · 10:30 · Asia/Shanghai',
       'Sample City, CN',
       '上升 · 巨蟹座',
+      '出生时间说明',
     ];
     const oldTitles = ['上升在感情里的真实样子', '当前感情能量判断', '感情模式快照', '解锁完整婚姻关系报告'];
     for (var i = 0; i < oldTitles.length; i++) {
@@ -216,17 +217,19 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    for (final title in controller.copy.list('marriage', 'preview')) {
+    final titles = controller.copy.list('marriage', 'preview');
+    expect(find.text(titles.first), findsNothing);
+    for (final title in titles.skip(1)) {
       expect(find.text(title), findsOneWidget);
     }
     for (final title in oldTitles) {
       expect(find.text(title), findsNothing);
     }
     expect(find.text('Free marriage section 3.'), findsOneWidget);
-    expect(find.text('1990-05-20 · 10:30'), findsOneWidget);
-    expect(find.text('上升 · 巨蟹座'), findsOneWidget);
-    expect(find.textContaining('Asia/Shanghai'), findsNothing);
-    expect(find.text('Sample City, CN'), findsNothing);
+    expect(find.textContaining('1990-05-20'), findsNothing);
+    for (final paragraph in preview.first['paragraphs'] as List<String>) {
+      expect(find.text(paragraph), findsNothing);
+    }
     expect(find.text(controller.copy.t('jy', 'appLogin.title')), findsNothing);
     expect(find.text(controller.copy.t('life', 'exportPdf')), findsNothing);
     expect(tester.takeException(), isNull);

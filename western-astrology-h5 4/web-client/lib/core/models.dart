@@ -273,26 +273,14 @@ class LifeReport {
           : const <String>[];
       return [
         for (final (index, section) in sections.indexed)
-          {
-            ...section,
+          if (section['key'] != 'birth_details')
             if (titles.length == sections.length &&
                 index > 0 &&
                 (section['key'] != 'relationship_style' ||
                     text(profile['birth_time']).isNotEmpty))
-              'title': titles[index],
-            // The API puts the time zone on the first line and the city on the second.
-            if (section['paragraphs'] case [
-              String birth,
-              String _,
-              String placement,
-              ...final notes,
-            ] when section['key'] == 'birth_details')
-              'paragraphs': [
-                birth.split(' · ').take(2).join(' · '),
-                placement,
-                ...notes,
-              ],
-          },
+              {...section, 'title': titles[index]}
+            else
+              section,
       ];
     }
     final content = showFull

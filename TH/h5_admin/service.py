@@ -153,7 +153,7 @@ SOURCES = [
     {"name": "处理记录", "table": "admin_audit / admin_cases", "origin": "已登录管理员提交的业务操作和备注",
      "rule": "处理进度只是内部跟进状态，不修改订单支付状态或报告权限。所有操作记录管理员、时间、原因与结果。"},
     {"name": "LINE 联系与报告发放", "table": "landing_visit_activity / life_reports / admin_audit", "origin": "H5 添加好友按钮、二维码显示事件和客服确认",
-     "rule": "点击人数按匿名浏览器去重。二维码每次显示计一次，重传按同一事件去重。统计按服务器接收时间，最长保留 30 天。客服按报告编号确认加好友、下载完整 PDF 并标记已发送。"},
+     "rule": "弹码报告按首次打开领取码时间筛选，每份报告计一次，按当前发放状态分类。点击人数按匿名浏览器去重；二维码每次显示计一次，重传按同一事件去重。点击和显示事件按服务器接收时间统计，最长保留 30 天。"},
     {"name": "接口失败", "table": "h5_request_failures", "origin": "现有 H5 API 请求边界中的非成功响应",
      "rule": "保留最近 30 天且最多 20000 条。记录接口模板、HTTP 状态、错误码、耗时、匿名访客哈希和访问编号；按所有权核对关联。包含地点查询和报告创建前的失败；客户端网络或响应解析异常单独标注，不当作服务端 HTTP 失败。不保存请求体、手机号、访问密钥、IP 或查询参数。"},
 ]
@@ -295,7 +295,7 @@ class H5Admin:
     def cutoff(days):
         return time.time() - days * 86400 if days else 0
 
-    def line_contacts(self, days, report_id, delivery, page):
+    def line_contacts(self, days, report_id, delivery, page, report_range=None):
         filters = {
             "unconfirmed": ("line_contact_at IS NOT NULL AND line_confirmed_at IS NULL", "line_contact_at DESC"),
             "pending": ("line_confirmed_at IS NOT NULL AND line_sent_at IS NULL", "line_confirmed_at"),
@@ -322,7 +322,18 @@ class H5Admin:
                   AND a.page='preview_report' AND a.kind='action'
                   AND a.action IN ('open_line_contact','line_qr_shown')
             """, (retention, max(retention, self.cutoff(days)))).fetchone()
-        return {"items": items[:25], "has_more": len(items) > 25, "metrics": metrics}
+            result = {"items": items[:25], "has_more": len(items) > 25, "metrics": metrics}
+            if report_range is not None:
+                # Group reports by their current status after selecting their first contact time.
+                result["report_counts"] = db.execute(f"""
+                    SELECT COUNT(*) AS total,
+                           COUNT(*) FILTER (WHERE {filters["unconfirmed"][0]}) AS unconfirmed,
+                           COUNT(*) FILTER (WHERE {filters["pending"][0]}) AS pending,
+                           COUNT(*) FILTER (WHERE {filters["sent"][0]}) AS sent
+                    FROM life_reports
+                    WHERE preview IS NOT NULL AND line_contact_at >= %s AND line_contact_at < %s
+                """, report_range).fetchone()
+        return result
 
     def line_contact_report(self, report_id):
         with self.store.connect() as db:
@@ -645,8 +656,16 @@ def admin_router(service):
     @router.get("/line-contacts")
     def line_contacts(days: int = Query(30, ge=0, le=365), report_id: str = Query("", max_length=128),
                       delivery: Literal["unconfirmed", "pending", "sent"] = "pending",
-                      page: int = Query(1, ge=1, le=10000), current=Depends(service.session)):
-        return service.line_contacts(days, report_id, delivery, page)
+                      page: int = Query(1, ge=1, le=10000),
+                      contact_start: int | None = Query(None, ge=0, le=253402300799),
+                      contact_end: int | None = Query(None, ge=0, le=253402300799),
+                      current=Depends(service.session)):
+        report_range = None
+        if contact_start is not None or contact_end is not None:
+            if contact_start is None or contact_end is None or contact_start >= contact_end:
+                raise HTTPException(422, "admin_line_range_invalid")
+            report_range = (contact_start, contact_end)
+        return service.line_contacts(days, report_id, delivery, page, report_range)
 
     @router.post("/line-contacts/{report_id}/actions")
     async def line_delivery_action(report_id: str, body: LineDeliveryAction, current=Depends(service.write_session)):
