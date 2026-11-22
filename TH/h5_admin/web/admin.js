@@ -60,7 +60,7 @@ const views = {
   issues: ['失败与异常', '区分当前业务异常与历史失败尝试，定位需要跟进的记录。'],
   audit: ['操作记录', '管理员的每次处理都有时间、原因和结果。'],
   sources: ['数据来源与口径', '知道数据从哪里来，也知道每个数字如何计算。'],
-  'line-contacts': ['LINE 报告发放', '按 LINE 聊天里的领取编号确认好友，下载完整 PDF 并发送。'],
+  'line-contacts': ['LINE 报告发放', '按领取编号确认好友，在 LINE 发出完整 PDF 后登记发送。'],
 };
 const visitPages = {
   welcome: '欢迎页', birth_form: '资料填写页', consent: '数据使用确认', history: '历史报告列表',
@@ -170,6 +170,11 @@ const errors = {
   admin_report_already_ready: '报告已经完成，无需重试。',
   admin_report_content_unavailable: '这个版本的正文尚未生成并保存。',
   admin_report_content_invalid: '这份报告的正文暂无法读取。',
+  PDF_font_unavailable: 'PDF 字体加载失败，请刷新页面后重试。',
+  PDF_runtime_unavailable: '报告组件加载失败，请刷新页面后重试。',
+  PDF_engine_unavailable: 'PDF 生成组件加载失败，请刷新页面后重试。',
+  PDF_invalid_output: 'PDF 文件生成失败，请稍后重试。',
+  'Invalid report': '这份报告的正文暂无法读取。',
   admin_action_failed: '操作没有完成，请查看业务状态与操作记录。',
   life_payment_required: '该报告尚未获得解锁权限，请先核验到账。',
   life_order_needs_review: '建单结果不确定，请结合保存的回执人工核查，系统不会重复建单。',
@@ -185,7 +190,12 @@ const errors = {
   request_failed: '请求失败，请稍后重试。',
 };
 const verifiedOrdersRoute = 'orders?time_basis=verified';
+const lineSentRoute = 'line-contacts?delivery=sent';
+const lineSentTitle = '已登记发送';
 const reportEditionNames = { preview: '免费报告', full: '完整报告' };
+const loadReportRuntime = () => import('/thai-landing/runtime/report-pdf.js').catch(() => {
+  throw new Error('PDF_runtime_unavailable');
+});
 const lineDeliveryTabs = { pending: '待发报告', unconfirmed: '待确认好友', sent: '已发送' };
 const state = {
   session: null,
@@ -278,6 +288,8 @@ function showLogin() {
 function navigate(view, { refresh = false } = {}) {
   state.timeBasis = view === verifiedOrdersRoute ? 'verified' : 'created';
   if (state.timeBasis === 'verified') view = 'orders';
+  const showSent = view === lineSentRoute;
+  if (showSent) view = 'line-contacts';
   if (!views[view]) view = 'overview';
   if (state.session?.role === 'report_support') view = 'line-contacts';
   state.view = view;
@@ -287,7 +299,7 @@ function navigate(view, { refresh = false } = {}) {
   state.source = '';
   state.category = '';
   state.caseStatus = '';
-  state.lineDelivery = 'pending';
+  state.lineDelivery = showSent ? 'sent' : 'pending';
   return loadView({ refresh });
 }
 function nav() {
@@ -323,7 +335,7 @@ async function loadView({ refresh = false } = {}) {
   $('#page-error').hidden = true;
   $('#content').innerHTML = '<div class="loading">正在读取业务数据…</div>';
   try {
-    if (state.session.role === 'admin' && (refresh || state.overviewDays !== days)) {
+    if (state.session.role === 'admin' && (view === 'overview' || refresh || state.overviewDays !== days)) {
       const overview = await api(`/overview?days=${days}`);
       if (revision !== state.revision || !state.session) return;
       state.overview = overview;
@@ -404,6 +416,11 @@ function renderLineContacts(data) {
   });
   $('#content').innerHTML = `<div class="line-metrics">
     <section class="stat-card">
+      <div class="stat-top"><h3>${lineSentTitle}</h3></div>
+      <div class="stat-value">${number(data.metrics.line_sent)}<span class="unit">份</span></div>
+      <p class="stat-hint">按发送登记时间筛选，每份报告计一次</p>
+    </section>
+    <section class="stat-card">
       <div class="stat-top"><h3>二维码弹出次数</h3></div>
       <div class="stat-value">${number(data.metrics.qr_popups)}<span class="unit">次</span></div>
       <p class="stat-hint">二维码每成功显示一次计一次</p>
@@ -414,7 +431,7 @@ function renderLineContacts(data) {
       <p class="stat-hint">点击「添加好友」，同一浏览器只计一人</p>
     </section>
   </div>
-  <p class="data-note">时间范围用于统计，最多保留最近 30 天。输入领取编号可查询任一状态。</p>
+  <p class="data-note">日期筛选作用于已发送列表和联系统计。待办展示全部日期，输入领取编号可跨日期查询。联系统计最多保留最近 30 天。发出 PDF 后请点「标记已发送」。</p>
   <section class="panel table-panel">
     <div class="line-delivery-tabs" role="group" aria-label="报告发放分类">
       ${Object.entries(lineDeliveryTabs).map(([key, title]) =>
@@ -425,6 +442,7 @@ function renderLineContacts(data) {
       <div class="search"><span aria-hidden="true">⌕</span><input id="line-report-id" aria-label="领取编号" placeholder="粘贴领取编号" maxlength="128" value="${esc(state.q)}"></div>
       <button class="button" type="submit">查询</button>
     </form>
+    <div class="summary-line"><span>共 <strong>${number(data.total)}</strong> 份</span></div>
     ${rows.length ? table(['领取编号', '首次打开联系码', '确认加好友', '发送状态', '操作'], rows)
       : `<div class="empty">${icon('reports')}<strong>${state.q ? '未找到此编号的预览报告' : '此分类暂无报告'}</strong></div>`}
     <div class="table-footer"><span>第 ${state.page} 页</span><div class="pagination">
@@ -452,15 +470,17 @@ function renderLineContacts(data) {
       const session = state.session;
       const action = button.dataset.lineAction;
       const path = `/line-contacts/${encodeURIComponent(button.dataset.lineReport)}`;
+      const label = button.textContent;
       button.disabled = true;
       try {
         if (action === 'download') {
-          const { exportDocument } = await import('/thai-landing/runtime/report-pdf.js');
+          button.textContent = '正在准备 PDF…';
+          const { exportDocument } = await loadReportRuntime();
           if (state.session !== session) return;
           const report = await api(path + '/report', { method: 'POST' });
           if (state.session !== session) return;
-          const result = await exportDocument(JSON.stringify(report), 'pdf');
-          if (result !== 'cancelled') toast('PDF 已下载，请发给 LINE 用户。');
+          const result = await exportDocument(JSON.stringify(report), 'pdf', { showSaveDialog: false });
+          if (state.session === session && result !== 'cancelled') toast('PDF 下载已开始，请在浏览器下载列表中查看。');
         } else {
           const result = await api(path + '/actions', { method: 'POST', body: { action } });
           if (state.session !== session) return;
@@ -471,8 +491,9 @@ function renderLineContacts(data) {
           if (state.view === 'line-contacts') await loadView();
         }
       } catch (error) {
-        toast(error.message);
+        toast(errors[error.message] || error.message);
       } finally {
+        button.textContent = label;
         button.disabled = false;
       }
     });
@@ -524,6 +545,10 @@ function renderOverview(reports) {
     [
       'reports', '报告创建量', number(m.reports), '份',
       '按报告创建日期统计', `已解锁 ${number(m.unlocked)} 份`, 'reports',
+    ],
+    [
+      'reports', lineSentTitle, number(m.line_sent), '份',
+      '按发送登记时间筛选，每份报告计一次', '查看 LINE 发放明细', lineSentRoute,
     ],
     [
       'orders', '核验实收', money(m.revenue), '泰铢',
@@ -857,12 +882,12 @@ async function openReportDocument(button) {
   try {
     const [report, runtime] = await Promise.all([
       api(`/reports/${encodeURIComponent(reportId)}/content?edition=${encodeURIComponent(edition)}`),
-      import('/thai-landing/runtime/report-pdf.js'),
+      loadReportRuntime(),
     ]);
     if (!current()) return;
     const payload = JSON.stringify(report);
     if (pdf) {
-      const result = await runtime.exportDocument(payload, 'pdf');
+      const result = await runtime.exportDocument(payload, 'pdf', { showSaveDialog: false });
       if (current()) status.textContent = {
         saved: 'PDF 已保存。',
         downloaded: 'PDF 下载已开始。',
@@ -877,7 +902,7 @@ async function openReportDocument(button) {
   } catch (error) {
     if (current()) {
       status.classList.add('error-text');
-      status.textContent = error.message;
+      status.textContent = errors[error.message] || error.message;
     }
   } finally {
     for (const control of controls) control.disabled = false;

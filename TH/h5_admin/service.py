@@ -26,6 +26,8 @@ ASSETS = Path(__file__).resolve().parent / "web"
 logger = logging.getLogger(__name__)
 FAILURES = "('unavailable','unconfigured','limited')"
 VERIFIED_LIVE = "environment='live' AND status='paid'"
+LINE_SENT_REPORTS = "preview IS NOT NULL AND line_sent_at >= %s"
+LINE_PAGE_SIZE = 25
 # Report attribution comes from the snapshot stored at creation.
 BASE = f"""WITH active_visits AS (
  SELECT * FROM landing_visits
@@ -153,7 +155,7 @@ SOURCES = [
     {"name": "处理记录", "table": "admin_audit / admin_cases", "origin": "已登录管理员提交的业务操作和备注",
      "rule": "处理进度只是内部跟进状态，不修改订单支付状态或报告权限。所有操作记录管理员、时间、原因与结果。"},
     {"name": "LINE 联系与报告发放", "table": "landing_visit_activity / life_reports / admin_audit", "origin": "H5 添加好友按钮、二维码显示事件和客服确认",
-     "rule": "点击人数按匿名浏览器去重。二维码每次显示计一次，重传按同一事件去重。统计按服务器接收时间，最长保留 30 天。客服按报告编号确认加好友、下载完整 PDF 并标记已发送。"},
+     "rule": "点击人数按匿名浏览器去重，二维码每次显示计一次，事件统计最多保留 30 天。总览和销售端的已登记发送量均按报告发送登记时间筛选，每份报告计一次。待发报告和待确认好友展示全部待办。客服在 LINE 发出完整 PDF 后点击标记已发送。"},
     {"name": "接口失败", "table": "h5_request_failures", "origin": "现有 H5 API 请求边界中的非成功响应",
      "rule": "保留最近 30 天且最多 20000 条。记录接口模板、HTTP 状态、错误码、耗时、匿名访客哈希和访问编号；按所有权核对关联。包含地点查询和报告创建前的失败；客户端网络或响应解析异常单独标注，不当作服务端 HTTP 失败。不保存请求体、手机号、访问密钥、IP 或查询参数。"},
 ]
@@ -296,33 +298,39 @@ class H5Admin:
         return time.time() - days * 86400 if days else 0
 
     def line_contacts(self, days, report_id, delivery, page):
+        since = self.cutoff(days)
         filters = {
-            "unconfirmed": ("line_contact_at IS NOT NULL AND line_confirmed_at IS NULL", "line_contact_at DESC"),
-            "pending": ("line_confirmed_at IS NOT NULL AND line_sent_at IS NULL", "line_confirmed_at"),
-            "sent": ("line_sent_at IS NOT NULL", "line_sent_at DESC"),
+            "unconfirmed": ("preview IS NOT NULL AND line_contact_at IS NOT NULL AND line_confirmed_at IS NULL",
+                            "line_contact_at DESC", ()),
+            "pending": ("preview IS NOT NULL AND line_confirmed_at IS NOT NULL AND line_sent_at IS NULL",
+                        "line_confirmed_at", ()),
+            "sent": (LINE_SENT_REPORTS, "line_sent_at DESC", (since,)),
         }
-        match, order = filters[delivery]
-        params = ((page - 1) * 25,)
+        match, order, params = filters[delivery]
         if re.fullmatch(r"[1-9][0-9]{4}", report_id):
-            match, params = "claim_code=%s", (int(report_id), *params)
+            match, params = "preview IS NOT NULL AND claim_code=%s", (int(report_id),)
         elif report_id:
-            match, params = "id=%s", (report_id, *params)
+            match, params = "preview IS NOT NULL AND id=%s", (report_id,)
         retention = time.time() - VISIT_RETENTION_SECONDS
         with self.store.connect() as db:
+            # The count and page must see the same records while agents mark reports sent.
+            db.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+            total = db.execute(f"SELECT COUNT(*) AS total FROM life_reports WHERE {match}", params).fetchone()["total"]
             items = db.execute(f"""
                 SELECT id, claim_code::text AS claim_code, line_contact_at, line_confirmed_at, line_sent_at, full_state
-                FROM life_reports WHERE preview IS NOT NULL AND {match}
-                ORDER BY {order}, id LIMIT 26 OFFSET %s
-            """, params).fetchall()
-            metrics = db.execute("""
+                FROM life_reports WHERE {match}
+                ORDER BY {order}, id LIMIT %s OFFSET %s
+            """, (*params, LINE_PAGE_SIZE, (page - 1) * LINE_PAGE_SIZE)).fetchall()
+            metrics = db.execute(f"""
                 SELECT COUNT(*) FILTER (WHERE a.action='line_qr_shown') AS qr_popups,
-                       COUNT(DISTINCT v.owner) FILTER (WHERE a.action='open_line_contact') AS click_visitors
+                       COUNT(DISTINCT v.owner) FILTER (WHERE a.action='open_line_contact') AS click_visitors,
+                       (SELECT COUNT(*) FROM life_reports WHERE {LINE_SENT_REPORTS}) AS line_sent
                 FROM landing_visit_activity a JOIN landing_visits v ON v.id=a.visit_id
                 WHERE v.visited_at >= %s AND a.received_at >= %s
                   AND a.page='preview_report' AND a.kind='action'
                   AND a.action IN ('open_line_contact','line_qr_shown')
-            """, (retention, max(retention, self.cutoff(days)))).fetchone()
-        return {"items": items[:25], "has_more": len(items) > 25, "metrics": metrics}
+            """, (since, retention, max(retention, since))).fetchone()
+        return {"items": items, "has_more": total > page * LINE_PAGE_SIZE, "total": total, "metrics": metrics}
 
     def line_contact_report(self, report_id):
         with self.store.connect() as db:
@@ -408,6 +416,7 @@ class H5Admin:
         )[0])
         for name, sql in {
             "reports": "SELECT COUNT(*) value FROM reports WHERE created>=%s",
+            "line_sent": f"SELECT COUNT(*) value FROM life_reports WHERE {LINE_SENT_REPORTS}",
             "report_failures": "SELECT COUNT(*) value FROM reports WHERE created>=%s AND status IN ('failed','stalled')",
             "unlocked": "SELECT COUNT(*) value FROM reports WHERE created>=%s AND unlocked=1",
             "orders": "SELECT COUNT(*) value FROM orders WHERE created>=%s",
