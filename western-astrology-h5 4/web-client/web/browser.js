@@ -148,6 +148,66 @@ let fateActivity, fateActivitySequence = 0, fatePending = [], fateDropped = {};
 let fateUnstored = new Map(), fateRemoved = new Set(), fateStoredKeys = new Set(), fateStoredDropped = {}, fateOverflow = {};
 let fateSending = 0, fateRetryAt = 0, fateRetryCount = 0, fateSendTimer, fateDwellTimer;
 const fateTrackingAllowed = () => window.navigator?.globalPrivacyControl !== true && window.navigator?.doNotTrack !== '1';
+const fateMetaPixelId = '2150104392567893';
+let fateMetaPixelStarted = false;
+function trackFateMetaPixel(event) {
+  if (!fateTrackingAllowed()) return;
+  try {
+    const landing = new URL('.', document.baseURI).pathname;
+    if (location.pathname !== landing && location.pathname !== landing + 'index.html') return;
+    if (!fateMetaPixelStarted) {
+      if (!window.fbq) {
+        const fbq = function () {
+          if (fbq.callMethod) fbq.callMethod.apply(fbq, arguments);
+          else fbq.queue.push(arguments);
+        };
+        Object.assign(fbq, { push: fbq, loaded: true, version: '2.0', queue: [] });
+        window.fbq = window._fbq = fbq;
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+        document.head.append(script);
+      }
+      // Send explicit landing events without automatic form or history tracking.
+      window.fbq.disablePushState = true;
+      window.fbq('set', 'autoConfig', false, fateMetaPixelId);
+      window.fbq('init', fateMetaPixelId);
+      window.fbq('track', 'PageView');
+      fateMetaPixelStarted = true;
+    }
+    if (event === 'AddToCart') window.fbq('track', 'AddToCart');
+  } catch {
+    // A tracking failure must never block report generation.
+  }
+}
+async function trackFirstFateReadingClick() {
+  if (!fateTrackingAllowed()) return;
+  try {
+    const owner = fateOwnerKey();
+    if (!owner) return;
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(owner));
+    const marker = fateHex(new Uint8Array(digest));
+    const request = indexedDB.open('fate-meta-pixel-' + fateMetaPixelId, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('add-to-cart');
+    request.onsuccess = () => {
+      const database = request.result;
+      try {
+        const transaction = database.transaction('add-to-cart', 'readwrite');
+        transaction.onabort = () => database.close();
+        transaction.oncomplete = () => {
+          database.close();
+          trackFateMetaPixel('AddToCart');
+        };
+        // The unique key lets only one tab claim the first click for this browser ID.
+        transaction.objectStore('add-to-cart').add(true, marker);
+      } catch {
+        database.close();
+      }
+    };
+  } catch {
+    // Skip tracking when a durable marker cannot be written.
+  }
+}
 const fateState = () => document.visibilityState === 'hidden' ? 'hidden' : 'visible';
 const fateEventKey = item => `${item.visit.id}:${item.event.sequence}`;
 const fateEntryParams = new URLSearchParams(location.search);
@@ -344,6 +404,7 @@ let fateWelcomeStartedAt;
 try { fateVisitContext(); } catch {}
 window.fateH5 = {
   ownerKey: fateOwnerKey,
+  trackViewReadingClick() { void trackFirstFateReadingClick(); },
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },
   welcomeAge(){return fateWelcomeStartedAt===undefined?0:performance.now()-fateWelcomeStartedAt;},
   trackFailure(path, code, method) {
@@ -398,6 +459,7 @@ window.fateH5 = {
     if(page==='app-ready')requestAnimationFrame(()=>requestAnimationFrame(()=>{
       rememberFateVisit();
       window.fateBoot.ready();
+      trackFateMetaPixel('PageView');
     }));
     if(!fatePerfEnabled)return;
     requestAnimationFrame(()=>console.debug('[FATE H5 performance] '+JSON.stringify({page,readyMs:Math.round(performance.now()),resources:performance.getEntriesByType('resource').filter(e=>/api\/|main\.dart|skwasm|canvaskit|fonts\/|astrologer/.test(e.name)).map(e=>({name:new URL(e.name).pathname.replace(/(life-reports\/)\w{8,}/,'$1:id'),startMs:Math.round(e.startTime),endMs:Math.round(e.responseEnd),bytes:e.transferSize}))})));

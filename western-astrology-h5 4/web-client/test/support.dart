@@ -199,6 +199,9 @@ class TestBrowser implements BrowserPort {
   Json visitContext() => visit;
   final activities = <Json>[];
   @override
+  void trackViewReadingClick() {}
+
+  @override
   void trackActivity(String page, String action) =>
       activities.add({'page': page, 'action': action});
   @override

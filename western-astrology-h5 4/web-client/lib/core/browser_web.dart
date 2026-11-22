@@ -15,6 +15,8 @@ external void _payment(JSString action, JSString fields);
 external void _ready(JSString page);
 @JS('fateH5.welcomeAge')
 external JSNumber _welcomeAge();
+@JS('fateH5.trackViewReadingClick')
+external void _viewReadingClick();
 @JS('fateH5.trackActivity')
 external void _activity(JSString payload, JSString key, JSString endpoint);
 @JS('fateH5.trackFailure')
@@ -73,6 +75,9 @@ class WebBrowserPort implements BrowserPort {
       _payment(action.toJS, jsonEncode(fields).toJS);
   @override
   void pageReady(String page) => _ready(page.toJS);
+
+  @override
+  void trackViewReadingClick() => _viewReadingClick();
 
   @override
   void trackActivity(String page, String action) {

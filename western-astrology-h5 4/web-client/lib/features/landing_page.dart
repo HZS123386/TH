@@ -821,7 +821,12 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                           ? () => h5.browser.openPage(
                               './?lang=${h5.language}&preview=notice-${DateTime.now().millisecondsSinceEpoch}',
                             )
-                          : () => _generate(h5),
+                          : () {
+                              if (widget.topic == 'life') {
+                                h5.browser.trackViewReadingClick();
+                              }
+                              _generate(h5);
+                            },
                     ),
                     const SizedBox(height: 19),
                     ThemeBoards(copy: c),
