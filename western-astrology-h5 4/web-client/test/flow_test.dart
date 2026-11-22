@@ -1469,9 +1469,11 @@ void main() {
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(completed, 0);
       expect(find.text('正在校验并保存解读内容'), findsOneWidget);
+      expect(find.byType(AppLoginCodePanel), findsOneWidget);
       state.fail('连接中断');
       await tester.pump();
       expect(find.text('本次生成暂未完成，请重试'), findsOneWidget);
+      expect(find.byType(AppLoginCodePanel), findsNothing);
       expect(tester.widget<GenerationVideo>(wheel).active, isFalse);
       state.retry();
       await tester.pump();

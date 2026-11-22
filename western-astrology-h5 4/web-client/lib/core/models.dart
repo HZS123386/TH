@@ -266,18 +266,33 @@ class LifeReport {
     final showFull = complete && ready;
     if (marriageReport) {
       final sections = objects(marriage[showFull ? 'full' : 'preview']);
-      if (showFull || language != 'zh' || copy == null) return sections;
+      if (showFull) return sections;
       // A saved preview can carry headings from an older server release.
-      final titles = copy.forLanguage(language).list('marriage', 'preview');
-      if (titles.length != sections.length) return sections;
+      final titles = language == 'zh' && copy != null
+          ? copy.forLanguage(language).list('marriage', 'preview')
+          : const <String>[];
       return [
         for (final (index, section) in sections.indexed)
-          if (index > 0 &&
-              (section['key'] != 'relationship_style' ||
-                  text(profile['birth_time']).isNotEmpty))
-            {...section, 'title': titles[index]}
-          else
-            section,
+          {
+            ...section,
+            if (titles.length == sections.length &&
+                index > 0 &&
+                (section['key'] != 'relationship_style' ||
+                    text(profile['birth_time']).isNotEmpty))
+              'title': titles[index],
+            // The API puts the time zone on the first line and the city on the second.
+            if (section['paragraphs'] case [
+              String birth,
+              String _,
+              String placement,
+              ...final notes,
+            ] when section['key'] == 'birth_details')
+              'paragraphs': [
+                birth.split(' · ').take(2).join(' · '),
+                placement,
+                ...notes,
+              ],
+          },
       ];
     }
     final content = showFull

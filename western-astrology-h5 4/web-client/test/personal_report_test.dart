@@ -58,6 +58,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump();
+      expect(find.widgetWithText(JYButton, '查看解析'), findsOneWidget);
       final board = find.byType(ThemeBoards);
       for (final label in ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议']) {
         expect(
@@ -181,6 +182,11 @@ void main() {
     final data = marriageFixture();
     final marriage = object(data['marriage']);
     final preview = objects(marriage['preview']);
+    preview.first['paragraphs'] = [
+      '1990-05-20 · 10:30 · Asia/Shanghai',
+      'Sample City, CN',
+      '上升 · 巨蟹座',
+    ];
     const oldTitles = ['上升在感情里的真实样子', '当前感情能量判断', '感情模式快照', '解锁完整婚姻关系报告'];
     for (var i = 0; i < oldTitles.length; i++) {
       preview[i + 1]['title'] = oldTitles[i];
@@ -217,6 +223,12 @@ void main() {
       expect(find.text(title), findsNothing);
     }
     expect(find.text('Free marriage section 3.'), findsOneWidget);
+    expect(find.text('1990-05-20 · 10:30'), findsOneWidget);
+    expect(find.text('上升 · 巨蟹座'), findsOneWidget);
+    expect(find.textContaining('Asia/Shanghai'), findsNothing);
+    expect(find.text('Sample City, CN'), findsNothing);
+    expect(find.text(controller.copy.t('jy', 'appLogin.title')), findsNothing);
+    expect(find.text(controller.copy.t('life', 'exportPdf')), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

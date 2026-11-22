@@ -680,8 +680,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 18),
         ],
-        AppLoginCodePanel(h5: widget.h5, reportId: report.id),
-        const SizedBox(height: 16),
+        if (!report.marriageReport) ...[
+          AppLoginCodePanel(h5: widget.h5, reportId: report.id),
+          const SizedBox(height: 16),
+        ],
         if (!report.sectionedReport)
           if (report.personalReport)
             ..._personalPreview(report, c)
@@ -1096,10 +1098,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           priceLabel: _usesCheckout(r) ? r.priceLabel : '',
           onBack: _usesCheckout(r) ? _backHome : null,
           freePreview: _freePreview(r, c),
-          onExportPdf: r.sectionedReport && !_model.exporting
+          onExportPdf: r.relationshipReport && !_model.exporting
               ? () => _model.export('pdf')
               : null,
-          exportStatus: r.sectionedReport ? _model.exportStatus : '',
+          exportStatus: r.relationshipReport ? _model.exportStatus : '',
           busy: _deleting || _generating || _paying,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
           onErase: () => _erase(),
@@ -1116,8 +1118,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                 const FateBrand(compact: true),
                 const SizedBox(height: 24),
                 Text(c.t('report', 'previewStates.${r.json['preview_state']}')),
-                const SizedBox(height: 12),
-                AppLoginCodePanel(h5: widget.h5, reportId: r.id),
+                if (r.previewInProgress) ...[
+                  const SizedBox(height: 12),
+                  AppLoginCodePanel(h5: widget.h5, reportId: r.id),
+                ],
                 const SizedBox(height: 18),
                 JYButton(
                   label: c.t(
