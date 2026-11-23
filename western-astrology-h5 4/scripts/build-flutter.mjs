@@ -49,6 +49,9 @@ export async function buildLanding({release=false,noPub=false}={}){
   // The first paint and Flutter welcome use the same translated content.
   const copy=JSON.parse(await readFile(path.join(flutterRoot,'assets','copy.json'),'utf8'));
   const welcomeCopy=copy.jy;
+  for(const language of Object.keys(welcomeCopy)){
+    await stat(path.join(generated,'assets','assets','copy',language+'.json'));
+  }
   const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   for(const key of ['name','role','headline','note','start','swipe']){
     const slot=`<!-- FATE_WELCOME_${key.toUpperCase()} -->`;
@@ -82,9 +85,9 @@ export async function buildLanding({release=false,noPub=false}={}){
     if(!info.isFile()||info.size<1024)continue;
     const original=await readFile(file);
     await writeFile(file+'.gz',gzipSync(original,{level:9}));
-    // Use denser Brotli for large startup binaries even in the regular site build.
-    const startupBinary=relative==='main.dart.js'||path.extname(relative)==='.wasm';
-    const quality=release?11:(startupBinary?10:6);
+    // Compress the entry points and the normal Skwasm renderer most tightly.
+    const startupBinary=['main.dart.js','main.dart.wasm','skwasm.wasm'].includes(path.basename(relative));
+    const quality=release||startupBinary?11:path.extname(relative)==='.wasm'?10:6;
     const brotli=brotliCompressSync(original,{params:{[constants.BROTLI_PARAM_QUALITY]:quality}});
     if(!brotliDecompressSync(brotli).equals(original))throw Error(`Brotli verification failed: ${relative}`);
     if(brotli.length<original.length)await writeFile(file+'.br',brotli);

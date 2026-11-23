@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +10,7 @@ import 'package:fate_h5/core/models.dart';
 import 'package:fate_h5/core/repository.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/ui/jy_components.dart';
+
 import 'support.dart';
 
 void main() {
@@ -58,6 +60,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump();
+      expect(find.widgetWithText(JYButton, '查看解析'), findsOneWidget);
       final board = find.byType(ThemeBoards);
       for (final label in ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议']) {
         expect(
@@ -81,10 +84,7 @@ void main() {
         lowerImage.dx,
         greaterThan(tester.getCenter(find.text('***预警')).dx),
       );
-      expect(
-        find.text(controller.copy.t('jy', 'formCaption')),
-        findsOneWidget,
-      );
+      expect(find.text(controller.copy.t('jy', 'formCaption')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
@@ -172,15 +172,19 @@ void main() {
       },
     );
   }
-  testWidgets('saved Chinese marriage preview shows current headings', (
-    tester,
-  ) async {
+  testWidgets('marriage preview shows a short birth line', (tester) async {
     tester.view.physicalSize = const Size(360, 740);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final data = marriageFixture();
     final marriage = object(data['marriage']);
     final preview = objects(marriage['preview']);
+    preview.first['paragraphs'] = [
+      '1990-05-20 · 10:30 · Asia/Shanghai',
+      'Sample City, CN',
+      '上升 · 巨蟹座',
+      '出生时间说明',
+    ];
     const oldTitles = [
       '你的感情里，藏着一个你没发现的“隐形卡点”',
       '接下来的30天，你的感情搅局者正在发力',
@@ -215,7 +219,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    for (final title in controller.copy.list('marriage', 'preview')) {
+    final titles = controller.copy.list('marriage', 'preview');
+    final birthDetails = find.text('1995-08-17 · 09:30 · Bangkok, TH');
+    expect(birthDetails, findsOneWidget);
+    expect(find.text(titles.first), findsNothing);
+    for (final title in titles.skip(1)) {
       expect(
         find.text(title),
         title == '感情模式快照' ? findsNothing : findsOneWidget,
@@ -225,6 +233,12 @@ void main() {
       expect(find.text(title), findsNothing);
     }
     expect(find.text('Free marriage section 3.'), findsOneWidget);
+    expect(find.textContaining('1990-05-20'), findsNothing);
+    for (final paragraph in preview.first['paragraphs'] as List<String>) {
+      expect(find.text(paragraph), findsNothing);
+    }
+    expect(find.text(controller.copy.t('jy', 'appLogin.title')), findsNothing);
+    expect(find.text(controller.copy.t('life', 'exportPdf')), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -257,6 +271,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     final titles = controller.copy.list('marriage', 'full');
+    expect(find.text('1995-08-17 · 09:30 · Bangkok, TH'), findsOneWidget);
     for (var i = 0; i < titles.length; i++) {
       expect(find.text(titles[i]), findsOneWidget);
       expect(find.text('Paid marriage section ${i + 1}.'), findsOneWidget);
@@ -266,6 +281,12 @@ void main() {
       lessThan(tester.getTopLeft(find.text(titles[4])).dy),
     );
     expect(find.text('Free marriage section 3.'), findsNothing);
+    final pdf = find.widgetWithText(
+      OutlinedButton,
+      controller.reportCopy(LifeReport.parse(data)).t('report', 'exportPdf'),
+    );
+    expect(pdf, findsOneWidget);
+    expect(tester.widget<OutlinedButton>(pdf).onPressed, isNotNull);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -383,14 +404,6 @@ void main() {
             expect(find.text('Synthetic small action 3'), findsOneWidget);
           } else {
             expect(find.byType(ReportCheckout), findsOneWidget);
-            final unlock = tester.widget<JYButton>(
-              find.byKey(const ValueKey('jy-payment-preview')),
-            );
-            expect(
-              unlock.label,
-              controller.copy.t('jy', 'personal.relationshipUnlock'),
-            );
-            expect(unlock.label, isNotEmpty);
             final aboutTitles = controller.copy.list(
               'jy',
               'checkout.relationshipAboutTitle',
@@ -484,18 +497,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(ReportCheckout), findsOneWidget);
-      expect(find.text('฿39'), findsOneWidget);
+      expect(find.text('฿39'), findsNothing);
       expect(find.text('฿30'), findsNothing);
-      expect(
-        find.text(controller.copy.t('jy', 'checkout.preview')),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<JYButton>(find.byKey(const ValueKey('jy-payment-preview')))
-            .onPressed,
-        isNull,
-      );
+      expect(find.byKey(const ValueKey('jy-payment-preview')), findsNothing);
       expect(requests.where((method) => method != 'GET'), isEmpty);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -531,6 +535,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ReportCheckout), findsNothing);
       expect(find.text('Synthetic free line one.'), findsNothing);
+      expect(
+        find.text(controller.copy.t('jy', 'appLogin.title')),
+        findsNothing,
+      );
       expect(
         find.text(
           controller.copy

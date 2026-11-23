@@ -53,6 +53,7 @@ export interface LifeChapter {
 }
 export interface LifeReport {
   id: string;
+  claim_code?: string;
   version: string;
   format?: "western-compact" | "western-personal" | "thai-marriage" | "legacy";
   personal?: PersonalReading | null;

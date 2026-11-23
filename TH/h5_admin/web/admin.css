@@ -193,6 +193,10 @@ label {
   padding: 28px 18px 0;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
   z-index: 5;
 }
 .sidebar > .brand {
@@ -418,8 +422,77 @@ nav {
 }
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
+}
+.line-stats {
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.line-range-form,
+.line-range-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.line-range-form {
+  align-items: end;
+  margin-bottom: 8px;
+}
+.line-range-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+.line-range-form input {
+  min-width: 0;
+}
+.line-range-presets [aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.line-report-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+.line-report-counts > div {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f5f4fa;
+}
+.line-report-counts dt {
+  font-size: 12px;
+  color: #495568;
+}
+.line-report-counts dd {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.line-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.line-delivery-tabs,
+.line-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.line-delivery-tabs {
+  padding: 16px 20px 0;
+}
+.line-delivery-tabs [aria-pressed="true"] {
+  background: #f5f4fa;
+  color: var(--accent);
+  border-color: var(--accent);
 }
 .stat-card,
 .panel {
@@ -1096,6 +1169,27 @@ td button.link {
   border-bottom: 1px solid var(--line);
   font-size: 13px;
 }
+.report-document-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 18px;
+}
+.report-document-status {
+  margin: 0;
+  padding: 0 18px 12px;
+  font-size: 12px;
+}
+.report-document-status:empty {
+  display: none;
+}
+.report-document-frame {
+  display: block;
+  width: 100%;
+  height: min(66dvh, 720px);
+  border: 0;
+  border-top: 1px solid var(--line);
+}
 .visit-detail-meta {
   display: flex;
   justify-content: space-between;
@@ -1392,7 +1486,8 @@ summary {
     margin-left: 68px;
     width: calc(100% - 68px);
   }
-  .stats-grid {
+  .stats-grid,
+  .line-report-counts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .page-heading {

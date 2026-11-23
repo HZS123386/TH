@@ -26,12 +26,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/copy.json
+    - assets/copy/
     - assets/privacy/
     - assets/support/
     - assets/images/
     - assets/images/badges/
-    - assets/images/flags/
-    - assets/licenses/phone-countries.txt
     - assets/licenses/welcome-strokes.txt
     - assets/fonts/OFL.txt
     - assets/fonts/OFL-CJK.txt
@@ -62,7 +61,7 @@ flutter:
         - asset: assets/fonts/FateLatin.otf
     - family: NotoSansThai
       fonts:
-        - asset: assets/fonts/NotoSansThai.ttf
+        - asset: assets/fonts/FateThaiUI.ttf
     - family: FateLanguageLabel
       fonts:
         - asset: assets/fonts/FateLanguageLabel.otf

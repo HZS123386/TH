@@ -36,7 +36,7 @@
       "id": "birth-time",
       "title": "Dapatkah saya melanjutkan tanpa waktu kelahiran yang tepat?",
       "paragraphs": [
-        "Ya. Pilih bahwa waktu tepatnya tidak diketahui. Sistem menggunakan pukul 12:00 siang waktu setempat sebagai referensi perhitungan dan membatasi atau menandai kesimpulan yang sensitif terhadap waktu. Ascendant, rumah, dan detail terkait mungkin tidak tersedia atau tidak pasti. Pukul 12:00 siang bukanlah waktu kelahiran Anda yang terverifikasi."
+        "Anda dapat memilih bahwa Anda tidak ingat waktu lahir yang tepat. Laporan pernikahan Thailand menandai waktu lahir sebagai tidak diketahui dan membatasi penafsiran ascendant, rumah, atau periode yang memerlukan waktu tepat. Beberapa penghitungan bagan Barat menggunakan tengah hari setempat sebagai acuan."
       ]
     },
     {
@@ -48,9 +48,9 @@
     },
     {
       "id": "unlock",
-      "title": "Apakah membuka kunci akan mengenakan biaya kepada saya?",
+      "title": "Terima laporan lengkap",
       "paragraphs": [
-        "Versi saat ini adalah uji coba. Jumlah yang ditampilkan adalah contoh, dan menekan kontrol pembayaran/buka kunci tidak melakukan penagihan nyata; itu menghasilkan dan membuka pembacaan lengkap. Saat ini tidak ada pengumpulan nyata atau alur pengembalian dana online. Setiap proses checkout langsung di masa depan harus menjelaskan harga aktual, penyedia pembayaran, dan syarat sebelum konfirmasi."
+        "Laporan lengkap dikirim melalui LINE. Kirim kode lima digit kepada tim dukungan untuk diperiksa dan terima PDF dalam obrolan."
       ]
     },
     {
@@ -64,15 +64,60 @@
       "id": "delete",
       "title": "Bagaimana cara menghapus laporan atau membuat permintaan privasi?",
       "paragraphs": [
-        "Gunakan Hapus pada laporan atau di Laporan Saya. Pekerjaan pembuatan yang aktif mungkin perlu diselesaikan terlebih dahulu. Menghapus penyimpanan peramban tidak menghapus data server. Kirimkan email ke kontak di halaman ini untuk akses lebih lanjut, koreksi, penghapusan, atau keluhan, dimulai dengan ID laporan dan jenis permintaan. Kebijakan Privasi menjelaskan cakupan dan batasan penyimpanan sementara/cadangan."
+        "Gunakan Hapus pada laporan atau di Laporan Saya. Pekerjaan pembuatan yang aktif mungkin perlu diselesaikan terlebih dahulu. Menghapus penyimpanan peramban tidak menghapus data server. Kirimkan email ke kontak di halaman ini untuk akses lebih lanjut, koreksi, penghapusan, atau keluhan, dimulai dengan ID laporan dan jenis permintaan. Kebijakan Privasi menjelaskan cakupan dan batasan penyimpanan sementara/cadangan.",
+      "Dukungan perlu memeriksa pesanan sungguhan sebelum laporan terkait dapat dihapus. Anda dapat meminta penghapusan melalui email di halaman ini. Catatan transaksi yang wajib disimpan ditangani menurut hukum yang berlaku."
       ]
     },
     {
       "id": "meaning",
       "title": "Dapatkah saya mengandalkan laporan untuk keputusan besar?",
       "paragraphs": [
-        "Laporan ini menggabungkan perhitungan astrologi Barat dan bahasa AI untuk hiburan dan eksplorasi diri. Laporan ini mungkin tidak akurat atau tidak cocok dan tidak menjamin peristiwa masa depan. Ini tidak menggantikan saran medis, hukum, atau keuangan dan tidak boleh menjadi satu-satunya dasar untuk keputusan besar mengenai pekerjaan, pinjaman, atau hubungan."
+        "Laporan menggabungkan penghitungan astrologi dan teks AI untuk hiburan dan refleksi diri. Penafsiran dapat keliru. Pertimbangkan informasi faktual dan saran profesional yang relevan ketika membuat keputusan penting."
       ]
     }
-  ]
+  ],
+  "purchasePolicies": {
+    "terms": [
+      {
+        "title": "Laporan dan harga",
+        "paragraphs": [
+          "Laporan lengkap dikirim melalui LINE. Kirim kode lima digit kepada tim dukungan untuk diperiksa dan terima PDF dalam obrolan."
+        ]
+      },
+      {
+        "title": "Pembayaran dan penggunaan laporan",
+        "paragraphs": [
+          "Informasi berikut berlaku untuk pesanan dan pembayaran sebelumnya. Laporan disampaikan ketika laporan lengkap telah dibuat dan dapat dibuka di situs web. Setelah penyampaian berhasil, permintaan pengembalian dana biasa karena berubah pikiran tidak diterima. Hubungi dukungan jika Anda ditagih dua kali, jumlahnya keliru, atau pembayaran telah diverifikasi tetapi laporan tidak dapat disampaikan. Hak pembatalan, pengembalian dana, dan pemulihan lain berdasarkan hukum yang berlaku tetap berlaku."
+        ]
+      }
+    ],
+    "refund": [
+      {
+        "title": "Kelayakan pengembalian dana",
+        "paragraphs": [
+          "Informasi berikut berlaku untuk pesanan dan pembayaran sebelumnya. Laporan disampaikan ketika laporan lengkap telah dibuat dan dapat dibuka di situs web. Setelah penyampaian berhasil, permintaan pengembalian dana biasa karena berubah pikiran tidak diterima. Hubungi dukungan jika Anda ditagih dua kali, jumlahnya keliru, atau pembayaran telah diverifikasi tetapi laporan tidak dapat disampaikan. Hak pembatalan, pengembalian dana, dan pemulihan lain berdasarkan hukum yang berlaku tetap berlaku."
+        ]
+      },
+      {
+        "title": "Cara mengajukan permintaan",
+        "paragraphs": [
+          "Jika ada masalah, segera kirim email berisi nomor pesanan atau laporan, waktu pembayaran, jumlah, dan penjelasan. Anda dapat melampirkan tangkapan layar dengan data pribadi dan kredensial pembayaran disamarkan. Setelah pemeriksaan, dukungan akan mengirimkan hasil, metode pengembalian dana yang tersedia, dan waktu pemrosesan melalui email. Pengembalian dana yang diwajibkan hukum diproses dalam tenggat yang berlaku. Di Thailand, sengketa yang belum selesai dapat diajukan kepada Kantor Dewan Perlindungan Konsumen (OCPB)."
+        ]
+      }
+    ],
+    "delivery": [
+      {
+        "title": "Cara menerima laporan",
+        "paragraphs": [
+          "Laporan lengkap dikirim melalui LINE. Kirim kode lima digit kepada tim dukungan untuk diperiksa dan terima PDF dalam obrolan. Informasi berikut berlaku untuk pesanan dan pembayaran sebelumnya. Setelah pembayaran diverifikasi, sistem mulai membuat laporan lengkap dan menampilkan progres di halaman laporan semula. Setelah siap, Anda dapat membacanya secara daring, menyimpan sebagai PDF, atau membukanya kembali dari Laporan Saya di peramban semula. Laporan disampaikan melalui situs web."
+        ]
+      },
+      {
+        "title": "Kendala pembayaran atau pembuatan laporan",
+        "paragraphs": [
+          "Jika laporan masih terkunci setelah pembayaran, kembali ke halaman laporan semula untuk memeriksa pembayaran. Hindari membayar lagi. Waktu pembuatan bergantung pada kondisi layanan dan jaringan. Jika gagal, coba lagi dari halaman tersebut. Jika masih tidak dapat dibuka, kirim email dengan nomor pesanan atau laporan agar dukungan dapat memeriksa penyampaian."
+        ]
+      }
+    ]
+  }
 }

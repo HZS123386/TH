@@ -9,5 +9,16 @@
     "lo": "lo",
     "ms": "ms",
     "id": "id"
+  },
+  "purchasePolicyLabels": {
+    "zh": {"terms": "服务条款", "refund": "退款政策", "delivery": "交付说明"},
+    "th": {"terms": "ข้อกำหนดการใช้บริการ", "refund": "นโยบายคืนเงิน", "delivery": "การส่งมอบรายงาน"},
+    "en": {"terms": "Terms of Service", "refund": "Refund Policy", "delivery": "Report Delivery"},
+    "vi": {"terms": "Điều khoản dịch vụ", "refund": "Chính sách hoàn tiền", "delivery": "Cách nhận báo cáo"},
+    "my": {"terms": "ဝန်ဆောင်မှုစည်းကမ်းချက်များ", "refund": "ငွေပြန်အမ်းခြင်း မူဝါဒ", "delivery": "အစီရင်ခံစာ ရယူရန်"},
+    "km": {"terms": "លក្ខខណ្ឌប្រើសេវា", "refund": "គោលការណ៍សងប្រាក់", "delivery": "ការទទួលរបាយការណ៍"},
+    "lo": {"terms": "ເງື່ອນໄຂການໃຊ້ບໍລິການ", "refund": "ນະໂຍບາຍຄືນເງິນ", "delivery": "ການຮັບລາຍງານ"},
+    "ms": {"terms": "Terma Perkhidmatan", "refund": "Dasar Bayaran Balik", "delivery": "Penyerahan Laporan"},
+    "id": {"terms": "Ketentuan Layanan", "refund": "Kebijakan Pengembalian Dana", "delivery": "Penyampaian Laporan"}
   }
 }

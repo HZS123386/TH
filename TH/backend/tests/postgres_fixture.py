@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @contextmanager
-def isolated_database():
+def isolated_database(revision="head"):
     url = os.environ.get("FATE_TEST_DATABASE_URL") or dotenv_values(ROOT / "data/.postgres-test.env").get("FATE_TEST_DATABASE_URL")
     if not url or not url.startswith(("postgresql://", "postgres://")):
         raise RuntimeError("Set FATE_TEST_DATABASE_URL to a dedicated PostgreSQL test database.")
@@ -34,7 +34,7 @@ def isolated_database():
         try:
             config = Config(str(ROOT / "backend/alembic.ini"))
             config.attributes["database_url"] = test_url
-            command.upgrade(config, "head")
+            command.upgrade(config, revision)
             yield test_url
         finally:
             db.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema)))

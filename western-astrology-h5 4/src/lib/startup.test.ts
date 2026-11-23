@@ -22,7 +22,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   const select = { id: "fate-welcome-language", value: options.language ?? "zh" };
   const nodes = new Map<string, unknown>([
     ["fate-startup-status", status], ["fate-startup-retry", button], ["fate-startup", startup],
-    ["fate-welcome-start", start], ["fate-welcome-portrait", options.portrait],
+    ["fate-welcome-start", start], ["fate-welcome-portrait-slot", { replaceWith: vi.fn() }],
     ["fate-welcome-progress", progress], ["fate-welcome-language", select],
   ]);
   if (options.welcome) nodes.set("fate-welcome", { querySelector: vi.fn(), addEventListener: vi.fn() });
@@ -65,6 +65,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
     window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history,
     performance: { mark: vi.fn(), now: () => Date.now(), getEntriesByType: () => [{ type: options.navigationType ?? "navigate" }] },
     crypto: webcrypto, AbortController, fetch, console: { error: vi.fn() },
+    fateWelcomePortrait: options.portrait,
     requestAnimationFrame: (callback: (now: number) => void) => setTimeout(() => callback(Date.now()), 16),
     sessionStorage: window.sessionStorage,
     _flutter: { buildConfig: { engineRevision: "test-engine" }, loader: { load: vi.fn(async (_options: any) => {}) } },
@@ -425,12 +426,14 @@ it.each(["zh", "th"])("accepts a streamed %s welcome click and enters before the
   expect(enter).toHaveBeenCalledTimes(1);
 });
 
-it("starts Flutter while the portrait loads and reveals the complete image", () => {
-  const portrait = Object.assign(new EventTarget(), { setAttribute: vi.fn() });
+it.each([false, true])("starts Flutter in parallel and reveals the portrait (cached=%s)", (complete) => {
+  const portrait = Object.assign(new EventTarget(), { setAttribute: vi.fn(), complete, naturalWidth: 720 });
   const page = openDocument(new Map(), false, { portrait });
   expect(page.startFlutter()).toHaveBeenCalledOnce();
-  expect(portrait.setAttribute).not.toHaveBeenCalled();
-  portrait.dispatchEvent(new Event("load"));
+  if (!complete) {
+    expect(portrait.setAttribute).not.toHaveBeenCalled();
+    portrait.dispatchEvent(new Event("load"));
+  }
   expect(portrait.setAttribute).toHaveBeenCalledWith("data-loaded", "");
 });
 
@@ -438,6 +441,7 @@ it("starts the same Flutter Wasm downloads early without spending bandwidth on i
   expect(openDocument().preloadWasm()).toEqual([
     { href: "main.dart.mjs", as: "script", rel: "modulepreload" },
     { href: "main.dart.wasm", as: "fetch" },
+    { href: "engine/test-engine/skwasm.js", as: "script", rel: "modulepreload" },
     { href: "engine/test-engine/skwasm.wasm", as: "fetch" },
   ]);
   expect(openDocument().preloadWasm({ graphics: false })).toEqual([]);
@@ -504,6 +508,29 @@ it("recovers a failed startup once and leaves persistent failures retryable", ()
   expect(second.location.reload).not.toHaveBeenCalled();
   expect(second.status.textContent).toContain("页面加载失败");
   expect(second.button.hidden).toBe(false);
+});
+
+it("continues the first welcome tap after an automatic reload", async () => {
+  const first = openDocument(new Map(), false, { welcome: true });
+  first.clickStart();
+  first.boot.fail();
+  vi.advanceTimersByTime(700);
+
+  const next = openDocument(first.storage, false, { welcome: true, navigationType: "reload" });
+  const enter = vi.fn();
+  next.boot.connectWelcome(enter, async () => true, "zh");
+  expect(next.start.setAttribute).toHaveBeenCalledWith("aria-busy", "true");
+  expect(enter).toHaveBeenCalledOnce();
+  await next.boot.ready();
+  expect(next.startup.remove).toHaveBeenCalledOnce();
+});
+
+it("retries a transient Wasm fetch error with the normal renderer", async () => {
+  const first = openDocument();
+  first.startFlutter(vi.fn(async () => { throw new TypeError("Failed to fetch dynamically imported module"); }));
+  await vi.advanceTimersByTimeAsync(700);
+  expect(first.location.reload).toHaveBeenCalledOnce();
+  expect(openDocument(first.storage).boot.compatibility).toBe(false);
 });
 
 it("cancels recovery when the app becomes visible and clears the failure marker", () => {

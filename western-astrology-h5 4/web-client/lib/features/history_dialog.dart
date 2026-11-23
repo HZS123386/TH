@@ -64,7 +64,7 @@ class _HistoryDialogState extends State<HistoryDialog> {
     final language = text(object(object(item['input'])['profile'])['language']);
     Navigator.pop(context, true);
     context.go(
-      '/report.html?id=${Uri.encodeComponent(text(item['id']))}&lang=$language${item['access'] == 'full' ? '' : '&checkout=1'}',
+      '/report.html?id=${Uri.encodeComponent(text(item['id']))}&lang=$language',
     );
   }
 
@@ -216,14 +216,7 @@ class _HistoryDialogState extends State<HistoryDialog> {
                               const SizedBox(width: 12),
                               OutlinedButton(
                                 onPressed: () => _open(item),
-                                child: Text(
-                                  c.t(
-                                    'jy',
-                                    item['access'] == 'full'
-                                        ? 'openReport'
-                                        : 'checkout.resume',
-                                  ),
-                                ),
+                                child: Text(c.t('jy', 'openReport')),
                               ),
                             ],
                           ),

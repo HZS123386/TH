@@ -14,7 +14,7 @@ import {additionalLocales,languages} from './src/lib/locales';
 export default {life:lifeCopy,career:careerCopy,western:westernCopy,generation:generationCopy,ui,fortune:fortuneCopy,topics:fortuneTopics,additional:additionalLocales,reading:Object.fromEntries(languages.map(code=>[code,readingCopy(code)]))};`,resolveDir:root},bundle:true,platform:'node',format:'esm',outfile:extracted});
 const copy = (await import(pathToFileURL(extracted).href + '?v=' + Date.now())).default;
 copy.checkout = JSON.parse(await readFile(path.join(root,'src','content','checkout.json'),'utf8'));
-copy.phoneCountries = JSON.parse(await readFile(path.join(root,'src','content','phone-countries.json'),'utf8')).countries;
+copy.purchasePolicies = JSON.parse(await readFile(path.join(root,'src','content','support','index.json'),'utf8')).purchasePolicyLabels;
 copy.experience = JSON.parse(await readFile(path.join(root,'src','content','experience.json'),'utf8'));
 copy.relationship = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','relationship-report.json'),'utf8'));
 copy.marriage = JSON.parse(await readFile(path.join(root,'..','TH','backend','content','marriage-report.json'),'utf8'));
@@ -49,6 +49,24 @@ await mkdir(path.join(target,'assets','fonts'),{recursive:true});
 await cp(path.join(root,'src','content','privacy'),path.join(target,'assets','privacy'),{recursive:true});
 await cp(path.join(root,'src','content','support'),path.join(target,'assets','support'),{recursive:true});
 await writeFile(path.join(target,'assets','copy.json'),JSON.stringify(copy));
+const languages = Object.keys(copy.jy);
+const copyDirectory = path.join(target, 'assets', 'copy');
+await mkdir(copyDirectory, {recursive: true});
+for (const language of languages) {
+  const keepLanguage = group => Object.fromEntries(Object.entries(group).filter(([key, value]) =>
+    key === language || !languages.includes(key) || value === null || typeof value !== 'object'
+  ));
+  const localized = Object.fromEntries(Object.entries(copy).map(([group, value]) =>
+    [group, Array.isArray(value) ? value : keepLanguage(value)]
+  ));
+  localized.topics = copy.topics.map(keepLanguage);
+  localized.jyThemes = Object.fromEntries(Object.entries(copy.jyThemes).map(([group, themes]) =>
+    [group, themes.map(keepLanguage)]
+  ));
+  const name = copy.jy[language].welcome.name;
+  localized.welcomeStrokes = Object.hasOwn(copy.welcomeStrokes, name) ? {[name]: copy.welcomeStrokes[name]} : {};
+  await writeFile(path.join(copyDirectory, language + '.json'), JSON.stringify(localized));
+}
 const fontSubset=JSON.parse(await readFile(path.join(target,'assets','fonts','subsets.json'),'utf8'));
 const supported=new Set([...fontSubset.ui]);
 const dartFiles=(await readdir(path.join(target,'lib'),{recursive:true})).filter(name=>name.endsWith('.dart')&&!name.endsWith('chinese_coverage.dart'));

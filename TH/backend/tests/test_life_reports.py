@@ -86,7 +86,9 @@ def client(postgres_url, monkeypatch):
             raise InvalidBaziReport("synthetic unavailable")
         return self.validate(json.dumps(story_for(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
-    settings = Settings(database_url=postgres_url, app_env="production", providers={"qwen": ProviderConfig("test-key", "https://model.example/v1", "test")}, bazi_reports_per_minute=100, bazi_reports_per_day=100)
+    settings = Settings(database_url=postgres_url, app_env="production", h5_checkout_enabled=True,
+                        providers={"qwen": ProviderConfig("test-key", "https://model.example/v1", "test")},
+                        bazi_reports_per_minute=100, bazi_reports_per_day=100)
     app = create_app(settings)
     app.state.life_report_gate = asyncio.Event()
     parts_writer = app.state.life_reports.parts_writer
@@ -112,7 +114,8 @@ def finish(http, app):
         async with asyncio.timeout(20):
             while True:
                 with app.state.store.connect() as db:
-                    active = db.execute("SELECT 1 FROM life_reports WHERE unlocked=1 AND preview IS NOT NULL "
+                    active = db.execute("SELECT 1 FROM life_reports WHERE (unlocked=1 OR line_confirmed_at IS NOT NULL) "
+                                        "AND preview IS NOT NULL "
                                         "AND full_state IN ('queued','pending','generating') LIMIT 1").fetchone()
                 if not active:
                     return
@@ -1120,6 +1123,7 @@ def test_sunlands_cancelled_request_is_recorded_without_retry(client, monkeypatc
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize("postgres_url", ["20261116_postgres"], indirect=True)
 def test_postgres_import_preserves_sunlands_receipt_and_unlock(tmp_path, postgres_url):
     from contextlib import closing
     import os
@@ -1135,7 +1139,6 @@ def test_postgres_import_preserves_sunlands_receipt_and_unlock(tmp_path, postgre
 
     migration = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     migration.attributes["database_url"] = postgres_url
-    command.downgrade(migration, "20261116_postgres")
     store = Storage(postgres_url)
     gateway = "https://api-prod.sunlands.com"
     receipt = json.dumps({"state": "CREATED", "gateway": gateway, "orderNumber": "LEGACY_ORDER",
@@ -1171,8 +1174,38 @@ def test_postgres_import_preserves_sunlands_receipt_and_unlock(tmp_path, postgre
     assert (old["reference"], old["amount"], old["sunlands_order"], old["provider_order"]) == (
         "000000000017", 3000, receipt, gateway + "/LEGACY_ORDER")
     with store.connect() as db:
-        assert db.execute("SELECT unlocked FROM life_reports WHERE id='report-a'").fetchone()["unlocked"] == 1
+        report = db.execute("SELECT unlocked,claim_code FROM life_reports WHERE id='report-a'").fetchone()
+        assert report["unlocked"] == 1
+        assert 10000 <= report["claim_code"] <= 99999
         assert db.execute("SELECT number FROM life_simulated_payment_sequence").fetchone()["number"] == 17
+
+
+@pytest.mark.parametrize("postgres_url", ["20261119_merge_order_western", "20261120_claim_code"], indirect=True)
+def test_line_migration_accepts_both_branch_heads(postgres_url):
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+    from backend.app.storage import Storage
+
+    store = Storage(postgres_url)
+    with store.connect() as db:
+        before = db.execute("SELECT version_num FROM alembic_version").fetchone()["version_num"]
+        db.execute("INSERT INTO life_reports(id,owner,fingerprint,input,chart,created) "
+                   "VALUES ('existing-report','life:owner','fingerprint','{}','{}',100)")
+        old_code = (db.execute("SELECT claim_code FROM life_reports").fetchone()["claim_code"]
+                    if before == "20261120_claim_code" else None)
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    config.attributes["database_url"] = postgres_url
+    command.upgrade(config, "head")
+    with store.connect() as db:
+        assert db.execute("SELECT version_num FROM alembic_version").fetchall() == [
+            {"version_num": "20261120_merge_line_reports"}
+        ]
+        saved = db.execute("SELECT claim_code,unlocked FROM life_reports WHERE id='existing-report'").fetchone()
+        assert saved["unlocked"] == 0 and 10000 <= saved["claim_code"] <= 99999
+        if old_code is not None:
+            assert saved["claim_code"] == old_code
 
 
 @pytest.mark.parametrize("report_kind", ("life", "fortune"))

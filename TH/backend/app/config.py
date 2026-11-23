@@ -59,6 +59,7 @@ class Settings:
     payso_test_merchant_id: str = ""
     payso_test_api_key: str = field(default="", repr=False)
     payso_test_secret_key: str = field(default="", repr=False)
+    h5_checkout_enabled: bool = False
     sunlands_order_only: bool = False
     sunlands_base_url: str = "https://api-prod.sunlands.com"
     sunlands_app_key: str = "sunlands_fb_fate"
@@ -72,6 +73,8 @@ class Settings:
     support_email: str = ""
     admin_username: str = ""
     admin_password_hash: str = field(default="", repr=False)
+    report_support_username: str = ""
+    report_support_password_hash: str = field(default="", repr=False)
 
     @classmethod
     def from_env(cls):
@@ -126,6 +129,7 @@ class Settings:
             payso_test_merchant_id=os.getenv("PAYSO_TEST_MERCHANT_ID", ""),
             payso_test_api_key=os.getenv("PAYSO_TEST_API_KEY", ""),
             payso_test_secret_key=os.getenv("PAYSO_TEST_SECRET_KEY", ""),
+            h5_checkout_enabled=os.getenv("H5_CHECKOUT_ENABLED", "false").lower() == "true",
             sunlands_order_only=os.getenv("SUNLANDS_ORDER_ONLY", "false").lower() == "true",
             sunlands_base_url=os.getenv("SUNLANDS_BASE_URL", "https://api-prod.sunlands.com"),
             sunlands_app_key=os.getenv("SUNLANDS_APP_KEY", "sunlands_fb_fate"),
@@ -139,4 +143,6 @@ class Settings:
             support_email=os.getenv("FATE_SUPPORT_EMAIL", ""),
             admin_username=os.getenv("ADMIN_USERNAME", ""),
             admin_password_hash=os.getenv("ADMIN_PASSWORD_HASH", ""),
+            report_support_username=os.getenv("REPORT_SUPPORT_USERNAME", ""),
+            report_support_password_hash=os.getenv("REPORT_SUPPORT_PASSWORD_HASH", ""),
         )

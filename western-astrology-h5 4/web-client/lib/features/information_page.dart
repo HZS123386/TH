@@ -12,8 +12,9 @@ import 'privacy_policy.dart';
 import 'support_content.dart';
 
 class InformationPage extends StatefulWidget {
-  const InformationPage({this.support = false, super.key});
+  const InformationPage({this.support = false, this.purchasePolicy, super.key});
   final bool support;
+  final PurchasePolicy? purchasePolicy;
   @override
   State<InformationPage> createState() => _InformationPageState();
 }
@@ -105,7 +106,9 @@ class _InformationPageState extends State<InformationPage> {
   @override
   Widget build(BuildContext context) {
     final h5 = H5Scope.of(context), c = h5.copy;
+    final policy = widget.purchasePolicy;
     return SingleChildScrollView(
+      key: ValueKey((widget.support, policy)),
       child: Column(
         children: [
           const SiteHeader(),
@@ -128,7 +131,9 @@ class _InformationPageState extends State<InformationPage> {
                   ),
                   const SizedBox(height: 17),
                   Text(
-                    c.t('jy', widget.support ? 'supportTitle' : 'privacy'),
+                    policy == null
+                        ? c.t('jy', widget.support ? 'supportTitle' : 'privacy')
+                        : c.t('purchasePolicies', policy.name),
                     style: const TextStyle(
                       fontSize: 27,
                       height: 1.3,
@@ -151,7 +156,7 @@ class _InformationPageState extends State<InformationPage> {
                       ),
                     ]
                   else if (widget.support)
-                    SupportContent(content: _content!)
+                    SupportContent(content: _content!, purchasePolicy: policy)
                   else
                     PrivacyPolicy(policy: _content!),
                   const SizedBox(height: 16),

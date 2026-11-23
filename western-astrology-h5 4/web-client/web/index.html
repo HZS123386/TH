@@ -12,7 +12,6 @@
   <title>FATE</title>
   <template id="fate-engine-preloads">
     <link rel="preload" href="assets/FontManifest.json" as="fetch" fetchpriority="high" crossorigin>
-    <link rel="preload" href="assets/assets/copy.json" as="fetch" fetchpriority="high" crossorigin>
     <!-- FATE_FONT_PRELOADS -->
     <link rel="preload" href="assets/AssetManifest.bin.json" as="fetch" fetchpriority="low" crossorigin>
   </template>
@@ -21,18 +20,19 @@
     const supportedLanguages=['th','en','zh','vi','my','km','lo','ms','id'];
     document.documentElement.lang=supportedLanguages.includes(requestedLanguage)?requestedLanguage:'th';
     document.documentElement.dataset.welcome=String(!/(report|privacy|support)\.html$/.test(location.pathname));
-    function priorityPreload(href, as) {
+    function priorityPreload(href, as, priority = 'high') {
       const link = document.createElement('link');
       link.rel = 'preload';
       link.as = as;
       link.href = href;
       link.crossOrigin = 'anonymous';
-      link.fetchPriority = 'high';
+      link.fetchPriority = priority;
       return link;
     }
     const switchFonts = {zh:'FateChineseUI.otf',my:'NotoSansMyanmar-Regular.ttf',km:'NotoSansKhmer-Regular.ttf',lo:'NotoSansLao-Regular.ttf'};
     const welcomeFonts = {th:'FateWelcomeThai.ttf',zh:'FateWelcomeChinese.otf'};
     const preloadedFonts = new Set();
+    const preloadedCopy = new Set();
     const preloadFateFont = (file, as) => {
       if (!file || preloadedFonts.has(file)) return;
       preloadedFonts.add(file);
@@ -43,11 +43,26 @@
         preloadFateFont(welcomeFonts[language], 'font');
       }
       preloadFateFont(switchFonts[language], 'fetch');
+      if (!preloadedCopy.has(language)) {
+        preloadedCopy.add(language);
+        document.head.append(priorityPreload('assets/assets/copy/' + language + '.json', 'fetch'));
+      }
     };
-    if (document.documentElement.dataset.welcome === 'true') {
-      document.head.append(priorityPreload('assets/assets/images/astrologer-900.webp', 'image'));
+    const fateWelcomePortrait = document.documentElement.dataset.welcome === 'true'
+      ? new Image(1199, 1312)
+      : null;
+    if (fateWelcomePortrait) {
+      Object.assign(fateWelcomePortrait, {
+        id: 'fate-welcome-portrait',
+        alt: '',
+        decoding: 'async',
+        crossOrigin: 'anonymous',
+        fetchPriority: 'high',
+        sizes: 'clamp(min(118vw, 660.8px), 64vh, min(144vw, 806.4px))',
+        srcset: 'assets/assets/images/astrologer-720.webp 720w, assets/assets/images/astrologer-900.webp 900w',
+        src: 'assets/assets/images/astrologer-900.webp',
+      });
     }
-    // The portrait keeps high priority while Flutter's dependencies load in parallel.
     preloadFateLanguage(document.documentElement.lang);
     document.head.append(document.getElementById('fate-engine-preloads').content);
   </script>
@@ -121,7 +136,7 @@
 <body>
   <div id="fate-startup" role="status" aria-live="polite">
     <div id="fate-welcome">
-      <img id="fate-welcome-portrait" width="1199" height="1312" alt="" fetchpriority="high" decoding="async" crossorigin="anonymous">
+      <span id="fate-welcome-portrait-slot"></span>
       <div class="fate-welcome-shade"></div>
       <span class="fate-welcome-star" aria-hidden="true">✦</span>
       <label class="fate-welcome-language">

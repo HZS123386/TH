@@ -9,12 +9,12 @@ import 'repository.dart';
 external JSString _today(JSString zone);
 @JS('fateH5.exportDocument')
 external JSPromise<JSString> _export(JSString payload, JSString format);
-@JS('fateH5.postPayment')
-external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
 @JS('fateH5.welcomeAge')
 external JSNumber _welcomeAge();
+@JS('fateH5.trackViewReadingClick')
+external void _viewReadingClick();
 @JS('fateH5.trackActivity')
 external void _activity(JSString payload, JSString key, JSString endpoint);
 @JS('fateH5.trackFailure')
@@ -45,7 +45,7 @@ class WebBrowserPort implements BrowserPort {
     Future<bool> Function(String) changeLanguage,
     String language,
   ) {
-    final change = (JSString next) =>
+    JSPromise<JSBoolean> change(JSString next) =>
         changeLanguage(next.toDart).then((changed) => changed.toJS).toJS;
     _connectWelcome(enter.toJS, change.toJS, language.toJS);
   }
@@ -84,10 +84,16 @@ class WebBrowserPort implements BrowserPort {
         format.toJS,
       ).toDart).toDart;
   @override
-  void postPayment(String action, Map<String, String> fields) =>
-      _payment(action.toJS, jsonEncode(fields).toJS);
-  @override
   void pageReady(String page) => _ready(page.toJS);
+
+  @override
+  void trackViewReadingClick() {
+    try {
+      _viewReadingClick();
+    } catch (_) {
+      // An older landing page may still be open during a release.
+    }
+  }
 
   @override
   void trackActivity(String page, String action) {

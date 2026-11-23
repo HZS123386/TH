@@ -195,6 +195,12 @@ class TestBrowser implements BrowserPort {
   @override
   Json visitContext() => visit;
   final activities = <Json>[];
+  int viewReadingClicks = 0;
+  @override
+  void trackViewReadingClick() {
+    viewReadingClicks++;
+  }
+
   @override
   void trackActivity(String page, String action) =>
       activities.add({'page': page, 'action': action});
@@ -224,8 +230,6 @@ class TestBrowser implements BrowserPort {
     return 'downloaded';
   }
 
-  @override
-  void postPayment(String action, Map<String, String> fields) {}
   @override
   void pageReady(String page) {}
 }

@@ -115,6 +115,30 @@
             </div>
           </div>
           <div id="page-error" class="error-banner" role="alert" hidden></div>
+          <section id="line-stats" class="panel line-stats" aria-labelledby="line-stats-title" hidden>
+            <div class="data-group-heading">
+              <h2 id="line-stats-title">领取码报告统计</h2>
+              <small class="muted">北京时间 UTC+8</small>
+            </div>
+            <form id="line-range-form" class="line-range-form">
+              <div class="line-range-presets" role="group" aria-label="快捷时间范围">
+                <button class="button" type="button" data-line-range="today">今天</button>
+                <button class="button" type="button" data-line-range="morning">今天中午前</button>
+              </div>
+              <label>开始时间 <input id="line-range-start" type="datetime-local" required /></label>
+              <label>结束时间 <input id="line-range-end" type="datetime-local" required /></label>
+              <button class="button" type="submit">应用</button>
+            </form>
+            <p id="line-range-error" class="error-text" role="alert" hidden></p>
+            <p id="line-applied-range" class="stat-hint"></p>
+            <dl id="line-report-counts" class="line-report-counts" aria-live="polite">
+              <div><dt>首次弹码</dt><dd data-line-count="total">—</dd></div>
+              <div><dt>待确认加好友</dt><dd data-line-count="unconfirmed">—</dd></div>
+              <div><dt>已确认待发</dt><dd data-line-count="pending">—</dd></div>
+              <div><dt>其中已发送</dt><dd data-line-count="sent">—</dd></div>
+            </dl>
+            <p class="stat-hint">每份报告按首次弹码时间计一次，发放状态以当前记录为准。</p>
+          </section>
           <div id="content" aria-live="polite"></div>
           <footer class="page-footer">
             <span>FATE · 每个数字，都能追溯来源</span><span id="updated-at"></span>

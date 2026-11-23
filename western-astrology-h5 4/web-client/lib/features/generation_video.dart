@@ -1,58 +1,21 @@
-import 'dart:async';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+
 import '../ui/jy_components.dart';
 
 /// Poster renderer for environments without an HTML video surface.
-class GenerationVideo extends StatefulWidget {
+class GenerationVideo extends StatelessWidget {
   const GenerationVideo({
     required this.active,
     required this.reduced,
-    required this.onFinished,
-    this.finishing = false,
     super.key,
   });
-  final bool active, reduced, finishing;
-  final VoidCallback onFinished;
-  @override
-  State<GenerationVideo> createState() => _GenerationVideoState();
-}
-
-class _GenerationVideoState extends State<GenerationVideo> {
-  Timer? _timer;
-  @override
-  void initState() {
-    super.initState();
-    _update();
-  }
-
-  @override
-  void didUpdateWidget(covariant GenerationVideo oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.active != widget.active ||
-        oldWidget.finishing != widget.finishing) {
-      _update();
-    }
-  }
-
-  void _update() {
-    _timer?.cancel();
-    if (widget.active && widget.finishing) {
-      _timer = Timer(const Duration(milliseconds: 550), () {
-        if (mounted) widget.onFinished();
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
+  final bool active, reduced;
 
   @override
   Widget build(BuildContext context) =>
-      Opacity(opacity: widget.active ? 1 : 0, child: const GenerationPoster());
+      Opacity(opacity: active ? 1 : 0, child: const GenerationPoster());
 }
 
 class GenerationPoster extends StatelessWidget {

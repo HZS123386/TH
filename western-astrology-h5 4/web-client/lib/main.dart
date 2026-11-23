@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+
 import 'app/controller.dart';
 import 'app/h5_app.dart';
 import 'app/languages.dart';
@@ -23,15 +25,20 @@ Future<void> main() async {
   }
 }
 
-Future<Json> _loadTranslations() async {
+Future<Json> _loadTranslations(String language) async {
   for (var attempt = 0; ; attempt++) {
     try {
       // Do not reuse a failed loadString future from the asset bundle cache.
-      return object(
-        jsonDecode(
-          await rootBundle.loadString('assets/copy.json', cache: false),
-        ),
+      final asset = attempt == 2
+          ? 'assets/copy.json'
+          : 'assets/copy/$language.json';
+      final translations = object(
+        jsonDecode(await rootBundle.loadString(asset, cache: false)),
       );
+      if (object(translations['jy'])[language] is! Map) {
+        throw const FormatException('Missing H5 translations');
+      }
+      return translations;
     } catch (_) {
       if (attempt == 2) rethrow;
       await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
@@ -43,17 +50,19 @@ Future<void> _startApp(WebBrowserPort browser) async {
   usePathUrlStrategy();
   var language = h5Language(browser.startupLanguage);
   final fonts = LanguageFonts();
-  // Both are required before runApp, but neither depends on the other's result.
-  final (translations, _) = await (
-    _loadTranslations(),
-    fonts.ensure(language),
-  ).wait;
-  // The browser picker is active while the engine and first font are loading.
-  var selected = h5Language(browser.startupLanguage);
-  while (selected != language) {
+  late Json translations;
+  while (true) {
+    final (copy, _) = await (
+      _loadTranslations(language),
+      fonts.ensure(language),
+    ).wait;
+    // The browser picker can change the language while the assets load.
+    final selected = h5Language(browser.startupLanguage);
+    if (selected == language) {
+      translations = copy;
+      break;
+    }
     language = selected;
-    await fonts.ensure(language);
-    selected = h5Language(browser.startupLanguage);
   }
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([
@@ -87,6 +96,7 @@ Future<void> _startApp(WebBrowserPort browser) async {
     repository,
     browser,
     language: language,
+    loadTranslations: _loadTranslations,
     ensureFont: fonts.ensure,
     ensureTextFont: fonts.ensureText,
     ensureReportFont: fonts.ensureCommon,

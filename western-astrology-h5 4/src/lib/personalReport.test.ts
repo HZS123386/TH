@@ -28,7 +28,7 @@ function personalFixture(language: typeof languages[number] = "zh", full = false
 it("exports the Thai marriage outline for the authorized edition", () => {
   const report: LifeReport = {
     ...reportFixture({ ...inputFor("zh"), report_kind: "marriage" }),
-    format: "thai-marriage", version: "thai-marriage-1", title: "泰式占星 · 婚姻关系报告",
+    format: "thai-marriage", version: "thai-marriage-1", title: "从出生时刻，揪出感情的搅局者",
     preview: null, chapters: [], plan: null, generation_progress: undefined,
     preview_state: "ready", access: "preview", full_state: "not_started",
     progress: { completed: 0, total: marriageTopicKeys.length },

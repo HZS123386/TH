@@ -5,6 +5,7 @@ import '../features/landing_page.dart';
 import '../features/report_page.dart';
 import '../features/welcome_page.dart';
 import '../features/information_page.dart';
+import '../features/support_content.dart';
 import '../ui/theme.dart';
 import 'controller.dart';
 import 'localizations.dart';
@@ -57,7 +58,11 @@ class _H5AppState extends State<H5App> {
           ),
           GoRoute(
             path: '/support.html',
-            builder: (context, state) => const InformationPage(support: true),
+            builder: (context, state) => InformationPage(
+              support: true,
+              purchasePolicy: PurchasePolicy.values
+                  .asNameMap()[state.uri.queryParameters['policy']],
+            ),
           ),
           GoRoute(
             path: '/report.html',
@@ -65,7 +70,6 @@ class _H5AppState extends State<H5App> {
               key: ValueKey(state.uri.queryParameters['id']),
               h5: widget.controller,
               id: state.uri.queryParameters['id'] ?? '',
-              checkout: state.uri.queryParameters['checkout'] == '1',
             ),
           ),
         ],

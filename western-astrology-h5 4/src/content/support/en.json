@@ -14,11 +14,56 @@
   "sections": [
     {"id": "generation", "title": "What if a report keeps loading or generation fails?", "paragraphs": ["Check your connection, then use Retry or Continue Generation on the page. Saved portions remain available, so retrying does not normally require entering all details again. Cancel Waiting primarily stops the page's wait, not necessarily the background job, and does not delete data. If it still fails, email the error, time and report ID rather than submitting repeatedly."]},
     {"id": "history", "title": "Where can I find an existing report?", "paragraphs": ["Return home and open My Reports, or reopen the original report page. Use the same device, browser and site address where possible. Access relies on a random credential saved by the browser; clearing site data, changing browsers or using private mode can prevent recognition. A report link alone is not access authorisation."]},
-    {"id": "birth-time", "title": "Can I continue without an exact birth time?", "paragraphs": ["Yes. Select that the exact time is unknown. The system uses local 12:00 noon as a calculation reference and limits or marks time-sensitive conclusions. Ascendant, houses and related details may be unavailable or uncertain. Noon is not your verified birth time."]},
+    {"id": "birth-time", "title": "Can I continue without an exact birth time?", "paragraphs": ["You can continue by selecting that you do not remember the exact birth time. Thai marriage reports indicate that the birth time is unknown and limit ascendant, house or timing interpretations that need an exact time. Some Western chart calculations use local noon as a reference."]},
     {"id": "change-details", "title": "What if I entered the wrong birth details?", "paragraphs": ["Check the form on the home page and generate a new report with corrected information. Existing reports reflect their original inputs and do not automatically change when you edit the form later. Select the matching country, province/state and city; use your birthplace rather than your current residence."]},
-    {"id": "unlock", "title": "Will unlocking charge me?", "paragraphs": ["The current version is a test. Displayed amounts are examples, and pressing the payment/unlock control does not make a real charge; it generates and opens the full reading. There is currently no real collection or online refund flow. Any future live checkout must explain the actual price, payment provider and terms before confirmation."]},
+    {"id": "unlock", "title": "Get the full report", "paragraphs": ["The full report is delivered through LINE. Send the five-digit claim code to support so our team can check it and send the PDF in the chat."]},
     {"id": "app", "title": "Why does the APP button not start a download?", "paragraphs": ["The APP is still being tested and downloads are not open. The button only displays a testing notice. It does not download, install or automatically unlock a report. The link and relevant information will be updated when distribution opens."]},
-    {"id": "delete", "title": "How do I delete a report or make a privacy request?", "paragraphs": ["Use Delete on the report or in My Reports. An active generation job may need to finish first. Clearing browser storage does not delete server data. Email this page's contact for further access, correction, deletion or complaints, starting with the report ID and request type. The Privacy Policy explains the scope and cache/backup limitations."]},
-    {"id": "meaning", "title": "Can I rely on the report for a major decision?", "paragraphs": ["The report combines Western astrology calculations and AI language for entertainment and self-exploration. It may be inaccurate or unsuitable and does not guarantee future events. It does not replace medical, legal or financial advice and should not be the sole basis for major employment, borrowing or relationship decisions."]}
-  ]
+    {"id": "delete", "title": "How do I delete a report or make a privacy request?", "paragraphs": ["Use Delete on the report or in My Reports. An active generation job may need to finish first. Clearing browser storage does not delete server data. Email this page's contact for further access, correction, deletion or complaints, starting with the report ID and request type. The Privacy Policy explains the scope and cache/backup limitations.",
+      "Support needs to review existing live orders before the associated reports can be deleted. You can request deletion through the email on this page. We handle transaction records that must be retained according to applicable legal requirements."]},
+    {"id": "meaning", "title": "Can I rely on the report for a major decision?", "paragraphs": ["Reports combine astrology calculations and AI-generated text for entertainment and self-reflection. Interpretations may be inaccurate. Use real-world information and applicable professional advice when making important decisions."]}
+  ],
+  "purchasePolicies": {
+    "terms": [
+      {
+        "title": "Reports and pricing",
+        "paragraphs": [
+          "The full report is delivered through LINE. Send the five-digit claim code to support so our team can check it and send the PDF in the chat."
+        ]
+      },
+      {
+        "title": "Payment and use of the report",
+        "paragraphs": [
+          "The following information applies to previous orders and payments. Delivery is complete when the full report has been generated and you can open it on the website. After successful delivery, we decline routine refunds for a change of mind. Contact support about duplicate charges, an incorrect amount or verified payment without delivery. Any cancellation, refund or other remedy available under applicable law still applies."
+        ]
+      }
+    ],
+    "refund": [
+      {
+        "title": "Refund eligibility",
+        "paragraphs": [
+          "The following information applies to previous orders and payments. Delivery is complete when the full report has been generated and you can open it on the website. After successful delivery, we decline routine refunds for a change of mind. Contact support about duplicate charges, an incorrect amount or verified payment without delivery. Any cancellation, refund or other remedy available under applicable law still applies."
+        ]
+      },
+      {
+        "title": "How to submit a request",
+        "paragraphs": [
+          "When you find an issue, email support promptly with the order or report number, payment time, amount and a description of the problem. You may attach a screenshot with personal and payment credentials redacted. After reviewing the records, support will email the outcome, available refund method and processing timeframe. Statutory refunds are handled within the applicable legal deadlines. In Thailand, you may take an unresolved dispute to the Office of the Consumer Protection Board (OCPB)."
+        ]
+      }
+    ],
+    "delivery": [
+      {
+        "title": "How you receive the report",
+        "paragraphs": [
+          "The full report is delivered through LINE. Send the five-digit claim code to support so our team can check it and send the PDF in the chat. The following information applies to previous orders and payments. After verifying payment, we start generating the full report and show progress on the original report page. Once ready, read it online, save it as PDF or reopen it from My Reports in the original browser. We deliver the report on the website."
+        ]
+      },
+      {
+        "title": "Payment or generation problems",
+        "paragraphs": [
+          "If the report stays locked after you pay, return to the original report page and check payment again. Avoid paying twice. Generation time varies with service and network conditions. If generation fails, retry from the page. If the report remains unavailable, email support with your order or report number so we can check delivery."
+        ]
+      }
+    ]
+  }
 }

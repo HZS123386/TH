@@ -4,6 +4,7 @@ import json
 
 from fontTools import subset
 from fontTools.ttLib import TTFont
+from fontTools.varLib.instancer import instantiateVariableFont
 
 ROOT = Path(__file__).resolve().parents[1]
 FONTS = ROOT / 'web-client/assets/fonts'
@@ -11,6 +12,22 @@ FONTS = ROOT / 'web-client/assets/fonts'
 
 def cjk(code):
     return 0x2E80 <= code <= 0x9FFF or 0xF900 <= code <= 0xFAFF or 0xFF00 <= code <= 0xFFEF or 0x20000 <= code <= 0x323AF
+
+
+def rename_font(font, names):
+    # Preserve copyright/license records and rename the derived font family.
+    for record in font['name'].names:
+        if record.nameID in names:
+            record.string = names[record.nameID].encode(record.getEncoding())
+
+
+def generate_thai_ui_font():
+    source = TTFont(FONTS / 'NotoSansThai.ttf')
+    # The H5 theme uses normal width at several weights. Keep all glyphs and weights.
+    default_width = next(axis.defaultValue for axis in source['fvar'].axes if axis.axisTag == 'wdth')
+    font = instantiateVariableFont(source, {'wdth': default_width})
+    rename_font(font, dict.fromkeys((1, 3, 4, 6, 16), 'FateThaiUI'))
+    font.save(FONTS / 'FateThaiUI.ttf')
 
 
 def generate(source, target, characters, family):
@@ -23,12 +40,9 @@ def generate(source, target, characters, family):
     sub = subset.Subsetter(options=options)
     sub.populate(unicodes=characters & set(font.getBestCmap()))
     sub.subset(font)
-    # Preserve copyright/license records and rename the derived font family.
     names = {1: family, 2: 'Regular', 3: family + '-Regular', 4: family + ' Regular',
              6: family + '-Regular', 16: family, 17: 'Regular'}
-    for record in font['name'].names:
-        if record.nameID in names:
-            record.string = names[record.nameID].encode(record.getEncoding())
+    rename_font(font, names)
     font.save(FONTS / target)
     return set(font.getBestCmap())
 
@@ -45,8 +59,13 @@ def generate_welcome_fonts():
 
 def main():
     generate_welcome_fonts()
+    generate_thai_ui_font()
     ui = set()
-    paths = [ROOT / 'web-client/assets/copy.json', ROOT.parent / 'TH/backend/content/birth-regions.json']
+    paths = [
+        ROOT / 'web-client/assets/copy.json',
+        ROOT / 'src/content/support/index.json',
+        ROOT.parent / 'TH/backend/content/birth-regions.json',
+    ]
     paths += [p for p in (ROOT / 'web-client/lib').rglob('*.dart') if p.name != 'chinese_coverage.dart']
     for path in paths:
         ui.update(map(ord, path.read_text(encoding='utf8')))

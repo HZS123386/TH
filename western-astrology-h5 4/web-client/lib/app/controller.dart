@@ -9,14 +9,16 @@ import 'languages.dart';
 
 class H5Controller extends ChangeNotifier {
   H5Controller(
-    this.translations,
+    Json translations,
     this.repository,
     this.browser, {
     String language = 'th',
+    this.loadTranslations,
     this.ensureFont,
     this.ensureTextFont,
     this.ensureReportFont,
-  }) : _language = h5Language(language) {
+  }) : _language = h5Language(language),
+       _translations = {h5Language(language): translations} {
     repository.language = _language;
     repository.visitContext = browser.visitContext;
     repository.onClientFailure = browser.trackFailure;
@@ -26,7 +28,9 @@ class H5Controller extends ChangeNotifier {
     returningVisitor = browser.readSetting('fate-welcome-seen') == '1';
     browser.writeSetting('fate-welcome-seen', '1');
   }
-  final Json translations;
+  final Map<String, Json> _translations;
+  final Future<Json> Function(String language)? loadTranslations;
+  Json get translations => _translations[_language]!;
   final ReportRepository repository;
   final BrowserPort browser;
   final Future<void> Function(String)? ensureFont;
@@ -247,6 +251,21 @@ class H5Controller extends ChangeNotifier {
   String _language;
   String get language => _language;
   Copy get copy => Copy(translations, language);
+
+  Copy reportCopy(LifeReport report) => Copy(
+    _translations[report.language] ?? translations,
+    report.language,
+  ).forReport(report);
+
+  Future<Json> _copyForLanguage(String language) async {
+    final cached = _translations[language];
+    if (cached != null) return cached;
+    final load = loadTranslations;
+    return _translations[language] = load == null
+        ? translations
+        : await load(language);
+  }
+
   Future<bool> changeLanguage(String language) async {
     if (!h5Languages.any((item) => item.$1 == language)) return false;
     final revision = ++_languageRevision;
@@ -254,7 +273,10 @@ class H5Controller extends ChangeNotifier {
     languageLoading = true;
     notifyListeners();
     try {
-      await ensureFont?.call(language);
+      await (
+        _copyForLanguage(language),
+        ensureFont?.call(language) ?? Future<void>.value(),
+      ).wait;
     } catch (_) {
       if (revision == _languageRevision) {
         languageLoading = false;

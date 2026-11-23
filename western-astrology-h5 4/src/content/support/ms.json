@@ -36,7 +36,7 @@
       "id": "birth-time",
       "title": "Bolehkah saya meneruskan tanpa masa kelahiran yang tepat?",
       "paragraphs": [
-        "Ya. Pilih bahawa masa tepat tidak diketahui. Sistem menggunakan 12:00 tengah hari tempatan sebagai rujukan pengiraan dan mengehadkan atau menandakan kesimpulan yang sensitif terhadap masa. Ascendant, rumah dan butiran berkaitan mungkin tidak tersedia atau tidak pasti. Tengah hari bukanlah masa kelahiran anda yang disahkan."
+        "Anda boleh memilih bahawa waktu lahir tepat tidak diingati. Laporan perkahwinan Thai menandakan waktu lahir sebagai tidak diketahui dan mengehadkan tafsiran asenden, rumah atau tempoh yang memerlukan waktu tepat. Sesetengah pengiraan carta Barat menggunakan tengah hari tempatan sebagai rujukan."
       ]
     },
     {
@@ -48,9 +48,9 @@
     },
     {
       "id": "unlock",
-      "title": "Adakah membuka kunci akan mengenakan caj kepada saya?",
+      "title": "Terima laporan penuh",
       "paragraphs": [
-        "Versi semasa adalah ujian. Jumlah yang dipaparkan adalah contoh, dan menekan kawalan pembayaran/buka kunci tidak membuat caj sebenar; ia menjana dan membuka bacaan penuh. Buat masa ini tiada aliran pengumpulan sebenar atau bayaran balik dalam talian. Sebarang daftar keluar langsung pada masa hadapan mesti menjelaskan harga sebenar, penyedia pembayaran dan terma sebelum pengesahan."
+        "Laporan penuh dihantar melalui LINE. Hantar kod lima digit kepada sokongan untuk semakan dan terima PDF dalam sembang."
       ]
     },
     {
@@ -64,15 +64,60 @@
       "id": "delete",
       "title": "Bagaimana saya memadam laporan atau membuat permintaan privasi?",
       "paragraphs": [
-        "Gunakan Padam pada laporan atau dalam Laporan Saya. Tugas penjanaan aktif mungkin perlu diselesaikan dahulu. Mengosongkan storan pelayar tidak memadam data pelayan. E-mel hubungan halaman ini untuk akses lanjut, pembetulan, pemadaman atau aduan, bermula dengan ID laporan dan jenis permintaan. Dasar Privasi menerangkan skop dan had storan sementara/sandaran."
+        "Gunakan Padam pada laporan atau dalam Laporan Saya. Tugas penjanaan aktif mungkin perlu diselesaikan dahulu. Mengosongkan storan pelayar tidak memadam data pelayan. E-mel hubungan halaman ini untuk akses lanjut, pembetulan, pemadaman atau aduan, bermula dengan ID laporan dan jenis permintaan. Dasar Privasi menerangkan skop dan had storan sementara/sandaran.",
+      "Sokongan perlu menyemak pesanan sebenar sebelum laporan berkaitan boleh dipadamkan. Anda boleh memohon pemadaman melalui e-mel di halaman ini. Rekod transaksi yang mesti disimpan diurus mengikut undang-undang yang terpakai."
       ]
     },
     {
       "id": "meaning",
       "title": "Bolehkah saya mengandalkan laporan untuk keputusan besar?",
       "paragraphs": [
-        "Laporan menggabungkan pengiraan astrologi Barat dan bahasa AI untuk hiburan dan penerokaan kendiri. Ia mungkin tidak tepat atau tidak sesuai dan tidak menjamin peristiwa masa depan. Ia tidak menggantikan nasihat perubatan, undang-undang atau kewangan dan tidak seharusnya menjadi asas tunggal untuk keputusan pekerjaan, pinjaman atau hubungan yang besar."
+        "Laporan menggabungkan pengiraan astrologi dengan teks AI untuk hiburan dan refleksi diri. Tafsiran mungkin tersilap. Pertimbangkan maklumat sebenar dan nasihat profesional yang sesuai ketika membuat keputusan penting."
       ]
     }
-  ]
+  ],
+  "purchasePolicies": {
+    "terms": [
+      {
+        "title": "Laporan dan harga",
+        "paragraphs": [
+          "Laporan penuh dihantar melalui LINE. Hantar kod lima digit kepada sokongan untuk semakan dan terima PDF dalam sembang."
+        ]
+      },
+      {
+        "title": "Bayaran dan penggunaan laporan",
+        "paragraphs": [
+          "Maklumat berikut terpakai kepada pesanan dan bayaran terdahulu. Penyerahan selesai apabila laporan penuh telah dijana dan boleh dibuka di laman web. Selepas penyerahan berjaya, permintaan bayaran balik biasa kerana berubah fikiran tidak diterima. Hubungi sokongan jika caj dikenakan dua kali, amaun tersilap atau bayaran disahkan tetapi laporan tidak dapat diserahkan. Hak pembatalan, bayaran balik dan remedi lain di bawah undang-undang yang terpakai kekal berkuat kuasa."
+        ]
+      }
+    ],
+    "refund": [
+      {
+        "title": "Kelayakan bayaran balik",
+        "paragraphs": [
+          "Maklumat berikut terpakai kepada pesanan dan bayaran terdahulu. Penyerahan selesai apabila laporan penuh telah dijana dan boleh dibuka di laman web. Selepas penyerahan berjaya, permintaan bayaran balik biasa kerana berubah fikiran tidak diterima. Hubungi sokongan jika caj dikenakan dua kali, amaun tersilap atau bayaran disahkan tetapi laporan tidak dapat diserahkan. Hak pembatalan, bayaran balik dan remedi lain di bawah undang-undang yang terpakai kekal berkuat kuasa."
+        ]
+      },
+      {
+        "title": "Cara memohon",
+        "paragraphs": [
+          "Jika terdapat masalah, segera e-melkan nombor pesanan atau laporan, masa bayaran, amaun dan penerangan. Anda boleh melampirkan tangkap layar yang telah menutup butiran peribadi dan maklumat pengesahan bayaran. Selepas semakan, sokongan akan memaklumkan keputusan, kaedah bayaran balik yang boleh digunakan dan tempoh pemprosesan melalui e-mel. Bayaran balik berkanun diproses dalam tempoh yang ditetapkan undang-undang. Di Thailand, pertikaian yang belum selesai boleh dibawa kepada Pejabat Lembaga Perlindungan Pengguna (OCPB)."
+        ]
+      }
+    ],
+    "delivery": [
+      {
+        "title": "Cara menerima laporan",
+        "paragraphs": [
+          "Laporan penuh dihantar melalui LINE. Hantar kod lima digit kepada sokongan untuk semakan dan terima PDF dalam sembang. Maklumat berikut terpakai kepada pesanan dan bayaran terdahulu. Selepas bayaran disahkan, laporan penuh mula dijana dan kemajuan dipaparkan pada halaman laporan asal. Setelah siap, anda boleh membacanya dalam talian, menyimpan sebagai PDF atau membuka semula melalui Laporan Saya dalam pelayar asal. Laporan diserahkan melalui laman web."
+        ]
+      },
+      {
+        "title": "Isu pembayaran atau penjanaan",
+        "paragraphs": [
+          "Jika laporan masih terkunci selepas bayaran, kembali ke halaman laporan asal dan semak bayaran sekali lagi. Elakkan membayar dua kali. Masa penjanaan bergantung pada keadaan perkhidmatan dan rangkaian. Jika penjanaan gagal, cuba lagi dari halaman tersebut. Jika laporan masih tidak dapat dibuka, e-melkan nombor pesanan atau laporan kepada sokongan untuk semakan penyerahan."
+        ]
+      }
+    ]
+  }
 }
