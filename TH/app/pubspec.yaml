@@ -1,0 +1,67 @@
+name: fate_app
+description: FATE Thai-inspired astrology, tarot and companion application.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  go_router: ^18.1.4
+  http: ^1.6.0
+  shared_preferences: ^2.5.6
+  flutter_secure_storage: ^11.2.0
+  in_app_purchase: ^3.3.1
+  in_app_purchase_android: ^0.5.5
+  in_app_purchase_storekit: ^0.4.17
+  sign_in_with_apple: ^8.2.0
+  crypto: ^3.0.8
+  video_player: ^2.14.1
+  cupertino_icons: 2.0.0
+  url_launcher: ^6.3.3
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: 0.14.4
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/images/
+    - assets/images/zodiac/
+    - assets/images/tarot/
+    - assets/tarot/
+    - assets/opening/
+    - assets/calendar/
+    - assets/fonts/OFL.txt
+    - assets/fonts/OFL-CJK.txt
+    - assets/fonts/OFL-Symbols.txt
+  fonts:
+    - family: NotoSansThai
+      fonts:
+        - asset: assets/fonts/NotoSansThai.ttf
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Regular.otf
+    - family: NotoSansSymbols
+      fonts:
+        - asset: assets/fonts/NotoSansSymbols.ttf
+
+flutter_launcher_icons:
+  # After regenerating, keep Xcode Swift asset symbol flags at YES (upstream #634).
+  android: true
+  ios: true
+  image_path: assets/images/fate-app-icon.png
+  adaptive_icon_background: '#130C24'
+  adaptive_icon_foreground: assets/images/fate-app-icon.png
+  adaptive_icon_foreground_inset: 0
+  remove_alpha_ios: true
+  background_color_ios: '#130C24'
+  web:
+    generate: true
+    background_color: '#130C24'
+    theme_color: '#130C24'

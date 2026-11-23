@@ -1,0 +1,333 @@
+{
+  "system": "western_natal",
+  "result_id": "wc_reference_fixture",
+  "status": "complete",
+  "input_precision": "exact_time",
+  "engine_version": "roxy-api-v2",
+  "ruleset_version": "fate-western-tropical-placidus-1",
+  "provider": "RoxyAPI",
+  "facts": [
+    {
+      "fact_id": "p_sun",
+      "kind": "planet",
+      "value": {
+        "key": "sun",
+        "longitude": 25.28904915617966,
+        "retrograde": false,
+        "house": 12
+      }
+    },
+    {
+      "fact_id": "p_moon",
+      "kind": "planet",
+      "value": {
+        "key": "moon",
+        "longitude": 176.46142970482703,
+        "retrograde": false,
+        "house": 5
+      }
+    },
+    {
+      "fact_id": "p_mercury",
+      "kind": "planet",
+      "value": {
+        "key": "mercury",
+        "longitude": 0.12718326229841095,
+        "retrograde": false,
+        "house": 11
+      }
+    },
+    {
+      "fact_id": "p_venus",
+      "kind": "planet",
+      "value": {
+        "key": "venus",
+        "longitude": 9.502758318426691,
+        "retrograde": false,
+        "house": 12
+      }
+    },
+    {
+      "fact_id": "p_mars",
+      "kind": "planet",
+      "value": {
+        "key": "mars",
+        "longitude": 343.8896752732477,
+        "retrograde": false,
+        "house": 11
+      }
+    },
+    {
+      "fact_id": "p_jupiter",
+      "kind": "planet",
+      "value": {
+        "key": "jupiter",
+        "longitude": 155.01555620484132,
+        "retrograde": true,
+        "house": 4
+      }
+    },
+    {
+      "fact_id": "p_saturn",
+      "kind": "planet",
+      "value": {
+        "key": "saturn",
+        "longitude": 316.98132118532294,
+        "retrograde": false,
+        "house": 10
+      }
+    },
+    {
+      "fact_id": "p_uranus",
+      "kind": "planet",
+      "value": {
+        "key": "uranus",
+        "longitude": 287.99577023291494,
+        "retrograde": false,
+        "house": 9
+      }
+    },
+    {
+      "fact_id": "p_neptune",
+      "kind": "planet",
+      "value": {
+        "key": "neptune",
+        "longitude": 288.94949821642626,
+        "retrograde": false,
+        "house": 9
+      }
+    },
+    {
+      "fact_id": "p_pluto",
+      "kind": "planet",
+      "value": {
+        "key": "pluto",
+        "longitude": 232.2911883086899,
+        "retrograde": true,
+        "house": 7
+      }
+    },
+    {
+      "fact_id": "ascendant",
+      "kind": "ascendant",
+      "value": {
+        "longitude": 44.17440479780523
+      }
+    },
+    {
+      "fact_id": "midheaven",
+      "kind": "midheaven",
+      "value": {
+        "longitude": 305.3052328703024
+      }
+    },
+    {
+      "fact_id": "h_1",
+      "kind": "house",
+      "value": {
+        "number": 1,
+        "longitude": 44.17440479780523
+      }
+    },
+    {
+      "fact_id": "h_2",
+      "kind": "house",
+      "value": {
+        "number": 2,
+        "longitude": 72.94900893109897
+      }
+    },
+    {
+      "fact_id": "h_3",
+      "kind": "house",
+      "value": {
+        "number": 3,
+        "longitude": 98.8814618646752
+      }
+    },
+    {
+      "fact_id": "h_4",
+      "kind": "house",
+      "value": {
+        "number": 4,
+        "longitude": 125.3052328703024
+      }
+    },
+    {
+      "fact_id": "h_5",
+      "kind": "house",
+      "value": {
+        "number": 5,
+        "longitude": 155.03124613606133
+      }
+    },
+    {
+      "fact_id": "h_6",
+      "kind": "house",
+      "value": {
+        "number": 6,
+        "longitude": 188.97529955609963
+      }
+    },
+    {
+      "fact_id": "h_7",
+      "kind": "house",
+      "value": {
+        "number": 7,
+        "longitude": 224.17440479780524
+      }
+    },
+    {
+      "fact_id": "h_8",
+      "kind": "house",
+      "value": {
+        "number": 8,
+        "longitude": 252.94900893109897
+      }
+    },
+    {
+      "fact_id": "h_9",
+      "kind": "house",
+      "value": {
+        "number": 9,
+        "longitude": 278.8814618646752
+      }
+    },
+    {
+      "fact_id": "h_10",
+      "kind": "house",
+      "value": {
+        "number": 10,
+        "longitude": 305.3052328703024
+      }
+    },
+    {
+      "fact_id": "h_11",
+      "kind": "house",
+      "value": {
+        "number": 11,
+        "longitude": 335.0312461360613
+      }
+    },
+    {
+      "fact_id": "h_12",
+      "kind": "house",
+      "value": {
+        "number": 12,
+        "longitude": 8.975299556099639
+      }
+    },
+    {
+      "fact_id": "a_uranus_neptune_conjunction",
+      "kind": "aspect",
+      "value": {
+        "from": "uranus",
+        "to": "neptune",
+        "angle": 0,
+        "orb": 0.9537279835113281,
+        "type": "conjunction",
+        "applying": true
+      }
+    },
+    {
+      "fact_id": "a_moon_mercury_opposition",
+      "kind": "aspect",
+      "value": {
+        "from": "moon",
+        "to": "mercury",
+        "angle": 180,
+        "orb": 3.6657535574713904,
+        "type": "opposition",
+        "applying": true
+      }
+    },
+    {
+      "fact_id": "a_neptune_pluto_sextile",
+      "kind": "aspect",
+      "value": {
+        "from": "neptune",
+        "to": "pluto",
+        "angle": 60,
+        "orb": 3.341690092263633,
+        "type": "sextile",
+        "applying": true
+      }
+    },
+    {
+      "fact_id": "a_mars_uranus_sextile",
+      "kind": "aspect",
+      "value": {
+        "from": "mars",
+        "to": "uranus",
+        "angle": 60,
+        "orb": 4.106094959667246,
+        "type": "sextile",
+        "applying": true
+      }
+    },
+    {
+      "fact_id": "a_moon_pluto_sextile",
+      "kind": "aspect",
+      "value": {
+        "from": "moon",
+        "to": "pluto",
+        "angle": 60,
+        "orb": 4.170241396137129,
+        "type": "sextile",
+        "applying": false
+      }
+    },
+    {
+      "fact_id": "a_uranus_pluto_sextile",
+      "kind": "aspect",
+      "value": {
+        "from": "uranus",
+        "to": "pluto",
+        "angle": 60,
+        "orb": 4.295418075774961,
+        "type": "sextile",
+        "applying": true
+      }
+    },
+    {
+      "fact_id": "a_saturn_pluto_square",
+      "kind": "aspect",
+      "value": {
+        "from": "saturn",
+        "to": "pluto",
+        "angle": 90,
+        "orb": 5.309867123366956,
+        "type": "square",
+        "applying": true
+      }
+    },
+    {
+      "fact_id": "a_mars_neptune_sextile",
+      "kind": "aspect",
+      "value": {
+        "from": "mars",
+        "to": "neptune",
+        "angle": 60,
+        "orb": 5.059822943178574,
+        "type": "sextile",
+        "applying": true
+      }
+    }
+  ],
+  "missing_fields": [],
+  "rules": {
+    "zodiac": "tropical",
+    "house_system": "placidus",
+    "node_type": "true",
+    "aspects": {
+      "CONJUNCTION": 0,
+      "SEXTILE": 60,
+      "SQUARE": 90,
+      "TRINE": 120,
+      "OPPOSITION": 180
+    },
+    "max_orb": 6,
+    "assumed_local_time": null
+  },
+  "source": "https://roxyapi.com/docs/guides/astrology"
+}
