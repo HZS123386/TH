@@ -192,6 +192,7 @@ const errors = {
 };
 const verifiedOrdersRoute = 'orders?time_basis=verified';
 const lineSentRoute = 'line-contacts?delivery=sent';
+const firstReportsRoute = 'reports?report_scope=first';
 const lineSentTitle = '已登记发送';
 const reportEditionNames = { preview: '免费报告', full: '完整报告' };
 const loadReportRuntime = () => import('/thai-landing/runtime/report-pdf.js').catch(() => {
@@ -202,6 +203,7 @@ const state = {
   session: null,
   view: 'overview',
   timeBasis: 'created',
+  firstReportsOnly: false,
   days: 30,
   page: 1,
   q: '',
@@ -292,10 +294,13 @@ function navigate(view, { refresh = false } = {}) {
   state.timeBasis = view === verifiedOrdersRoute ? 'verified' : 'created';
   if (state.timeBasis === 'verified') view = 'orders';
   const showSent = view === lineSentRoute;
+  const firstReportsOnly = view === firstReportsRoute;
   if (showSent) view = 'line-contacts';
+  if (firstReportsOnly) view = 'reports';
   if (!views[view]) view = 'overview';
   if (state.session?.role === 'report_support') view = 'line-contacts';
   state.view = view;
+  state.firstReportsOnly = view === 'reports' && firstReportsOnly;
   state.page = 1;
   state.q = '';
   state.status = '';
@@ -338,9 +343,11 @@ function lineRangeValues() {
   };
 }
 const lineEpoch = (value) => Date.parse(value + '+08:00') / 1000;
-function renderLineCounts(counts) {
+function renderLineCounts(reportCounts, visitorCounts) {
   $('#line-report-counts').querySelectorAll('[data-line-count]').forEach((element) => {
-    element.textContent = counts ? number(counts[element.dataset.lineCount]) + ' 份' : '—';
+    const deduplicated = element.hasAttribute('data-line-dedup');
+    const count = (deduplicated ? visitorCounts : reportCounts)?.[element.dataset.lineCount];
+    element.textContent = count == null ? '—' : `${number(count)} ${deduplicated ? '人' : '份'}`;
   });
 }
 async function loadView({ refresh = false } = {}) {
@@ -349,9 +356,12 @@ async function loadView({ refresh = false } = {}) {
     view = state.view,
     days = state.days;
   nav();
-  $('#page-title').textContent = views[view][0];
-  $('#breadcrumb-title').textContent = views[view][0];
-  $('#page-description').textContent = views[view][1];
+  const [title, description] = state.firstReportsOnly
+    ? ['报告创建去重明细', '每位浏览器访客只显示首份报告，按首次创建时间筛选。']
+    : views[view];
+  $('#page-title').textContent = title;
+  $('#breadcrumb-title').textContent = title;
+  $('#page-description').textContent = description;
   const lineRange = view === 'line-contacts' ? lineRangeValues() : null;
   $('#line-stats').hidden = !lineRange;
   if (lineRange) {
@@ -402,13 +412,14 @@ async function loadView({ refresh = false } = {}) {
             category: state.category,
             case_status: state.caseStatus,
             time_basis: state.timeBasis,
+            report_scope: state.firstReportsOnly ? 'first' : 'all',
           }),
       );
     if (revision !== state.revision || !state.session) return;
     if (view === 'overview') renderOverview(data.items);
     else if (view === 'sources') renderSources(data.items);
     else if (view === 'line-contacts') {
-      renderLineCounts(data.report_counts);
+      renderLineCounts(data.report_counts, data.first_contact_visitor_counts);
       renderLineContacts(data);
     }
     else {
@@ -584,6 +595,10 @@ function renderOverview(reports) {
       '按报告创建日期统计', `已解锁 ${number(m.unlocked)} 份`, 'reports',
     ],
     [
+      'visits', '报告创建（去重）', m.first_report_creators == null ? null : number(m.first_report_creators), '人',
+      '按首次创建报告的时间统计', '同一浏览器访客只计一次', firstReportsRoute,
+    ],
+    [
       'reports', lineSentTitle, number(m.line_sent), '份',
       '按发送登记时间筛选，每份报告计一次', '查看 LINE 发放明细', lineSentRoute,
     ],
@@ -604,7 +619,7 @@ function renderOverview(reports) {
     `<section aria-labelledby="overview-metrics-title">
       <div class="data-group-heading"><h2 id="overview-metrics-title">关键指标</h2><a href="#sources">统计口径 ↗</a></div>
       <div class="stats-grid">${cards.map(([symbol, title, value, unit, description, foot, view]) => `
-        <section class="stat-card">
+        <section class="stat-card${view === firstReportsRoute ? ' stat-card-linked' : ''}">
           <div class="stat-top"><h3>${title}</h3><span class="stat-icon">${icon(symbol)}</span></div>
           <div class="stat-value">${value ?? '—'}${value == null ? '' : `<span class="unit">${unit}</span>`}</div>
           <p class="stat-hint">${description}</p>
@@ -659,9 +674,12 @@ function renderRecords(data) {
   const note = verified
     ? '只查看正式渠道核验到账的订单，按核验时间筛选。历史缺核验时间的订单可在全部记录中查看。'
     : notes[kind];
-  const orderTimeLink = kind === 'orders'
-    ? `<a href="#${verified ? 'orders' : verifiedOrdersRoute}">${verified ? '按建单时间' : '按核验时间'} ↗</a> `
-    : '';
+  let recordsViewLink = '';
+  if (state.firstReportsOnly) {
+    recordsViewLink = '<a href="#reports">查看全部报告 ↗</a> ';
+  } else if (kind === 'orders') {
+    recordsViewLink = `<a href="#${verified ? 'orders' : verifiedOrdersRoute}">${verified ? '按建单时间' : '按核验时间'} ↗</a> `;
+  }
   const sources = [...data.source_options];
   const selectedSource = state.source === '__untagged' ? '' : state.source;
   if (state.source && !sources.includes(selectedSource)) sources.push(selectedSource);
@@ -707,7 +725,7 @@ function renderRecords(data) {
   };
   const pages = Math.max(1, Math.ceil(data.total / data.page_size));
   $('#content').innerHTML =
-    `<p class="data-note">${esc(note)} ${orderTimeLink}<a href="#sources">查看来源 ↗</a></p><section class="panel table-panel${kind === 'visits' ? ' visit-records' : ''}"><form id="filters" class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search-input" aria-label="搜索记录" placeholder="搜索访客编号、报告、订单号或关键词…" value="${esc(state.q)}" maxlength="100"></div><select id="status-filter" aria-label="状态筛选"><option value="">全部状态</option>${data.facets.map((row) => `<option value="${esc(row.status)}" ${row.status === state.status ? 'selected' : ''}>${esc(label(row.status))} (${row.count})</option>`).join('')}</select>${kind !== 'audit' ? `<select id="source-filter" aria-label="来源筛选"><option value="">全部来源</option>${sources.map((source) => `<option value="${esc(source || '__untagged')}" ${(source || '__untagged') === state.source ? 'selected' : ''}>${esc(source || '未标记 / 未归因')}</option>`).join('')}</select>` : ''}<button class="button" type="submit">查询</button><button class="button" id="clear-filters" type="button">重置</button><button id="export" type="button" class="button export">↓ 导出当前页</button></form><div class="summary-line"><span>筛选结果 <strong>${number(data.total)}</strong> ${recordUnits[kind]}</span>${kind === 'issues' ? '<span>模型尝试与当前业务异常分别标注</span>' : ''}</div>${kind === 'reports' ? reportTable(data.items) : data.items.length ? table(headers[kind], data.items.map(renderRow)) : empty('没有符合条件的记录')}<div class="table-footer"><span>每页 ${data.page_size} 条</span><div class="pagination"><button id="previous-page" class="button" ${state.page <= 1 ? 'disabled' : ''}>上一页</button><span>${state.page} / ${pages}</span><button id="next-page" class="button" ${state.page >= pages ? 'disabled' : ''}>下一页</button></div></div></section>`;
+    `<p class="data-note">${esc(note)} ${recordsViewLink}<a href="#sources">查看来源 ↗</a></p><section class="panel table-panel${kind === 'visits' ? ' visit-records' : ''}"><form id="filters" class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search-input" aria-label="搜索记录" placeholder="搜索访客编号、报告、订单号或关键词…" value="${esc(state.q)}" maxlength="100"></div><select id="status-filter" aria-label="状态筛选"><option value="">全部状态</option>${data.facets.map((row) => `<option value="${esc(row.status)}" ${row.status === state.status ? 'selected' : ''}>${esc(label(row.status))} (${row.count})</option>`).join('')}</select>${kind !== 'audit' ? `<select id="source-filter" aria-label="来源筛选"><option value="">全部来源</option>${sources.map((source) => `<option value="${esc(source || '__untagged')}" ${(source || '__untagged') === state.source ? 'selected' : ''}>${esc(source || '未标记 / 未归因')}</option>`).join('')}</select>` : ''}<button class="button" type="submit">查询</button><button class="button" id="clear-filters" type="button">重置</button><button id="export" type="button" class="button export">↓ 导出当前页</button></form><div class="summary-line"><span>筛选结果 <strong>${number(data.total)}</strong> ${recordUnits[kind]}</span>${kind === 'issues' ? '<span>模型尝试与当前业务异常分别标注</span>' : ''}</div>${kind === 'reports' ? reportTable(data.items) : data.items.length ? table(headers[kind], data.items.map(renderRow)) : empty('没有符合条件的记录')}<div class="table-footer"><span>每页 ${data.page_size} 条</span><div class="pagination"><button id="previous-page" class="button" ${state.page <= 1 ? 'disabled' : ''}>上一页</button><span>${state.page} / ${pages}</span><button id="next-page" class="button" ${state.page >= pages ? 'disabled' : ''}>下一页</button></div></div></section>`;
   if (kind === 'issues')
     $('#status-filter').insertAdjacentHTML(
       'afterend',
