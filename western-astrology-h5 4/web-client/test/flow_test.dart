@@ -899,7 +899,7 @@ void main() {
       expect(copied, '57248');
       await tester.runAsync(() async {
         await precacheImage(
-          const AssetImage('assets/images/line-contact-qr.jpg'),
+          const AssetImage('assets/images/line-contact-qr-956ed148.jpg'),
           tester.element(contact),
         );
       });
@@ -916,7 +916,7 @@ void main() {
         hasLength(1),
       );
       await click(tester, find.text(h5.copy.t('jy', 'lineContact.open')));
-      expect(browser.openedPages, ['https://line.me/ti/p/TrGGcMWmuV']);
+      expect(browser.openedPages, ['https://line.me/ti/p/SmujXXCH9v']);
       await click(
         tester,
         find.descendant(
