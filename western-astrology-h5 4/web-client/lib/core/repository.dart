@@ -53,6 +53,9 @@ class ApiFailure implements Exception {
 }
 
 class ReportRepository {
+  static const _reportReadTimeout = Duration(seconds: 15);
+  static const _marriagePreviewWait = Duration(seconds: 60);
+
   ReportRepository(this.store, {http.Client? client, this.baseUrl = ''})
     : client = client ?? http.Client();
   final DeviceStore store;
@@ -180,6 +183,7 @@ class ReportRepository {
     String id,
     CancelToken token, {
     bool waitForPreview = false,
+    Duration timeout = _reportReadTimeout,
   }) async {
     if (!RegExp(r'^[A-Za-z0-9_-]{8,128}$').hasMatch(id)) {
       throw const ApiFailure('missing');
@@ -188,7 +192,7 @@ class ReportRepository {
       await request(
         '/api/life-reports/$id${waitForPreview ? '?wait_preview=true' : ''}',
         token,
-        timeout: const Duration(seconds: 15),
+        timeout: timeout,
       ),
       id: id,
     );
@@ -204,6 +208,7 @@ class ReportRepository {
       '/api/life-reports?wait=false',
       token,
       body: {...input, if (visit.isNotEmpty) 'landing_visit': visit},
+      timeout: input['report_kind'] == 'marriage' ? _reportReadTimeout : null,
     );
     return _wait(initial, input, token, false, progress);
   }
@@ -260,6 +265,7 @@ class ReportRepository {
     String? id,
   }) async {
     var failures = 0;
+    final elapsed = Stopwatch()..start();
     const interval = Duration(seconds: 2);
     var previousReadSeconds = interval.inSeconds;
     while (true) {
@@ -283,6 +289,14 @@ class ReportRepository {
       if (!(full ? report.fullInProgress : report.previewInProgress)) {
         throw ApiFailure('${full ? 'states' : 'previewStates'}.$state');
       }
+      Duration limited(Duration duration) {
+        if (full || !report.marriageReport) return duration;
+        final remaining = _marriagePreviewWait - elapsed.elapsed;
+        if (remaining <= Duration.zero) {
+          throw const ApiFailure('previewStates.unavailable');
+        }
+        return duration < remaining ? duration : remaining;
+      }
       // Count the server's wait toward the polling budget.
       var delay = full
           ? interval
@@ -293,10 +307,16 @@ class ReportRepository {
               ),
             );
       while (true) {
-        await token.pause(delay);
+        await token.pause(limited(delay));
+        final timeout = limited(_reportReadTimeout);
         try {
           final started = Stopwatch()..start();
-          value = (await load(id, token, waitForPreview: !full)).json;
+          value = (await load(
+            id,
+            token,
+            waitForPreview: !full,
+            timeout: timeout,
+          )).json;
           previousReadSeconds = started.elapsed.inSeconds;
           failures = 0;
           break;

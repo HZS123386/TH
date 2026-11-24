@@ -67,8 +67,13 @@ class MarriagePreview(MarriageDraft):
     @model_validator(mode="before")
     @classmethod
     def bind_preview_evidence(cls, draft, info: ValidationInfo):
-        # Some fields have exactly one possible citation, which the writer need not return.
         if isinstance(draft, dict) and info.context:
+            # The input citation map is server-owned, even if a writer echoes it.
+            draft.pop("field_sources", None)
+            current = draft.get("current")
+            if not info.context["birth_time_known"] and isinstance(current, dict):
+                current.setdefault("state", "observe")
+            # Single-factor citations are also filled from the server's evidence.
             for key, identifiers in info.context["allowed_evidence"].items():
                 if len(identifiers) == 1 and isinstance(draft.get(key), dict):
                     draft[key].setdefault("evidence_ids", identifiers)
@@ -231,7 +236,10 @@ def bind_preview_schema(bundle, contract):
                 minItems=1, maxItems=2, items={"type": "string", "enum": identifiers},
             )
         if key == "current":
-            properties["state"]["enum"] = preview_states(bundle)
+            if bundle["birth_time_known"]:
+                properties["state"]["enum"] = preview_states(bundle)
+            else:
+                properties.pop("state")
         point["required"] = list(properties)
         contract["properties"][key] = point
 
@@ -257,22 +265,29 @@ def bind_full_schema(bundle, contract):
 
 
 def preview_prompt(bundle):
+    current_instruction = (
+        "For current.state, copy exactly one of the three codes in current_states. Use reset to address lingering issues, "
+        "old_pattern when a familiar pattern could recur, or ready_to_assess for a window to assess compatibility. "
+        "Base both the code and its text on the same cited recent positions. "
+        if bundle["birth_time_known"]
+        else "The app sets current.state to observe. Give an observable check and infer no personal timing. "
+    )
     prompt = (
         f"Write {bundle['writing_version']}, a free Thai Suriyayatra marriage preview. "
         "Sign indexes are zero-based, Aries through Pisces. H7 is partnership. "
-        "Return one JSON object with the supplied language and reading and the six field_sources fields. "
-        "Each field has text. A single source ID binds that field and needs no evidence_ids in the response. "
+        "Return one JSON object with exactly language, reading, needs, reaction, trap, current, attracts and drains. "
+        "Use field_sources as an input lookup for evidence. Keep it and all other inputs out of the output. "
+        "Each of the six reading points has text. A single source ID binds that point and needs no evidence_ids in the response. "
         "For a list, cite one or two distinct IDs from that field in evidence_ids. "
-        "Also return current.state from current_states. Use only the supplied facts. "
+        f"{current_instruction}Use only the supplied facts. "
         "The app adds exact chart placements and dates to the prose. Use short, direct second-person statements "
         "without technical terms, dates, rhetorical questions or assumed real events, partners or outcomes. "
         "needs: open with the main mistake in how the reader tries to get a relationship need met. "
         "Name the need in everyday words, based on the bound Ascendant or Sun. "
         "reaction: say what the reader does when unsure and what the other person sees or hears as a result. "
         "trap: describe one distinct pattern the reader can recognize and say where it leaves the relationship. "
-        "current.state is the verdict based on the cited recent positions. In current.text give the one concrete "
+        "In current.text give the one concrete "
         "condition for taking someone seriously, changing the pattern, or holding back. The app prints the verdict first. "
-        "When the available state is observe, give an observable check and infer no personal timing. "
         "attracts: describe an observable quality that draws them in. "
         "drains: show the behavior that costs them time or effort. "
         "Give each point a distinct idea in one or two sentences, around 30–72 Chinese characters "
@@ -379,11 +394,16 @@ def validate(raw, bundle, validate_text, validate_distinct):
             errors = {(item["loc"][0],): item["msg"] for item in issues}
             raise repair_failure(errors) from None
         paths = [".".join(map(str, item["loc"])) for item in issues[:8]]
-        raise InvalidBaziReport("Marriage report is missing or has malformed fields: " + ", ".join(paths)) from None
+        failure = InvalidBaziReport("Marriage report is missing or has malformed fields: " + ", ".join(paths))
+        if stage == "marriage_preview" and all(item["loc"] and item["loc"][0] in keys for item in issues):
+            failure.repair_fields = {item["loc"][0]: [item["loc"][0]] for item in issues}
+        raise failure from None
     if record.language != bundle["language"] or record.reading != bundle["reading"] or record.translations:
         raise InvalidBaziReport("Use the requested marriage report stage and language")
     if isinstance(record, MarriagePreview) and (record.current.state == "observe") == bundle["birth_time_known"]:
-        raise InvalidBaziReport("Match the current relationship state to the birth-time precision")
+        failure = InvalidBaziReport("Match the current relationship state to the birth-time precision")
+        failure.repair_fields = {"current": ["current"]}
+        raise failure
     points, errors = {}, {}
     for key in keys:
         point = getattr(record, key)

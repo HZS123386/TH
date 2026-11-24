@@ -17,9 +17,13 @@ class GenerationState extends ChangeNotifier {
   String phase = 'preview', error = '';
   LifeReport? report;
   bool complete = false;
-  void retry() {
+  void retry({bool resetProgress = false}) {
     error = '';
     complete = false;
+    if (resetProgress) {
+      percent = 0;
+      phase = 'preview';
+    }
     notifyListeners();
   }
 
@@ -370,6 +374,10 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     report = state.report,
                                     input = widget.input ?? report?.input ?? {};
                                 final complete = state.complete;
+                                final marriagePreview =
+                                    !widget.full &&
+                                    (report?.marriageReport == true ||
+                                        input['report_kind'] == 'marriage');
                                 final marriageFailed =
                                     widget.full &&
                                     report?.marriageFullFailed == true &&
@@ -390,7 +398,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     ? 'interpretation.queued'
                                     : state.phase == 'calculating'
                                     ? 'interpretation.preparing'
-                                    : state.percent >= 99
+                                    : state.percent >= (marriagePreview ? 85 : 99)
                                     ? 'interpretation.validating'
                                     : state.percent == 0
                                     ? report == null
@@ -568,7 +576,9 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                             ),
                                           ),
                                           const SizedBox(height: 10),
-                                          if (!marriageFailed)
+                                          if (!marriageFailed &&
+                                              !(marriagePreview &&
+                                                  state.error.isNotEmpty))
                                             ReadingProgress(
                                               percent: state.percent,
                                               reduced: _reduced || complete,

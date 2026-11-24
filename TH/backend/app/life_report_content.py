@@ -1295,10 +1295,10 @@ class LifeWriter(BaziReports):
     def read_timeout(self):
         return 60 if self.provider == "openai" else 25
 
-    async def generate(self, bundle, owner, network):
+    async def generate(self, bundle, owner, network, *, deadline=None):
         fallback = self.fallback_writer
         if not fallback or not fallback.enabled:
-            return await super().generate(bundle, owner, network)
+            return await super().generate(bundle, owner, network, deadline=deadline)
         primary_called = False
         if not self.config or not self.config.enabled:
             result = {"state": "unconfigured", "failure_code": "model_unconfigured"}
@@ -1306,7 +1306,7 @@ class LifeWriter(BaziReports):
             result = {"state": "unavailable", "failure_code": self.availability["failure_code"]}
         else:
             primary_called = True
-            result = await super().generate(bundle, owner, network)
+            result = await super().generate(bundle, owner, network, deadline=deadline)
         failure = result.get("failure_code", "")
         service_failure = failure in {"model_unconfigured", "model_connection", "model_timeout", "model_overloaded", "model_rate_limit", "model_quota_exhausted"} or failure.startswith("upstream_status_")
         if result["state"] != "unconfigured" and not (result["state"] == "unavailable" and service_failure):
@@ -1318,7 +1318,7 @@ class LifeWriter(BaziReports):
         # A failed primary attempt already admitted this logical request; fallback cache hits stay free.
         token = _fallback_admitted.set(primary_called)
         try:
-            replacement = await fallback.generate(bundle, owner, network)
+            replacement = await fallback.generate(bundle, owner, network, deadline=deadline)
         finally:
             _fallback_admitted.reset(token)
         return {**replacement, "fallback_from": self.provider}

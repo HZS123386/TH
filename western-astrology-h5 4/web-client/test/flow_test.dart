@@ -1062,6 +1062,46 @@ void main() {
     },
   );
 
+  testWidgets('failed free marriage report hides draft progress and can retry', (
+    tester,
+  ) async {
+    phone(tester);
+    final browser = TestBrowser();
+    final h5 = H5Controller(
+      translations(),
+      ReportRepository(browser),
+      browser,
+      language: 'zh',
+    );
+    final report = LifeReport.parse(marriageFixture());
+    final state = GenerationState()..update(report, 85, 'preview');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GenerationDialog(
+          h5: h5,
+          state: state,
+          full: false,
+          onCancel: () {},
+          onRetry: () => state.retry(resetProgress: true),
+          onComplete: (_) {},
+        ),
+      ),
+    );
+    expect(find.text(h5.copy.t('jy', 'interpretation.validating')), findsOneWidget);
+    expect(find.byType(ReadingProgress), findsOneWidget);
+
+    state.fail('免费解读暂未生成成功。');
+    await tester.pump();
+    expect(find.byType(ReadingProgress), findsNothing);
+    await click(tester, find.text(h5.copy.t('jy', 'interpretation.retryFree')));
+    expect(state.percent, 0);
+    expect(state.error, isEmpty);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    state.dispose();
+    h5.dispose();
+  });
+
   for (final (wait, full) in [
     (Duration.zero, false),
     (const Duration(seconds: 20), false),

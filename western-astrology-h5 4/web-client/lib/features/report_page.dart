@@ -163,7 +163,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       _generationRequest?.cancel();
       final token = CancelToken();
       _generationRequest = token;
-      state.retry();
+      state.retry(resetProgress: !full);
       final first = attempts++ == 0;
       widget.h5.trackActivity(page, first ? 'generate' : 'retry_generation');
       try {

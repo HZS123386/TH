@@ -219,7 +219,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       _request?.cancel();
       final token = CancelToken();
       _request = token;
-      state.retry();
+      state.retry(resetProgress: true);
       h5.trackActivity(
         'generating_preview',
         attempts++ == 0 ? 'generate' : 'retry_generation',

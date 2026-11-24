@@ -363,7 +363,7 @@ class BaziReports:
             # The original validator still checks the merged report.
             model_input["writing_rules"] = payload["messages"][0]["content"]
             repair_input = {**correction, "feedback": "Repair every listed field using the error and original evidence. Use the requested language and length."}
-            if bundle.get("stage") in ("chapter", "marriage_full"):
+            if bundle.get("stage") in ("chapter", "marriage_preview", "marriage_full"):
                 # Hide rejected values so the model writes them afresh from the valid neighboring fields.
                 draft = replace_report_fields(json.loads(correction["draft"]), repair_fields, dict.fromkeys(repair_fields))
                 repair_input["draft"] = json.dumps(draft, ensure_ascii=False)
@@ -545,7 +545,7 @@ class BaziReports:
                                     duration_ms=round((time.monotonic() - started) * 1000))
 
 
-    async def generate(self, bundle, owner, network):
+    async def generate(self, bundle, owner, network, *, deadline=None):
         if not self.enabled:
             return {"state": "unconfigured"}
         if len(json.dumps(bundle, ensure_ascii=False).encode()) > 64000:
@@ -559,7 +559,10 @@ class BaziReports:
         if task is None:
             if len(self.inflight) >= 32:
                 return {"state": "pending"}
-            task = asyncio.create_task(self._generate(key, bundle, owner, network))
+            operation = self._generate(key, bundle, owner, network)
+            if deadline is not None:
+                operation = asyncio.wait_for(operation, deadline - asyncio.get_running_loop().time())
+            task = asyncio.create_task(operation)
             self.inflight[key] = task
             task.add_done_callback(lambda completed: (self.inflight.pop(key, None), completed.exception() if not completed.cancelled() else None))
         return deepcopy(await asyncio.shield(task))
