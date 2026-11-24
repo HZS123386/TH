@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1187,6 +1188,77 @@ void main() {
       expect(route.queryParameters, containsPair('startup', '1'));
       expect(find.text(h5.copy.t('jy', 'formTitle')), findsOneWidget);
       expect(find.text(h5.copy.t('jy', 'formCaption')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
+    },
+  );
+
+  testWidgets(
+    'birth wheels clamp leap days and convert AM/PM to 24-hour time',
+    (tester) async {
+      phone(tester);
+      final browser = TestBrowser();
+      final h5 =
+          H5Controller(
+              translations(),
+              ReportRepository(browser),
+              browser,
+              language: 'zh',
+            )
+            ..landingInput = {
+              'profile': {'birth_date': '2000-02-29', 'birth_time': '12:15'},
+            }
+            ..enterLanding();
+      await tester.pumpWidget(
+        H5App(controller: h5, initialLocation: '/?lang=zh'),
+      );
+      await tester.pumpAndSettle();
+      final date = find.byKey(const ValueKey('birth-date'));
+      final time = find.byKey(const ValueKey('birth-time'));
+      final wheels = find.byType(CupertinoPicker);
+      final confirm = find.widgetWithText(
+        FilledButton,
+        h5.copy.t('ui', 'confirm'),
+      );
+
+      await click(tester, date);
+      expect(wheels, findsNWidgets(3));
+      await tester.timedDrag(
+        wheels.first,
+        const Offset(0, -54),
+        const Duration(milliseconds: 600),
+      );
+      await tester.pumpAndSettle();
+      await click(tester, confirm);
+      expect(
+        find.descendant(of: date, matching: find.text('2001年2月28日')),
+        findsOneWidget,
+      );
+
+      await click(tester, time);
+      expect(wheels, findsNWidgets(3));
+      final am = find.descendant(of: wheels.last, matching: find.text('上午'));
+      await tester.tap(am);
+      await tester.pumpAndSettle();
+      await click(tester, confirm);
+      expect(
+        find.descendant(of: time, matching: find.text('00:15')),
+        findsOneWidget,
+      );
+
+      await click(tester, time);
+      final pm = find.descendant(of: wheels.last, matching: find.text('下午'));
+      await tester.tap(pm);
+      await tester.pumpAndSettle();
+      await click(
+        tester,
+        find.widgetWithText(TextButton, h5.copy.t('ui', 'close')),
+      );
+      expect(
+        find.descendant(of: time, matching: find.text('00:15')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();

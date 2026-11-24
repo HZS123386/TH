@@ -108,18 +108,15 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   Future<void> _timePicker(H5Controller h5) async {
     final current = _time.split(':');
     h5.trackActivity('birth_form', 'select_birth_time');
-    final value = await showTimePicker(
-      context: context,
-      initialTime: current.length == 2
+    final value = await chooseBirthTime(
+      context,
+      h5.copy,
+      current.length == 2
           ? TimeOfDay(
               hour: int.parse(current[0]),
               minute: int.parse(current[1]),
             )
           : const TimeOfDay(hour: 7, minute: 15),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child!,
-      ),
     );
     if (!mounted) return;
     if (value != null) {
