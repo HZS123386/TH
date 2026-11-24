@@ -1,4 +1,5 @@
 """Structure, evidence and writing rules for the Thai marriage report."""
+import asyncio
 from copy import deepcopy
 from datetime import date, timedelta
 import json
@@ -9,7 +10,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, model_validator
 
 from . import thai
-from .bazi_reports import InvalidBaziReport
+from .bazi_reports import InvalidBaziReport, preview_review_deadline_context
 from .schemas import ThaiReadingInput
 from .thai_readings import copy_for, grounding
 
@@ -101,10 +102,18 @@ class MarriagePreview(MarriageDraft):
             current = draft.get("current")
             if not info.context["birth_time_known"] and isinstance(current, dict):
                 current.setdefault("state", "observe")
-            # Single-factor citations are also filled from the server's evidence.
             for key, identifiers in info.context["allowed_evidence"].items():
-                if len(identifiers) == 1 and isinstance(draft.get(key), dict):
-                    draft[key].setdefault("evidence_ids", identifiers)
+                point = draft.get(key)
+                if not isinstance(point, dict):
+                    continue
+                citations = point.get("evidence_ids")
+                # Normalize the representation without changing which facts the draft cites.
+                if isinstance(citations, str) and citations.strip() in identifiers:
+                    point["evidence_ids"] = [citations.strip()]
+                elif isinstance(citations, list) and all(isinstance(item, str) for item in citations):
+                    point["evidence_ids"] = list(dict.fromkeys(item.strip() for item in citations))
+                if len(identifiers) == 1 and point.get("evidence_ids") in (None, []):
+                    point["evidence_ids"] = identifiers
         return draft
 
 
@@ -444,7 +453,8 @@ def validate(raw, bundle, validate_text, validate_distinct):
         failure = InvalidBaziReport("Match the current relationship state to the birth-time precision")
         failure.repair_fields = {"current": ["current"]}
         raise failure
-    points, errors = {}, {}
+    review_deadline = preview_review_deadline_context.get() if preview else None
+    points, errors, editorial_errors = {}, {}, {}
     for key in keys:
         point = getattr(record, key)
         identifiers = set(point.evidence_ids)
@@ -459,13 +469,25 @@ def validate(raw, bundle, validate_text, validate_distinct):
             validate_text(point.text, record.language, narrative=True)
         except InvalidBaziReport as error:
             # Language diagnostics should not feed the rejected words back into the rewrite.
-            errors[(key, "text")] = "language" if getattr(error, "rule", "") == "language" else str(error)
+            rule = getattr(error, "rule", "")
+            issues = editorial_errors if review_deadline is not None and rule == "text_too_long" else errors
+            issues[(key, "text")] = "language" if rule == "language" else str(error)
         points[key] = point.text
     if errors:
         raise repair_failure(errors, preview=preview)
-    validate_distinct(points, record.language, shared_limit=34 if record.language == "zh" else 96,
-                      previous_points=bundle.get("free_reading", {}).values(), repair_text=True)
-    return record.model_dump()
+    story = record.model_dump()
+    if review_deadline is not None and asyncio.get_running_loop().time() >= review_deadline:
+        return story
+    try:
+        if editorial_errors:
+            raise repair_failure(editorial_errors, preview=True)
+        validate_distinct(points, record.language, shared_limit=34 if record.language == "zh" else 96,
+                          previous_points=bundle.get("free_reading", {}).values(), repair_text=True)
+    except InvalidBaziReport as error:
+        if review_deadline is not None:
+            error.readable_preview = story
+        raise
+    return story
 
 
 def public_sections(record, chart, profile, explain, *, full=False):

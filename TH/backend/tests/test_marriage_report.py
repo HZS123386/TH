@@ -11,7 +11,7 @@ import httpx
 import pytest
 
 from backend.app import marriage_report, thai
-from backend.app.bazi_reports import InvalidBaziReport
+from backend.app.bazi_reports import InvalidBaziReport, preview_review_deadline_context
 from backend.app.config import ProviderConfig
 from backend.app.life_report_content import LifeWriter
 from backend.app.life_reports import LifeInput, LifeReports
@@ -52,11 +52,15 @@ def test_marriage_preview_contract(known):
     }
     draft = {"language": "zh", "reading": "marriage-preview", "field_sources": {"needs": "fake_source"}}
     draft.update({key: {"text": text} for key, text in FREE_TEXT.items()})
+    draft["attracts"]["evidence_ids"] = " source_attracts "
+    draft["drains"]["evidence_ids"] = ["source_drains", "source_drains"]
     if known:
         draft["current"]["state"] = "ready_to_assess"
     result = LifeWriter.validate(json.dumps(draft, ensure_ascii=False), bundle)
     assert result["current"]["state"] == ("ready_to_assess" if known else "observe")
     assert result["needs"]["evidence_ids"] == allowed["needs"]
+    assert result["attracts"]["evidence_ids"] == allowed["attracts"]
+    assert result["drains"]["evidence_ids"] == allowed["drains"]
     assert "field_sources" not in result
 
     draft["current"]["state"] = "observe" if known else "ready_to_assess"
@@ -108,6 +112,61 @@ def test_marriage_preview_deadline_cancels_the_writer(monkeypatch, available_slo
     asyncio.run(generate_preview())
     assert finished == [("writer-lease", None)]
     assert failed == [("test-report", "test-lease")]
+
+
+def test_marriage_preview_uses_readable_draft_at_review_deadline(monkeypatch):
+    draft = {"language": "zh", "reading": "marriage-preview"}
+    draft.update({key: {"text": value} for key, value in FREE_TEXT.items()})
+    draft["reaction"]["text"] = draft["needs"]["text"]
+    bundle = {"stage": "marriage_preview", "language": "zh", "reading": "marriage-preview",
+              "birth_time_known": False, "allowed_evidence": {key: ["source"] for key in FREE_TEXT},
+              "required_evidence": {}}
+    raw = json.dumps(draft, ensure_ascii=False)
+    writes, saved = [], []
+
+    async def generate():
+        writer = LifeWriter(None, settings("postgresql://localhost/fate_test_preview"), asyncio.Semaphore(1))
+        stopped = asyncio.Event()
+
+        async def write(bundle, *, correction=None):
+            writes.append(correction)
+            if correction is None:
+                try:
+                    return writer.validate(raw, bundle)
+                except InvalidBaziReport as error:
+                    error.candidate = raw
+                    raise
+            try:
+                await asyncio.Event().wait()
+            finally:
+                stopped.set()
+
+        monkeypatch.setattr(writer, "prompt", lambda bundle: "Test preview")
+        monkeypatch.setattr(writer, "claim", lambda key, owner, network: ("claimed", None, "writer-lease"))
+        monkeypatch.setattr(writer, "finish", lambda key, lease, story=None: saved.append(story))
+        monkeypatch.setattr(writer, "write", write)
+        # Keep the real 15-second service setting and exercise the code with a short deadline.
+        loop = asyncio.get_running_loop()
+        token = preview_review_deadline_context.set(loop.time() + 0.12)
+        try:
+            result = await asyncio.wait_for(writer.generate(bundle, "owner", "network"), timeout=1)
+            assert result["state"] == "ready"
+            assert result["story"]["reaction"]["text"] == FREE_TEXT["needs"]
+            assert stopped.is_set() and len(writes) == 2
+            assert saved == [result["story"]]
+            assert writer.validate(raw, bundle) == result["story"]
+
+            draft["reaction"]["text"] = "This is an English paragraph in a Chinese free report."
+            with pytest.raises(InvalidBaziReport, match="language"):
+                writer.validate(json.dumps(draft, ensure_ascii=False), bundle)
+            draft["reaction"]["text"] = FREE_TEXT["needs"]
+            draft["reaction"]["evidence_ids"] = ["invented"]
+            with pytest.raises(InvalidBaziReport, match="supplied evidence"):
+                writer.validate(json.dumps(draft, ensure_ascii=False), bundle)
+        finally:
+            preview_review_deadline_context.reset(token)
+
+    asyncio.run(generate())
 
 
 FULL_TEXT = {
@@ -427,6 +486,8 @@ def test_thai_marriage_preview_recovers_leaked_field_names(postgres_url, monkeyp
             draft["needs"]["text"] = "needs " + THAI_FREE_TEXT["needs"]
             draft["attracts"]["text"] = "**Attracts**： " + THAI_FREE_TEXT["attracts"] + " [evidence_ids]"
             draft["drains"]["text"] = THAI_FREE_TEXT["drains"] + " (drains)"
+            draft["attracts"]["evidence_ids"] = context["field_sources"]["attracts"][0]
+            draft["drains"]["evidence_ids"] *= 2
             if mixed:
                 draft["attracts"]["text"] = "คุณมัก attracts คนที่ฟังเรื่องของคุณจนจบและถามให้เข้าใจ"
                 draft["drains"]["text"] = "คนที่รอให้คุณ reschedule ทุกครั้งทำให้คุณเสียเวลา"
@@ -440,7 +501,7 @@ def test_thai_marriage_preview_recovers_leaked_field_names(postgres_url, monkeyp
             ]
             retained = json.loads(correction["draft"])
             assert retained["attracts"]["text"] is None and retained["drains"]["text"] is None
-            assert retained["attracts"]["evidence_ids"] == calls[0]["field_sources"]["attracts"][:1]
+            assert retained["attracts"]["evidence_ids"] == calls[0]["field_sources"]["attracts"][0]
             assert "reschedule" not in json.dumps(correction)
             draft = {"1": THAI_FREE_TEXT["attracts"], "2": THAI_FREE_TEXT["drains"]}
         return httpx.Response(200, json={

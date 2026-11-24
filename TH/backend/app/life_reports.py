@@ -20,7 +20,7 @@ from pydantic import Field, model_validator
 
 from . import marriage_report, thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, FORECAST_VERSION, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
-from .bazi_reports import report_progress_context, report_usage_context
+from .bazi_reports import preview_review_deadline_context, report_progress_context, report_usage_context
 from .roxy import RoxyError
 from .landing_features import VisitInput, record_submission, record_visit
 from .life_card_payments import CARD_AMOUNT, SIMULATED_AMOUNT, SIMULATED_MERCHANT, SUNLANDS_AMOUNT, LifeCardPayments
@@ -229,6 +229,7 @@ class LifeReports:
     full_concurrency = 10
     lease_seconds = 180
     marriage_preview_timeout = 45
+    marriage_preview_review_seconds = 15
     heartbeat_seconds = 30
 
     def __init__(self, store, settings, model_slots, calculation_slots):
@@ -559,6 +560,11 @@ class LifeReports:
         four_questions = western(chart)
         is_marriage = body.report_kind == "marriage"
         last_progress = 0
+        review_deadline = None
+        if is_marriage:
+            queued = max(0, time.time() - row["created"]) if chart.get("status") == "queued" else 0
+            review_deadline = asyncio.get_running_loop().time() + max(0, self.marriage_preview_review_seconds - queued)
+        review_token = preview_review_deadline_context.set(review_deadline)
 
         def record_preview(raw):
             nonlocal last_progress
@@ -625,6 +631,7 @@ class LifeReports:
         finally:
             heartbeat.cancel()
             await asyncio.gather(heartbeat, return_exceptions=True)
+            preview_review_deadline_context.reset(review_token)
             report_progress_context.reset(progress_token)
             report_usage_context.reset(usage_token)
 
