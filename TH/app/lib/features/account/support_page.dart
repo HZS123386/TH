@@ -1,44 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../app/dependencies.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
-
-Future<void> openServiceLink(
-  BuildContext context,
-  Uri uri, {
-  bool appInformation = false,
-}) async {
-  final s = AppLocalizations.of(context);
-  final target = appInformation && kIsWeb
-      ? uri.replace(queryParameters: {...uri.queryParameters, 'from': 'app'})
-      : uri;
-  final mode = appInformation && !kIsWeb
-      ? LaunchMode.inAppBrowserView
-      : LaunchMode.externalApplication;
-  try {
-    if (await launchUrl(target, mode: mode)) return;
-  } catch (_) {
-    /* Leave a readable copy option if no external handler exists. */
-  }
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(s.openFailed),
-      action: SnackBarAction(
-        label: uri.scheme == 'mailto' ? s.copyAddress : s.copyLink,
-        onPressed: () => Clipboard.setData(
-          ClipboardData(
-            text: uri.scheme == 'mailto' ? uri.path : uri.toString(),
-          ),
-        ),
-      ),
-    ),
-  );
-}
+import 'app_information_page.dart';
 
 class SupportPage extends StatefulWidget {
   const SupportPage({super.key});

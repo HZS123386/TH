@@ -602,6 +602,9 @@ class _AppShell extends StatelessWidget {
                               onPressed: () {
                                 if (thaiChartResult) {
                                   context.go('/home');
+                                } else if (path == '/privacy' ||
+                                    path == '/support') {
+                                  context.go('/more');
                                 } else if (context.canPop()) {
                                   context.pop();
                                 } else {

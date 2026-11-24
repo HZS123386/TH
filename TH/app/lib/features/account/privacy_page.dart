@@ -5,7 +5,7 @@ import '../../core/storage/session_store.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
 import '../chart/chart_view_model.dart';
-import 'support_page.dart';
+import 'app_information_page.dart';
 
 Future<bool> requestCompanionConsent(BuildContext context) async {
   final d = DependencyScope.of(context), s = AppLocalizations.of(context);

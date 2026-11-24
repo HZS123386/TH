@@ -1141,8 +1141,16 @@ void main() {
       await tester.tap(timeQuestion);
       await tester.pumpAndSettle();
       expect(find.text(s.unknownTime), findsOneWidget);
-      router.go('/more');
+      final privacy = find.widgetWithText(TextButton, s.privacyCenter);
+      await tester.ensureVisible(privacy);
       await tester.pumpAndSettle();
+      await tester.tap(privacy);
+      await tester.pumpAndSettle();
+      expect(find.text(s.thaiPrivacyInputBody), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/more');
+      expect(find.widgetWithText(ListTile, s.supportTitle), findsOneWidget);
       await tester.tap(find.widgetWithText(ListTile, s.language));
       await tester.pumpAndSettle();
       expect(find.byType(SimpleDialog), findsOneWidget);
