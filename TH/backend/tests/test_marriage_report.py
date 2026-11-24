@@ -29,6 +29,15 @@ FREE_TEXT = {
     "drains": "只在方便时出现的人会消耗你。他们接受你的照顾，却很少为见面腾出时间。",
 }
 
+THAI_FREE_TEXT = {
+    "needs": "คุณอยากรู้ว่าอีกฝ่ายตั้งใจคบกันจริงแค่ไหน คำตอบที่ชัดช่วยให้คุณวางใจและใช้เวลาร่วมกันได้สบายขึ้น",
+    "reaction": "เมื่ออีกฝ่ายพูดคลุมเครือ คุณจะถามซ้ำเพื่อให้แน่ใจ พอถามแล้วได้คำตอบเหมือนเดิม คุณมักหยุดชวนคุย",
+    "trap": "คนที่คุยกับคุณทุกวันแต่เลื่อนนัดบ่อยทำให้ความสัมพันธ์ค้างอยู่ที่การส่งข้อความ ลองดูว่าเขาเสนอวันพบกันใหม่เองไหม",
+    "current": "ลองตกลงเวลาสั้น ๆ ที่ทั้งคู่สะดวก แล้วดูว่าอีกฝ่ายทำตามที่รับปากหรือแจ้งให้รู้ทันทีเมื่อแผนเปลี่ยน",
+    "attracts": "คุณมักดึงดูดคนที่ฟังเรื่องของคุณจนจบ เขาจะถามให้เข้าใจก่อนค่อยเล่าเรื่องของตัวเอง",
+    "drains": "คนที่ปล่อยให้คุณจัดการนัดทุกครั้งทำให้คุณเสียเวลา โดยเฉพาะเมื่อเขารอจนถึงเวลานัดจึงบอกว่ามาไม่ได้",
+}
+
 
 @pytest.mark.parametrize("known", [False, True])
 def test_marriage_preview_contract(known):
@@ -342,7 +351,8 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
 def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch, known):
     requests = []
     client_class = httpx.AsyncClient
-    field = "current" if known else "needs"
+    path = ["current"] if known else ["needs", "text"]
+    field = "current" if known else "1"
 
     def respond(request):
         assert str(request.url) == "https://preview-model.example/v1/chat/completions"
@@ -368,9 +378,10 @@ def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch, known
         else:
             assert requests == ["life_marriage_preview", "life_marriage_preview_repair"]
             assert set(contract["schema"]["properties"]) == {field}
-            assert context["correction"]["fields"] == {field: [field]}
-            assert json.loads(context["correction"]["draft"])[field] is None
-            draft = {field: {"text": FREE_TEXT[field]}}
+            assert context["correction"]["fields"] == {field: path}
+            rejected = json.loads(context["correction"]["draft"])
+            assert (rejected["current"] if known else rejected["needs"]["text"]) is None
+            draft = {field: {"text": FREE_TEXT["current"]} if known else FREE_TEXT["needs"]}
             if known:
                 assert contract["schema"]["properties"][field]["properties"]["state"]["enum"] == list(marriage_report.STATES[:3])
                 draft[field].update(state="ready_to_assess", evidence_ids=context["field_sources"]["current"][:1])
@@ -393,6 +404,63 @@ def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch, known
         assert requests == ["life_marriage_preview", "life_marriage_preview_repair"]
         assert report["marriage"]["preview"][1]["paragraphs"][0].endswith(FREE_TEXT["needs"])
         assert report["marriage"]["full"] is None
+
+
+@pytest.mark.parametrize("mixed", [False, True])
+def test_thai_marriage_preview_recovers_leaked_field_names(postgres_url, monkeypatch, mixed):
+    calls = []
+    client_class = httpx.AsyncClient
+
+    def respond(request):
+        payload = json.loads(request.content)
+        assert payload["response_format"] == {"type": "json_object"}
+        context = json.loads(payload["messages"][1]["content"])
+        calls.append(context)
+        if len(calls) == 1:
+            draft = {"language": "th", "reading": "marriage-preview"}
+            for key, text in THAI_FREE_TEXT.items():
+                sources = context["field_sources"][key]
+                draft[key] = {"text": text}
+                if isinstance(sources, list):
+                    draft[key]["evidence_ids"] = sources[:1]
+            draft["current"]["state"] = "ready_to_assess"
+            draft["needs"]["text"] = "needs " + THAI_FREE_TEXT["needs"]
+            draft["attracts"]["text"] = "**Attracts**： " + THAI_FREE_TEXT["attracts"] + " [evidence_ids]"
+            draft["drains"]["text"] = THAI_FREE_TEXT["drains"] + " (drains)"
+            if mixed:
+                draft["attracts"]["text"] = "คุณมัก attracts คนที่ฟังเรื่องของคุณจนจบและถามให้เข้าใจ"
+                draft["drains"]["text"] = "คนที่รอให้คุณ reschedule ทุกครั้งทำให้คุณเสียเวลา"
+        else:
+            assert len(calls) == 2 and mixed
+            correction = context["correction"]
+            assert correction["fields"] == {"1": ["attracts", "text"], "2": ["drains", "text"]}
+            assert correction["field_errors"] == [
+                {"field": "attracts.text", "rule": "language"},
+                {"field": "drains.text", "rule": "language"},
+            ]
+            retained = json.loads(correction["draft"])
+            assert retained["attracts"]["text"] is None and retained["drains"]["text"] is None
+            assert retained["attracts"]["evidence_ids"] == calls[0]["field_sources"]["attracts"][:1]
+            assert "reschedule" not in json.dumps(correction)
+            draft = {"1": THAI_FREE_TEXT["attracts"], "2": THAI_FREE_TEXT["drains"]}
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": json.dumps(draft, ensure_ascii=False)}, "finish_reason": "stop"}],
+        })
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: client_class(transport=httpx.MockTransport(respond), **kwargs))
+    config = replace(settings(postgres_url), fortune_provider="deepseek",
+                     providers={"deepseek": ProviderConfig("test-key", "https://preview-model.example/v1", "test-model")})
+    with TestClient(create_app(config)) as client:
+        response = client.post("/api/life-reports", headers=HEADERS, json={
+            "report_kind": "marriage", "profile": {**PROFILE, "language": "th"}, "year": 2026,
+        })
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["preview_state"] == "ready"
+        assert len(calls) == (2 if mixed else 1)
+        sections = result["marriage"]["preview"]
+        assert sections[1]["paragraphs"][0].endswith(THAI_FREE_TEXT["needs"])
+        assert sections[3]["paragraphs"] == [THAI_FREE_TEXT["attracts"], THAI_FREE_TEXT["drains"]]
 
 
 def test_paid_marriage_repairs_failed_fields_after_an_incomplete_reply(postgres_url, monkeypatch):

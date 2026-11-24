@@ -367,6 +367,12 @@ class BaziReports:
                 # Hide rejected values so the model writes them afresh from the valid neighboring fields.
                 draft = replace_report_fields(json.loads(correction["draft"]), repair_fields, dict.fromkeys(repair_fields))
                 repair_input["draft"] = json.dumps(draft, ensure_ascii=False)
+            if bundle.get("stage") == "marriage_preview":
+                repair_input["feedback"] = (
+                    "Follow correction.fields to identify the paragraph for each response key. Write complete sentences "
+                    "in the requested language. Keep headings, field names, state codes and evidence IDs out of the text. "
+                    "Use the assigned evidence and preserve citations for text-only replacements."
+                )
             if bundle.get("stage") == "marriage_full":
                 repair_input["feedback"] = (
                     "Write each requested replacement from scratch. Put only ordinary situations, actions and consequences in text. "
