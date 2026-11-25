@@ -1,0 +1,20 @@
+# BEGIN FATE Spread tarot site
+fatespread.top {
+    encode zstd gzip
+
+    @tarotApi path /api/tarot/readings /api/tarot/status
+    handle @tarotApi {
+        header Cache-Control "no-store"
+        reverse_proxy astro-life-report:8000
+    }
+
+    handle {
+        root * /data/fatespread-site/current
+        header {
+            Cache-Control "no-cache"
+            X-Content-Type-Options nosniff
+        }
+        file_server
+    }
+}
+# END FATE Spread tarot site

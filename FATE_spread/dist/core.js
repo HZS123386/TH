@@ -1,4 +1,4 @@
-/* Local demo only: no computed prediction, payment provider or backend. */
+/* Spread matching, local card selection and report identity. */
 (function(root){
   const spreads={
     single:{

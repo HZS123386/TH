@@ -2,6 +2,16 @@
 !/.gitignore
 !/AGENTS.md
 !/FATE_spread/
+!/TH/
+/TH/*
+!/TH/backend/
+/TH/backend/*
+!/TH/backend/app/
+/TH/backend/app/*
+!/TH/backend/app/tarot_readings.py
+!/TH/backend/tests/
+/TH/backend/tests/*
+!/TH/backend/tests/test_tarot_readings.py
 
 **/.env
 **/.env.*

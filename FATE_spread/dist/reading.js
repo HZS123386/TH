@@ -401,5 +401,79 @@
       teasers:teasers.map((item,i)=>({...item,questions:(chapterQuestions[theme] || chapterQuestions.general)[i].map(L)})), deep
     };
   }
-  window.TarotReading = Object.freeze({build});
+  function validRoxy(story, report, language) {
+    const text = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 1000;
+    return story?.source === 'roxy' && story.language === language
+      && [story.headline, story.summary, story.next_step].every(text)
+      && Array.isArray(story.cards) && story.cards.length === report.cards.length
+      && story.cards.every((card, index) => card?.id === report.cards[index].id
+        && card.reversed === report.cards[index].reversed
+        && [card.keyword, card.meaning, card.interpretation].every(text));
+  }
+
+  async function request(report, language, controller) {
+    const timeout = window.setTimeout(() => controller.abort(), 58000);
+    try {
+      const response = await fetch('/api/tarot/readings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept-Language': language},
+        signal: controller.signal,
+        body: JSON.stringify({
+          question: report.question,
+          spread_id: report.spreadId,
+          topic: report.topic,
+          cards: report.cards.map(({id, reversed}) => ({id, reversed})),
+          language
+        })
+      });
+      if (!response.ok) throw new Error(response.status === 429 ? 'reading_limit' : 'reading_unavailable');
+      const story = await response.json();
+      if (!validRoxy(story, report, language)) throw new Error('reading_unavailable');
+      return story;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
+  function fromRoxy(report, story, language) {
+    if (!validRoxy(story, report, language)) return null;
+    const L = value => value[language];
+    const t = (zh, th) => language === 'th' ? th : zh;
+    const positions = window.TarotCore.spreads[report.spreadId].positions;
+    const cardReadings = story.cards.map((card, index) => ({
+      position: L(positions[index]),
+      keyword: card.keyword,
+      meaning: card.meaning,
+      base: card.meaning,
+      lens: card.interpretation
+    }));
+    const dimensions = cardReadings.map((card, index) => {
+      const selected = report.cards[index];
+      const name = window.TAROT_CONTENT.cards.find(item => item.id === selected.id).name;
+      const orientation = selected.reversed ? t('逆位', 'กลับหัว') : t('正位', 'ตั้งตรง');
+      return {
+        label: card.position, title: card.keyword, text: card.lens,
+        evidence: ['Roxy', L(name), orientation, card.keyword].join(' · ')
+      };
+    });
+    const action = {title: t('可以先做的一步', 'ก้าวแรกที่ลองทำได้'), text: story.next_step};
+    const chapters = [
+      {title: t('找出真正的卡点', 'มองให้เห็นสิ่งที่ติดขัด'),
+        text: t('结合原问题和牌位，梳理眼前的顾虑。', 'เชื่อมคำถามกับตำแหน่งไพ่เพื่อทบทวนสิ่งที่กังวล')},
+      {title: t('看看有哪些机会', 'มองหาโอกาสที่เป็นไปได้'),
+        text: t('从你能观察到的变化，寻找值得尝试的方向。', 'สังเกตความเปลี่ยนแปลงจริงเพื่อหาแนวทางที่น่าลอง')},
+      {title: t('把建议落到行动', 'นำคำแนะนำไปลองใช้'),
+        text: t('根据这次牌阵，整理适合你的行动建议。', 'ใช้ผังไพ่ครั้งนี้คิดถึงขั้นตอนที่เหมาะกับคุณ')}
+    ];
+    const questions = chapterQuestions[report.topic] || chapterQuestions.general;
+    return {
+      headline: story.headline, summary: story.summary, overallIntro: story.summary,
+      freeTitle: t('牌面给你的提示', 'มุมมองที่ไพ่ชวนให้เห็น'),
+      cardReadings, dimensions, action,
+      teasers: chapters.map((chapter, index) => ({...chapter, questions: questions[index].map(L)})),
+      deep: {sections: [], plan: []}
+    };
+  }
+
+  window.TarotReading = Object.freeze({build, request, fromRoxy, validRoxy});
 })();
