@@ -1,0 +1,12 @@
+月下牌语 / Moonlit Cards
+Original piano composition and arrangement for FATE Tarot, 2026-11-25.
+66 BPM; 4/4; 32 bars. New melody and accompaniment; no reference audio is mixed in.
+
+Piano samples: VSCO 2 Community Edition — Upright Piano.
+Recorded by Simon Dalzell / Ivy Audio, Winter 2015–16.
+Published by Versilian Studios LLC. License: CC0 1.0.
+https://versilian-studios.com/vsco-community/
+https://github.com/sgossner/VSCO-2-CE/tree/master/Keys/Upright%20Piano
+https://github.com/sgossner/VSCO-2-CE/blob/master/LICENSE
+Processing: nearest-note resampling (at most two semitones), original note sequencing, note envelopes, stereo placement, original room response, conservative gain, looping decay.
+The broad tonal/tempo character of the user-supplied reference informed the new composition; its recording and melody were not reused.
