@@ -16,6 +16,7 @@ from .thai_readings import copy_for, grounding
 
 FORMAT = "thai-marriage"
 PREVIEW_VERSION = "thai-marriage-11"
+PREVIEW_SCHEMA_FAILURE = "marriage_preview_schema"
 FULL_VERSION = "thai-marriage-4"
 COPY = json.loads((Path(__file__).resolve().parents[1] / "content" / "marriage-report.json").read_text(encoding="utf-8"))
 PREVIEW = {
@@ -443,14 +444,15 @@ def validate(raw, bundle, validate_text, validate_distinct):
             errors = {(item["loc"][0],): item["msg"] for item in issues}
             raise repair_failure(errors) from None
         paths = [".".join(map(str, item["loc"])) for item in issues[:8]]
-        failure = InvalidBaziReport("Marriage report is missing or has malformed fields: " + ", ".join(paths))
+        message = "Marriage report is missing or has malformed fields: " + ", ".join(paths)
+        failure = InvalidBaziReport(f"{PREVIEW_SCHEMA_FAILURE}: {message}" if preview else message)
         if preview and all(item["loc"] and item["loc"][0] in keys for item in issues):
             failure.repair_fields = {item["loc"][0]: [item["loc"][0]] for item in issues}
         raise failure from None
     if record.language != bundle["language"] or record.reading != bundle["reading"] or record.translations:
         raise InvalidBaziReport("Use the requested marriage report stage and language")
     if isinstance(record, MarriagePreview) and (record.current.state == "observe") == bundle["birth_time_known"]:
-        failure = InvalidBaziReport("Match the current relationship state to the birth-time precision")
+        failure = InvalidBaziReport(f"{PREVIEW_SCHEMA_FAILURE}: Match the current relationship state to the birth-time precision")
         failure.repair_fields = {"current": ["current"]}
         raise failure
     review_deadline = preview_review_deadline_context.get() if preview else None

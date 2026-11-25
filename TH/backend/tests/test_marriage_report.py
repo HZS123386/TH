@@ -524,6 +524,67 @@ def test_thai_marriage_preview_recovers_leaked_field_names(postgres_url, monkeyp
         assert sections[3]["paragraphs"] == [THAI_FREE_TEXT["attracts"], THAI_FREE_TEXT["drains"]]
 
 
+@pytest.mark.parametrize("failure", ["wrong_state", "malformed_repair", "402", "invalid_evidence", "refusal"])
+def test_thai_marriage_preview_fallback_preserves_validation(postgres_url, monkeypatch, failure):
+    calls = []
+    client_class = httpx.AsyncClient
+
+    def respond(request):
+        provider = {"primary.example": "deepseek", "fallback.example": "qwen"}[request.url.host]
+        calls.append(provider)
+        primary = provider == "deepseek"
+        if primary and failure == "402":
+            return httpx.Response(402)
+        if primary and failure == "refusal":
+            return httpx.Response(200, json={"choices": [{
+                "message": {"content": None, "refusal": "Policy refusal"}, "finish_reason": "stop",
+            }]})
+        payload = json.loads(request.content)
+        context = json.loads(payload["messages"][1]["content"])
+        draft = {"language": "th", "reading": "marriage-preview"}
+        for key, text in THAI_FREE_TEXT.items():
+            sources = context["field_sources"][key]
+            draft[key] = {"text": text}
+            if isinstance(sources, list):
+                draft[key]["evidence_ids"] = sources[:1]
+        draft["current"]["state"] = "ready_to_assess"
+        if primary and failure in ("wrong_state", "malformed_repair"):
+            draft["current"]["state"] = "observe"
+        if primary and failure == "invalid_evidence":
+            draft["trap"]["evidence_ids"] = ["invented-source"]
+        if correction := context.get("correction"):
+            assert primary
+            draft = {key: draft[path[0]] for key, path in correction["fields"].items()}
+            if failure == "malformed_repair":
+                draft = {}
+        return httpx.Response(200, json={"choices": [{
+            "message": {"content": json.dumps(draft, ensure_ascii=False)}, "finish_reason": "stop",
+        }]})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: client_class(transport=httpx.MockTransport(respond), **kwargs))
+    config = replace(settings(postgres_url), fortune_provider="deepseek", fortune_fallback_provider="qwen", providers={
+        "deepseek": ProviderConfig("primary-test-key", "https://primary.example/v1", "deepseek-flash"),
+        "qwen": ProviderConfig("fallback-test-key", "https://fallback.example/v1", "qwen3.7-plus"),
+    })
+    body = {"report_kind": "marriage", "profile": {**PROFILE, "language": "th"}, "year": 2026}
+    uses_fallback = failure in ("wrong_state", "malformed_repair", "402")
+    with TestClient(create_app(config)) as client:
+        response = client.post("/api/life-reports", headers=HEADERS, json=body)
+        assert response.status_code == 200, response.text
+        report = response.json()
+        assert report["preview_state"] == ("ready" if uses_fallback else "unavailable")
+        primary_attempts = 1 if failure in ("402", "refusal") else LifeWriter.max_attempts
+        expected = ["deepseek"] * primary_attempts + (["qwen"] if uses_fallback else [])
+        assert calls == expected
+        writer = client.app.state.life_reports.preview_writer_for("th")
+        assert bool(writer.availability["retry_at"]) == (failure == "402")
+        if uses_fallback:
+            assert report["marriage"]["preview"][1]["paragraphs"][0].endswith(THAI_FREE_TEXT["needs"])
+            repeated = client.post("/api/life-reports", headers=HEADERS, json=body).json()
+            assert repeated["id"] == report["id"] and repeated["preview_state"] == "ready"
+            assert calls == expected
+
+
 def test_paid_marriage_repairs_failed_fields_after_an_incomplete_reply(postgres_url, monkeypatch):
     body = LifeInput.model_validate({"report_kind": "marriage", "profile": PROFILE, "year": 2026})
     chart = thai.marriage_preview_chart(PROFILE, datetime(2026, 11, 19).date())

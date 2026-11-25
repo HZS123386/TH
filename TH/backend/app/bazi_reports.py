@@ -487,7 +487,10 @@ class BaziReports:
                                 if reason and reason != "stop":
                                     raise InvalidBaziReport("incomplete")
                                 finished |= reason == "stop"
-                                fragment = choice.get("delta", {}).get("content")
+                                delta = choice.get("delta", {})
+                                if delta.get("refusal"):
+                                    raise InvalidBaziReport("model_refusal")
+                                fragment = delta.get("content")
                                 if fragment:
                                     if not isinstance(fragment, str):
                                         raise InvalidBaziReport("content")
@@ -509,7 +512,10 @@ class BaziReports:
                         usage, request_id = packet.get("usage"), packet.get("id")
                         choice = packet["choices"][0]
                         finished = choice["finish_reason"] == "stop"
-                        raw = choice["message"]["content"]
+                        message = choice["message"]
+                        if message.get("refusal"):
+                            raise InvalidBaziReport("model_refusal")
+                        raw = message["content"]
             if not finished:
                 raise InvalidBaziReport("incomplete")
             if not isinstance(raw, str) or config.key and config.key in raw:
