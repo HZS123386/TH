@@ -1349,7 +1349,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(input, isNotNull);
       expect(object(input!['profile'])['birth_time'], isNull);
-      expect(object(input!['profile'])['birth_date'], '1999-01-01');
+      expect(object(input!['profile'])['birth_date'], '1990-07-15');
       expect(object(input!['profile'])['location_id'], city['id']);
       expect(object(input!['profile'])['country_code'], 'CN');
       expect(object(input!['profile'])['timezone'], 'Asia/Shanghai');

@@ -45,7 +45,14 @@ class _BirthDateDialogState extends State<BirthDateDialog> {
   late final _lastDate = _today.year > 2099 ? DateTime(2099, 12, 31) : _today;
   late DateTime _date = validBirthDate(widget.value, widget.today)
       ? DateTime.parse(widget.value)
-      : DateTime(math.min(1999, _lastDate.year));
+      : _defaultDate();
+
+  DateTime _defaultDate() {
+    final year = math.min(1990, _lastDate.year);
+    final month = math.min(7, _lastMonth(year));
+    final day = math.min(15, _lastDay(year, month));
+    return DateTime(year, month, day);
+  }
 
   int _lastMonth(int year) => year == _lastDate.year ? _lastDate.month : 12;
 
