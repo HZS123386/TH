@@ -14,6 +14,8 @@ import 'package:fate_h5/ui/jy_components.dart';
 import 'support.dart';
 
 void main() {
+  setUpAll(H5App.loadRoutesForWidgetTests);
+
   test('free report can open checkout before paid timing is prepared', () {
     final data = personalFixture();
     data['outlook'] = {'state': 'not_started'};

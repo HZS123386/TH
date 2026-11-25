@@ -79,7 +79,9 @@ pnpm check
 pnpm build
 ```
 
-`pnpm test` 执行仍被使用的 TypeScript 内容契约检查及 Flutter 模型、接口、页面交互检查。`pnpm check` 执行文档工具的 TypeScript 检查与 Flutter 静态分析。构建采用 `flutter build web --release --wasm --no-web-resources-cdn`，先输出到独立暂存目录，验证必需文件后再替换 `site/`；上一份构建移入 `tmp/site-previous-*` 以便回退。默认 base 为 `/thai-landing/`，可通过 `FATE_H5_BASE_PATH` 调整，部署目录必须与构建 base 一致。
+`pnpm test` 执行仍被使用的 TypeScript 内容契约检查及 Flutter 模型、接口、页面交互检查。`pnpm check` 执行文档工具的 TypeScript 检查与 Flutter 静态分析。H5 构建需要 Flutter 3.50 或更新版本，可通过 `FATE_FLUTTER_BIN` 指定；Windows 本地优先使用已有的 `~/.cache/fate-sdk/flutter-3.50.0`。构建采用 `flutter build web --release --wasm --enable-wasm-deferred-loading --no-web-resources-cdn`，先输出到独立暂存目录，验证 Wasm、JavaScript 分包及必需文件后再替换 `site/`；上一份构建移入 `tmp/site-previous-*` 以便回退。默认 base 为 `/thai-landing/`，可通过 `FATE_H5_BASE_PATH` 调整，部署目录必须与构建 base 一致。
+
+报告详情与 LINE 领取、我的报告、隐私与支持、生成弹窗在对应入口首次使用时加载。发布时应复制完整 `site/`，包括主包、按需分包及各自的压缩文件。分包加载失败时可在原页面重试，本地原有报告数据和界面逻辑保持不变。
 
 TH 后端默认在构建完成后挂载同级本目录的 `site/` 到 `http://127.0.0.1:8000/thai-landing/`，与报告接口同源。部署到其他位置时可通过后端环境变量 `THAI_LANDING_DIR` 指定构建目录。构建目录在后端启动时检测，应先构建后启动。
 

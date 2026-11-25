@@ -11,8 +11,8 @@ import '../ui/theme.dart';
 import '../ui/jy_components.dart';
 import '../ui/site_header.dart';
 import 'birth_date_dialog.dart';
-import 'generation_dialog.dart';
-import 'history_dialog.dart';
+import 'generation_dialog.dart' deferred as generation;
+import 'history_dialog.dart' deferred as history;
 import 'place_picker.dart';
 
 enum _BirthFormProgress { empty, date, time, place, complete }
@@ -20,6 +20,13 @@ enum _BirthFormProgress { empty, date, time, place, complete }
 class LandingPage extends StatefulWidget {
   const LandingPage({this.topic = 'life', super.key});
   final String topic;
+
+  @visibleForTesting
+  static Future<void> loadDialogsForWidgetTests() async {
+    await history.loadLibrary();
+    await generation.loadLibrary();
+  }
+
   @override
   State<LandingPage> createState() => _LandingPageState();
 }
@@ -39,7 +46,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     initialPage: _stages.indexOf(_question ?? '').clamp(0, _stages.length - 1),
   );
   CancelToken? _request;
-  GenerationState? _generation;
+  bool _generating = false, _openingHistory = false;
   bool _recordedPage = false;
   bool _resumeChecked = false;
   @override
@@ -190,8 +197,26 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     };
   }
 
+  Future<void> _openHistory(H5Controller h5) async {
+    if (_openingHistory) return;
+    setState(() => _openingHistory = true);
+    try {
+      await history.loadLibrary();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(h5.copy.t('ui', 'network'))));
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _openingHistory = false);
+    }
+    if (mounted) await history.showHistory(context, h5);
+  }
+
   Future<void> _generate(H5Controller h5) async {
-    if (_generation != null) return;
+    if (_generating) return;
     final c = h5.copy;
     final progress = _formProgress(h5);
     _recordFormProgress(h5, progress);
@@ -206,10 +231,24 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       h5.trackActivity('birth_form', 'invalid_form');
       return;
     }
-    setState(() => _error = '');
     final input = _input(h5);
-    final state = GenerationState();
-    _generation = state;
+    setState(() {
+      _error = '';
+      _generating = true;
+    });
+    try {
+      await generation.loadLibrary();
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _generating = false;
+          _error = h5.copy.t('ui', 'network');
+        });
+      }
+      return;
+    }
+    if (!mounted) return;
+    final state = generation.GenerationState();
     h5.warmReportFont();
     var attempts = 0;
     Future<void> run() async {
@@ -252,33 +291,34 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
         opaque: true,
         transitionDuration: const Duration(milliseconds: 260),
         reverseTransitionDuration: const Duration(milliseconds: 120),
-        pageBuilder: (context, animation, secondaryAnimation) => GenerationDialog(
-          h5: h5,
-          state: state,
-          full: false,
-          input: input,
-          onCancel: () {
-            _request?.cancel();
-            h5.browser.writeSetting('active-preview', '', session: true);
-            h5.trackActivity('birth_form', 'cancel_generation');
-            Navigator.of(context, rootNavigator: true).pop();
-          },
-          onRetry: () => unawaited(run()),
-          onComplete: (report) {
-            h5.stageGeneratedPreview(report);
-            h5.browser.writeSetting('active-preview', '', session: true);
-            Navigator.of(context, rootNavigator: true).pop();
-            context.go(
-              '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}',
-            );
-          },
-        ),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            generation.GenerationDialog(
+              h5: h5,
+              state: state,
+              full: false,
+              input: input,
+              onCancel: () {
+                _request?.cancel();
+                h5.browser.writeSetting('active-preview', '', session: true);
+                h5.trackActivity('birth_form', 'cancel_generation');
+                Navigator.of(context, rootNavigator: true).pop();
+              },
+              onRetry: () => unawaited(run()),
+              onComplete: (report) {
+                h5.stageGeneratedPreview(report);
+                h5.browser.writeSetting('active-preview', '', session: true);
+                Navigator.of(context, rootNavigator: true).pop();
+                context.go(
+                  '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}',
+                );
+              },
+            ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
     );
     _request?.cancel();
-    if (_generation == state) _generation = null;
+    if (mounted) setState(() => _generating = false);
     state.dispose();
   }
 
@@ -445,7 +485,9 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     Align(
                       alignment: Alignment.centerRight,
                       child: OutlinedButton.icon(
-                        onPressed: () => showHistory(context, h5),
+                        onPressed: _openingHistory
+                            ? null
+                            : () => _openHistory(h5),
                         icon: const LandingIcon('history', size: 14),
                         label: Text(c.t('jy', 'history')),
                       ),
@@ -753,7 +795,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       label: c.t('jy', 'topics.${widget.topic}.action'),
                       icon: 'book',
                       bounce: true,
-                      onPressed: h5.languageLoading
+                      onPressed: h5.languageLoading || _generating
                           ? null
                           : () {
                               if (widget.topic == 'life') {

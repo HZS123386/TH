@@ -58,6 +58,11 @@ Future<void> click(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  setUpAll(() async {
+    await H5App.loadRoutesForWidgetTests();
+    await LandingPage.loadDialogsForWidgetTests();
+  });
+
   for (final language in ['zh', 'th']) {
     testWidgets('$language history retries list and sign-in code timeouts', (
       tester,

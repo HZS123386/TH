@@ -56,6 +56,8 @@ class _PolicyAssets extends CachingAssetBundle {
 }
 
 void main() {
+  setUpAll(H5App.loadRoutesForWidgetTests);
+
   testWidgets(
     'theme boards match the reference spacing and fit short screens',
     (tester) async {

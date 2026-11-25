@@ -9,8 +9,8 @@ import { setTimeout as pause } from 'node:timers/promises';
 
 export const projectRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export const flutterRoot=path.join(projectRoot,'web-client');
-const cached=path.join(homedir(),'.cache','fate-sdk','flutter','bin','flutter.bat');
-const binary=process.env.FATE_FLUTTER_BIN||(process.platform==='win32'&&existsSync(cached)?cached:'flutter');
+const cached=['flutter-3.50.0','flutter'].map(name=>path.join(homedir(),'.cache','fate-sdk',name,'bin','flutter.bat'));
+const binary=process.env.FATE_FLUTTER_BIN||(process.platform==='win32'?cached.find(existsSync):undefined)||'flutter';
 // Use the SDK's Dart analyzer so Unicode repository paths keep working.
 export function flutter(args){return new Promise((resolve,reject)=>{const tool=args[0]==='analyze'?path.join(path.dirname(binary),process.platform==='win32'?'dart.bat':'dart'):binary;const quote=value=>`'${String(value).replaceAll("'","''")}'`;const command=`& ${quote(tool)} ${args.map(quote).join(' ')}; exit $LASTEXITCODE`;const child=process.platform==='win32'?spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{cwd:flutterRoot,stdio:'inherit',windowsHide:true}):spawn(tool,args,{cwd:flutterRoot,stdio:'inherit'});child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(`SDK tool exited with ${code}`)));});}
 export const basePath=process.env.FATE_H5_BASE_PATH||'/thai-landing/';
@@ -31,7 +31,12 @@ export async function buildLanding({release=false,noPub=false}={}){
   const generated=await mkdtemp(path.join(temporary,'flutter-site-'));
   const previous=path.join(temporary,`site-previous-${Date.now()}`);
   if(!generated.startsWith(temporary+path.sep)||!previous.startsWith(temporary+path.sep)||destination!==path.join(projectRoot,'site'))throw Error('Unexpected build directory');
-  await flutter(['build','web','--release','--wasm',...(noPub?['--no-pub']:[]),'--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
+  await flutter(['build','web','--release','--wasm','--enable-wasm-deferred-loading',...(noPub?['--no-pub']:[]),'--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
+  const compiledFiles=await readdir(generated);
+  if(!compiledFiles.some(file=>/^main\.dart_module\d+\.wasm$/.test(file))||
+      !compiledFiles.some(file=>/^main\.dart\.js_\d+.*\.part\.js$/.test(file))){
+    throw Error('Expected deferred chunks for both Flutter Web targets');
+  }
   const bootstrap=await readFile(path.join(generated,'flutter_bootstrap.js'),'utf8');
   const engineRevision=/"engineRevision":"([a-f0-9]{40})"/.exec(bootstrap)?.[1];
   if(!engineRevision)throw Error('Missing Flutter engine revision');
