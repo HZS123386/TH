@@ -11,7 +11,6 @@ import '../ui/theme.dart';
 import '../ui/jy_components.dart';
 import 'birth_date_dialog.dart';
 import 'generation_dialog.dart' deferred as generation;
-import 'history_dialog.dart' deferred as history;
 import 'place_picker.dart';
 
 enum _BirthFormProgress { empty, date, time, place, complete }
@@ -21,10 +20,7 @@ class LandingPage extends StatefulWidget {
   final String topic;
 
   @visibleForTesting
-  static Future<void> loadDialogsForWidgetTests() async {
-    await history.loadLibrary();
-    await generation.loadLibrary();
-  }
+  static Future<void> loadDialogsForWidgetTests() => generation.loadLibrary();
 
   @override
   State<LandingPage> createState() => _LandingPageState();
@@ -47,7 +43,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
     initialPage: _stages.indexOf(_question ?? '').clamp(0, _stages.length - 1),
   );
   CancelToken? _request;
-  bool _generating = false, _openingHistory = false;
+  bool _generating = false;
   bool _recordedPage = false;
   bool _resumeChecked = false;
   @override
@@ -85,7 +81,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       }
     }
     unawaited(h5.recordVisit());
-    if (!_recordedPage && !h5.welcomeOpen) {
+    if (!_recordedPage) {
       _recordedPage = true;
       h5.trackActivity('birth_form');
       _recordFormProgress(h5);
@@ -116,18 +112,15 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   Future<void> _timePicker(H5Controller h5) async {
     final current = _time.split(':');
     h5.trackActivity('birth_form', 'select_birth_time');
-    final value = await showTimePicker(
-      context: context,
-      initialTime: current.length == 2
+    final value = await chooseBirthTime(
+      context,
+      h5.copy,
+      current.length == 2
           ? TimeOfDay(
               hour: int.parse(current[0]),
               minute: int.parse(current[1]),
             )
           : const TimeOfDay(hour: 7, minute: 15),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child!,
-      ),
     );
     if (!mounted) return;
     if (value != null) {
@@ -199,24 +192,6 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       if (!_marriageMode && _custom && _questionText.text.trim().isNotEmpty)
         'user_question': _questionText.text.trim(),
     };
-  }
-
-  Future<void> _openHistory(H5Controller h5) async {
-    if (_openingHistory) return;
-    setState(() => _openingHistory = true);
-    try {
-      await history.loadLibrary();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(h5.copy.t('ui', 'network'))));
-      }
-      return;
-    } finally {
-      if (mounted) setState(() => _openingHistory = false);
-    }
-    if (mounted) await history.showHistory(context, h5);
   }
 
   Future<void> _generate(H5Controller h5) async {
@@ -367,7 +342,21 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final h5 = H5Scope.of(context), c = h5.copy;
+    final chinese = h5.language == 'zh';
+    final useMarriageDescription = _marriageMode && !chinese;
+    final portraitNote = c.t('jy', 'portrait.note');
     final prompts = (c.value('jy', 'questions') as List).cast<List>();
+    const titleStyle = TextStyle(
+      fontSize: 16,
+      height: 1.55,
+      fontWeight: FontWeight.w600,
+      color: gold,
+    );
+    const descriptionStyle = TextStyle(
+      fontSize: 10,
+      height: 1.7,
+      color: lavender,
+    );
     return LayoutBuilder(
       builder: (context, box) {
         final compact = box.maxWidth <= 360;
@@ -383,31 +372,27 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
             ? 16.0
             : 20.0;
         final portraitWidth = box.maxWidth.clamp(0.0, h5PortraitMaxWidth);
-        final heroHeight = landingHeroHeight(box.maxWidth);
+        final portraitHeight = (portraitWidth * .78).clamp(276.0, 420.0);
+        final portraitLeft = (box.maxWidth - portraitWidth) / 2;
+        final captionWidth = portraitWidth * .94;
         return SingleChildScrollView(
           key: const ValueKey('landing-scroll'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                height: heroHeight,
+                height: portraitHeight,
                 child: Stack(
-                  clipBehavior: Clip.hardEdge,
                   children: [
                     Positioned(
-                      left: (box.maxWidth - portraitWidth) / 2,
+                      left: portraitLeft,
                       width: portraitWidth,
                       top: -11,
-                      child: Opacity(
-                        opacity: h5.welcomeOpen && !h5.welcomePortraitRevealed
-                            ? 0
-                            : 1,
-                        child: const AspectRatio(
-                          aspectRatio: 1199 / 1312,
-                          child: FateImage(
-                            'assets/images/astrologer-900.webp',
-                            fit: BoxFit.fitWidth,
-                          ),
+                      child: const AspectRatio(
+                        aspectRatio: 1199 / 1312,
+                        child: FateImage(
+                          'assets/images/astrologer-900.webp',
+                          fit: BoxFit.fitWidth,
                         ),
                       ),
                     ),
@@ -417,32 +402,76 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0x0F130C24),
-                              Color(0x66130C24),
-                              night,
-                            ],
+                            colors: [Color(0x0F130C24), Color(0x66130C24), night],
                             stops: [.48, .78, 1],
                           ),
                         ),
                       ),
                     ),
                     Positioned(
-                      top: 15,
-                      left: 17,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
+                      left: portraitLeft + portraitWidth * .68,
+                      top: portraitHeight * .23,
+                      width: portraitWidth * .28,
+                      child: DefaultTextStyle.merge(
+                        style: TextStyle(
+                          color: const Color(0xFFFFDB94),
+                          fontSize: (portraitWidth * .043).clamp(13.0, 23.0),
+                          height: 1.2,
+                          shadows: const [Shadow(color: night, blurRadius: 6)],
                         ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xB8190E35),
-                          border: Border.all(color: const Color(0x70C6A1EA)),
-                          borderRadius: BorderRadius.circular(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(c.t('jy', 'portrait.name')),
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                c.t('jy', 'portrait.role'),
+                                style: TextStyle(
+                                  fontSize: (portraitWidth * .027).clamp(
+                                    9.0,
+                                    14.0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          '✦  ${c.t('jy', 'persona')}',
-                          style: const TextStyle(fontSize: 10.4),
+                      ),
+                    ),
+                    Positioned(
+                      left: (box.maxWidth - captionWidth) / 2,
+                      bottom: 7,
+                      width: captionWidth,
+                      height: portraitHeight * .30,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.bottomCenter,
+                        child: SizedBox(
+                          width: captionWidth,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                c.t('jy', 'portrait.headline'),
+                                textAlign: TextAlign.center,
+                                style: titleStyle.copyWith(fontSize: 20),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                chinese
+                                    ? portraitNote.replaceAll('\n', '')
+                                    : portraitNote,
+                                textAlign: TextAlign.center,
+                                maxLines: chinese ? 1 : null,
+                                style: descriptionStyle,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -477,46 +506,19 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      _marriageMode
+                      useMarriageDescription
                           ? c.t('marriage', 'title')
                           : c.t('jy', 'formTitle'),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        height: 1.55,
-                        fontWeight: FontWeight.w600,
-                        color: gold,
-                      ),
+                      style: titleStyle,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _marriageMode
+                      useMarriageDescription
                           ? c.t('marriage', 'form_hint')
                           : c.t('jy', 'formCaption'),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        height: 1.7,
-                        color: lavender,
-                      ),
-                    ),
-                    const SizedBox(height: 17),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: OutlinedButton.icon(
-                        onPressed: _openingHistory
-                            ? null
-                            : () => _openHistory(h5),
-                        icon: _openingHistory
-                            ? const SizedBox.square(
-                                dimension: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const LandingIcon('history', size: 14),
-                        label: Text(c.t('jy', 'history')),
-                      ),
+                      style: descriptionStyle,
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -826,14 +828,11 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                                 'birth_form',
                                 'click_generate_report',
                               );
-                              if (widget.topic == 'life') {
-                                h5.browser.trackViewReadingClick();
-                              }
                               _generate(h5);
                             },
                     ),
                     const SizedBox(height: 19),
-                    ThemeBoards(copy: c),
+                    ThemeBoards(copy: c, viewportHeight: box.maxHeight),
                   ],
                 ),
               ),

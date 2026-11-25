@@ -596,7 +596,8 @@ def validate_text(text, language, *, title=False, narrative=False):
                       rule="text_too_long")
 
 
-def validate_distinct_personal_text(points, language, *, shared_limit=None, previous_points=(), similarity_limit=None):
+def validate_distinct_personal_text(points, language, *, shared_limit=None, previous_points=(), similarity_limit=None,
+                                    repair_text=False):
     # Short shared keywords are useful; reject repeated sentences and long copied clauses.
     limit = shared_limit or (18 if language == "zh" else 45)
     normalized = {f"free preview[{index}]": re.sub(r"[\W_]+", "", text).casefold()
@@ -608,7 +609,13 @@ def validate_distinct_personal_text(points, language, *, shared_limit=None, prev
             if value == previous or (min(len(value), len(previous)) >= limit
                     and (comparison.find_longest_match().size >= limit
                          or similarity_limit is not None and comparison.ratio() >= similarity_limit)):
-                raise invalid(f"personal {path} repeats {previous_path}; add a distinct supported point, not a reused sentence")
+                reason = f"repeats {previous_path}; add a different supported point and use a new sentence"
+                error = invalid(f"personal {path} {reason}")
+                if repair_text:
+                    text_path = (path, "text")
+                    error.field_errors = [field_error(text_path, reason)]
+                    error.repair_fields = {".".join(text_path): list(text_path)}
+                raise error
         normalized[path] = value
 
 
@@ -1288,10 +1295,10 @@ class LifeWriter(BaziReports):
     def read_timeout(self):
         return 60 if self.provider == "openai" else 25
 
-    async def generate(self, bundle, owner, network):
+    async def generate(self, bundle, owner, network, *, deadline=None):
         fallback = self.fallback_writer
         if not fallback or not fallback.enabled:
-            return await super().generate(bundle, owner, network)
+            return await super().generate(bundle, owner, network, deadline=deadline)
         primary_called = False
         if not self.config or not self.config.enabled:
             result = {"state": "unconfigured", "failure_code": "model_unconfigured"}
@@ -1299,7 +1306,7 @@ class LifeWriter(BaziReports):
             result = {"state": "unavailable", "failure_code": self.availability["failure_code"]}
         else:
             primary_called = True
-            result = await super().generate(bundle, owner, network)
+            result = await super().generate(bundle, owner, network, deadline=deadline)
         failure = result.get("failure_code", "")
         service_failure = failure in {"model_unconfigured", "model_connection", "model_timeout", "model_overloaded", "model_rate_limit", "model_quota_exhausted"} or failure.startswith("upstream_status_")
         if result["state"] != "unconfigured" and not (result["state"] == "unavailable" and service_failure):
@@ -1311,7 +1318,7 @@ class LifeWriter(BaziReports):
         # A failed primary attempt already admitted this logical request; fallback cache hits stay free.
         token = _fallback_admitted.set(primary_called)
         try:
-            replacement = await fallback.generate(bundle, owner, network)
+            replacement = await fallback.generate(bundle, owner, network, deadline=deadline)
         finally:
             _fallback_admitted.reset(token)
         return {**replacement, "fallback_from": self.provider}
@@ -1447,8 +1454,7 @@ class LifeWriter(BaziReports):
         if bundle["stage"] == "marriage_preview":
             marriage_report.bind_preview_schema(bundle, schema)
         elif bundle["stage"] == "marriage_full":
-            identifiers = list(bundle["evidence"])
-            schema["$defs"]["MarriagePoint"]["properties"]["evidence_ids"]["items"]["enum"] = identifiers
+            marriage_report.bind_full_schema(bundle, schema)
         if bundle["stage"] in ("relationship_preview", "relationship_full"):
             schema["$defs"]["RelationshipBasis"]["properties"]["evidence_id"]["enum"] = bundle["citation_rules"]["topic_ids"]
             if bundle["stage"] == "relationship_preview":

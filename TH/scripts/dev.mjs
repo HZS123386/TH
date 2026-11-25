@@ -40,8 +40,8 @@ const webPort = process.env.SABAI_WEB_PORT || process.env.FATE_APP_PORT || '5176
 const previewArgs = process.argv.includes('--skip-build') ? ['--skip-build'] : [];
 const previewEnv = { ...process.env, FATE_API_UPSTREAM: `http://127.0.0.1:${apiPort}` };
 const apiEnv = { ...process.env };
-if ((apiEnv.APP_ENV || 'development') === 'development') {
-  // The browser can reopen a local report only on the same preview origin.
+if ((apiEnv.APP_ENV || 'development') === 'development' && apiEnv.H5_CHECKOUT_ENABLED?.toLowerCase() === 'true') {
+  // Return to the preview origin that holds the browser's report key.
   apiEnv.SUNLANDS_H5_RETURN_URL = `http://127.0.0.1:${apiEnv.FATE_H5_PORT || '8765'}${apiEnv.FATE_H5_BASE_PATH || '/thai-landing/'}report.html`;
 }
 const children = [

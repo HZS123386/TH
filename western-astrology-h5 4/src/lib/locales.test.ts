@@ -23,7 +23,7 @@ describe("complete, distinct landing languages", () => {
       // The quick privacy summary ships in the original campaign languages.
       // The full policy is tested separately in all nine languages.
       const required = paths(original.jy.zh).filter(path =>
-        ![".welcome.guideName", ".welcome.guideTitle"].includes(path) && !path.startsWith(".privacyDetails[")
+        !path.startsWith(".privacyDetails[")
       );
       expect(paths(copy.jy)).toEqual(expect.arrayContaining(required));
       expect(paths(copy)).toEqual(paths(english));

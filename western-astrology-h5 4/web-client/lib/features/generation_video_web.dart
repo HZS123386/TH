@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:js_interop';
+
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
+
 import 'generation_video.dart' show GenerationPoster;
 
 /// Own the web video element so JY's CSS mask applies to its video surface.
@@ -21,9 +23,7 @@ class _GenerationVideoState extends State<GenerationVideo>
   web.HTMLVideoElement? _video;
   final _events = <StreamSubscription<web.Event>>[];
   Timer? _watchdog, _playRetry, _imageRetry;
-  bool _failed = false,
-      _playPending = false,
-      _imageFailed = false;
+  bool _failed = false, _playPending = false, _imageFailed = false;
   int _playAttempts = 0, _imageAttempts = 0;
   double _lastTime = 0;
   DateTime _advanced = DateTime.now();

@@ -68,6 +68,7 @@ class InvalidBaziReport(Exception):
         self.candidate = None
         self.repair_fields = {}
         self.field_errors = []
+        self.readable_preview = None
         self.retry_after = None
         self.feedback = {
             "thin_evidence": "Use at least TWO DISTINCT existing evidence IDs across the report. Keep the topic-specific ID, and include natal P3 or D0 in some interpretation and advice evidence_ids. For annual, do not cite A0 alone throughout; connect it to P3 or D0. These facts are rendered by code, not in your prose.",
@@ -225,6 +226,7 @@ def validate_story(raw, bundle):
 
 report_usage_context = ContextVar("report_usage_context", default=("", ""))
 report_progress_context = ContextVar("report_progress_context", default=None)
+preview_review_deadline_context = ContextVar("preview_review_deadline_context", default=None)
 
 
 def replace_report_fields(draft, paths, replacements):
@@ -363,10 +365,21 @@ class BaziReports:
             # The original validator still checks the merged report.
             model_input["writing_rules"] = payload["messages"][0]["content"]
             repair_input = {**correction, "feedback": "Repair every listed field using the error and original evidence. Use the requested language and length."}
-            if bundle.get("stage") == "chapter":
+            if bundle.get("stage") in ("chapter", "marriage_preview", "marriage_full"):
                 # Hide rejected values so the model writes them afresh from the valid neighboring fields.
                 draft = replace_report_fields(json.loads(correction["draft"]), repair_fields, dict.fromkeys(repair_fields))
                 repair_input["draft"] = json.dumps(draft, ensure_ascii=False)
+            if bundle.get("stage") == "marriage_preview":
+                repair_input["feedback"] = (
+                    "Follow correction.fields to identify the paragraph for each response key. Write complete sentences "
+                    "in the requested language. Keep headings, field names, state codes and evidence IDs out of the text. "
+                    "Use the assigned evidence and preserve citations for text-only replacements."
+                )
+            if bundle.get("stage") == "marriage_full":
+                repair_input["feedback"] = (
+                    "Write each requested replacement from scratch. Put only ordinary situations, actions and consequences in text. "
+                    "The app displays planet names, placements and dates separately. Omit them and every term flagged in field_errors."
+                )
             model_input["correction"] = repair_input
             if payload["response_format"]["type"] == "json_schema":
                 contract = payload["response_format"]["json_schema"]
@@ -511,6 +524,7 @@ class BaziReports:
                 except (ValueError, TypeError, KeyError, IndexError):
                     error = InvalidBaziReport("repair_schema")
                     error.candidate, error.repair_fields = correction["draft"], repair_fields
+                    error.field_errors = correction.get("field_errors", [])
                     raise error from None
             if progress:
                 progress(raw)
@@ -539,7 +553,7 @@ class BaziReports:
                                     duration_ms=round((time.monotonic() - started) * 1000))
 
 
-    async def generate(self, bundle, owner, network):
+    async def generate(self, bundle, owner, network, *, deadline=None):
         if not self.enabled:
             return {"state": "unconfigured"}
         if len(json.dumps(bundle, ensure_ascii=False).encode()) > 64000:
@@ -553,7 +567,10 @@ class BaziReports:
         if task is None:
             if len(self.inflight) >= 32:
                 return {"state": "pending"}
-            task = asyncio.create_task(self._generate(key, bundle, owner, network))
+            operation = self._generate(key, bundle, owner, network)
+            if deadline is not None:
+                operation = asyncio.wait_for(operation, deadline - asyncio.get_running_loop().time())
+            task = asyncio.create_task(operation)
             self.inflight[key] = task
             task.add_done_callback(lambda completed: (self.inflight.pop(key, None), completed.exception() if not completed.cancelled() else None))
         return deepcopy(await asyncio.shield(task))
@@ -582,15 +599,26 @@ class BaziReports:
             return {"state": state}
         attempts, attempt_limit = 0, self.max_attempts
         paid_chapter = self.retry_paid_chapters and bundle.get("stage") == "chapter"
-        resume_timeout, extra_field_repair = paid_chapter, paid_chapter
+        paid_marriage = self.retry_paid_chapters and bundle.get("stage") == "marriage_full"
+        resume_timeout, extra_field_repair = paid_chapter, paid_chapter or paid_marriage
         heartbeat = asyncio.create_task(self.keep_claim(key, lease))
         loop = asyncio.get_running_loop()
         remaining = self.generation_timeout
         timing = {"queue_seconds": 0.0, "model_seconds": 0.0, "retry_wait_seconds": 0.0}
         attempt_failures = []
+        review_deadline = preview_review_deadline_context.get() if bundle.get("stage") == "marriage_preview" else None
+        readable_preview = None
+
+        def ready(story):
+            self.finish(key, lease, story)
+            return {"state": "ready", "cached": False, "attempts": attempts, "story": story,
+                    "attempt_failures": attempt_failures,
+                    "timings": {name: round(value, 3) for name, value in timing.items()}}
 
         async def backoff(delay):
             started = loop.time()
+            if readable_preview is not None:
+                delay = max(0, min(delay, review_deadline - started))
             try:
                 await asyncio.sleep(delay)
             finally:
@@ -600,10 +628,13 @@ class BaziReports:
             correction = None
             # Only time spent writing counts against the model budget and holds a slot.
             while attempts < attempt_limit:
+                if readable_preview is not None and loop.time() >= review_deadline:
+                    return ready(readable_preview)
                 attempts += 1
                 try:
                     queued_at = loop.time()
-                    async with self.request_slots or nullcontext(), self.slots:
+                    review_budget = review_deadline if readable_preview is not None else None
+                    async with asyncio.timeout_at(review_budget), self.request_slots or nullcontext(), self.slots:
                         timing["queue_seconds"] += loop.time() - queued_at
                         if remaining <= 0:
                             raise TimeoutError()
@@ -617,6 +648,8 @@ class BaziReports:
                             timing["model_seconds"] += elapsed
                     break
                 except InvalidBaziReport as error:
+                    if review_deadline is not None and error.readable_preview is not None:
+                        readable_preview = error.readable_preview
                     code = str(error).split(":", 1)[0]
                     attempt_failures.append(code if re.fullmatch(r"[a-z][a-z_0-9]{0,63}", code) else "validation_failed")
                     logger.info("%s %s validation attempt %s: %s", self.version, bundle["reading"], attempts, report_error_detail(error, bundle))
@@ -626,11 +659,13 @@ class BaziReports:
                         await backoff(error.retry_after)
                         continue
                     if error.candidate is None:
+                        if paid_marriage and code in ("upstream_size", "incomplete", "protocol") and attempts < attempt_limit:
+                            continue
                         raise
                     if attempts == attempt_limit:
                         if not extra_field_repair or not error.repair_fields:
                             raise
-                        # A final localized error can use one more patch without rewriting the chapter.
+                        # A final localized error can use one more patch without rewriting the draft.
                         extra_field_repair = False
                         attempt_limit += 1
                     correction = {"draft": error.candidate, "error": str(error), "feedback": error.feedback}
@@ -654,11 +689,12 @@ class BaziReports:
                         raise
                     else:
                         await backoff(2 ** attempts)
-            self.finish(key, lease, story)
-            return {"state": "ready", "cached": False, "attempts": attempts, "story": story,
-                    "attempt_failures": attempt_failures,
-                    "timings": {key: round(value, 3) for key, value in timing.items()}}
+            return ready(story)
         except (InvalidBaziReport, httpx.HTTPError, TimeoutError) as error:
+            if readable_preview is not None:
+                # It already passed the format, language and chart-evidence checks.
+                await asyncio.sleep(max(0, review_deadline - loop.time()))
+                return ready(readable_preview)
             logger.warning("%s %s writing failed: %s", self.version, bundle["reading"], report_error_detail(error, bundle))
             self.finish(key, lease)
             failure = (str(error).split(":", 1)[0] if isinstance(error, InvalidBaziReport)

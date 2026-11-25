@@ -28,19 +28,20 @@ function personalFixture(language: typeof languages[number] = "zh", full = false
 it("exports the Thai marriage outline for the authorized edition", () => {
   const report: LifeReport = {
     ...reportFixture({ ...inputFor("zh"), report_kind: "marriage" }),
-    format: "thai-marriage", version: "thai-marriage-1", title: "泰式占星 · 婚姻关系报告",
+    format: "thai-marriage", version: "thai-marriage-1", title: "从出生时刻，揪出感情的搅局者",
     preview: null, chapters: [], plan: null, generation_progress: undefined,
     preview_state: "ready", access: "preview", full_state: "not_started",
     progress: { completed: 0, total: marriageTopicKeys.length },
     catalog: marriageTopicKeys.map(key => ({ key, title: key, questions: [], houses: [], ready: false })),
     marriage: {
-      preview: marriagePreviewKeys.map(key => ({ key, title: key, paragraphs: ["FREE_" + key] })),
+      preview: marriagePreviewKeys.map(key => ({ key, title: key, paragraphs: ["FREE_" + key], visible: key !== "relationship_snapshot" })),
       full: marriageTopicKeys.map(key => ({ key, title: key, paragraphs: ["PRIVATE_" + key] })),
     },
   };
   expect(isLifeReport(report)).toBe(true);
-  expect(reportContent(report).map(section => section.key)).toEqual(marriagePreviewKeys);
+  expect(reportContent(report).map(section => section.key)).toEqual(marriagePreviewKeys.filter(key => key !== "relationship_snapshot"));
   expect(reportHtml(report, lifeLabels(report))).toContain("<p>FREE_unlock_offer</p>");
+  expect(reportHtml(report, lifeLabels(report))).not.toContain("FREE_relationship_snapshot");
   expect(reportHtml(report, lifeLabels(report))).not.toContain("PRIVATE_");
   report.access = "full";
   report.full_state = "generating";

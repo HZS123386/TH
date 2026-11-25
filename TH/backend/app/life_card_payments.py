@@ -28,6 +28,7 @@ SIMULATED_MERCHANT = "local_demo"
 SUNLANDS_AMOUNT = 1000
 SUNLANDS_CREATE_ORDER = "/tradeApi/trade/externalCreateOrder"
 SUNLANDS_QUERY_ORDER = "/tradeApi/trade/queryOrderDetailInfo"
+
 SUNLANDS_LOAD_CHECKOUT = "/tradeApi/trade/loadCheckout"
 SUNLANDS_PAY_SINGLE = "/tradeApi/trade/paySingle"
 SUNLANDS_METHODS = (
@@ -80,7 +81,6 @@ def _sunlands_money(value):
         return None
     return amount if amount.is_finite() and amount >= 0 else None
 
-
 def _sunlands_payment_redirect(value):
     if not isinstance(value, str) or not value or "\\" in value or any(char.isspace() or ord(char) < 32 for char in value):
         return None
@@ -97,7 +97,6 @@ def _sunlands_payment_redirect(value):
         pass
     return None
 
-
 def _valid_sunlands_return_page(value, app_env):
     if any(char.isspace() or ord(char) < 32 or char in "\\?#" for char in value):
         return False
@@ -108,7 +107,6 @@ def _valid_sunlands_return_page(value, app_env):
                 and url.port != 0 and re.fullmatch(r"/(?:[A-Za-z0-9_-]+/)*report\.html", url.path) is not None)
     except ValueError:
         return False
-
 
 class LifeCardPayments:
     def __init__(self, store, settings):
@@ -122,13 +120,14 @@ class LifeCardPayments:
                 raise RuntimeError("Paid H5 requires SUNLANDS_ORDER_ONLY=true")
         if settings.sunlands_merchant_notify_uri and not re.fullmatch(r"/[A-Za-z0-9/_-]{1,255}", settings.sunlands_merchant_notify_uri):
             raise RuntimeError("SUNLANDS_MERCHANT_NOTIFY_URI must be the registered API gateway URI")
+        sunlands_gateways = {"https://api-prod.sunlands.com"}
+        if settings.app_env == "development":
+            sunlands_gateways.add("https://api-test.sunlands.com")
+        # Production can use the live gateway, while test payments stay in development.
+        if self.order_only and settings.sunlands_base_url not in sunlands_gateways:
+            raise RuntimeError("SUNLANDS_BASE_URL requires an approved gateway; production requires the live gateway")
         if self.order_only:
-            gateways = {"https://api-prod.sunlands.com"}
-            if settings.app_env == "development":
-                gateways.add("https://api-test.sunlands.com")
-            if settings.sunlands_base_url not in gateways:
-                raise RuntimeError("SUNLANDS_BASE_URL must be an allowed gateway for APP_ENV")
-            if settings.app_env == "production" and not self.sunlands_ready:
+            if settings.sunlands_payment_required and (not self.sunlands_ready or not self._shared_contact_ready()):
                 raise RuntimeError("Incomplete Sunlands payment configuration for production")
             if (settings.sunlands_payment_required or settings.sunlands_h5_return_url) and not _valid_sunlands_return_page(
                     settings.sunlands_h5_return_url, settings.app_env):
@@ -145,15 +144,17 @@ class LifeCardPayments:
     @property
     def sunlands_ready(self):
         s = self.settings
-        mobile = s.sunlands_order_mobile.strip()
-        nation_code = s.sunlands_order_nation_code.strip().removeprefix("+")
-        return bool(s.sunlands_app_secret.strip() and re.fullmatch(r"[A-Za-z0-9_]+", s.sunlands_app_key)
+        return bool(s.sunlands_app_secret and re.fullmatch(r"[A-Za-z0-9_]+", s.sunlands_app_key)
                     and re.fullmatch(r"[0-9]+", s.sunlands_item_no)
                     and re.fullmatch(r"[0-9]+", s.sunlands_province_id)
-                    and re.fullmatch(r"[0-9]{6,14}", mobile)
-                    and re.fullmatch(r"[1-9][0-9]{0,2}", nation_code) and len(nation_code + mobile) <= 15
                     and (s.sunlands_channel_code in (None, "")
                          or re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", s.sunlands_channel_code)))
+
+    def _shared_contact_ready(self):
+        mobile = self.settings.sunlands_order_mobile.strip()
+        nation = self.settings.sunlands_order_nation_code.strip().removeprefix("+")
+        return bool(re.fullmatch(r"[0-9]{6,14}", mobile) and re.fullmatch(r"[1-9][0-9]{0,2}", nation)
+                    and len(nation + mobile) <= 15)
 
     async def _sunlands_post(self, path, body, content_type, *, language=None):
         if not self.order_only or path not in {
@@ -396,12 +397,18 @@ class LifeCardPayments:
                 raise HTTPException(503, "life_checkout_channel_link_missing")
             raise HTTPException(503, "life_checkout_start_failed")
 
-    async def create_sunlands(self, report_id, network, *, visit_id=None, return_url=None):
-        if not self.order_only:
+    async def create_sunlands(self, report_id, network, mobile=None, nation_code=None, *, visit_id=None, return_url=None):
+        if not self.order_only or not self.sunlands_ready:
             raise HTTPException(503, "life_order_configuration_required")
         s = self.settings
-        mobile = s.sunlands_order_mobile.strip()
-        nation_code = s.sunlands_order_nation_code.strip().removeprefix("+")
+        mobile = s.sunlands_order_mobile if mobile is None else mobile
+        nation_code = s.sunlands_order_nation_code if nation_code is None else nation_code
+        mobile = re.sub(r"[ \t()-]", "", mobile.strip())
+        nation_code = nation_code.strip().removeprefix("+")
+        if (not re.fullmatch(r"[0-9]{6,14}", mobile)
+                or not re.fullmatch(r"[1-9][0-9]{0,2}", nation_code)
+                or len(nation_code + mobile) > 15):
+            raise HTTPException(422, "life_order_phone_invalid")
         merchant = "sunlands:" + s.sunlands_app_key
         details = {"state": "CREATING", "createdAt": time.time(), "gateway": s.sunlands_base_url,
                    "endpoint": SUNLANDS_CREATE_ORDER,
@@ -422,9 +429,6 @@ class LifeCardPayments:
                 if (saved.get("state") != "ACCESS_DENIED" or saved.get("orderNumber") or saved.get("payNumber")
                         or order["sunlands_order_number"] or order["sunlands_pay_number"]):
                     return self._sunlands_view(order)
-            if not self.sunlands_ready:
-                raise HTTPException(503, "life_order_configuration_required")
-            # Keep old orders usable, but never create a new browser order without its configured return page.
             if (s.sunlands_payment_required or s.sunlands_h5_return_url) and not return_url:
                 raise HTTPException(503, "life_checkout_return_unavailable")
             if order:
@@ -441,7 +445,7 @@ class LifeCardPayments:
                                    details=details, visit_id=visit_id)
         expected_amount = Decimal(order_amount) / 100
         amount_text = f"{expected_amount:.2f}"
-        # The shared contact belongs to the merchant; report ownership stays local.
+        # Use the phone-order contract; overseas enum values were documented only for the old endpoint.
         form = {"orderType": "NORMAL", "termType": "mobile",
                 "nationCode": nation_code, "mobile": mobile,
                 "itemNo": s.sunlands_item_no, "itemTitle": s.sunlands_item_title,

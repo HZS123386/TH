@@ -15,7 +15,7 @@
     }
     redir / /thai-landing/?lang=zh 302
 
-    @landing path /thai-landing /thai-landing/* /tarot /tarot/*
+    @landing path /thai-landing /thai-landing/*
     @engineAssets path_regexp engine ^/thai-landing/engine/[a-f0-9]{40}/
     @unversionedAssets {
         not path /thai-landing/engine/*
@@ -26,7 +26,7 @@
         header @engineAssets Cache-Control "public, max-age=31536000, immutable"
         reverse_proxy astro-life-report:8000
     }
-    @reportApi path /api/life-reports /api/life-reports/* /api/thai-locations /api/landing/* /api/tarot/receipts
+    @reportApi path /api/life-reports /api/life-reports/* /api/thai-locations /api/landing/*
     handle @reportApi {
         header Cache-Control "no-store"
         reverse_proxy astro-life-report:8000 {
@@ -42,13 +42,7 @@
 }
 
 http://129.226.126.212 {
-    route {
-        @tarotPage path /tarot /tarot/*
-        redir @tarotPage https://{host}{uri} 308
-        @tarotRegistration path /api/tarot/receipts
-        respond @tarotRegistration 403
-        import astro_landing_routes
-    }
+    import astro_landing_routes
 }
 
 https://129.226.126.212 {

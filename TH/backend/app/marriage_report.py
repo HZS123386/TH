@@ -1,4 +1,5 @@
 """Structure, evidence and writing rules for the Thai marriage report."""
+import asyncio
 from copy import deepcopy
 from datetime import date, timedelta
 import json
@@ -9,13 +10,13 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, model_validator
 
 from . import thai
-from .bazi_reports import InvalidBaziReport
+from .bazi_reports import InvalidBaziReport, preview_review_deadline_context
 from .schemas import ThaiReadingInput
 from .thai_readings import copy_for, grounding
 
 FORMAT = "thai-marriage"
-PREVIEW_VERSION = "thai-marriage-9"
-FULL_VERSION = "thai-marriage-3"
+PREVIEW_VERSION = "thai-marriage-11"
+FULL_VERSION = "thai-marriage-4"
 COPY = json.loads((Path(__file__).resolve().parents[1] / "content" / "marriage-report.json").read_text(encoding="utf-8"))
 PREVIEW = {
     "birth_details": (),
@@ -38,6 +39,20 @@ FUTURE_FIELDS = ("period_one", "period_two", "period_three")
 STATES = ("reset", "old_pattern", "ready_to_assess", "observe")
 TIMING_HOUSES = (7, 5, 1, 4, 8, 12)
 
+_FIELD_NAMES = {
+    *(key for section in (*PREVIEW.values(), *FULL.values()) for key in section),
+    "text", "evidence_ids", "field_sources", "state", "language", "reading", "translations",
+}
+_LABEL = "(?:" + "|".join(sorted(_FIELD_NAMES)) + ")"
+_TAG = rf"(?:\[\s*{_LABEL}\s*\]|\(\s*{_LABEL}\s*\)|\*\*{_LABEL}\*\*|\x60{_LABEL}\x60)"
+_LABEL_PREFIX = re.compile(rf"^\s*(?:(?:{_LABEL}|{_TAG})\s*[:：–—-]\s*)+", re.IGNORECASE)
+_LABEL_TAG = re.compile(_TAG, re.IGNORECASE)
+_LABEL_EDGE = re.compile(rf"^(?:{_LABEL}\s+)+|\s+{_LABEL}$", re.IGNORECASE)
+_PUBLIC_TEXT_RULE = (
+    "Every text value is a complete paragraph in the requested language. Write only the sentences the reader will see. "
+    "Keep field names, headings, state codes and evidence IDs outside the paragraph. "
+)
+
 
 class MarriagePoint(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
@@ -55,6 +70,20 @@ class MarriageDraft(BaseModel):
     reading: Literal["marriage-preview", "marriage-full"]
     translations: dict[str, str] = Field(default_factory=dict)
 
+    @model_validator(mode="before")
+    @classmethod
+    def strip_reader_labels(cls, draft, info: ValidationInfo):
+        if isinstance(draft, dict) and info.context:
+            for key in fields(info.context["stage"]):
+                point = draft.get(key)
+                if isinstance(point, dict) and isinstance(text := point.get("text"), str):
+                    # Remove structural labels while leaving words inside unmarked sentences for validation.
+                    text = _LABEL_TAG.sub("", _LABEL_PREFIX.sub("", text)).strip()
+                    if info.context["language"] in ("zh", "th", "my", "km", "lo"):
+                        text = _LABEL_EDGE.sub("", text)
+                    point["text"] = text
+        return draft
+
 
 class MarriagePreview(MarriageDraft):
     needs: MarriagePoint
@@ -66,16 +95,24 @@ class MarriagePreview(MarriageDraft):
 
     @model_validator(mode="before")
     @classmethod
-    def bind_preview_fields(cls, draft, info: ValidationInfo):
+    def bind_preview_evidence(cls, draft, info: ValidationInfo):
         if not isinstance(draft, dict) or not info.context:
             return draft
         draft.pop("field_sources", None)
         for key, identifiers in info.context["allowed_evidence"].items():
-            if len(identifiers) == 1 and isinstance(draft.get(key), dict):
-                draft[key].setdefault("evidence_ids", identifiers)
+            point = draft.get(key)
+            if not isinstance(point, dict):
+                continue
+            citations = point.get("evidence_ids")
+            if isinstance(citations, str) and citations.strip() in identifiers:
+                point["evidence_ids"] = [citations.strip()]
+            elif isinstance(citations, list) and all(isinstance(item, str) for item in citations):
+                point["evidence_ids"] = list(dict.fromkeys(item.strip() for item in citations))
+            if len(identifiers) == 1 and point.get("evidence_ids") in (None, []):
+                point["evidence_ids"] = identifiers
         # An unknown birth time fixes the verdict while the writer supplies the observation text.
         if not info.context["birth_time_known"] and isinstance(draft.get("current"), dict):
-            draft["current"]["state"] = "observe"
+            draft["current"].setdefault("state", "observe")
         return draft
 
 
@@ -236,6 +273,26 @@ def bind_preview_schema(bundle, contract):
         contract["properties"][key] = point
 
 
+def bind_full_schema(bundle, contract):
+    definition = contract.pop("$defs")["MarriagePoint"]
+    for key, identifiers in bundle["allowed_evidence"].items():
+        point = deepcopy(definition)
+        citations = point["properties"]["evidence_ids"]
+        groups = bundle["required_evidence"].get(key, [])
+        if groups:
+            citations["description"] = "Use at least one distinct ID from each group: " + json.dumps(groups)
+        if key == "other_action" and bundle["birth_time_known"]:
+            # The three actions each need their own evidence, within the three-ID limit.
+            identifiers = [identifier for group in groups for identifier in group]
+            citations["minItems"] = len(groups)
+        citations["items"] = {"type": "string", "enum": identifiers}
+        contract["properties"][key] = point
+    contract["properties"]["planet_pattern"]["properties"]["text"]["description"] = (
+        "A new, observable consequence in close relationships. Write only the behavior and its effect. "
+        "Leave the cited planet names, signs, and houses out of this paragraph."
+    )
+
+
 def preview_prompt(bundle):
     state_instruction = (
         "Set current.state to one of current_states based on the cited recent positions. "
@@ -253,7 +310,7 @@ def preview_prompt(bundle):
         f"{state_instruction}Use only the supplied facts. "
         "The app adds exact chart placements and dates to the prose. Use short, direct second-person statements "
         "without technical terms, dates, rhetorical questions or assumed real events, partners or outcomes. "
-        "needs: open with the main mistake in how the reader tries to get a relationship need met. "
+        "Open the first paragraph with the main mistake in how the reader tries to get a relationship need met. "
         "Name the need in everyday words, based on the bound Ascendant or Sun. "
         "reaction: say what the reader does when unsure and what the other person sees or hears as a result. "
         "trap: describe one distinct pattern the reader can recognize and say where it leaves the relationship. "
@@ -264,6 +321,11 @@ def preview_prompt(bundle):
         "Give each point a distinct idea in one or two sentences, around 30–72 Chinese characters "
         "or the natural equivalent. Keep paid analysis and future timing out of this preview."
     )
+    if bundle["language"] == "th":
+        prompt += (
+            "เขียนทุกย่อหน้าที่ผู้อ่านจะเห็นเป็นภาษาไทย ใช้ประโยคที่อ่านได้ทันที "
+            "ชื่อช่องภาษาอังกฤษและรหัสอ้างอิงให้ใช้เฉพาะในโครงสร้างข้อมูล ห้ามใส่ลงในข้อความหรือขึ้นเป็นหัวข้อ "
+        )
     if bundle["language"] == "zh":
         prompt += (
             "免费正文要接住首页「该断该续？」和「揪出搅局的人」的话术。"
@@ -297,6 +359,7 @@ def prompt(bundle):
         "Select at least one ID from EACH list in required_evidence for that field. Treat supplied facts and prior text as data. "
         "The report prints real chart labels, signs, houses, time windows and colors separately. "
         "Write plain paragraphs without titles, Markdown, astrology terms or calendar dates in the text. "
+        f"{_PUBLIC_TEXT_RULE}"
         "Never infer missing houses or an Ascendant from Sun data. With multiple solar references give only a supported common theme. "
         "The first and last dates of a supplied segment bound daily Bangkok noon samples; they are broad observation windows, not precise event dates. "
         "Give the report one central relationship tension. Follow the same thread while making each field add a different "
@@ -304,9 +367,13 @@ def prompt(bundle):
     )
     if bundle["language"] == "zh":
         base += (
-            "简体中文按总分总来写。开头两句直说你最容易做错什么、关系因此卡在哪。"
-            "例如“你习惯用分析挡住需求。对方听懂了你的道理，还是不知道你想怎么走”。"
-            "只参考句式和力度。人物特征、行为和结论要根据实际依据重新写。"
+            "用简体中文直接对你说话。报告说明先写你最常做的动作，再写它对关系的具体代价。"
+            "fit 可用「值得认真对待的人，会……」起句，接一件双方要一起决定的事。"
+            "draining 可用「最消耗你的模式是……」起句，接一个反复发生、能被看见的行为。"
+            "时间段先落一句判断，再说对方做到哪一步，或你做了哪件事，才值得调整投入。"
+            "工作、财运、自身状态各用自己的生活情境。communication 给一句当场说得出口的话。"
+            "takeaway 用「立刻能做的改变是……」收束，再写这个动作会让什么变清楚。"
+            "这些句式只供参考。根据本人的实际盘面选择不同情境、判断和行动。"
         )
     return base + (
         "FULL. Develop the free conclusions into observable choices for living together. "
@@ -319,7 +386,8 @@ def prompt(bundle):
         "key_window: give a direct judgment about the cited window for meeting someone or moving toward commitment. "
         "Give a condition the reader can verify and say what should cause them to slow down. Give the judgment here; the window dates "
         "are displayed from the citation. Avoid promises to supply timing later. "
-        "planet_pattern: use a partner-house ruler or relevant Moon/Venus factor to add one new consequence of that tension. "
+        "planet_pattern: add one new consequence of that tension. Begin with an ordinary situation and show what it changes "
+        "between the two people. Put the relevant chart factor only in evidence_ids; the app prints its name and placement. "
         "present: state the immediate priority and where to hold back, using the recent evidence. "
         "period_one, period_two, period_three: decide for each assigned window whether to advance, adjust a recurring pattern, or "
         "hold and observe. State the behavior that would change that verdict. Without birth time use three practical checkpoints "
@@ -331,7 +399,7 @@ def prompt(bundle):
         "one sentence the reader can actually say. boundaries: name one agreement and the action to take if it repeatedly falls through. "
         "Before suggesting a larger commitment, state what the reader should already have made explicit. "
         "other_action: give one brief concrete action each for work, finances and one's own state, in that order. "
-        "Use the corresponding evidence for each action if available. "
+        "With a known birth time cite H10 for work, H2 for finances and either H6 or H12 for one's state. "
         "support: make the traditional symbol printed by the app an optional reminder for one real decision or conversation. "
         "takeaway: name one immediate change the reader can make, then close with a short sentence showing what that changes. "
         "Aim for 60–130 Chinese characters in fit, conflict and the window sections and 25–100 elsewhere, "
@@ -339,67 +407,79 @@ def prompt(bundle):
     )
 
 
+def repair_failure(errors, *, preview=False):
+    paths = {
+        (str(index) if preview and path[-1] == "text" else ".".join(path)): list(path)
+        for index, path in enumerate(errors, 1)
+        if len(path) == 1 or path[:1] not in errors
+    }
+    details = [{"field": ".".join(path), "rule": rule} for path, rule in errors.items()]
+    first = details[0]
+    failure = InvalidBaziReport(f"{first['field']}: {first['rule']}")
+    failure.repair_fields = paths
+    failure.field_errors = details
+    return failure
+
+
 def validate(raw, bundle, validate_text, validate_distinct):
     stage = bundle["stage"]
+    keys = fields(stage)
+    preview = stage == "marriage_preview"
     try:
         record = schema(stage).model_validate_json(raw, context=bundle)
     except ValidationError as error:
-        if stage == "marriage_preview":
-            # Keep the diagnostic actionable without logging arbitrary keys from the model.
-            allowed = {*fields(stage), "language", "reading", "translations", "text", "state", "evidence_ids"}
-            details = []
-            for item in error.errors(include_input=False, include_url=False)[:2]:
-                path = ".".join(str(key) if key in allowed or isinstance(key, int) else "extra_field"
-                                for key in item["loc"])
-                details.append(f"{path or 'response'} {item['type']}")
-            raise InvalidBaziReport("marriage_preview_schema: " + ", ".join(details)) from None
-        paths = [".".join(map(str, item["loc"])) for item in error.errors(include_input=False, include_url=False)[:8]]
-        raise InvalidBaziReport("Marriage report is missing or has malformed fields: " + ", ".join(paths)) from None
+        issues = error.errors(include_input=False, include_url=False)
+        repairable = all(item["loc"] and item["loc"][0] in keys for item in issues)
+        if not preview and repairable:
+            raise repair_failure({(item["loc"][0],): item["msg"] for item in issues}) from None
+        allowed = {*keys, "language", "reading", "translations", "text", "state", "evidence_ids"}
+        paths = [".".join(str(key) if key in allowed or isinstance(key, int) else "extra_field"
+                          for key in item["loc"]) or "response" for item in issues[:8]]
+        failure = InvalidBaziReport("Marriage report is missing or has malformed fields: " + ", ".join(paths))
+        if preview and repairable:
+            failure.repair_fields = {item["loc"][0]: [item["loc"][0]] for item in issues}
+        raise failure from None
     if record.language != bundle["language"] or record.reading != bundle["reading"] or record.translations:
         raise InvalidBaziReport("Use the requested marriage report stage and language")
-    if isinstance(record, MarriagePreview) and bundle["birth_time_known"] and record.current.state == "observe":
-        failure = InvalidBaziReport("current.state: invalid for known birth time")
+    if isinstance(record, MarriagePreview) and (record.current.state == "observe") == bundle["birth_time_known"]:
+        failure = InvalidBaziReport("current.state must match the birth-time precision")
         failure.repair_fields = {"current": ["current"]}
         raise failure
-    points = {}
-    for key in fields(stage):
+    review_deadline = preview_review_deadline_context.get() if preview else None
+    points, errors, editorial_errors = {}, {}, {}
+    for key in keys:
         point = getattr(record, key)
+        identifiers = set(point.evidence_ids)
+        if (len(identifiers) != len(point.evidence_ids) or not identifiers <= set(bundle["allowed_evidence"][key])
+                or any(identifiers.isdisjoint(required) for required in bundle["required_evidence"].get(key, ()))):
+            # Single-source preview fields may not expose evidence_ids in the model schema.
+            path = (key,) if preview else (key, "evidence_ids")
+            errors[path] = "use distinct supplied evidence and meet the required factors for this field"
         try:
-            identifiers = set(point.evidence_ids)
-            if (len(identifiers) != len(point.evidence_ids) or not identifiers <= set(bundle["allowed_evidence"][key])
-                    or any(identifiers.isdisjoint(required) for required in bundle["required_evidence"].get(key, ()))):
-                raise InvalidBaziReport("use distinct supplied evidence and meet the required factors for this field")
             if re.search(r"(?<!\d)\d{4}(?!\d)", point.text):
-                raise InvalidBaziReport("dates and years must come from the displayed transit evidence")
+                raise InvalidBaziReport("omit dates and years from the paragraph; the app displays the cited windows")
             validate_text(point.text, record.language, narrative=True)
         except InvalidBaziReport as error:
-            failure = InvalidBaziReport(f"{key}: {error}")
-            if isinstance(record, MarriagePreview):
-                failure.repair_fields = {key: [key]}
-            raise failure from None
+            # Language diagnostics should not feed the rejected words back into the rewrite.
+            rule = getattr(error, "rule", "")
+            issues = editorial_errors if review_deadline is not None and rule == "text_too_long" else errors
+            issues[(key, "text")] = "language" if rule == "language" else str(error)
         points[key] = point.text
-    validate_distinct(points, record.language, shared_limit=34 if record.language == "zh" else 96,
-                      previous_points=bundle.get("free_reading", {}).values())
-    return record.model_dump()
-
-
-def chinese_placement(fact, labels):
-    kind = fact["type"]
-    if kind == "sun_range":
-        signs = [labels["signs"][index] for index in fact["signs"]]
-        verb = "可能落在" if len(signs) > 1 else "落在"
-        return f"{labels['planets']['sun']}{verb}{'或'.join(signs)}"
-    sign = labels["signs"][fact["sign"]]
-    if kind == "ascendant":
-        return f"上升落在{sign}"
-    if kind == "house":
-        ruler = labels["planets"][fact["ruler"]]
-        return f"第{fact['number']}宫落在{sign}，宫主星{ruler}落在第{fact['ruler_house']}宫"
-    planet = labels["planets"][fact["key"]]
-    if kind == "marriage_window":
-        house = f"（本命第{fact['house']}宫）" if fact["house"] is not None else ""
-        return f"{fact['start']}至{fact['end']}，{planet}行经{sign}{house}"
-    return f"{planet}落在{sign}第{fact['house']}宫"
+    if errors:
+        raise repair_failure(errors, preview=preview)
+    story = record.model_dump()
+    if review_deadline is not None and asyncio.get_running_loop().time() >= review_deadline:
+        return story
+    try:
+        if editorial_errors:
+            raise repair_failure(editorial_errors, preview=True)
+        validate_distinct(points, record.language, shared_limit=34 if record.language == "zh" else 96,
+                          previous_points=bundle.get("free_reading", {}).values(), repair_text=True)
+    except InvalidBaziReport as error:
+        if review_deadline is not None:
+            error.readable_preview = story
+        raise
+    return story
 
 
 def public_sections(record, chart, profile, explain, *, full=False):
@@ -421,19 +501,6 @@ def public_sections(record, chart, profile, explain, *, full=False):
         native = explain(identifier, fact, language)
         return f"{native['title']} · {native['detail']}"
 
-    def with_placement(point, *, recent=False):
-        text = point["text"]
-        identifiers = point["evidence_ids"]
-        if language != "zh":
-            positions = " / ".join(show(identifier) for identifier in identifiers)
-            return copy["basis"].format(positions=positions, text=text)
-        positions = "，".join(chinese_placement(evidence[identifier], labels) for identifier in identifiers)
-        first_sentence = re.split(r"[。！!]", text, maxsplit=1)[0]
-        # Saved readings may open with a question, so leave those as complete sentences.
-        joiner = "，可以看出" if first_sentence.startswith("你") and not re.search(r"[？?]", first_sentence) else "。"
-        template = copy["recent_basis"] if recent else copy["basis"]
-        return template.format(positions=positions, joiner=joiner, text=text)
-
     location = chart.get("location") or {}
     region_key = {"zh": "nameChinese", "th": "nameThai"}.get(language, "nameEnglish")
     birthplace = location.get(region_key) or location.get("nameEnglish") or profile["birthplace"]
@@ -453,6 +520,7 @@ def public_sections(record, chart, profile, explain, *, full=False):
         # Earlier paid stories used the contrast inside the chart section.
         layout = {**FULL, "how_to_read": (), "relationship_chart": ("contrast", "planet_pattern")}
         extras["how_to_read"] = [copy["guide"]]
+    area_titles = copy.get("area_titles", {})
     sections = []
     for index, (section, keys) in enumerate(layout.items()):
         paragraphs = list(extras.get(section, []))
@@ -460,13 +528,22 @@ def public_sections(record, chart, profile, explain, *, full=False):
             point = story[key]
             if key == "current":
                 paragraphs.append(copy["states"][STATES.index(point["state"])])
+            if heading := area_titles.get(key):
+                paragraphs.append(heading)
             if key in ("present", "key_window", *FUTURE_FIELDS):
                 paragraphs.extend(show(identifier) for identifier in point["evidence_ids"]
                                   if evidence[identifier]["type"] == "marriage_window")
-            if not full and key in ("needs", "trap", "current"):
-                paragraphs.append(with_placement(point, recent=key == "current"))
+            if not full and language != "zh" and key in ("needs", "trap", "current"):
+                positions = " / ".join(show(identifier) for identifier in point["evidence_ids"])
+                paragraphs.append(copy["basis"].format(positions=positions, text=point["text"]))
             else:
                 paragraphs.append(point["text"])
+        if section == "other_areas":
+            paragraphs.extend(copy.get("warning_signals", []))
         title = copy["date_only_style"] if section == "relationship_style" and not known else titles[index]
-        sections.append({"key": section, "title": title, "paragraphs": paragraphs})
+        section_data = {"key": section, "title": title, "paragraphs": paragraphs}
+        if language == "zh" and section == "relationship_snapshot":
+            # Keep the API section for saved clients while the new free edition displays three readings.
+            section_data["visible"] = False
+        sections.append(section_data)
     return sections

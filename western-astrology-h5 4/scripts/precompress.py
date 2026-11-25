@@ -3,12 +3,16 @@ from pathlib import Path
 import gzip
 import sys
 
-from zopfli.gzip import compress
-
-
 root = Path(sys.argv[1]).resolve()
 if not (root / 'index.html').is_file() or not (root / 'main.dart.js').is_file():
     raise SystemExit('Expected a completed Flutter web build directory')
+try:
+    from zopfli.gzip import compress
+except ModuleNotFoundError as error:
+    if error.name not in ('zopfli', 'zopfli.gzip'):
+        raise
+    print('Zopfli is optional. Using the existing gzip and Brotli assets.', flush=True)
+    raise SystemExit(0)
 saved = 0
 count = 0
 for source in sorted(root.rglob('*')):

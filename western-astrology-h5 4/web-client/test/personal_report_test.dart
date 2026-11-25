@@ -52,7 +52,7 @@ void main() {
         ),
         browser,
         language: 'zh',
-      )..enterLanding();
+      );
       await tester.pumpWidget(
         H5App(controller: controller, initialLocation: '/?lang=zh'),
       );
@@ -82,10 +82,8 @@ void main() {
         lowerImage.dx,
         greaterThan(tester.getCenter(find.text('***预警')).dx),
       );
-      expect(
-        find.text(controller.copy.t('marriage', 'form_hint')),
-        findsOneWidget,
-      );
+      expect(find.text('从出生时刻，揪出感情的搅局者'), findsOneWidget);
+      expect(find.text('先免费获取本命星象特质，定位姻缘里的暗星阻碍'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
@@ -188,7 +186,7 @@ void main() {
       '上升 · 巨蟹座',
       '出生时间说明',
     ];
-    const oldTitles = ['上升在感情里的真实样子', '当前感情能量判断', '感情模式快照', '解锁完整婚姻关系报告'];
+    const oldTitles = ['旧版相处方式', '旧版感情能量', '旧版感情模式', '旧版解锁完整报告'];
     for (var i = 0; i < oldTitles.length; i++) {
       preview[i + 1]['title'] = oldTitles[i];
     }
@@ -226,12 +224,23 @@ void main() {
       expect(find.text(title), findsNothing);
     }
     expect(find.text('Free marriage section 3.'), findsOneWidget);
+    final line = find.byKey(const ValueKey('jy-line-contact'));
+    expect(line, findsOneWidget);
+    expect(browser.lineClaimClicks, 0);
+    expect(find.byKey(const ValueKey('jy-payment-preview')), findsNothing);
+    expect(find.text(LifeReport.parse(data).priceLabel), findsNothing);
+    expect(find.text(controller.copy.t('jy', 'checkout.preview')), findsNothing);
     expect(find.textContaining('1990-05-20'), findsNothing);
     for (final paragraph in preview.first['paragraphs'] as List<String>) {
       expect(find.text(paragraph), findsNothing);
     }
     expect(find.text(controller.copy.t('jy', 'appLogin.title')), findsNothing);
     expect(find.text(controller.copy.t('life', 'exportPdf')), findsNothing);
+    await tester.ensureVisible(line);
+    await tester.tap(line);
+    await tester.pump();
+    expect(browser.lineClaimClicks, 1);
+    expect(browser.sameTabPages, ['https://line.me/ti/p/SmujXXCH9v']);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

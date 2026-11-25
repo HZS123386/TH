@@ -84,7 +84,6 @@ Future<void> _startApp(WebBrowserPort browser) async {
     ensureReportFont: fonts.ensureCommon,
   );
   browser.setLanguage(language, controller.copy.t('jy', 'title'));
-  browser.connectWelcome(controller.enterLanding);
   runApp(H5App(controller: controller));
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(

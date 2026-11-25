@@ -22,11 +22,8 @@ class H5Controller extends ChangeNotifier {
     repository.language = _language;
     repository.visitContext = browser.visitContext;
     repository.onClientFailure = browser.trackFailure;
-    welcomeOpen = true;
     noticeAccepted =
         browser.readSetting('fate-data-use-version') == noticeVersion;
-    returningVisitor = browser.readSetting('fate-welcome-seen') == '1';
-    browser.writeSetting('fate-welcome-seen', '1');
   }
   final Map<String, Json> _translations;
   final Future<Json> Function(String)? loadTranslations;
@@ -36,12 +33,9 @@ class H5Controller extends ChangeNotifier {
   final Future<void> Function(String)? ensureFont;
   final Future<void> Function(String, String)? ensureTextFont;
   final Future<void> Function(String)? ensureReportFont;
-  late final bool returningVisitor;
   static const noticeVersion = 'h5-data-use-3';
   static const _visitTimeout = Duration(seconds: 8);
-  late bool welcomeOpen, noticeAccepted;
-  bool welcomePortraitRevealed = false;
-  bool landingPrepared = false;
+  late bool noticeAccepted;
   Json? landingInput;
   Place? landingPlace;
   LifeReport? _generatedPreview;
@@ -49,36 +43,6 @@ class H5Controller extends ChangeNotifier {
   Json _visit = {};
   final _events = <String, Future<bool>>{};
   final _background = CancelToken();
-  AppLoginCode? _appLoginCode;
-  String? _appLoginReport;
-  Future<AppLoginCode>? _appLoginRequest;
-
-  Future<AppLoginCode>? get currentAppLoginCode {
-    final code = _appLoginCode;
-    return _appLoginRequest ?? (code == null ? null : Future.value(code));
-  }
-
-  Future<AppLoginCode> requestAppLoginCode(
-    String reportId, {
-    bool refresh = false,
-  }) {
-    final cached = _appLoginCode;
-    if (!refresh &&
-        _appLoginReport == reportId &&
-        cached != null &&
-        !cached.expired) {
-      return Future.value(cached);
-    }
-    return _appLoginRequest ??= repository
-        .createAppLoginCode(reportId, _background)
-        .then((code) {
-          _appLoginReport = reportId;
-          _appLoginCode = code;
-          return code;
-        })
-        .whenComplete(() => _appLoginRequest = null);
-  }
-
   void trackActivity(String page, [String action = 'view']) =>
       browser.trackActivity(page, action);
 
@@ -111,30 +75,6 @@ class H5Controller extends ChangeNotifier {
             : location['nameEnglish'],
       });
     }
-    enterLanding();
-  }
-
-  void enterLanding() {
-    landingPrepared = true;
-    welcomeOpen = false;
-    welcomePortraitRevealed = true;
-    trackActivity('birth_form', 'enter_form');
-    notifyListeners();
-    unawaited(recordVisit());
-  }
-
-  void returnToWelcome() {
-    browser.writeSetting('active-preview', '', session: true);
-    if (welcomeOpen) return;
-    welcomeOpen = true;
-    welcomePortraitRevealed = false;
-    notifyListeners();
-  }
-
-  void prepareLanding() {
-    if (landingPrepared) return;
-    landingPrepared = true;
-    notifyListeners();
   }
 
   Future<void> prepareText(String value, {String? language}) async {
@@ -146,12 +86,6 @@ class H5Controller extends ChangeNotifier {
     if (language == 'zh' && load != null) {
       unawaited(load(language).catchError((_) {}));
     }
-  }
-
-  void revealLandingPortrait() {
-    if (welcomePortraitRevealed) return;
-    welcomePortraitRevealed = true;
-    notifyListeners();
   }
 
   Future<void> recordVisit() async {

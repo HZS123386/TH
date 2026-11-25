@@ -56,15 +56,15 @@ const icon = (name) =>
 const views = {
   overview: ['数据总览', '从访问到报告交付，查看每一个关键环节。'],
   visits: ['访问与来源', '查看每次访问的填写进度、前台停留和最后记录。'],
-  'visit-funnel': ['H5 访问漏斗', '查看所有来源从进入欢迎页到点击 LINE 的各步数据。'],
-  'ad-funnel': ['广告转化', '查看带投放标签的访客，从到达欢迎页到点击 LINE 的各步人数。'],
+  'visit-funnel': ['H5 访问漏斗', '查看从填写资料到点击 LINE 的各步数据。'],
+  'ad-funnel': ['广告转化', '查看带投放标签的访客，从进入 H5 到点击 LINE 的各步人数。'],
   reports: ['报告管理', '查看生成状态、解锁权限，追踪每一份报告。'],
   orders: ['订单与支付', '区分订单创建、到账核验和报告权益。'],
   calls: ['模型调用', '查看每次请求的模型、Token、耗时与校验结果。'],
   issues: ['失败与异常', '区分当前业务异常与历史失败尝试，定位需要跟进的记录。'],
   audit: ['操作记录', '管理员的每次处理都有时间、原因和结果。'],
   sources: ['数据来源与口径', '知道数据从哪里来，也知道每个数字如何计算。'],
-  'line-contacts': ['LINE 报告发放', '按领取编号查询占星或塔罗报告，处理 LINE 发放。'],
+  'line-contacts': ['LINE 报告发放', '按领取编号查询占星报告，处理 LINE 发放。'],
 };
 const visitPages = {
   welcome: '欢迎页', birth_form: '资料填写页', consent: '数据使用确认', history: '历史报告列表',
@@ -177,6 +177,13 @@ const errors = {
   admin_action_duplicate: '这次操作已经提交，请刷新详情查看操作记录。',
   admin_no_verifiable_order: '没有可以通过当前后台核验的正式网关订单，请查看订单回执。',
   admin_report_already_ready: '报告已经完成，无需重试。',
+  admin_report_content_unavailable: '这个版本的正文尚未生成并保存。',
+  admin_report_content_invalid: '这份报告的正文暂无法读取。',
+  PDF_font_unavailable: 'PDF 字体加载失败，请刷新页面后重试。',
+  PDF_runtime_unavailable: '报告组件加载失败，请刷新页面后重试。',
+  PDF_engine_unavailable: 'PDF 生成组件加载失败，请刷新页面后重试。',
+  PDF_invalid_output: 'PDF 文件生成失败，请稍后重试。',
+  'Invalid report': '这份报告的正文暂无法读取。',
   admin_action_failed: '操作没有完成，请查看业务状态与操作记录。',
   life_payment_required: '该报告尚未获得解锁权限，请先核验到账。',
   life_order_needs_review: '建单结果不确定，请结合保存的回执人工核查，系统不会重复建单。',
@@ -187,8 +194,6 @@ const errors = {
   life_payment_unavailable: '当前支付配置不支持核验这笔订单。',
   life_report_generating: '这份报告仍在生成中，请稍后刷新。',
   admin_line_range_invalid: '请选择有效的起止时间，结束时间须晚于开始时间。',
-  admin_tarot_receipt_not_found: '未找到这个塔罗领取编号，请核对编号后重试。',
-  admin_tarot_receipt_not_accepted: '请先确认客服已收到领取编号，再标记报告已发送。',
   admin_expired_code_not_found: '未查到已过期且仍在 7 天保留期内的登录码。',
   admin_retry_limited: '生成请求触发限额，请稍后再试。',
   life_report_not_found: '这份报告已不存在。',
@@ -196,11 +201,19 @@ const errors = {
   request_failed: '请求失败，请稍后重试。',
 };
 const verifiedOrdersRoute = 'orders?time_basis=verified';
+const lineSentRoute = 'line-contacts?delivery=sent';
+const firstReportsRoute = 'reports?report_scope=first';
+const lineSentTitle = '已登记发送';
+const reportEditionNames = { preview: '免费报告', full: '完整报告' };
+const loadReportRuntime = () => import('/thai-landing/runtime/report-pdf.js').catch(() => {
+  throw new Error('PDF_runtime_unavailable');
+});
 const lineDeliveryTabs = { pending: '待发报告', unconfirmed: '待确认好友', sent: '已发送' };
 const state = {
   session: null,
   view: 'overview',
   timeBasis: 'created',
+  firstReportsOnly: false,
   days: 30,
   page: 1,
   q: '',
@@ -290,16 +303,21 @@ function showLogin() {
 function navigate(view, { refresh = false } = {}) {
   state.timeBasis = view === verifiedOrdersRoute ? 'verified' : 'created';
   if (state.timeBasis === 'verified') view = 'orders';
+  const showSent = view === lineSentRoute;
+  const firstReportsOnly = view === firstReportsRoute;
+  if (showSent) view = 'line-contacts';
+  if (firstReportsOnly) view = 'reports';
   if (!views[view]) view = 'overview';
   if (state.session?.role === 'report_support') view = 'line-contacts';
   state.view = view;
+  state.firstReportsOnly = view === 'reports' && firstReportsOnly;
   state.page = 1;
   state.q = '';
   state.status = '';
   state.source = '';
   state.category = '';
   state.caseStatus = '';
-  state.lineDelivery = 'pending';
+  state.lineDelivery = showSent ? 'sent' : 'pending';
   return loadView({ refresh });
 }
 function nav() {
@@ -335,9 +353,11 @@ function lineRangeValues() {
   };
 }
 const lineEpoch = (value) => Date.parse(value + '+08:00') / 1000;
-function renderLineCounts(counts) {
+function renderLineCounts(reportCounts, visitorCounts) {
   $('#line-report-counts').querySelectorAll('[data-line-count]').forEach((element) => {
-    element.textContent = counts ? number(counts[element.dataset.lineCount]) + ' 份' : '—';
+    const deduplicated = element.hasAttribute('data-line-dedup');
+    const count = (deduplicated ? visitorCounts : reportCounts)?.[element.dataset.lineCount];
+    element.textContent = count == null ? '—' : `${number(count)} ${deduplicated ? '人' : '份'}`;
   });
 }
 async function loadView({ refresh = false } = {}) {
@@ -346,9 +366,12 @@ async function loadView({ refresh = false } = {}) {
     view = state.view,
     days = state.days;
   nav();
-  $('#page-title').textContent = views[view][0];
-  $('#breadcrumb-title').textContent = views[view][0];
-  $('#page-description').textContent = views[view][1];
+  const [title, description] = state.firstReportsOnly
+    ? ['报告创建去重明细', '每位浏览器访客只显示首份报告，按首次创建时间筛选。']
+    : views[view];
+  $('#page-title').textContent = title;
+  $('#breadcrumb-title').textContent = title;
+  $('#page-description').textContent = description;
   const lineRange = view === 'line-contacts' ? lineRangeValues() : null;
   $('#line-stats').hidden = !lineRange;
   if (lineRange) {
@@ -365,7 +388,7 @@ async function loadView({ refresh = false } = {}) {
   $('#page-error').hidden = true;
   $('#content').innerHTML = '<div class="loading">正在读取业务数据…</div>';
   try {
-    if (state.session.role === 'admin' && (refresh || state.overviewDays !== days)) {
+    if (state.session.role === 'admin' && (view === 'overview' || refresh || state.overviewDays !== days)) {
       const overview = await api(`/overview?days=${days}`);
       if (revision !== state.revision || !state.session) return;
       state.overview = overview;
@@ -400,6 +423,7 @@ async function loadView({ refresh = false } = {}) {
             category: state.category,
             case_status: state.caseStatus,
             time_basis: state.timeBasis,
+            report_scope: state.firstReportsOnly ? 'first' : 'all',
           }),
       );
     if (revision !== state.revision || !state.session) return;
@@ -408,7 +432,7 @@ async function loadView({ refresh = false } = {}) {
     else if (view === 'ad-funnel') renderAdFunnel(data);
     else if (view === 'sources') renderSources(data.items);
     else if (view === 'line-contacts') {
-      renderLineCounts(data.report_counts);
+      renderLineCounts(data.report_counts, data.first_contact_visitor_counts);
       renderLineContacts(data);
     }
     else {
@@ -422,126 +446,6 @@ async function loadView({ refresh = false } = {}) {
       showPageError(error);
     }
   }
-}
-
-function bindTarotLookup() {
-  const form = $('#tarot-receipt-lookup');
-  const input = form.querySelector('input');
-  const submit = form.querySelector('button');
-  const output = $('#tarot-receipt-result');
-  let receipt = null;
-
-  function renderReceipt(message = '') {
-    const spread = window.TarotCore?.spreads[receipt.spread_id];
-    const cards = receipt.cards.map((card, index) => {
-      const title = window.TAROT_CONTENT?.cards.find((item) => item.id === card.id)?.name.zh || '#' + card.id;
-      const position = spread?.positions[index]?.zh || '第 ' + (index + 1) + ' 张';
-      return `<li>${esc(position)} · ${esc(title)} · ${card.reversed ? '逆位' : '正位'}</li>`;
-    }).join('');
-    const canCopy = Boolean(spread && window.TarotReading && window.TAROT_CONTENT);
-    const status = receipt.sent_at ? '已发送' : receipt.accepted_at ? '已接单' : '已登记';
-    const statusButton = receipt.sent_at ? '' : receipt.accepted_at
-      ? '<button type="button" class="button" data-tarot-action="mark_sent">标记已发送</button>'
-      : '<button type="button" class="button" data-tarot-action="accept">标记已接单</button>';
-    output.innerHTML = `<dl class="detail-fields">
-      <div><dt class="field-label">领取编号</dt><dd class="field-value mono">${esc(receipt.claim_code)}</dd></div>
-      <div><dt class="field-label">登记时间</dt><dd class="field-value">${fullDate(receipt.created_at)}</dd></div>
-      <div><dt class="field-label">用户语言</dt><dd class="field-value">${receipt.language === 'th' ? '泰文' : '中文'}</dd></div>
-      <div><dt class="field-label">牌阵</dt><dd class="field-value">${esc(spread?.name.zh || receipt.spread_id)}</dd></div>
-      <div><dt class="field-label">咨询问题</dt><dd class="field-value">${esc(receipt.question)}</dd></div>
-      <div><dt class="field-label">选牌顺序</dt><dd class="field-value"><ol>${cards}</ol></dd></div>
-      <div><dt class="field-label">发放状态</dt><dd class="field-value" data-tarot-status>${status}</dd></div>
-      <div><dt class="field-label">接单时间</dt><dd class="field-value">${fullDate(receipt.accepted_at)}</dd></div>
-      <div><dt class="field-label">发送时间</dt><dd class="field-value">${fullDate(receipt.sent_at)}</dd></div>
-    </dl>
-    <div class="line-actions">
-      <button type="button" class="button" data-tarot-action="copy" ${canCopy ? '' : 'disabled'}>复制完整报告</button>
-      ${statusButton}
-    </div>
-    <p class="stat-hint" data-tarot-feedback>${esc(message || (canCopy ? '' : '报告模板加载失败，请刷新后重试复制。'))}</p>
-    <div data-tarot-copy-fallback hidden>
-      <label for="tarot-copy-text">完整报告正文</label>
-      <textarea id="tarot-copy-text" rows="8" readonly spellcheck="false"></textarea>
-    </div>`;
-  }
-
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    input.value = input.value.trim().toUpperCase();
-    if (submit.disabled || !form.reportValidity()) return;
-    submit.disabled = true;
-    receipt = null;
-    output.textContent = '正在查询…';
-    try {
-      const result = await api('/line-contacts/tarot-lookup', {
-        method: 'POST',
-        body: { code: input.value },
-      });
-      await Promise.all([
-        import('/tarot/content.js'), import('/tarot/core.js'), import('/tarot/reading.js'),
-      ]).catch(() => {});
-      if (!form.isConnected) return;
-      receipt = result;
-      renderReceipt();
-    } catch (error) {
-      if (form.isConnected) output.textContent = error.message;
-    } finally {
-      submit.disabled = false;
-    }
-  });
-
-  output.addEventListener('click', async (event) => {
-    const button = event.target.closest('[data-tarot-action]');
-    const current = receipt;
-    if (!button || !current || button.disabled) return;
-    const action = button.dataset.tarotAction;
-    const feedback = output.querySelector('[data-tarot-feedback]');
-    button.disabled = true;
-    try {
-      if (action === 'copy') {
-        const text = window.TarotReading.formatText({
-          id: current.report_id,
-          claimCode: current.claim_code,
-          topic: current.topic ?? window.TarotCore.topicFor(current.question),
-          question: current.question,
-          spreadId: current.spread_id,
-          cards: current.cards,
-        }, current.language, true);
-        const fallback = output.querySelector('[data-tarot-copy-fallback]');
-        let copied = false;
-        try {
-          if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(text);
-            copied = true;
-          }
-        } catch {}
-        if (!button.isConnected) return;
-        if (!copied) {
-          const field = fallback.querySelector('textarea');
-          fallback.hidden = false;
-          field.value = text;
-          field.focus();
-          field.select();
-          try { copied = document.execCommand('copy') === true; } catch {}
-        }
-        fallback.hidden = copied;
-        feedback.textContent = copied ? '已复制完整报告，可以粘贴到 LINE 后手工发送。'
-          : '自动复制失败，请手动复制下方完整报告。';
-        return;
-      }
-      const changes = await api('/line-contacts/tarot-status', {
-        method: 'POST',
-        body: { code: current.claim_code, action },
-      });
-      if (!form.isConnected || receipt !== current) return;
-      receipt = { ...current, ...changes };
-      renderReceipt(action === 'accept' ? '已标记接单。' : '已标记为手工发送。');
-    } catch (error) {
-      if (button.isConnected) feedback.textContent = error.message;
-    } finally {
-      button.disabled = false;
-    }
-  });
 }
 
 function renderLineContacts(data) {
@@ -584,15 +488,6 @@ function renderLineContacts(data) {
       <p class="stat-hint">手机点击打开 LINE，或电脑复制领取编号。同一浏览器只计一人。</p>
     </section>
   </div>
-  <section class="panel line-stats" aria-labelledby="tarot-lookup-title">
-    <div class="data-group-heading"><h2 id="tarot-lookup-title">查询塔罗领取编号</h2></div>
-    <form class="filters" id="tarot-receipt-lookup">
-      <div class="search"><input aria-label="塔罗领取编号" placeholder="粘贴以 T- 开头的编号"
-        autocomplete="off" spellcheck="false" maxlength="20" pattern="[Tt]-(?:[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{12}|[1-9][0-9]{5,17})" required></div>
-      <button class="button" type="submit">查问题和牌阵</button>
-    </form>
-    <div id="tarot-receipt-result" role="status"></div>
-  </section>
   <section class="panel line-stats" aria-labelledby="line-code-lookup-title">
     <div class="data-group-heading"><h2 id="line-code-lookup-title">回查过期 App 登录码</h2></div>
     <p class="stat-hint">可查签发后 7 天内已过期的 6 位码。</p>
@@ -614,13 +509,13 @@ function renderLineContacts(data) {
       <div class="search"><span aria-hidden="true">⌕</span><input id="line-report-id" aria-label="领取编号" placeholder="粘贴领取编号" maxlength="128" value="${esc(state.q)}"></div>
       <button class="button" type="submit">查询</button>
     </form>
+    <div class="summary-line"><span>共 <strong>${number(data.total)}</strong> 份</span></div>
     ${rows.length ? table(['领取编号', '首次打开联系码', '确认加好友', '发送状态', '操作'], rows)
       : `<div class="empty">${icon('reports')}<strong>${state.q ? '未找到此编号的预览报告' : '此分类暂无报告'}</strong></div>`}
     <div class="table-footer"><span>第 ${state.page} 页</span><div class="pagination">
       <button type="button" class="button" id="line-prev" ${state.page <= 1 ? 'disabled' : ''}>上一页</button>
       <button type="button" class="button" id="line-next" ${data.has_more ? '' : 'disabled'}>下一页</button>
     </div></div></section>`;
-  bindTarotLookup();
   const lookupForm = $('#line-code-lookup');
   const lookupInput = lookupForm.querySelector('input');
   const lookupButton = lookupForm.querySelector('button');
@@ -660,13 +555,6 @@ function renderLineContacts(data) {
     event.preventDefault();
     const input = $('#line-report-id');
     const query = input.value.trim();
-    if (/^T-/i.test(query)) {
-      input.value = state.q;
-      const tarotForm = $('#tarot-receipt-lookup');
-      tarotForm.querySelector('input').value = query.toUpperCase();
-      tarotForm.requestSubmit();
-      return;
-    }
     if (/^[A-Za-z0-9]{6}$/.test(query)) {
       input.value = state.q;
       lookupInput.value = query.toUpperCase();
@@ -693,15 +581,17 @@ function renderLineContacts(data) {
       const session = state.session;
       const action = button.dataset.lineAction;
       const path = `/line-contacts/${encodeURIComponent(button.dataset.lineReport)}`;
+      const label = button.textContent;
       button.disabled = true;
       try {
         if (action === 'download') {
-          const { exportDocument } = await import('/thai-landing/runtime/report-pdf.js');
+          button.textContent = '正在准备 PDF…';
+          const { exportDocument } = await loadReportRuntime();
           if (state.session !== session) return;
           const report = await api(path + '/report', { method: 'POST' });
           if (state.session !== session) return;
-          const result = await exportDocument(JSON.stringify(report), 'pdf');
-          if (result !== 'cancelled') toast('PDF 已下载，请发给 LINE 用户。');
+          const result = await exportDocument(JSON.stringify(report), 'pdf', { showSaveDialog: false });
+          if (state.session === session && result !== 'cancelled') toast('PDF 下载已开始，请在浏览器下载列表中查看。');
         } else {
           const result = await api(path + '/actions', { method: 'POST', body: { action } });
           if (state.session !== session) return;
@@ -712,8 +602,9 @@ function renderLineContacts(data) {
           if (state.view === 'line-contacts') await loadView();
         }
       } catch (error) {
-        toast(error.message);
+        toast(errors[error.message] || error.message);
       } finally {
+        button.textContent = label;
         button.disabled = false;
       }
     });
@@ -755,7 +646,6 @@ function reportTable(rows) {
 }
 function renderVisitFunnel(metrics) {
   const steps = [
-    ['进入欢迎页', metrics.welcome_people, metrics.welcome_visits, '次访问'],
     ['进入资料填写页', metrics.birth_form_people, metrics.birth_form_views, '次打开'],
     ['点击生成报告', metrics.generate_click_people, metrics.generate_clicks, '次点击'],
     ['点击 LINE 按钮', metrics.line_click_people, metrics.line_clicks, '次点击'],
@@ -768,18 +658,18 @@ function renderVisitFunnel(metrics) {
           <dd><strong>${number(people)}</strong> 人<span>${number(count)} ${unit}</span></dd>
         </div>`).join('')}</dl>
     </div></section>
-    <p class="data-note">按欢迎页访问开始时间筛选，最多查看最近 30 天。各步按浏览器去重，层宽表示步骤顺序。按钮点击从埋点启用后开始记录。<a href="#sources">统计口径 ↗</a></p>`;
+    <p class="data-note">按访问开始时间筛选，最多查看最近 30 天。各步人数按浏览器去重。<a href="#sources">统计口径 ↗</a></p>`;
 }
 function renderAdFunnel(metrics) {
   const steps = [
-    ['广告进入欢迎页', metrics.welcome_people, `欢迎页访问 ${number(metrics.welcome_visits)} 次<small>广告链接点击数：未接入</small>`],
-    ['点击欢迎页按钮', metrics.welcome_click_people, '从新版启用后记录'],
+    ['广告进入 H5', metrics.entry_people, `页面访问 ${number(metrics.entry_visits)} 次<small>广告链接点击数：未接入</small>`],
     ['到达个人信息填写页', metrics.birth_form_people, '打开填写页即计入'],
     ['点击生成报告', metrics.generate_click_people, '从新版启用后记录，含校验未通过的点击'],
     ['点击 LINE', metrics.line_click_people, '从新版启用后记录打开 LINE 的按钮点击'],
   ];
   $('#content').innerHTML =
-    `<p class="data-note">以同时带有来源和活动标签的欢迎页访问为起点。按访问开始时间筛选，最多查看最近 30 天。同一步每个浏览器计一次。<a href="#sources">统计口径 ↗</a></p>
+    `<p class="data-note">统计同时带有来源和活动标签的 H5 访问，包括历史欢迎页访问和直接打开填写页。按访问开始时间筛选，最多查看最近 30 天。同一步每个浏览器计一次。<a href="#sources">统计口径 ↗</a></p>
+    ${metrics.welcome_visits ? `<p class="data-note">历史欢迎页记录 ${number(metrics.welcome_people)} 人访问，${number(metrics.welcome_click_people)} 人点击欢迎页按钮。</p>` : ''}
     <section class="panel table-panel" aria-label="广告转化步骤">${table(
       ['步骤', '已记录人数', '说明'],
       steps.map(([name, people, detail]) =>
@@ -803,6 +693,14 @@ function renderOverview(reports) {
       '按报告创建日期统计', `已解锁 ${number(m.unlocked)} 份`, 'reports',
     ],
     [
+      'visits', '报告创建（去重）', m.first_report_creators == null ? null : number(m.first_report_creators), '人',
+      '按首次创建报告的时间统计', '同一浏览器访客只计一次', firstReportsRoute,
+    ],
+    [
+      'reports', lineSentTitle, number(m.line_sent), '份',
+      '按发送登记时间筛选，每份报告计一次', '查看 LINE 发放明细', lineSentRoute,
+    ],
+    [
       'orders', '核验实收', money(m.revenue), '泰铢',
       '按服务端核验通过时间统计正式到账', `已到账订单 ${number(m.paid)} 笔`, verifiedOrdersRoute,
     ],
@@ -819,7 +717,7 @@ function renderOverview(reports) {
     `<section aria-labelledby="overview-metrics-title">
       <div class="data-group-heading"><h2 id="overview-metrics-title">关键指标</h2><a href="#sources">统计口径 ↗</a></div>
       <div class="stats-grid">${cards.map(([symbol, title, value, unit, description, foot, view]) => `
-        <section class="stat-card">
+        <section class="stat-card${view === firstReportsRoute ? ' stat-card-linked' : ''}">
           <div class="stat-top"><h3>${title}</h3><span class="stat-icon">${icon(symbol)}</span></div>
           <div class="stat-value">${value ?? '—'}${value == null ? '' : `<span class="unit">${unit}</span>`}</div>
           <p class="stat-hint">${description}</p>
@@ -874,9 +772,12 @@ function renderRecords(data) {
   const note = verified
     ? '只查看正式渠道核验到账的订单，按核验时间筛选。历史缺核验时间的订单可在全部记录中查看。'
     : notes[kind];
-  const orderTimeLink = kind === 'orders'
-    ? `<a href="#${verified ? 'orders' : verifiedOrdersRoute}">${verified ? '按建单时间' : '按核验时间'} ↗</a> `
-    : '';
+  let recordsViewLink = '';
+  if (state.firstReportsOnly) {
+    recordsViewLink = '<a href="#reports">查看全部报告 ↗</a> ';
+  } else if (kind === 'orders') {
+    recordsViewLink = `<a href="#${verified ? 'orders' : verifiedOrdersRoute}">${verified ? '按建单时间' : '按核验时间'} ↗</a> `;
+  }
   const sources = [...data.source_options];
   const selectedSource = state.source === '__untagged' ? '' : state.source;
   if (state.source && !sources.includes(selectedSource)) sources.push(selectedSource);
@@ -922,7 +823,7 @@ function renderRecords(data) {
   };
   const pages = Math.max(1, Math.ceil(data.total / data.page_size));
   $('#content').innerHTML =
-    `<p class="data-note">${esc(note)} ${orderTimeLink}<a href="#sources">查看来源 ↗</a></p><section class="panel table-panel${kind === 'visits' ? ' visit-records' : ''}"><form id="filters" class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search-input" aria-label="搜索记录" placeholder="搜索访客编号、报告、订单号或关键词…" value="${esc(state.q)}" maxlength="100"></div><select id="status-filter" aria-label="状态筛选"><option value="">全部状态</option>${data.facets.map((row) => `<option value="${esc(row.status)}" ${row.status === state.status ? 'selected' : ''}>${esc(label(row.status))} (${row.count})</option>`).join('')}</select>${kind !== 'audit' ? `<select id="source-filter" aria-label="来源筛选"><option value="">全部来源</option>${sources.map((source) => `<option value="${esc(source || '__untagged')}" ${(source || '__untagged') === state.source ? 'selected' : ''}>${esc(source || '未标记 / 未归因')}</option>`).join('')}</select>` : ''}<button class="button" type="submit">查询</button><button class="button" id="clear-filters" type="button">重置</button><button id="export" type="button" class="button export">↓ 导出当前页</button></form><div class="summary-line"><span>筛选结果 <strong>${number(data.total)}</strong> ${recordUnits[kind]}</span>${kind === 'issues' ? '<span>模型尝试与当前业务异常分别标注</span>' : ''}</div>${kind === 'reports' ? reportTable(data.items) : data.items.length ? table(headers[kind], data.items.map(renderRow)) : empty('没有符合条件的记录')}<div class="table-footer"><span>每页 ${data.page_size} 条</span><div class="pagination"><button id="previous-page" class="button" ${state.page <= 1 ? 'disabled' : ''}>上一页</button><span>${state.page} / ${pages}</span><button id="next-page" class="button" ${state.page >= pages ? 'disabled' : ''}>下一页</button></div></div></section>`;
+    `<p class="data-note">${esc(note)} ${recordsViewLink}<a href="#sources">查看来源 ↗</a></p><section class="panel table-panel${kind === 'visits' ? ' visit-records' : ''}"><form id="filters" class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search-input" aria-label="搜索记录" placeholder="搜索访客编号、报告、订单号或关键词…" value="${esc(state.q)}" maxlength="100"></div><select id="status-filter" aria-label="状态筛选"><option value="">全部状态</option>${data.facets.map((row) => `<option value="${esc(row.status)}" ${row.status === state.status ? 'selected' : ''}>${esc(label(row.status))} (${row.count})</option>`).join('')}</select>${kind !== 'audit' ? `<select id="source-filter" aria-label="来源筛选"><option value="">全部来源</option>${sources.map((source) => `<option value="${esc(source || '__untagged')}" ${(source || '__untagged') === state.source ? 'selected' : ''}>${esc(source || '未标记 / 未归因')}</option>`).join('')}</select>` : ''}<button class="button" type="submit">查询</button><button class="button" id="clear-filters" type="button">重置</button><button id="export" type="button" class="button export">↓ 导出当前页</button></form><div class="summary-line"><span>筛选结果 <strong>${number(data.total)}</strong> ${recordUnits[kind]}</span>${kind === 'issues' ? '<span>模型尝试与当前业务异常分别标注</span>' : ''}</div>${kind === 'reports' ? reportTable(data.items) : data.items.length ? table(headers[kind], data.items.map(renderRow)) : empty('没有符合条件的记录')}<div class="table-footer"><span>每页 ${data.page_size} 条</span><div class="pagination"><button id="previous-page" class="button" ${state.page <= 1 ? 'disabled' : ''}>上一页</button><span>${state.page} / ${pages}</span><button id="next-page" class="button" ${state.page >= pages ? 'disabled' : ''}>下一页</button></div></div></section>`;
   if (kind === 'issues')
     $('#status-filter').insertAdjacentHTML(
       'afterend',
@@ -1102,6 +1003,65 @@ async function openDetail(id) {
       $('#detail-content').innerHTML = `<div class="error-banner">${esc(error.message)}</div>`;
   }
 }
+function reportDocumentSection(editions) {
+  const available = Object.keys(reportEditionNames).filter((edition) => editions?.includes(edition));
+  const controls = available.map((edition) => {
+    const name = reportEditionNames[edition];
+    return `<button type="button" class="button" data-report-edition="${edition}">查看${name}</button>
+      <button type="button" class="button" data-report-edition="${edition}" data-report-pdf>下载${name} PDF</button>`;
+  }).join('');
+  return `<section class="detail-section"><h3>报告正文</h3>
+    ${controls ? `<div class="report-document-tools">${controls}</div>
+      <p class="report-document-status muted" role="status"></p>
+      <iframe class="report-document-frame" title="报告正文" sandbox referrerpolicy="no-referrer" hidden></iframe>`
+    : '<p class="panel-body muted">正文生成并保存后可查看和下载。</p>'}
+  </section>`;
+}
+
+async function openReportDocument(button) {
+  if (!state.detail || button.disabled) return;
+  const reportId = state.detail.report.id;
+  const request = state.detailRequest;
+  const edition = button.dataset.reportEdition;
+  const pdf = button.hasAttribute('data-report-pdf');
+  const section = button.closest('.detail-section');
+  const controls = section.querySelectorAll('[data-report-edition]');
+  const status = section.querySelector('.report-document-status');
+  const frame = section.querySelector('.report-document-frame');
+  const current = () => request === state.detailRequest && section.isConnected && $('#detail-dialog').open;
+  for (const control of controls) control.disabled = true;
+  status.classList.remove('error-text');
+  status.textContent = pdf ? '正在准备 PDF…' : '正在读取报告正文…';
+  try {
+    const [report, runtime] = await Promise.all([
+      api(`/reports/${encodeURIComponent(reportId)}/content?edition=${encodeURIComponent(edition)}`),
+      loadReportRuntime(),
+    ]);
+    if (!current()) return;
+    const payload = JSON.stringify(report);
+    if (pdf) {
+      const result = await runtime.exportDocument(payload, 'pdf', { showSaveDialog: false });
+      if (current()) status.textContent = {
+        saved: 'PDF 已保存。',
+        downloaded: 'PDF 下载已开始。',
+        cancelled: '已取消保存。',
+      }[result];
+    } else {
+      frame.title = reportEditionNames[edition] + '正文';
+      frame.srcdoc = runtime.renderReportHtml(payload);
+      frame.hidden = false;
+      status.textContent = '';
+    }
+  } catch (error) {
+    if (current()) {
+      status.classList.add('error-text');
+      status.textContent = errors[error.message] || error.message;
+    }
+  } finally {
+    for (const control of controls) control.disabled = false;
+  }
+}
+
 function renderDetail(data) {
   const r = data.report,
     p = data.input.profile || {},
@@ -1117,6 +1077,7 @@ function renderDetail(data) {
   );
   $('#detail-content').innerHTML =
     `<p class="detail-id mono">${esc(r.id)}</p><div class="detail-actions"><button class="button" data-action="check_payment" ${order && order.environment !== 'simulation' ? '' : 'disabled'}>核对到账</button><button class="button" data-action="retry_report" ${canRetry ? '' : 'disabled'} title="已解锁的失败报告可重试；未解锁只可重试免费预览">重试失败报告</button><button class="primary" data-action="note">添加处理记录</button><button class="button" data-report="${esc(r.id)}">↻ 刷新详情</button></div>
+    ${reportDocumentSection(data.content_editions)}
     <section class="detail-section"><h3>报告状态与来源 ${badge(r.status)}</h3><div class="detail-fields">${field('预览状态', label(r.preview_state), 'life_reports.preview_state')}${field('完整报告', label(r.full_state), 'life_reports.full_state')}${field('权限', r.unlocked ? '已解锁（不等同于实收）' : '未解锁', 'life_reports.unlocked')}${field('访客编号', r.visitor_number || '暂无编号', 'landing_visitors.visitor_number')}${field('创建时间', fullDate(r.created), 'life_reports.created')}${field('首次来源', sourceName(r), '报告创建时记录')}${field('首次活动', r.campaign || '未记录', '报告创建时记录')}${field('首次投放地区', r.region_code || '未知', '首次链接的地区标签')}${field('已完成内容', `${data.completed_chapters.length} 个章节${data.has_plan ? ' + 行动计划' : ''}`, 'life_reports.chapters / plan')}${field('内部跟进', label(data.case.status), 'admin_cases.status')}</div><details><summary>查看当前生成进度记录</summary><pre>${esc(JSON.stringify(data.progress, null, 2))}</pre></details></section>
     <section class="detail-section"><h3>用户提交信息</h3><div class="detail-fields">${field('姓名', p.display_name || '未填写', 'input.profile.display_name')}${field('报告语言', label(p.language), 'input.profile.language')}${field('出生日期', p.birth_date || '未记录', 'input.profile.birth_date')}${field('出生时间', p.birth_time || '未知', 'input.profile.birth_time')}${field('出生地', p.birthplace || '未记录', 'input.profile.birthplace')}${field('时区', p.timezone || '未记录', 'input.profile.timezone')}</div></section>
     <section class="detail-section"><h3>订单与服务端回执 ${order ? badge(order.status) : ''}</h3>${order ? `<div class="detail-fields">${field('订单编号', order.id, 'life_card_payments.reference')}${field('订单金额', 'THB ' + money(order.amount), 'life_card_payments.amount / 100')}${field('建单来源', sourceName(order), 'life_card_payments.landing_source')}${field('建单访问编号', order.landing_visit_id || '未归因', 'life_card_payments.landing_visit_id')}${field('平台单号', order.order_number || '未返回', 'sunlands_order_number')}${field('运行环境', label(order.environment), '支付网关与商户类型')}${field('到账核验', label(order.status), 'paymentStatus + provider_order')}${field('核验到账时间', fullDate(order.paid_at), 'sunlands_order.paidAt')}</div><details><summary>查看已脱敏的建单与查单回执</summary><pre>${esc(JSON.stringify(data.receipt, null, 2))}</pre></details>` : '<div class="panel-body muted">没有关联支付订单。报告解锁本身不能证明收款。</div>'}</section>
@@ -1214,10 +1175,16 @@ document.addEventListener('click', (event) => {
   if (report) openDetail(report.dataset.report);
   const action = event.target.closest('[data-action]');
   if (action) openAction(action.dataset.action);
+  const reportDocument = event.target.closest('[data-report-edition]');
+  if (reportDocument) openReportDocument(reportDocument);
 });
-$('#close-detail').addEventListener('click', () => {
-  $('#detail-dialog').close();
-  state.detailRequest = null;
+$('#close-detail').addEventListener('click', () => $('#detail-dialog').close());
+$('#detail-dialog').addEventListener('close', (event) => {
+  if (!event.target.open) {
+    state.detail = null;
+    state.detailRequest = null;
+    $('#detail-content').replaceChildren();
+  }
 });
 $('#cancel-action').addEventListener('click', () => $('#action-dialog').close());
 $('#action-form').addEventListener('submit', async (event) => {

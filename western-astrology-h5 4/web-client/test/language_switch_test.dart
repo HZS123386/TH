@@ -38,7 +38,6 @@ void main() {
       expect(await controller.changeLanguage('zh'), isTrue);
       expect(controller.language, 'zh');
       expect(controller.languageLoading, isFalse);
-      controller.enterLanding();
       await Future<void>.delayed(Duration.zero);
       expect(loaded, ['NotoSansSC']);
       final text = controller.prepareText('龘');
@@ -132,8 +131,7 @@ void main() {
               'timeZone': 'Asia/Bangkok',
               'nameEnglish': 'Chiang Mai',
               'nameThai': 'เชียงใหม่',
-            })
-            ..enterLanding();
+            });
       await tester.pumpWidget(
         H5App(controller: controller, initialLocation: '/?lang=th&topic=love'),
       );

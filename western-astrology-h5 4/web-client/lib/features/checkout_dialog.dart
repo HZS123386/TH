@@ -80,9 +80,16 @@ class ReportPreview extends StatelessWidget {
     unawaited(h5.trackReport(reportId, 'line_contact'));
   }
 
-  void _openLine() {
+  Future<void> _openLine() async {
     _trackLineContact('click_line');
-    h5.browser.openPage('https://line.me/ti/p/TrGGcMWmuV', sameTab: true);
+    if (marriage) {
+      try {
+        await h5.browser.trackLineClaimClick();
+      } catch (_) {
+        // Ads tracking must not stop the user from opening LINE.
+      }
+    }
+    h5.browser.openPage('https://line.me/ti/p/SmujXXCH9v', sameTab: true);
   }
 
   Widget _lineContact(BuildContext context) {
@@ -216,32 +223,32 @@ class ReportPreview extends StatelessWidget {
                       copy: c,
                       labelsInside: marriage,
                     ),
-                    if (priceLabel.isNotEmpty || !marriage) ...[
+                    if (!marriage) ...[
                       const SizedBox(height: 16),
                       const Divider(height: 1, color: Color(0x40E4BC78)),
                       const SizedBox(height: 14),
-                    ],
-                    if (priceLabel.isNotEmpty) ...[
-                      Text(priceLabel, textAlign: TextAlign.center),
-                      const SizedBox(height: 8),
-                      Text(
-                        c.t('jy', 'checkout.preview'),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      JYButton(
-                        key: const ValueKey('jy-payment-preview'),
-                        label: c.t(
-                          'jy',
-                          relationshipOffer
-                              ? 'personal.relationshipUnlock'
-                              : 'checkout.pay',
+                      if (priceLabel.isNotEmpty) ...[
+                        Text(priceLabel, textAlign: TextAlign.center),
+                        const SizedBox(height: 8),
+                        Text(
+                          c.t('jy', 'checkout.preview'),
+                          textAlign: TextAlign.center,
                         ),
-                        onPressed: busy ? null : onPay,
-                      ),
-                      if (!marriage) const SizedBox(height: 14),
+                        const SizedBox(height: 8),
+                        JYButton(
+                          key: const ValueKey('jy-payment-preview'),
+                          label: c.t(
+                            'jy',
+                            relationshipOffer
+                                ? 'personal.relationshipUnlock'
+                                : 'checkout.pay',
+                          ),
+                          onPressed: busy ? null : onPay,
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      _lineContact(context),
                     ],
-                    if (!marriage) _lineContact(context),
                   ],
                 ),
               ),
@@ -373,7 +380,7 @@ class _ReportLineQrState extends State<_ReportLineQr> {
 
   @override
   Widget build(BuildContext context) => Image.asset(
-    'assets/images/line-contact-qr.jpg',
+    'assets/images/line-contact-qr-956ed148.jpg',
     width: 232,
     fit: BoxFit.contain,
     semanticLabel: widget.label,

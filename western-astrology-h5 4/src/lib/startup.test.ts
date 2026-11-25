@@ -9,20 +9,17 @@ const recoveryKey = "fate-startup-recovery-at";
 
 function openDocument(storage = new Map<string, string>(), storageBlocked = false, options: {
   url?: string; language?: string; local?: Map<string, string>; cookie?: { value: string }; cookieBlocked?: boolean; fetch?: ReturnType<typeof vi.fn>;
-  portrait?: EventTarget; streamingHtml?: boolean; missingBootstrap?: boolean;
-  welcome?: boolean; privateBrowsing?: boolean;
+  streamingHtml?: boolean; missingBootstrap?: boolean; privateBrowsing?: boolean;
+  indexedDB?: { open: () => unknown };
   navigationType?: "navigate" | "reload" | "back_forward";
   historyEntry?: { state: Record<string, unknown> | null };
 } = {}) {
   const status = { textContent: "" };
   const button = { hidden: true, addEventListener: vi.fn() };
   const startup = { remove: vi.fn(), dataset: {} as Record<string, string> };
-  const start = { setAttribute: vi.fn(), addEventListener: vi.fn() };
   const nodes = new Map<string, unknown>([
     ["fate-startup-status", status], ["fate-startup-retry", button], ["fate-startup", startup],
-    ["fate-welcome-start", start], ["fate-welcome-portrait-slot", { replaceWith: vi.fn() }],
   ]);
-  if (options.welcome) nodes.set("fate-welcome", { querySelector: vi.fn(), addEventListener: vi.fn() });
   const listeners = new Map<string, ((event: any) => void)[]>();
   const window = { dispatchEvent: vi.fn(), addEventListener: vi.fn((type: string, listener: (event: any) => void) => {
     listeners.set(type, [...(listeners.get(type) ?? []), listener]);
@@ -38,7 +35,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   });
   window.localStorage = makeStorage(local);
   window.sessionStorage = makeStorage(storage);
-  const document = { readyState: options.streamingHtml ? "loading" : "complete", visibilityState: "visible", documentElement: { lang: options.language ?? "zh", dataset: { welcome: String(!/(report|privacy|support)\.html$/.test(url.pathname)) } }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn((_type: string, _callback: (event?: any) => void) => {}), removeEventListener: vi.fn() };
+  const document = { readyState: options.streamingHtml ? "loading" : "complete", visibilityState: "visible", documentElement: { lang: options.language ?? "zh" }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn((_type: string, _callback: (event?: any) => void) => {}), removeEventListener: vi.fn() };
   const fetch = options.fetch ?? vi.fn().mockImplementation(async (_url, options) => ({
     ok: true, json: async () => ({ ok: true, accepted_sequences: JSON.parse(options.body).events.map((event: any) => event.sequence) }),
   }));
@@ -55,14 +52,14 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   const context = {
     window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history,
     performance: { mark: vi.fn(), now: () => Date.now(), getEntriesByType: () => [{ type: options.navigationType ?? "navigate" }] },
-    crypto: webcrypto, AbortController, fetch, console: { error: vi.fn() },
+    crypto: webcrypto, TextEncoder, indexedDB: options.indexedDB,
+    AbortController, fetch, console: { error: vi.fn() },
     sessionStorage: window.sessionStorage,
-    preloadEngineAssets: vi.fn(), fateWelcomePortrait: options.portrait,
+    preloadEngineAssets: vi.fn(),
     _flutter: { buildConfig: { engineRevision: "test-engine" }, loader: { load: vi.fn(async (_options: any) => {}) } },
   };
   window._flutter = options.missingBootstrap ? undefined : context._flutter;
   runInNewContext(source, context);
-  if (!options.streamingHtml) runInNewContext("mountFateWelcome()", context);
   const startFlutter = (load = vi.fn(async (_options: any) => {})) => {
     context._flutter.loader.load = load;
     runInNewContext(bootstrapSource, context);
@@ -70,32 +67,79 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   };
   const emit = (type: string, event = {}) => { for (const listener of listeners.get(type) ?? []) listener(event); };
   const clickRetry = () => document.addEventListener.mock.calls.find(([type]) => type === "click")?.[1]({ target: { closest: () => button } });
-  return { boot: window.fateBoot, h5: window.fateH5, window, document, fetch, location, status, button, start, startup, storage, local, cookie, startFlutter, emit, clickRetry };
+  return { boot: window.fateBoot, h5: window.fateH5, window, document, fetch, location, status, button, startup, storage, local, cookie, startFlutter, emit, clickRetry };
 }
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-11T06:00:00Z")); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
-it.each(["zh", "th"])("records the %s welcome before Flutter and shares its identity", async (language) => {
-  const page = openDocument(new Map(), false, { language, welcome: true });
-  const visit = JSON.parse(page.h5.visitContext());
-  const owner = page.h5.ownerKey();
-  expect(page.fetch).toHaveBeenCalledTimes(1);
-  const [url, request] = page.fetch.mock.calls[0];
-  expect(url).toBe("/api/landing/visits");
-  expect(request.headers["X-Report-Key"]).toBe(owner);
-  expect(request.headers["X-Visit-Id"]).toBe(visit.id);
-  expect(JSON.parse(request.body)).toMatchObject({
-    id: visit.id, events: [{ page: "welcome", action: "view", state: "visible" }],
-  });
-  page.h5.trackActivity(JSON.stringify({ ...visit, activity: { page: "welcome", action: "view" } }),
-    owner, "/api/landing/visits");
-  await vi.advanceTimersByTimeAsync(300);
-  expect(page.fetch).toHaveBeenCalledTimes(1);
+it("sends one LINE claim conversion across tabs without report details", async () => {
+  vi.useRealTimers();
+  const owner = "a".repeat(48);
+  const legacyHash = Buffer.from(await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(owner))).toString("hex");
+  const local = new Map([["astro-life-report-key", owner]]);
+  const markers = new Set([legacyHash]);
+  const db = {
+    close() {},
+    transaction() {
+      const tx = {
+        oncomplete: () => {}, onabort: () => {},
+        objectStore: () => ({
+          add(_value: boolean, marker: string) {
+            if (markers.has(marker)) return queueMicrotask(() => tx.onabort());
+            markers.add(marker);
+            queueMicrotask(() => tx.oncomplete());
+          },
+        }),
+      };
+      return tx;
+    },
+  };
+  const indexedDB = {
+    open() {
+      const request = { result: db, onsuccess: () => {} };
+      queueMicrotask(() => request.onsuccess());
+      return request;
+    },
+  };
+  const fetch = vi.fn().mockResolvedValue({});
+  const options = {
+    url: "https://fate.example/thai-landing/report.html?id=private-report&lang=zh",
+    local, indexedDB, fetch,
+    cookie: { value: "_fbp=fb.1.123456789.2345; _fbc=fb.1.123456789.adClick; another=private-data" },
+  };
+  const a = openDocument(new Map(), false, options);
+  const b = openDocument(new Map(), false, options);
+  expect(fetch).not.toHaveBeenCalled();
+  await Promise.all([a.h5.trackLineClaimClick(), b.h5.trackLineClaimClick()]);
+  expect(fetch).toHaveBeenCalledOnce();
+  const [destination, request] = fetch.mock.calls[0];
+  const pixel = new URL(destination);
+  expect(pixel.origin + pixel.pathname).toBe("https://www.facebook.com/tr/");
+  expect(pixel.searchParams.get("ev")).toBe("AddToCart");
+  expect(pixel.searchParams.get("dl")).toBe("https://fate.example/thai-landing/report.html");
+  expect(pixel.searchParams.get("fbp")).toBe("fb.1.123456789.2345");
+  expect(pixel.searchParams.get("fbc")).toBe("fb.1.123456789.adClick");
+  expect([...pixel.searchParams.keys()].sort()).toEqual(["dl", "ev", "fbc", "fbp", "id", "ts"]);
+  expect(request).toMatchObject({ keepalive: true, referrerPolicy: "no-referrer" });
+  const privatePage = openDocument(new Map(), false, { ...options, privateBrowsing: true });
+  await privatePage.h5.trackLineClaimClick();
+  expect(fetch).toHaveBeenCalledOnce();
 });
 
-it("does not record the HTML welcome when tracking is disabled", () => {
-  const page = openDocument(new Map(), false, { welcome: true, privateBrowsing: true });
+it("releases LINE navigation when click deduplication stalls", async () => {
+  const page = openDocument(new Map(), false, { indexedDB: { open: () => ({}) } });
+  const complete = vi.fn();
+  const result = page.h5.trackLineClaimClick().then(complete);
+  await vi.advanceTimersByTimeAsync(299);
+  expect(complete).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1);
+  await result;
+  expect(page.fetch).not.toHaveBeenCalled();
+});
+
+it("does not record a visit when tracking is disabled", () => {
+  const page = openDocument(new Map(), false, { privateBrowsing: true });
   expect(page.fetch).not.toHaveBeenCalled();
   expect(page.h5.visitContext()).toBe("{}");
   expect(page.local.has("astro-life-report-key")).toBe(false);
@@ -383,46 +427,14 @@ it('does not let a cached former owner overwrite the current owner queue', async
   expect(pendingItems(storage).every(item => item.visit.id === 'other-visit')).toBe(true);
 });
 
-it.each(["zh", "th"])("keeps an early %s welcome click until Flutter is ready and enters only once", (language) => {
-  const page = openDocument(new Map(), false, { language });
-  const enter = vi.fn();
-  const click = page.start.addEventListener.mock.calls.find(([name]) => name === "click")![1];
-  click();
-  click();
-  page.boot.stage("engine");
-  page.boot.connectWelcome(enter);
-  expect(enter).not.toHaveBeenCalled();
-  expect(page.startup.dataset.state).toBe("waiting");
-  expect(page.start.setAttribute).toHaveBeenCalledWith("aria-busy", "true");
-  page.boot.ready();
-  page.boot.ready();
-  expect(enter).toHaveBeenCalledTimes(1);
-});
-
-it.each(["click", "error", "timeout"])("releases Flutter startup on a welcome portrait %s", async (reason) => {
-  const portrait = new EventTarget();
-  const page = openDocument(new Map(), false, { portrait });
-  const released = vi.fn();
-  page.boot.welcomePaint.then(released);
-  await vi.advanceTimersByTimeAsync(0);
-  expect(released).not.toHaveBeenCalled();
-  if (reason === "click") page.boot.enterWelcome();
-  if (reason === "error") portrait.dispatchEvent(new Event("error"));
-  await vi.advanceTimersByTimeAsync(reason === "timeout" ? 800 : 0);
-  expect(released).toHaveBeenCalledOnce();
-});
-
-it("keeps the welcome open without a click and leaves deep links on their original route", () => {
-  for (const route of ["", "report.html?id=retained-report", "privacy.html", "support.html"]) {
-    const page = openDocument(new Map(), false, { url: `http://127.0.0.1/thai-landing/${route}` });
-    const enter = vi.fn();
-    page.boot.connectWelcome(enter);
-    if (route) page.boot.enterWelcome();
+it.each(["", "report.html?id=retained-report", "privacy.html", "support.html"])(
+  "starts Flutter immediately for %s and retains the original URL", (route) => {
+    const page = openDocument(new Map(), false, { url: "http://127.0.0.1/thai-landing/" + route });
+    expect(page.startFlutter()).toHaveBeenCalledOnce();
     page.boot.ready();
-    expect(enter).not.toHaveBeenCalled();
     expect(page.location.replace).not.toHaveBeenCalled();
-  }
-});
+  },
+);
 
 it("recovers a failed startup once and leaves persistent failures retryable", () => {
   const first = openDocument();

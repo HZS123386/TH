@@ -47,27 +47,15 @@ export async function buildLanding({release=false,noPub=false}={}){
   const browserSource=await readFile(path.join(flutterRoot,'web','browser.js'),'utf8');
   const indexPath=path.join(generated,'index.html');
   let index=await readFile(indexPath,'utf8');
-  // Warm the small Dart module during the welcome without competing with the portrait.
+  // Start loading the small Dart module as soon as the browser parses the entry.
   const runtimeSlot='<!-- FATE_WASM_RUNTIME_PRELOAD -->';
   if(!index.includes(runtimeSlot))throw Error('Missing Wasm runtime preload slot');
   index=index.replace(runtimeSlot,'<link rel="modulepreload" href="main.dart.mjs" crossorigin fetchpriority="low">');
-  // The first paint and Flutter welcome use the same translated content.
-  const copy=JSON.parse(await readFile(path.join(flutterRoot,'assets','copy.json'),'utf8'));
-  const welcomeCopy=copy.jy;
-  const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  for(const key of ['name','role','headline','note','start','swipe']){
-    const slot=`<!-- FATE_WELCOME_${key.toUpperCase()} -->`;
-    if(!index.includes(slot))throw Error(`Missing welcome copy slot: ${key}`);
-    index=index.replace(slot,Object.entries(welcomeCopy).map(([lang, {welcome}])=>`<span class="fate-startup-${lang}">${escapeHtml(welcome[key] ?? '')}</span>`).join(''));
-  }
-  const strokeSlot='<!-- FATE_WELCOME_STROKES -->';
-  if(!index.includes(strokeSlot))throw Error('Missing welcome stroke data slot');
-  index=index.replace(strokeSlot,JSON.stringify(copy.welcomeStrokes).replaceAll('<','\\u003c'));
   // Discover engine fonts during the HTML request instead of after the Wasm download.
   const fontManifest=JSON.parse(await readFile(path.join(generated,'assets','FontManifest.json'),'utf8'));
   const fontAssets=new Set(fontManifest.flatMap(family=>family.fonts.map(font=>font.asset)));
   for (const file of ['NotoSansThai.ttf','FateChineseUI.otf','NotoSansMyanmar-Regular.ttf','NotoSansKhmer-Regular.ttf','NotoSansLao-Regular.ttf']) {
-    fontAssets.delete('assets/fonts/'+file); // Scheduled after the welcome portrait.
+    fontAssets.delete('assets/fonts/'+file); // Preloaded by the entry when selected.
   }
   const fallbackFont='fonts/fallback/Roboto-Regular.ttf';
   if(existsSync(path.join(generated,'assets',fallbackFont)))fontAssets.add(fallbackFont);

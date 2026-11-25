@@ -3,9 +3,7 @@ FROM python:3.12-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    NODE_NO_WARNINGS=1 \
-    APP_ENV=production \
-    SUNLANDS_PAYMENT_REQUIRED=true
+    NODE_NO_WARNINGS=1
 
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 RUN apt-get update \

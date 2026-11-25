@@ -6,8 +6,12 @@ import 'jy_components.dart';
 import 'theme.dart';
 
 class SiteHeader extends StatelessWidget {
-  const SiteHeader({this.showLanguages = true, super.key});
-  final bool showLanguages;
+  const SiteHeader({
+    this.showLanguages = true,
+    this.showHomeArrow = true,
+    super.key,
+  });
+  final bool showLanguages, showHomeArrow;
 
   Future<void> _language(
     BuildContext context,
@@ -120,7 +124,7 @@ class SiteHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-              HomeArrow(h5: h5),
+              if (showHomeArrow) HomeArrow(h5: h5),
             ],
           ),
         ],
@@ -132,7 +136,7 @@ class SiteHeader extends StatelessWidget {
 void _goHome(BuildContext context, H5Controller h5, [VoidCallback? onLeaving]) {
   final router = GoRouter.of(context);
   onLeaving?.call();
-  h5.returnToWelcome();
+  h5.browser.writeSetting('active-preview', '', session: true);
   router.go('/?lang=${h5.language}');
 }
 

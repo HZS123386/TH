@@ -86,11 +86,24 @@ function reportNumber(report: LifeReport): string {
   return report.claim_code || report.id.slice(0, 12).toUpperCase();
 }
 
+function marriagePdfBirthDetails(report: LifeReport, labels: LifeLabels): string {
+  if (report.format !== "thai-marriage" || report.access !== "full" || report.full_state !== "ready") return "";
+  const { birth_date, birth_time, birthplace } = report.input.profile;
+  return [birth_date, birth_time || labels.timeUnknown, birthplace].filter(Boolean).join(" · ");
+}
+
 function reportHeader(report: LifeReport, labels: LifeLabels): Content[] {
-  if (report.format === "western-personal" || report.format === "thai-marriage") return [
-    { text: "FATE", color: palette.paleGold, characterSpacing: 2.2, fontSize: 9, margin: [0, 0, 0, 10] },
-    { text: textRuns(labels.title), fontSize: 26, color: "#FFF5DF", lineHeight: 1.15, margin: [0, 0, 0, report.input.profile.language === "my" ? 104 : 54] },
-  ];
+  if (report.format === "western-personal" || report.format === "thai-marriage") {
+    const header: Content[] = [
+      { text: "FATE", color: palette.paleGold, characterSpacing: 2.2, fontSize: 9, margin: [0, 0, 0, 10] },
+      { text: textRuns(labels.title), fontSize: 26, color: "#FFF5DF", lineHeight: 1.15, margin: [0, 0, 0, report.input.profile.language === "my" ? 104 : 54] },
+    ];
+    const birthDetails = marriagePdfBirthDetails(report, labels);
+    if (birthDetails) {
+      header.push({ text: textRuns(birthDetails), fontSize: 10.5, color: palette.ink, lineHeight: 1.4, margin: [0, 0, 0, 8] });
+    }
+    return header;
+  }
   const profile = report.input.profile;
   const language = profile.language;
   const version = edition(report, labels);
@@ -275,9 +288,25 @@ function pdfDefinition(report: LifeReport, labels: LifeLabels): TDocumentDefinit
 }
 
 async function fontData(filename: string): Promise<string> {
-  const response = await fetch(new URL(`../fonts/pdf/${filename}`, import.meta.url), { cache: "force-cache" });
-  if (!response.ok) throw new Error("PDF_font_unavailable");
-  const blob = await response.blob();
+  const url = new URL(`../fonts/pdf/${filename}`, import.meta.url);
+  let blob: Blob | undefined;
+  for (const cache of ["force-cache", "reload"] as const) {
+    try {
+      const response = await fetch(url, { cache });
+      if (response.ok) {
+        const data = await response.blob();
+        if (data.size) {
+          blob = data;
+          break;
+        }
+      } else if (response.status < 500 && response.status !== 408 && response.status !== 429) {
+        break;
+      }
+    } catch {
+      // A connection can also fail while receiving the response body.
+    }
+  }
+  if (!blob) throw new Error("PDF_font_unavailable");
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("PDF_font_unavailable"));
@@ -288,7 +317,8 @@ async function fontData(filename: string): Promise<string> {
 
 function pdfEngine(): Promise<PdfEngine> {
   if (!engine) engine = Promise.all([
-    import("pdfmake/build/pdfmake"), fontData("NotoSansSC-Regular.ttf"), fontData("NotoSansThai-Regular.ttf"),
+    import("pdfmake/build/pdfmake").catch(() => { throw new Error("PDF_engine_unavailable"); }),
+    fontData("NotoSansSC-Regular.ttf"), fontData("NotoSansThai-Regular.ttf"),
   ]).then(([module, chinese, thai]) => {
     const pdf = module.default;
     pdf.addVirtualFileSystem({ "Chinese.ttf": chinese, "Thai.ttf": thai });
@@ -300,7 +330,7 @@ function pdfEngine(): Promise<PdfEngine> {
 
 const regionalFontLoads = new Map<string, Promise<void>>();
 async function ensureRegionalPdfFonts(pdf: PdfEngine, report: LifeReport, labels: LifeLabels) {
-  const content = reportHtml(report, labels);
+  const content = reportHtml(report, labels) + marriagePdfBirthDetails(report, labels);
   await Promise.all(regionalFonts.filter(item => item.script.test(content)).map(item => {
     if (!regionalFontLoads.has(item.font)) {
       const pending = fontData(item.file).then(data => {
@@ -313,36 +343,50 @@ async function ensureRegionalPdfFonts(pdf: PdfEngine, report: LifeReport, labels
   }));
 }
 
-export async function saveReportPdf(report: LifeReport, labels: LifeLabels, signal: AbortSignal): Promise<"saved" | "downloaded" | "cancelled"> {
+export type ReportPdfOptions = { showSaveDialog?: boolean };
+
+export async function saveReportPdf(
+  report: LifeReport, labels: LifeLabels, signal: AbortSignal, { showSaveDialog = true }: ReportPdfOptions = {},
+): Promise<"saved" | "downloaded" | "cancelled"> {
   const full = report.access === "full" && report.full_state === "ready";
   const id = (report.claim_code || report.id).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48) || "report";
   const fullFilename = report.format === "thai-marriage" && report.input.profile.language === "zh"
     ? "FATE完整婚姻关系报告.pdf"
     : `FATE-${edition(report, labels)}.pdf`;
-  const filename = full ? (report.claim_code ? `${id}-${fullFilename}` : fullFilename) : `Life-Report-${id}-preview.pdf`;
-  let handle: FileSystemFileHandle | undefined;
-  const picker = (window as SaveWindow).showSaveFilePicker;
-  if (picker) {
-    try {
-      // Open during the click's user activation, before loading the PDF engine or fonts.
-      handle = await picker.call(window, { id: "astro-life-report-pdf", suggestedName: filename, excludeAcceptAllOption: true, types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }] });
-    } catch (cause) {
-      if (cause instanceof DOMException && cause.name === "AbortError") return "cancelled";
-      if (!(cause instanceof DOMException && cause.name === "SecurityError")) throw cause;
-    }
-  }
+  const filename = full && !report.claim_code ? fullFilename : `Life-Report-${id}-${full ? "full" : "preview"}.pdf`;
   signal.throwIfAborted();
   const pdf = await pdfEngine();
   await ensureRegionalPdfFonts(pdf, report, labels);
   signal.throwIfAborted();
   const blob = await pdf.createPdf(pdfDefinition(report, labels)).getBlob();
+  if (await blob.slice(0, 5).text() !== "%PDF-") throw new Error("PDF_invalid_output");
   signal.throwIfAborted();
-  if (handle) {
-    const writable = await handle.createWritable();
-    try { await writable.write(blob); await writable.close(); }
-    catch (cause) { await writable.abort().catch(() => undefined); throw cause; }
-    return "saved";
+
+  const picker = showSaveDialog && (window as SaveWindow).showSaveFilePicker;
+  if (picker && navigator.userActivation?.isActive !== false) {
+    let handle: FileSystemFileHandle | undefined;
+    try {
+      handle = await picker.call(window, { id: "astro-life-report-pdf", suggestedName: filename, excludeAcceptAllOption: true, types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }] });
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === "AbortError") return "cancelled";
+      // The browser can block the file picker even when it exposes the API.
+    }
+    if (handle) {
+      signal.throwIfAborted();
+      let writable: FileSystemWritableFileStream | undefined;
+      try {
+        writable = await handle.createWritable();
+        signal.throwIfAborted();
+        await writable.write(blob);
+        await writable.close();
+        if ((await handle.getFile()).size === blob.size) return "saved";
+      } catch {
+        await writable?.abort().catch(() => undefined);
+        // A restricted or failed file write can still be recovered by downloading the PDF.
+      }
+    }
   }
+  signal.throwIfAborted();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url; anchor.download = filename;

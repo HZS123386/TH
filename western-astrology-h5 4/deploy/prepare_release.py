@@ -14,12 +14,6 @@ ROOT = Path(__file__).resolve().parents[1]
 TH = ROOT.parent / 'TH'
 PRIVATE = ROOT.parent / 'output' / 'deploy'
 SKIP = {'__pycache__', '.pytest_cache', '.ruff_cache', 'tests', 'node_modules', '.git'}
-SUNLANDS_KEYS = (
-    'SUNLANDS_BASE_URL', 'SUNLANDS_APP_KEY', 'SUNLANDS_APP_SECRET', 'SUNLANDS_CHANNEL_CODE',
-    'SUNLANDS_ITEM_NO', 'SUNLANDS_PRODUCT_NO', 'SUNLANDS_ITEM_TITLE', 'SUNLANDS_ORDER_MOBILE',
-    'SUNLANDS_ORDER_NATION_CODE', 'SUNLANDS_PROVINCE_ID', 'SUNLANDS_MERCHANT_NOTIFY_URI',
-    'SUNLANDS_H5_RETURN_URL',
-)
 
 
 def copy_tree(source: Path, target: Path):
@@ -73,26 +67,19 @@ def prepare(release: Path, version: str):
         'FORTUNE_FALLBACK_PROVIDER', 'WESTERN_REPORT_PROVIDER', 'WESTERN_REPORT_MODEL',
         'WESTERN_REVIEW_ENABLED', 'WESTERN_REVIEW_PROVIDER', 'WESTERN_REVIEW_MODEL',
         'WESTERN_REVIEW_FALLBACK_PROVIDER', 'WESTERN_REVIEW_FALLBACK_MODEL',
-        'SUNLANDS_ORDER_ONLY', *SUNLANDS_KEYS,
+        'SUNLANDS_ORDER_ONLY', 'SUNLANDS_BASE_URL', 'SUNLANDS_APP_KEY', 'SUNLANDS_APP_SECRET',
+        'SUNLANDS_CHANNEL_CODE', 'SUNLANDS_ITEM_NO', 'SUNLANDS_PRODUCT_NO', 'SUNLANDS_ITEM_TITLE',
+        'SUNLANDS_PROVINCE_ID', 'SUNLANDS_MERCHANT_NOTIFY_URI',
     ]
     for provider in ('OPENAI', 'QWEN', 'KIMI', 'DEEPSEEK'):
         optional.extend(f'{provider}_{suffix}' for suffix in (
             'API_KEY', 'BASE_URL', 'MODEL', 'PROXY_URL', 'REASONING_EFFORT'))
     config.update({key: env[key] for key in optional if env.get(key)})
-    payment = {key: os.environ.get(key, env.get(key, '')) for key in SUNLANDS_KEYS
-               if key in os.environ or key in env}
-    config.update(payment)
-    config['SUNLANDS_ORDER_ONLY'] = os.environ.get('SUNLANDS_ORDER_ONLY', config.get('SUNLANDS_ORDER_ONLY', ''))
-    if config.get('SUNLANDS_ORDER_ONLY', '').lower() != 'true':
-        raise RuntimeError('Paid H5 requires SUNLANDS_ORDER_ONLY=true.')
-    if config.get('SUNLANDS_BASE_URL', 'https://api-prod.sunlands.com') != 'https://api-prod.sunlands.com':
-        raise RuntimeError('Production Sunlands requires the live gateway')
-    required = ('SUNLANDS_APP_SECRET', 'SUNLANDS_ORDER_MOBILE', 'SUNLANDS_PROVINCE_ID', 'SUNLANDS_H5_RETURN_URL')
-    missing = [key for key in required if not config.get(key, '').strip()]
-    if missing:
-        raise RuntimeError(f'Missing Sunlands deploy settings: {", ".join(missing)}')
-    config['SUNLANDS_ORDER_ONLY'] = 'true'
-    if any(char in value for value in config.values() for char in '\r\n\0'):
+    if config.get('SUNLANDS_ORDER_ONLY', '').lower() == 'true':
+        if (config.get('SUNLANDS_BASE_URL', 'https://api-prod.sunlands.com') != 'https://api-prod.sunlands.com'
+                or not all(config.get(key) for key in ('SUNLANDS_APP_SECRET', 'SUNLANDS_PROVINCE_ID'))):
+            raise RuntimeError('Production Sunlands requires the live gateway and complete credentials')
+    if any('\n' in value or '\r' in value for value in config.values()):
         raise RuntimeError('Runtime settings must use single-line values')
     if config['ROXY_ENABLED'].lower() == 'true':
         if not env.get('ROXY_API_KEY'):
@@ -101,15 +88,11 @@ def prepare(release: Path, version: str):
     if config['LIFE_ASTROLOGY_PROVIDER'] == 'roxy' and config['ROXY_ENABLED'].lower() != 'true':
         raise RuntimeError('Western landing reports require Roxy to be enabled')
     # This file is transferred separately and never enters the Docker build context.
-    runtime = ''.join(f'{key}={value}\n' for key, value in config.items() if key not in payment)
-    for key, value in payment.items():
-        literal = json.dumps(value, ensure_ascii=False).replace('$', '$$')
-        runtime += f'{key}={literal}\n'
-    (release / 'runtime.env').write_text(runtime, encoding='utf-8', newline='\n')
+    (release / 'runtime.env').write_text(''.join(f'{key}={value}\n' for key, value in config.items()), encoding='utf-8', newline='\n')
     (context / '.dockerignore').write_text('*.env\n.env*\ndata/\n*.pem\n*.key\n', encoding='utf-8')
 
-    sensitive = [database_url, *(value for key, value in (*env.items(), *payment.items()) if value and
-                                any(part in key for part in ('API_KEY', 'SECRET', 'PASSWORD', 'TOKEN', 'DATABASE_URL', 'SUNLANDS_ORDER_MOBILE')))]
+    sensitive = [database_url, *(value for key, value in env.items() if value and
+                                any(part in key for part in ('API_KEY', 'SECRET', 'PASSWORD', 'TOKEN', 'DATABASE_URL')))]
     manifest = []
     for path in sorted(context.rglob('*')):
         if not path.is_file():

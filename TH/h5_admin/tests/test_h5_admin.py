@@ -78,14 +78,15 @@ def seed(app):
 
 
 @pytest.fixture
-def admin(postgres_url, monkeypatch):
+def admin(postgres_url):
     app = create_app(Settings(database_url=postgres_url, app_env="production",
                               admin_username="admin-test", admin_password_hash=HASH,
                               report_support_username="support-test", report_support_password_hash=HASH))
-    # The seeded report states are snapshots for the dashboard assertions.
-    monkeypatch.setattr(app.state.life_reports, "dispatch_full_reports", lambda: None)
-    seed(app)
     with TestClient(app, base_url="https://testserver") as http:
+        # Seeded snapshots exercise the admin classification of historical jobs.
+        # Live queue and settlement paths use the working report fixtures below.
+        http.portal.call(app.state.life_reports.close)
+        seed(app)
         yield http, app
 
 
@@ -100,7 +101,7 @@ def test_admin_data_requires_separate_login_and_static_page_has_no_business_data
     assert http.get("/admin/config.py").status_code == 404
 
 
-def test_visit_funnels_count_welcome_visits_and_distinct_browsers(admin):
+def test_visit_funnels_count_form_and_historical_welcome_entries(admin):
     http, app = admin
     now = time.time()
     welcome = ("welcome", "view", "action", "visible")
@@ -132,6 +133,8 @@ def test_visit_funnels_count_welcome_visits_and_distinct_browsers(admin):
     visit("c", [welcome, welcome_click, birth_form, generate_click, line_click], campaign="")
     visit("d", [("welcome", "view", "action", "hidden"), birth_form, line_click])
     visit("g", [welcome], source="", campaign="")
+    visit("h", [("birth_form", "view", "action", "hidden"),
+                ("birth_form", "form_progress_empty", "state", "visible"), generate_click, line_click])
     older = visit("e", [welcome, line_click])
     expired = visit("f", [welcome, line_click])
     with app.state.store.connect() as db:
@@ -140,19 +143,23 @@ def test_visit_funnels_count_welcome_visits_and_distinct_browsers(admin):
 
     login(http)
     path = "/api/admin/ad-funnel"
-    week = {"welcome_people": 2, "welcome_visits": 3, "welcome_click_people": 1,
-            "birth_form_people": 2, "generate_click_people": 1, "line_click_people": 1}
+    week = {"entry_people": 4, "entry_visits": 5,
+            "welcome_people": 2, "welcome_visits": 3, "welcome_click_people": 1,
+            "birth_form_people": 4, "generate_click_people": 2, "line_click_people": 3}
     assert http.get(path, params={"days": 7}).json() == week
     assert http.get(path, params={"days": 0}).json() == {
-        **week, "welcome_people": 3, "welcome_visits": 4, "line_click_people": 2,
+        **week, "entry_people": 5, "entry_visits": 6,
+        "welcome_people": 3, "welcome_visits": 4, "line_click_people": 4,
     }
 
     path = "/api/admin/visit-funnel"
-    week = {"welcome_people": 4, "welcome_visits": 5, "birth_form_people": 3, "birth_form_views": 5,
-            "generate_click_people": 2, "generate_clicks": 3, "line_click_people": 2, "line_clicks": 3}
+    week = {"entry_people": 6, "entry_visits": 7,
+            "welcome_people": 4, "welcome_visits": 5, "birth_form_people": 5, "birth_form_views": 7,
+            "generate_click_people": 3, "generate_clicks": 4, "line_click_people": 4, "line_clicks": 5}
     assert http.get(path, params={"days": 7}).json() == week
     assert http.get(path, params={"days": 0}).json() == {
-        **week, "welcome_people": 5, "welcome_visits": 6, "line_click_people": 3, "line_clicks": 4,
+        **week, "entry_people": 7, "entry_visits": 8,
+        "welcome_people": 5, "welcome_visits": 6, "line_click_people": 5, "line_clicks": 6,
     }
 
     login(http, "support-test")
@@ -200,8 +207,8 @@ def test_line_metrics_count_each_popup_and_dedupe_clicks_across_visits(admin):
     base = "/api/admin/line-contacts"
     contacts = http.get(base, params={"delivery": "unconfirmed"}).json()
     assert [row["id"] for row in contacts["items"]] == ["report-1"]
-    assert contacts["metrics"] == {"qr_popups": 3, "click_visitors": 2}
-    assert http.get(base, params={"days": 7}).json()["metrics"] == {"qr_popups": 2, "click_visitors": 2}
+    assert contacts["metrics"] == {"qr_popups": 3, "click_visitors": 2, "line_sent": 0}
+    assert http.get(base, params={"days": 7}).json()["metrics"] == {"qr_popups": 2, "click_visitors": 2, "line_sent": 0}
     assert http.get(base).json()["items"] == []
     first_contact = contacts["items"][0]["line_contact_at"]
     assert http.post(f"{base}/report-1/actions", headers=csrf,
@@ -210,11 +217,51 @@ def test_line_metrics_count_each_popup_and_dedupe_clicks_across_visits(admin):
     assert confirmed["line_contact_at"] == first_contact
 
 
+def test_line_delivery_counts_and_paginates_by_send_date_on_both_pages(admin):
+    http, app = admin
+    now = time.time()
+    old = now - 40 * 86400
+    with app.state.store.connect() as db:
+        db.execute("UPDATE life_reports SET created=%s,line_contact_at=%s WHERE id IN ('report-1','report-3','report-4','report-7')",
+                   (old, old))
+        db.execute("UPDATE life_reports SET line_confirmed_at=%s WHERE id IN ('report-1','report-3','report-4')", (old,))
+        db.execute("UPDATE life_reports SET line_sent_at=%s WHERE id='report-1'", (now,))
+        old_code = db.execute("UPDATE life_reports SET line_sent_at=%s WHERE id='report-3' RETURNING claim_code", (old,)).fetchone()["claim_code"]
+
+    login(http, "support-test")
+    base = "/api/admin/line-contacts"
+    for days, expected in ((7, ["report-1"]), (0, ["report-1", "report-3"])):
+        data = http.get(base, params={"days": days, "delivery": "sent"}).json()
+        assert data["metrics"]["line_sent"] == data["total"] == len(expected)
+        assert [row["id"] for row in data["items"]] == expected
+    later_page = http.get(base, params={"days": 7, "delivery": "sent", "page": 2}).json()
+    assert later_page["total"] == 1 and not later_page["items"] and not later_page["has_more"]
+    pending = http.get(base, params={"days": 7, "delivery": "pending"}).json()
+    assert pending["total"] == 1 and pending["items"][0]["id"] == "report-4"
+    unconfirmed = http.get(base, params={"days": 7, "delivery": "unconfirmed"}).json()
+    assert unconfirmed["total"] == 1 and unconfirmed["items"][0]["id"] == "report-7"
+    by_code = http.get(base, params={"days": 7, "delivery": "sent", "report_id": old_code}).json()
+    assert by_code["total"] == 1 and by_code["items"][0]["id"] == "report-3"
+
+    login(http)
+    recent = http.get("/api/admin/overview", params={"days": 7}).json()["metrics"]
+    all_time = http.get("/api/admin/overview", params={"days": 0}).json()["metrics"]
+    assert (recent["reports"], recent["line_sent"]) == (3, 1)
+    assert (all_time["reports"], all_time["line_sent"]) == (7, 2)
+
+
 def test_line_report_counts_filter_first_contact_and_group_current_status(admin):
     http, app = admin
-    midnight = int(datetime(2026, 11, 21, tzinfo=timezone(timedelta(hours=8))).timestamp())
+    beijing = timezone(timedelta(hours=8))
+    contact_day = datetime.now(beijing) - timedelta(days=10)
+    midnight = int(contact_day.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
     noon = midnight + 12 * 3600
     with app.state.store.connect() as db:
+        db.cursor().executemany("UPDATE life_reports SET owner=%s WHERE id=%s", [
+            (owner_for("pending-visitor"), "report-2"),
+            (owner_for("sent-visitor"), "report-3"),
+            (owner_for("earlier-visitor"), "report-5"),
+        ])
         db.cursor().executemany(
             "UPDATE life_reports SET line_contact_at=%s, line_confirmed_at=%s, line_sent_at=%s WHERE id=%s",
             [
@@ -226,17 +273,26 @@ def test_line_report_counts_filter_first_contact_and_group_current_status(admin)
                 (None, midnight + 60, midnight + 120, "report-7"),
             ],
         )
+        db.execute("""
+            INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview,preview_state,full_state,
+                                     line_contact_at,line_confirmed_at,line_sent_at)
+            SELECT 'report-repeat',owner,'repeat-click',input,chart,created,preview,preview_state,'ready',%s,%s,%s
+            FROM life_reports WHERE id='report-1'
+        """, (midnight + 1, noon + 60, noon + 120))
     path = "/api/admin/line-contacts"
     morning = {"contact_start": midnight, "contact_end": noon}
     assert http.get(path, params=morning).status_code == 401
     login(http, "support-test")
 
-    result = http.get(path, params={**morning, "report_id": "report-7"})
+    result = http.get(path, params={**morning, "report_id": "report-7", "days": 7})
     assert result.status_code == 200
-    assert result.json()["report_counts"] == {"total": 3, "unconfirmed": 1, "pending": 1, "sent": 1}
+    assert result.json()["report_counts"] == {"total": 4, "unconfirmed": 1, "pending": 1, "sent": 2}
+    assert result.json()["first_contact_visitor_counts"] == {"total": 3, "unconfirmed": 1, "pending": 1, "sent": 1}
     assert [row["id"] for row in result.json()["items"]] == ["report-7"]
+    assert result.json()["total"] == 1 and result.json()["metrics"]["line_sent"] == 0
     result = http.get(path, params={"contact_start": noon, "contact_end": midnight + 86400})
     assert result.json()["report_counts"] == {"total": 1, "unconfirmed": 1, "pending": 0, "sent": 0}
+    assert result.json()["first_contact_visitor_counts"] == {"total": 0, "unconfirmed": 0, "pending": 0, "sent": 0}
     assert http.get(path, params={"contact_start": midnight}).status_code == 422
     assert http.get(path, params={"contact_start": noon, "contact_end": noon}).status_code == 422
 
@@ -246,11 +302,14 @@ def test_support_can_deliver_full_report_without_unlocking_h5(client):
     http.base_url = httpx.URL("https://testserver")
     app.state.h5_admin.settings.report_support_username = "support-test"
     app.state.h5_admin.settings.report_support_password_hash = HASH
-    report = preview(http, language="th")
+    app.state.life_reports.settings.h5_checkout_enabled = False
+    report = preview(http)
     report_id = report["id"]
     claim_code = report["claim_code"]
     assert len(claim_code) == 5 and claim_code.isascii() and claim_code.isdigit()
     report_path = f"/api/life-reports/{report_id}"
+    assert http.post(report_path + "/payment", headers=life_fixtures.HEADERS, json={}).status_code == 404
+    assert http.get(report_path + "/payment", headers=life_fixtures.HEADERS).status_code == 404
     base = "/api/admin/line-contacts"
     actions = f"{base}/{report_id}/actions"
     export = f"{base}/{report_id}/report"
@@ -261,6 +320,7 @@ def test_support_can_deliver_full_report_without_unlocking_h5(client):
     assert http.get("/api/admin/session").json()["role"] == "report_support"
     for path in ("/overview", "/ad-funnel", "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
         assert http.get("/api/admin" + path).status_code == 403
+    assert http.get(f"/api/admin/reports/{report_id}/content", params={"edition": "preview"}).status_code == 403
     assert action(http, csrf, report_id, "note").status_code == 403
     assert http.post(export).status_code == 403
     assert http.post(export, headers=csrf).status_code == 404
@@ -286,13 +346,14 @@ def test_support_can_deliver_full_report_without_unlocking_h5(client):
     assert http.post(actions, headers=csrf, json={"action": "confirm"}).status_code == 200
     assert [row["id"] for row in http.get(base).json()["items"]] == [report_id]
     assert http.post(export, headers=csrf).status_code == 404
-    assert http.post(report_path + "/unlock", headers=life_fixtures.HEADERS).status_code == 402
+    assert http.post(report_path + "/unlock", headers=life_fixtures.HEADERS).status_code == 403
 
     finish(http, app)
     full = http.post(export, headers=csrf).json()
     assert full["id"] == report_id and full["access"] == "full" and full["full_state"] == "ready"
     assert full["claim_code"] == claim_code
     assert full["chapters"] and full["plan"]
+    assert http.get(base).json()["metrics"]["line_sent"] == 0
     public = http.get(report_path, headers=life_fixtures.HEADERS).json()
     assert public["access"] == "preview" and public["full_state"] == "not_started"
     assert public["chapters"] == [] and public["plan"] is None and public["progress"]["completed"] == 0
@@ -301,7 +362,9 @@ def test_support_can_deliver_full_report_without_unlocking_h5(client):
     assert history["access"] == "preview" and history["full_state"] == "not_started"
     assert http.post(actions, headers=csrf, json={"action": "mark_sent"}).status_code == 200
     assert http.post(actions, headers=csrf, json={"action": "mark_sent"}).status_code == 200
-    sent, = http.get(base, params={"delivery": "sent"}).json()["items"]
+    delivery = http.get(base, params={"delivery": "sent"}).json()
+    assert delivery["metrics"]["line_sent"] == delivery["total"] == 1
+    sent, = delivery["items"]
     assert sent["id"] == report_id and sent["line_sent_at"] >= sent["line_confirmed_at"]
     assert sent["line_contact_at"] == confirmed["line_confirmed_at"] == sent["line_confirmed_at"]
     assert http.get(base, params={**same_day, "delivery": "sent"}).json()["report_counts"] == {
@@ -491,8 +554,8 @@ def test_metrics_separate_real_receipts_simulation_permissions_and_failed_attemp
     login(http)
     data = http.get("/api/admin/overview?days=30").json()
     metrics = {key: value for key, value in data["metrics"].items() if key != "next_day_return_visitors"}
-    assert metrics == {"visits": 3, "visitors": 1, "submitted": 3, "seen": 3, "reports": 7,
-                       "report_failures": 2, "unlocked": 5, "orders": 4, "paid": 1, "revenue": 3000,
+    assert metrics == {"visits": 3, "visitors": 1, "submitted": 3, "seen": 3, "reports": 7, "line_sent": 0,
+                       "first_report_creators": 1, "report_failures": 2, "unlocked": 5, "orders": 4, "paid": 1, "revenue": 3000,
                        "order_issues": 1, "calls": 2, "failed_calls": 1, "missing_usage": 0, "tokens": 300}
     visits = http.get("/api/admin/records/visits?days=30").json()["items"]
     visitor_number = visits[0]["visitor_number"]
@@ -506,6 +569,46 @@ def test_metrics_separate_real_receipts_simulation_permissions_and_failed_attemp
     assert issues["total"] == 4
     assert next(row for row in issues["items"] if row["category"] == "model")["attribution"] == "tagged"
     assert next(row for row in issues["items"] if row["report_id"] == "report-6")["attribution"] == "unattributed"
+
+
+def test_report_creation_counts_each_visitor_at_their_first_report(admin):
+    http, app = admin
+    now = time.time()
+    with app.state.store.connect() as db:
+        db.execute("UPDATE life_reports SET created=%s WHERE id='report-1'", (now - 40 * 86400,))
+        db.execute("UPDATE life_reports SET owner=%s WHERE id IN ('report-2','report-3')", (owner_for("recent-visitor"),))
+        db.execute("UPDATE life_reports SET landing_source='repeat-source' WHERE id='report-3'")
+        db.execute("UPDATE life_reports SET owner=%s WHERE id='report-6'", (owner_for("first-failed-report"),))
+        db.execute("UPDATE life_reports SET owner=%s,created=%s WHERE id='report-7'",
+                   (owner_for("earlier-visitor"), now - 20 * 86400))
+
+    login(http)
+    for days, report_total, first_ids in (
+        (7, 5, {"report-2", "report-6"}),
+        (30, 6, {"report-2", "report-6", "report-7"}),
+        (0, 7, {"report-1", "report-2", "report-6", "report-7"}),
+    ):
+        response = http.get("/api/admin/overview", params={"days": days})
+        assert response.status_code == 200
+        metrics = response.json()["metrics"]
+        assert (metrics["reports"], metrics["first_report_creators"]) == (report_total, len(first_ids))
+        response = http.get("/api/admin/records/reports", params={"days": days, "report_scope": "first"})
+        assert response.status_code == 200
+        records = response.json()
+        assert records["total"] == metrics["first_report_creators"]
+        assert {row["id"] for row in records["items"]} == first_ids
+        assert "repeat-source" not in records["source_options"]
+
+    for row in records["items"]:
+        detail = http.get(f"/api/admin/reports/{row['id']}")
+        assert detail.status_code == 200
+        assert detail.json()["report"]["id"] == row["id"]
+
+    scope = {"days": 7, "report_scope": "first"}
+    for filters in ({"q": "report-3"}, {"status": "ready"}, {"source": "repeat-source"}):
+        assert http.get("/api/admin/records/reports", params={**scope, **filters}).json()["total"] == 0
+    second_page = http.get("/api/admin/records/reports", params={**scope, "page_size": 1, "page": 2}).json()
+    assert second_page["total"] == 2 and [row["id"] for row in second_page["items"]] == ["report-2"]
 
 
 def test_verified_revenue_and_its_detail_use_the_verification_date(admin):
@@ -720,6 +823,36 @@ def test_check_uses_existing_order_and_original_confirmation_without_order_creat
     assert http.get("/api/admin/reports/report-2").json()["report"]["unlocked"] == 0
     with app.state.store.connect() as db:
         assert db.execute("SELECT COUNT(*) FROM life_card_payments").fetchone()["count"] == 4
+
+
+def test_admin_reads_saved_report_editions_without_restarting_generation(client):
+    http, app, calls, _ = client
+    report = preview(http)
+    identifier = report["id"]
+    path = f"/api/admin/reports/{identifier}"
+    public_path = f"/api/life-reports/{identifier}"
+    settings = app.state.h5_admin.settings
+    settings.admin_username, settings.admin_password_hash, settings.app_env = "admin-test", HASH, "development"
+
+    assert http.get(path + "/content?edition=preview", headers=life_fixtures.HEADERS).status_code == 401
+    login(http)
+    assert http.get(path).json()["content_editions"] == ["preview"]
+    assert http.get(path + "/content?edition=full").status_code == 409
+    http.post(public_path + "/unlock", json={}, headers=life_fixtures.HEADERS).raise_for_status()
+    assert http.get(path + "/content?edition=full").status_code == 409
+    finish(http, app)
+    call_count = len(calls)
+
+    assert http.get(path).json()["content_editions"] == ["preview", "full"]
+    response = http.get(path + "/content?edition=full")
+    assert response.headers["cache-control"] == "no-store"
+    full = response.json()
+    assert full["access"] == "full" and full["full_state"] == "ready" and full["chapters"]
+    assert full == http.get(public_path, headers=life_fixtures.HEADERS).json()
+    free = http.get(path + "/content?edition=preview").json()
+    assert free["preview"] == full["preview"]
+    assert free["access"] == "preview" and free["chapters"] == [] and free["plan"] is None
+    assert len(calls) == call_count
 
 
 def test_admin_retry_reuses_real_preview_and_full_generation_pipeline(client):

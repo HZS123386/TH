@@ -72,91 +72,6 @@ void main() {
   });
 
   for (final language in ['zh', 'th']) {
-    testWidgets('$language history retries list and sign-in code timeouts', (
-      tester,
-    ) async {
-      phone(tester);
-      final report = fixture(language: language);
-      final browser = TestBrowser();
-      final slowList = Completer<http.Response>();
-      final slowCode = Completer<http.Response>();
-      var listRequests = 0, codeRequests = 0;
-      final repo = ReportRepository(
-        browser,
-        baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          if (request.url.path == '/api/life-reports') {
-            expect(request.method, 'GET');
-            listRequests++;
-            if (listRequests == 1) return slowList.future;
-            return response({
-              'items': [report],
-            });
-          }
-          if (request.url.path ==
-              "/api/life-reports/${report['id']}/app-login-code") {
-            expect(request.headers['X-Report-Key'], browser.key);
-            codeRequests++;
-            if (codeRequests == 1) return slowCode.future;
-            return response({'code': 'A2B3C4', 'expires_in': 600});
-          }
-          return response({'notice_version': H5Controller.noticeVersion});
-        }),
-      );
-      final h5 = H5Controller(translations(), repo, browser, language: language)
-        ..enterLanding();
-      await tester.pumpWidget(
-        H5App(controller: h5, initialLocation: '/?lang=$language'),
-      );
-      await tester.pumpAndSettle();
-      String label(String key) => h5.copy.t('jy', key);
-
-      final history = find.text(label('history'));
-      await tester.ensureVisible(history);
-      await tester.tap(history);
-      await tester.pump();
-      final retryList = find.text(h5.copy.t('generation', 'retry'));
-      await tester.pump(const Duration(seconds: 9));
-      expect(listRequests, 1);
-      expect(retryList, findsNothing);
-      await tester.pump(const Duration(seconds: 1));
-      await tester.pumpAndSettle();
-      expect(retryList, findsOneWidget);
-      expect(codeRequests, 0);
-      await click(tester, retryList);
-      slowList.complete(response({'items': []}));
-      await tester.pumpAndSettle();
-      expect(listRequests, 2);
-      expect(find.text(label('openReport')), findsOneWidget);
-      await click(tester, find.text(label('appLogin.get')));
-      expect(find.text(label('appLogin.loading')), findsOneWidget);
-      await tester.pump(const Duration(seconds: 10));
-      await tester.pumpAndSettle();
-      expect(find.text(label('appLogin.failed')), findsOneWidget);
-      await click(tester, find.text(label('appLogin.refresh')));
-      slowCode.complete(response({'code': 'D5E6F7', 'expires_in': 600}));
-      await tester.pumpAndSettle();
-
-      expect(
-        tester
-            .widget<SelectableText>(
-              find.byKey(const ValueKey('h5-app-login-code')),
-            )
-            .data,
-        'A2B3C4',
-      );
-      expect(codeRequests, 2);
-      final historyHome = find.descendant(
-        of: find.byType(Dialog),
-        matching: find.byTooltip(label('checkout.back')),
-      );
-      await click(tester, historyHome);
-      expect(find.byType(Dialog), findsNothing);
-      expect(find.byKey(const ValueKey('welcome-start')), findsOneWidget);
-      await tester.pumpWidget(const SizedBox.shrink());
-      h5.dispose();
-    });
-
     testWidgets(
       '$language refresh resumes the saved queue with no duplicate submission',
       (tester) async {
@@ -172,18 +87,10 @@ void main() {
         final browser = TestBrowser()
           ..settings['session:active-preview'] = done['id'] as String;
         final requests = <String>[];
-        var codeRequests = 0;
         final repo = ReportRepository(
           browser,
           baseUrl: 'https://example.test',
           client: MockClient((request) async {
-            if (request.url.path ==
-                "/api/life-reports/${done['id']}/app-login-code") {
-              expect(request.method, 'POST');
-              expect(request.headers['X-Report-Key'], browser.key);
-              codeRequests++;
-              return response({'code': 'A2B3C4', 'expires_in': 600});
-            }
             if (request.url.path.startsWith('/api/life-reports')) {
               requests.add('${request.method} ${request.url.path}');
               return response(current);
@@ -196,7 +103,7 @@ void main() {
           repo,
           browser,
           language: language,
-        )..enterLanding();
+        );
         await tester.pumpWidget(
           H5App(controller: h5, initialLocation: '/?lang=$language'),
         );
@@ -206,14 +113,7 @@ void main() {
           find.text(h5.copy.t('jy', 'interpretation.queued')),
           findsOneWidget,
         );
-        expect(
-          tester
-              .widget<SelectableText>(
-                find.byKey(const ValueKey('h5-app-login-code')),
-              )
-              .data,
-          'A2B3C4',
-        );
+        expect(find.text(h5.copy.t('jy', 'appLogin.title')), findsNothing);
         expect(requests.every((request) => request.startsWith('GET ')), isTrue);
         tester
             .widget<GenerationDialog>(find.byType(GenerationDialog))
@@ -230,7 +130,6 @@ void main() {
           find.byKey(const ValueKey('free-report-content')),
           findsOneWidget,
         );
-        expect(codeRequests, 1);
         expect(requests.every((request) => request.startsWith('GET ')), isTrue);
         for (final width in [320.0, 360.0, 1100.0]) {
           tester.view.physicalSize = Size(width, 640);
@@ -263,17 +162,10 @@ void main() {
         };
         final browser = TestBrowser();
         final methods = <String>[];
-        var codeRequests = 0;
         final repo = ReportRepository(
           browser,
           baseUrl: 'https://example.test',
           client: MockClient((request) async {
-            if (request.url.path ==
-                "/api/life-reports/${done['id']}/app-login-code") {
-              expect(request.method, 'POST');
-              codeRequests++;
-              return response({'code': 'A2B3C4', 'expires_in': 600});
-            }
             if (request.url.path.startsWith('/api/life-reports'))
               methods.add(request.method);
             return response(current);
@@ -307,9 +199,8 @@ void main() {
             session: true,
           );
           await click(tester, find.byTooltip(h5.copy.t('jy', 'checkout.back')));
-          expect(find.byType(LandingPage), findsNothing);
           expect(find.byType(GenerationDialog), findsNothing);
-          expect(find.byKey(const ValueKey('welcome-start')), findsOneWidget);
+          expect(find.byKey(const ValueKey('birth-date')), findsOneWidget);
           expect(browser.readSetting('active-preview', session: true), isEmpty);
           expect(methods.every((method) => method == 'GET'), isTrue);
           await tester.pumpWidget(const SizedBox.shrink());
@@ -327,7 +218,6 @@ void main() {
         expect(find.text(h5.copy.t('life', 'viewProgress')), findsNothing);
         expect(methods.length, greaterThan(1));
         expect(methods.every((method) => method == 'GET'), isTrue);
-        expect(codeRequests, 1);
         for (final width in [320.0, 1100.0]) {
           tester.view.physicalSize = Size(width, 640);
           await tester.pumpAndSettle();
@@ -407,13 +297,13 @@ void main() {
             widget is Image &&
             widget.image is AssetImage &&
             (widget.image as AssetImage).assetName ==
-                'assets/images/line-contact-qr.jpg',
+                'assets/images/line-contact-qr-956ed148.jpg',
       );
       expect(qr, findsOneWidget);
       expect(find.text(h5.copy.t('jy', 'lineContact.scan')), findsOneWidget);
       await tester.runAsync(() async {
         await precacheImage(
-          const AssetImage('assets/images/line-contact-qr.jpg'),
+          const AssetImage('assets/images/line-contact-qr-956ed148.jpg'),
           tester.element(qr),
         );
       });
@@ -442,7 +332,8 @@ void main() {
       expect(browser.openedPages, isEmpty);
       expect(find.text(h5.copy.t('jy', 'lineContact.open')), findsOneWidget);
       await click(tester, contact);
-      expect(browser.sameTabPages, ['https://line.me/ti/p/TrGGcMWmuV']);
+      expect(browser.sameTabPages, ['https://line.me/ti/p/SmujXXCH9v']);
+      expect(browser.lineClaimClicks, 0);
       expect(find.byType(AlertDialog), findsNothing);
       expect(
         browser.activities.where(
@@ -471,7 +362,7 @@ void main() {
       );
       await click(tester, find.byTooltip(h5.copy.t('jy', 'checkout.back')));
       expect(find.byType(ReportPreview), findsNothing);
-      expect(find.byKey(const ValueKey('welcome-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('birth-date')), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
     });
@@ -1467,11 +1358,10 @@ void main() {
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(completed, 0);
       expect(find.text('正在校验并保存解读内容'), findsOneWidget);
-      expect(find.byType(AppLoginCodePanel), findsOneWidget);
+      expect(find.text(h5.copy.t('jy', 'appLogin.title')), findsNothing);
       state.fail('连接中断');
       await tester.pump();
       expect(find.text('本次生成暂未完成，请重试'), findsOneWidget);
-      expect(find.byType(AppLoginCodePanel), findsNothing);
       expect(tester.widget<GenerationVideo>(wheel).active, isFalse);
       state.retry();
       await tester.pump();
@@ -1591,7 +1481,6 @@ void main() {
         ReportRepository(browser),
         browser,
       );
-      h5.enterLanding();
       await tester.pumpWidget(
         H5App(
           controller: h5,
@@ -1612,7 +1501,7 @@ void main() {
       expect(route.queryParameters, containsPair('lang', 'zh'));
       expect(route.queryParameters, containsPair('topic', 'love'));
       expect(route.queryParameters, containsPair('startup', '1'));
-      expect(find.text(h5.copy.t('marriage', 'title')), findsOneWidget);
+      expect(find.text(h5.copy.t('jy', 'formTitle')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -1695,7 +1584,7 @@ void main() {
           repo,
           browser,
           language: language,
-        )..enterLanding();
+        );
         await tester.pumpWidget(
           H5App(controller: h5, initialLocation: '/?lang=$language'),
         );

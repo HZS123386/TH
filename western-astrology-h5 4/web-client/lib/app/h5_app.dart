@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../features/information_page.dart' deferred as information;
 import '../features/landing_page.dart';
 import '../features/report_page.dart' deferred as reports;
-import '../features/welcome_page.dart';
+import '../features/support_content.dart';
 import '../ui/site_header.dart';
 import '../ui/theme.dart';
 import 'controller.dart';
@@ -33,8 +33,8 @@ class _H5AppState extends State<H5App> {
     routes: [
       ShellRoute(
         builder: (context, state, child) => _Shell(
-          landing: state.uri.path == '/',
           showLanguages: state.uri.path != '/report.html',
+          showHomeArrow: state.uri.path != '/',
           child: child,
         ),
         routes: [
@@ -61,7 +61,11 @@ class _H5AppState extends State<H5App> {
             path: '/support.html',
             builder: (context, state) => _DeferredPage(
               load: information.loadLibrary,
-              page: () => information.InformationPage(support: true),
+              page: () => information.InformationPage(
+                support: true,
+                purchasePolicy: PurchasePolicy.values
+                    .asNameMap()[state.uri.queryParameters['policy']],
+              ),
             ),
           ),
           GoRoute(
@@ -84,13 +88,12 @@ class _H5AppState extends State<H5App> {
   @override
   void initState() {
     super.initState();
-    // The welcome image already resolves itself; it must not defer the whole UI.
     WidgetsBinding.instance.addPostFrameCallback((_) => _observeFirstFrame());
   }
 
   void _observeFirstFrame() {
     if (!mounted) return;
-    // Web batches raster timings for 100ms; a static welcome needs a later frame.
+    // Web batches raster timings for 100ms; an idle page needs a later frame.
     _timingFrame = Timer.periodic(const Duration(milliseconds: 160), (timer) {
       if (!mounted || WidgetsBinding.instance.firstFrameRasterized) {
         timer.cancel();
@@ -103,16 +106,6 @@ class _H5AppState extends State<H5App> {
         _timingFrame?.cancel();
         if (!mounted) return;
         widget.controller.browser.pageReady('app-ready');
-        // Warm the form artwork after the welcome is visible, without blocking it.
-        if (!(widget.initialLocation ?? Uri.base.path).contains('.html')) {
-          unawaited(
-            precacheImage(
-              const AssetImage('assets/images/theme-thai-artwork.jpg'),
-              context,
-              onError: (error, stack) {},
-            ),
-          );
-        }
       }),
     );
   }
@@ -183,15 +176,13 @@ class _DeferredPageState extends State<_DeferredPage> {
 class _Shell extends StatelessWidget {
   const _Shell({
     required this.child,
-    required this.landing,
     required this.showLanguages,
+    required this.showHomeArrow,
   });
   final Widget child;
-  final bool landing, showLanguages;
+  final bool showLanguages, showHomeArrow;
   @override
   Widget build(BuildContext context) {
-    final h5 = H5Scope.of(context);
-    final showWelcome = landing && h5.welcomeOpen;
     final screen = MediaQuery.sizeOf(context);
     final wide = screen.width >= 700;
     return ColoredBox(
@@ -205,31 +196,16 @@ class _Shell extends StatelessWidget {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: h5PageMaxWidth),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ExcludeSemantics(
-                    excluding: showWelcome,
-                    child: IgnorePointer(
-                      ignoring: showWelcome,
-                      // Build the hidden form when the welcome transition begins.
-                      child: Scaffold(
-                        body: Column(
-                          children: [
-                            if (!showWelcome || h5.landingPrepared)
-                              SiteHeader(showLanguages: showLanguages),
-                            Expanded(
-                              child: showWelcome && !h5.landingPrepared
-                                  ? const SizedBox.expand()
-                                  : child,
-                            ),
-                          ],
-                        ),
-                      ),
+              child: Scaffold(
+                body: Column(
+                  children: [
+                    SiteHeader(
+                      showLanguages: showLanguages,
+                      showHomeArrow: showHomeArrow,
                     ),
-                  ),
-                  if (showWelcome) Positioned.fill(child: WelcomePage(h5: h5)),
-                ],
+                    Expanded(child: child),
+                  ],
+                ),
               ),
             ),
           ),

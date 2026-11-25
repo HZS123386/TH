@@ -182,8 +182,6 @@ class TestBrowser implements BrowserPort {
   @override
   bool supportsLineApp = false;
   @override
-  Duration get welcomeAge => Duration.zero;
-  @override
   void openPage(String path, {bool sameTab = false}) {
     openedPages.add(path);
     if (sameTab) sameTabPages.add(path);
@@ -201,7 +199,11 @@ class TestBrowser implements BrowserPort {
   Json visitContext() => visit;
   final activities = <Json>[];
   @override
-  void trackViewReadingClick() {}
+  Future<void> trackLineClaimClick() async {
+    lineClaimClicks++;
+  }
+
+  int lineClaimClicks = 0;
 
   @override
   void trackActivity(String page, String action) =>

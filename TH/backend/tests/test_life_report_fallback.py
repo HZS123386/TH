@@ -198,7 +198,7 @@ def test_fallback_does_not_bypass_admission_or_cancellation(postgres_url, monkey
     writer = LifeWriter(Storage(config.database_url), config, asyncio.Semaphore(1))
     calls = []
 
-    async def generate(self, bundle, owner, network):
+    async def generate(self, bundle, owner, network, *, deadline=None):
         calls.append(self.provider)
         if state == "cancelled":
             raise asyncio.CancelledError()

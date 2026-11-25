@@ -8,14 +8,6 @@ abstract interface class DeviceStore {
   String ownerKey();
 }
 
-class AppLoginCode {
-  const AppLoginCode(this.value, this.expiresAt);
-
-  final String value;
-  final DateTime expiresAt;
-  bool get expired => !expiresAt.isAfter(DateTime.now());
-}
-
 class Cancelled implements Exception {
   const Cancelled();
 }
@@ -60,11 +52,15 @@ typedef PaymentOrder = ({
 });
 
 class ReportRepository {
+  static const _reportReadTimeout = Duration(seconds: 15);
+  static const _marriagePreviewWait = Duration(seconds: 60);
+
   ReportRepository(this.store, {http.Client? client, this.baseUrl = ''})
     : client = client ?? http.Client();
   final DeviceStore store;
   final http.Client client;
   final String baseUrl;
+  final _firstCityPages = <String, Future<Json>>{};
   String language = 'th';
   Json Function()? visitContext;
   void Function(String, String, String)? onClientFailure;
@@ -186,6 +182,7 @@ class ReportRepository {
     String id,
     CancelToken token, {
     bool waitForPreview = false,
+    Duration timeout = _reportReadTimeout,
   }) async {
     if (!RegExp(r'^[A-Za-z0-9_-]{8,128}$').hasMatch(id)) {
       throw const ApiFailure('missing');
@@ -194,7 +191,7 @@ class ReportRepository {
       await request(
         '/api/life-reports/$id${waitForPreview ? '?wait_preview=true' : ''}',
         token,
-        timeout: const Duration(seconds: 15),
+        timeout: timeout,
       ),
       id: id,
     );
@@ -210,30 +207,9 @@ class ReportRepository {
       '/api/life-reports?wait=false',
       token,
       body: {...input, if (visit.isNotEmpty) 'landing_visit': visit},
+      timeout: input['report_kind'] == 'marriage' ? _reportReadTimeout : null,
     );
     return _wait(initial, input, token, false, progress);
-  }
-
-  Future<AppLoginCode> createAppLoginCode(
-    String reportId,
-    CancelToken token,
-  ) async {
-    final result = object(
-      await request(
-        '/api/life-reports/${Uri.encodeComponent(reportId)}/app-login-code',
-        token,
-        body: const {},
-        timeout: const Duration(seconds: 10),
-      ),
-    );
-    final code = text(result['code']), lifetime = result['expires_in'];
-    if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code) ||
-        lifetime is! int ||
-        lifetime <= 0 ||
-        lifetime > 600) {
-      throw const ApiFailure('badResult');
-    }
-    return AppLoginCode(code, DateTime.now().add(Duration(seconds: lifetime)));
   }
 
   Future<LifeReport> unlock(
@@ -262,11 +238,7 @@ class ReportRepository {
     CancelToken token,
   ) async {
     final order = object(
-      await request(
-        '/api/life-reports/${report.id}/payment',
-        token,
-        body: {},
-      ),
+      await request('/api/life-reports/${report.id}/payment', token, body: {}),
     );
     return _paymentOrder(report, order);
   }
@@ -286,11 +258,13 @@ class ReportRepository {
     LifeReport report,
     CancelToken token,
   ) async {
-    final result = object(await request(
-      '/api/life-reports/${report.id}/payment/methods',
-      token,
-      timeout: const Duration(seconds: 35),
-    ));
+    final result = object(
+      await request(
+        '/api/life-reports/${report.id}/payment/methods',
+        token,
+        timeout: const Duration(seconds: 35),
+      ),
+    );
     final methods = result['methods'];
     final checkPayment = result['check_payment'];
     if (methods is! List ||
@@ -306,16 +280,20 @@ class ReportRepository {
     String method,
     CancelToken token,
   ) async {
-    final result = object(await request(
-      '/api/life-reports/${report.id}/payment/start',
-      token,
-      body: {'method': method},
-      timeout: const Duration(seconds: 55),
-    ));
+    final result = object(
+      await request(
+        '/api/life-reports/${report.id}/payment/start',
+        token,
+        body: {'method': method},
+        timeout: const Duration(seconds: 55),
+      ),
+    );
     final value = result['redirect_url'];
     if (value == null && result.containsKey('redirect_url')) return null;
     final url = value is String ? Uri.tryParse(value) : null;
-    if (url == null || url.scheme != 'https' || url.host.isEmpty ||
+    if (url == null ||
+        url.scheme != 'https' ||
+        url.host.isEmpty ||
         url.userInfo.isNotEmpty) {
       throw const ApiFailure('badResult');
     }
@@ -396,6 +374,7 @@ class ReportRepository {
     String? id,
   }) async {
     var failures = 0;
+    final elapsed = Stopwatch()..start();
     const interval = Duration(seconds: 2);
     var previousReadSeconds = interval.inSeconds;
     while (true) {
@@ -419,6 +398,15 @@ class ReportRepository {
       if (!(full ? report.fullInProgress : report.previewInProgress)) {
         throw ApiFailure('${full ? 'states' : 'previewStates'}.$state');
       }
+      Duration limited(Duration duration) {
+        if (full || !report.marriageReport) return duration;
+        final remaining = _marriagePreviewWait - elapsed.elapsed;
+        if (remaining <= Duration.zero) {
+          throw const ApiFailure('previewStates.unavailable');
+        }
+        return duration < remaining ? duration : remaining;
+      }
+
       // Count the server's wait toward the polling budget.
       var delay = full
           ? interval
@@ -429,10 +417,16 @@ class ReportRepository {
               ),
             );
       while (true) {
-        await token.pause(delay);
+        await token.pause(limited(delay));
+        final timeout = limited(_reportReadTimeout);
         try {
           final started = Stopwatch()..start();
-          value = (await load(id, token, waitForPreview: !full)).json;
+          value = (await load(
+            id,
+            token,
+            waitForPreview: !full,
+            timeout: timeout,
+          )).json;
           previousReadSeconds = started.elapsed.inSeconds;
           failures = 0;
           break;
@@ -454,12 +448,56 @@ class ReportRepository {
     }
   }
 
+  Future<void> warmCities(String country) async {
+    try {
+      await _firstCityPage(country);
+    } on ApiFailure {
+      // An unsuccessful preload is retried when the visitor opens the list.
+    }
+  }
+
+  Future<Json> _firstCityPage(String country) =>
+      _firstCityPages.putIfAbsent(country, () async {
+        try {
+          return await _fetchCities(
+            country,
+            '',
+            0,
+            CancelToken(),
+            timeout: const Duration(seconds: 12),
+          );
+        } catch (_) {
+          _firstCityPages.remove(country);
+          rethrow;
+        }
+      });
+
   Future<Json> cities(
     String country,
     String query,
     int offset,
     CancelToken token,
   ) async {
+    token.check();
+    if (query.isEmpty && offset == 0) {
+      // A closed menu cancels its own wait. The next menu can reuse the request.
+      final result = await Future.any<Json>([
+        _firstCityPage(country),
+        token.future.then<Json>((_) => throw const Cancelled()),
+      ]);
+      token.check();
+      return result;
+    }
+    return _fetchCities(country, query, offset, token);
+  }
+
+  Future<Json> _fetchCities(
+    String country,
+    String query,
+    int offset,
+    CancelToken token, {
+    Duration? timeout,
+  }) async {
     final params = Uri(
       queryParameters: {
         'country': country,
@@ -469,7 +507,12 @@ class ReportRepository {
       },
     ).query;
     return object(
-      await request('/api/thai-locations?$params', token, owned: false),
+      await request(
+        '/api/thai-locations?$params',
+        token,
+        owned: false,
+        timeout: timeout,
+      ),
     );
   }
 }

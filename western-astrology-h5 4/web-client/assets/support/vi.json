@@ -36,7 +36,7 @@
       "id": "birth-time",
       "title": "Không biết giờ sinh chính xác vẫn được không?",
       "paragraphs": [
-        "Được. Chọn không nhớ giờ chính xác. Hệ thống dùng 12:00 trưa địa phương làm tham chiếu, hạn chế hoặc đánh dấu kết luận nhạy theo giờ. Cung mọc, các nhà và chi tiết liên quan có thể thiếu hoặc sai lệch. Mốc này không phải giờ sinh thật đã xác nhận."
+        "Bạn có thể chọn không nhớ chính xác giờ sinh để tiếp tục. Báo cáo hôn nhân theo chiêm tinh Thái Lan sẽ ghi giờ sinh chưa rõ và giới hạn các phân tích cung mọc, nhà hoặc thời điểm cần giờ sinh chính xác. Một số phép tính lá số phương Tây dùng 12 giờ trưa theo giờ địa phương làm mốc."
       ]
     },
     {
@@ -48,9 +48,9 @@
     },
     {
       "id": "unlock",
-      "title": "Mở khóa có trừ tiền không?",
+      "title": "Nhận báo cáo đầy đủ",
       "paragraphs": [
-        "Bản hiện tại để thử nghiệm, số tiền là ví dụ; nút thanh toán/mở khóa không thu tiền thật mà tạo và mở bản đầy đủ. Chưa có thu tiền hay hoàn tiền trực tuyến thật. Khi mở thanh toán thật phải nêu giá, nhà cung cấp và điều khoản trước xác nhận."
+        "Nhận báo cáo đầy đủ qua LINE. Gửi mã nhận năm chữ số cho bộ phận hỗ trợ để được kiểm tra và nhận PDF trong cuộc trò chuyện."
       ]
     },
     {
@@ -64,15 +64,60 @@
       "id": "delete",
       "title": "Xóa báo cáo hay gửi yêu cầu dữ liệu thế nào?",
       "paragraphs": [
-        "Dùng Xóa trên báo cáo/Báo cáo của tôi; có thể phải chờ tác vụ tạo xong. Xóa trình duyệt không xóa dữ liệu máy chủ. Yêu cầu truy cập, sửa, xóa thêm hoặc khiếu nại qua email trang này, bắt đầu bằng mã báo cáo và loại yêu cầu. Chính sách nêu phạm vi, giới hạn bộ nhớ đệm/sao lưu."
+        "Dùng Xóa trên báo cáo/Báo cáo của tôi; có thể phải chờ tác vụ tạo xong. Xóa trình duyệt không xóa dữ liệu máy chủ. Yêu cầu truy cập, sửa, xóa thêm hoặc khiếu nại qua email trang này, bắt đầu bằng mã báo cáo và loại yêu cầu. Chính sách nêu phạm vi, giới hạn bộ nhớ đệm/sao lưu.",
+      "Bộ phận hỗ trợ cần kiểm tra đơn hàng thật trước khi có thể xóa báo cáo liên quan. Bạn có thể gửi yêu cầu xóa dữ liệu qua email trên trang này. Hồ sơ giao dịch phải lưu giữ được xử lý theo quy định áp dụng."
       ]
     },
     {
       "id": "meaning",
       "title": "Có thể dựa báo cáo để quyết định quan trọng?",
       "paragraphs": [
-        "Báo cáo dùng tính chiêm tinh phương Tây và ngôn ngữ AI cho giải trí, khám phá bản thân, có thể sai hay không phù hợp. Không bảo đảm sự kiện tương lai, không thay tư vấn y tế, luật, tài chính và không nên là căn cứ duy nhất cho việc làm, vay tiền hay quan hệ quan trọng."
+        "Báo cáo kết hợp chiêm tinh và văn bản do AI tạo để giải trí và tự suy ngẫm. Luận giải có thể sai lệch. Hãy dựa vào thông tin thực tế và tư vấn chuyên môn phù hợp khi đưa ra quyết định quan trọng."
       ]
     }
-  ]
+  ],
+  "purchasePolicies": {
+    "terms": [
+      {
+        "title": "Báo cáo và giá",
+        "paragraphs": [
+          "Nhận báo cáo đầy đủ qua LINE. Gửi mã nhận năm chữ số cho bộ phận hỗ trợ để được kiểm tra và nhận PDF trong cuộc trò chuyện."
+        ]
+      },
+      {
+        "title": "Thanh toán và sử dụng báo cáo",
+        "paragraphs": [
+          "Thông tin dưới đây áp dụng cho đơn hàng và khoản thanh toán trước đây. Báo cáo được giao khi bản đầy đủ đã tạo xong và có thể mở trên trang web. Sau khi giao thành công, yêu cầu hoàn tiền thông thường do đổi ý sẽ không được chấp nhận. Hãy liên hệ hỗ trợ nếu bị tính tiền hai lần, số tiền bị trừ sai hoặc đã xác nhận thanh toán mà vẫn không thể giao báo cáo. Quyền hủy, hoàn tiền và các biện pháp khắc phục theo luật áp dụng vẫn có hiệu lực."
+        ]
+      }
+    ],
+    "refund": [
+      {
+        "title": "Trường hợp được xem xét hoàn tiền",
+        "paragraphs": [
+          "Thông tin dưới đây áp dụng cho đơn hàng và khoản thanh toán trước đây. Báo cáo được giao khi bản đầy đủ đã tạo xong và có thể mở trên trang web. Sau khi giao thành công, yêu cầu hoàn tiền thông thường do đổi ý sẽ không được chấp nhận. Hãy liên hệ hỗ trợ nếu bị tính tiền hai lần, số tiền bị trừ sai hoặc đã xác nhận thanh toán mà vẫn không thể giao báo cáo. Quyền hủy, hoàn tiền và các biện pháp khắc phục theo luật áp dụng vẫn có hiệu lực."
+        ]
+      },
+      {
+        "title": "Cách gửi yêu cầu",
+        "paragraphs": [
+          "Khi phát hiện vấn đề, hãy sớm gửi email kèm mã đơn hoặc mã báo cáo, thời điểm thanh toán, số tiền và mô tả vấn đề. Có thể đính kèm ảnh đã che dữ liệu cá nhân và thông tin xác thực thanh toán. Sau khi kiểm tra, bộ phận hỗ trợ sẽ gửi kết quả, phương thức hoàn tiền phù hợp và thời gian xử lý qua email. Các khoản hoàn theo luật được xử lý trong thời hạn luật định. Tại Thái Lan, có thể gửi tranh chấp chưa giải quyết đến Văn phòng Ủy ban Bảo vệ Người tiêu dùng (OCPB)."
+        ]
+      }
+    ],
+    "delivery": [
+      {
+        "title": "Cách nhận báo cáo",
+        "paragraphs": [
+          "Nhận báo cáo đầy đủ qua LINE. Gửi mã nhận năm chữ số cho bộ phận hỗ trợ để được kiểm tra và nhận PDF trong cuộc trò chuyện. Thông tin dưới đây áp dụng cho đơn hàng và khoản thanh toán trước đây. Sau khi xác nhận đã nhận tiền, hệ thống bắt đầu tạo báo cáo đầy đủ và hiển thị tiến độ tại trang báo cáo ban đầu. Khi hoàn tất, bạn có thể đọc trực tuyến, lưu PDF hoặc mở lại từ Báo cáo của tôi trong trình duyệt ban đầu. Báo cáo được giao trên trang web."
+        ]
+      },
+      {
+        "title": "Vấn đề khi thanh toán hoặc tạo báo cáo",
+        "paragraphs": [
+          "Nếu đã trả tiền mà báo cáo vẫn khóa, hãy quay lại trang báo cáo ban đầu để kiểm tra thanh toán. Tránh trả tiền lần nữa. Thời gian tạo tùy thuộc vào tình trạng dịch vụ và mạng. Nếu tạo thất bại, hãy thử lại từ trang. Nếu vẫn không mở được, gửi email kèm mã đơn hoặc mã báo cáo để bộ phận hỗ trợ kiểm tra việc giao báo cáo."
+        ]
+      }
+    ]
+  }
 }

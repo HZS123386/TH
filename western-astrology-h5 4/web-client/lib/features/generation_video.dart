@@ -1,5 +1,7 @@
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+
 import '../ui/jy_components.dart';
 
 /// Poster renderer for environments without an HTML video surface.

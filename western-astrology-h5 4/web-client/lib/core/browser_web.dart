@@ -13,18 +13,14 @@ external JSPromise<JSString> _export(JSString payload, JSString format);
 external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
-@JS('fateH5.welcomeAge')
-external JSNumber _welcomeAge();
-@JS('fateH5.trackViewReadingClick')
-external void _viewReadingClick();
+@JS('fateH5.trackLineClaimClick')
+external JSPromise<JSAny?> _lineClaimClick();
 @JS('fateH5.trackActivity')
 external void _activity(JSString payload, JSString key, JSString endpoint);
 @JS('fateH5.trackFailure')
 external void _failure(JSString path, JSString code, JSString method);
 @JS('fateBoot.fail')
 external void _startupFailed();
-@JS('fateBoot.connectWelcome')
-external void _connectWelcome(JSFunction enter);
 @JS('fateH5.ownerKey')
 external JSString? _ownerKey();
 @JS('fateH5.visitContext')
@@ -32,12 +28,6 @@ external JSString _visitContext();
 
 class WebBrowserPort implements BrowserPort {
   void startupFailed() => _startupFailed();
-  void connectWelcome(void Function() enter) => _connectWelcome(enter.toJS);
-
-  @override
-  Duration get welcomeAge =>
-      Duration(microseconds: (_welcomeAge().toDartDouble * 1000).round());
-
   @override
   bool get supportsLineApp {
     final navigator = web.window.navigator;
@@ -86,7 +76,9 @@ class WebBrowserPort implements BrowserPort {
   void pageReady(String page) => _ready(page.toJS);
 
   @override
-  void trackViewReadingClick() => _viewReadingClick();
+  Future<void> trackLineClaimClick() async {
+    await _lineClaimClick().toDart;
+  }
 
   @override
   void trackActivity(String page, String action) {

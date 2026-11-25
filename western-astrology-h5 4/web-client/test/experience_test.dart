@@ -16,7 +16,7 @@ import 'package:fate_h5/core/repository.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/features/information_page.dart';
 import 'package:fate_h5/features/landing_page.dart';
-import 'package:fate_h5/features/welcome_page.dart';
+import 'package:fate_h5/ui/jy_components.dart';
 
 import 'support.dart';
 
@@ -173,11 +173,9 @@ void main() {
   );
 
   testWidgets(
-    'welcome delays hidden form work until entering and preserves its state and URL',
+    'the portrait and birth form open together and preserve the entry tags',
     (tester) async {
       phone(tester);
-      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: false);
       final browser = TestBrowser()..settings.clear();
       final h5 = H5Controller(
         translations(),
@@ -192,44 +190,38 @@ void main() {
         ),
       );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-      final name = find.byKey(const ValueKey('welcome-name-strokes'));
-      expect(name, findsOneWidget);
-      final initialInk = tester.widget<CustomPaint>(name).painter!;
-      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.byTooltip(h5.copy.t('jy', 'checkout.back')), findsNothing);
+      expect(find.text(h5.copy.t('jy', 'history')), findsNothing);
       expect(
-        tester.widget<CustomPaint>(name).painter!.shouldRepaint(initialInk),
-        isTrue,
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is FateImage &&
+              widget.asset == 'assets/images/astrologer-900.webp',
+        ),
+        findsOneWidget,
       );
-      await tester.pump(const Duration(milliseconds: 520));
-      expect(find.text('情缘法宗师'), findsOneWidget);
-      expect(find.text('该断该续？'), findsOneWidget);
-      expect(find.text('揪出搅局的人'), findsOneWidget);
+      final birthDate = find.byKey(const ValueKey('birth-date'));
+      expect(find.text(h5.copy.t('jy', 'portrait.name')), findsOneWidget);
+      final pageCenter = tester.getCenter(find.byType(LandingPage)).dx;
+      final headline = find.text(h5.copy.t('jy', 'portrait.headline'));
+      final note = find.text(h5.copy.t('jy', 'portrait.note').replaceAll('\n', ''));
+      expect(tester.widget<Text>(note).maxLines, 1);
       expect(
-        tester.getCenter(name).dx,
-        greaterThan(tester.getCenter(find.text('该断该续？')).dx),
+        tester.widget<Text>(headline).style,
+        tester
+            .widget<Text>(find.text(h5.copy.t('jy', 'formTitle')))
+            .style!
+            .copyWith(fontSize: 20),
       );
-      final shimmer = find.byKey(const ValueKey('welcome-name-shimmer'));
-      final bright = tester.widget<Opacity>(shimmer).opacity;
-      final completedInk = tester.widget<CustomPaint>(name).painter!;
-      await tester.pump(const Duration(milliseconds: 900));
       expect(
-        tester.widget<CustomPaint>(name).painter!.shouldRepaint(completedInk),
-        isFalse,
+        tester.widget<Text>(note).style,
+        tester.widget<Text>(find.text(h5.copy.t('jy', 'formCaption'))).style,
       );
-      expect(tester.widget<Opacity>(shimmer).opacity, lessThan(bright));
-      expect(find.byType(LandingPage), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('welcome-start')));
-      expect(browser.activities.last, {
-        'page': 'welcome',
-        'action': 'click_welcome_start',
-      });
-      await tester.pump();
-      final landingState = tester.state(find.byType(LandingPage));
-      await tester.pump(const Duration(milliseconds: 850));
-      await tester.pump();
-      expect(find.byType(WelcomePage), findsNothing);
-      expect(tester.state(find.byType(LandingPage)), same(landingState));
+      for (final caption in [headline, note]) {
+        expect(tester.getCenter(caption).dx, closeTo(pageCenter, .5));
+      }
+      expect(birthDate.hitTestable(), findsOneWidget);
+      expect(browser.activities.first, {'page': 'birth_form', 'action': 'view'});
       final uri = GoRouter.of(
         tester.element(find.byType(LandingPage)),
       ).routeInformationProvider.value.uri;
@@ -250,49 +242,11 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
-      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: true);
-      // Browsers with the old preference still show the same welcome page.
-      browser.writeSetting('fate-welcome-dismissed', '1', session: true);
-      for (final language in ['zh', 'th']) {
-        final reopened = H5Controller(
-          translations(),
-          ReportRepository(browser),
-          browser,
-          language: language,
-        );
-        await tester.pumpWidget(
-          H5App(controller: reopened, initialLocation: '/?lang=$language'),
-        );
-        await tester.pump();
-        expect(find.byType(WelcomePage), findsOneWidget);
-        expect(
-          find.byKey(const ValueKey('welcome-name-strokes')),
-          findsOneWidget,
-        );
-        expect(
-          find.text(language == 'zh' ? '该断该续？' : 'ควรพอหรือไปต่อ?'),
-          findsOneWidget,
-        );
-        expect(find.byType(LandingPage), findsNothing);
-        await tester.tap(find.byKey(const ValueKey('welcome-start')));
-        await tester.pump();
-        expect(find.byType(WelcomePage), findsNothing);
-        expect(find.byType(LandingPage), findsOneWidget);
-        await tester.tap(
-          find.byTooltip(reopened.copy.t('jy', 'checkout.back')),
-        );
-        await tester.pumpAndSettle();
-        expect(find.byType(WelcomePage), findsOneWidget);
-        expect(tester.takeException(), isNull);
-        await tester.pumpWidget(const SizedBox.shrink());
-        reopened.dispose();
-      }
     },
   );
 
   testWidgets(
-    'privacy deep link bypasses welcome and retains its URL while switching language',
+    'privacy deep link retains its URL while switching language',
     (tester) async {
       phone(tester);
       final browser = TestBrowser()..settings.clear();
@@ -323,7 +277,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byType(WelcomePage), findsNothing);
+      expect(find.byType(LandingPage), findsNothing);
       expect(find.text('隐私政策'), findsOneWidget);
       expect(find.byKey(const ValueKey('privacy-content-zh')), findsOneWidget);
       expect(find.textContaining('上线审阅稿：'), findsOneWidget);
@@ -515,8 +469,7 @@ void main() {
           return reply(report);
         }),
       );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh')
-        ..enterLanding();
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
       await tester.pumpWidget(
         H5App(
           controller: h5,
@@ -662,8 +615,7 @@ void main() {
           return reply(report);
         }),
       );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh')
-        ..enterLanding();
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
       await tester.pumpWidget(
         H5App(
           controller: h5,

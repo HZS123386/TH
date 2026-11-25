@@ -129,7 +129,7 @@ def transport(monkeypatch):
 
 
 def settings(postgres_url):
-    return Settings(database_url=postgres_url, life_astrology_provider="roxy", roxy_enabled=True,
+    return Settings(database_url=postgres_url, life_astrology_provider="roxy", roxy_enabled=True, h5_checkout_enabled=True,
                     roxy_api_key="roxy-server-test-key", providers={"qwen": ProviderConfig("writer-test-key", "https://model.example/v1", "qwen3.7-plus")},
                     bazi_reports_per_minute=100, bazi_reports_per_day=100)
 

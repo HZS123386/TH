@@ -28,10 +28,7 @@ def release(tmp_path, monkeypatch):
     (module.ROOT / 'site/index.html').write_text('compiled landing', encoding='utf-8')
     (module.TH / '.env').write_text(
         'QWEN_API_KEY=test-qwen-secret\nQWEN_BASE_URL=https://example.test/v1\nQWEN_MODEL=test-model\n'
-        'ROXY_ENABLED=true\nROXY_API_KEY=test-roxy-secret\nLIFE_ASTROLOGY_PROVIDER=roxy\n'
-        'SUNLANDS_ORDER_ONLY=true\nSUNLANDS_APP_SECRET=test-default-secret\nSUNLANDS_PROVINCE_ID=4\n'
-        'SUNLANDS_ORDER_MOBILE=13000000000\nSUNLANDS_H5_RETURN_URL=https://example.test/thai-landing/report.html\n',
-        encoding='utf-8')
+        'ROXY_ENABLED=true\nROXY_API_KEY=test-roxy-secret\nLIFE_ASTROLOGY_PROVIDER=roxy\n', encoding='utf-8')
     return module
 
 
@@ -82,7 +79,7 @@ def test_runtime_carries_live_payment_and_configured_report_writers(release):
     for setting in ('FORTUNE_PROVIDER=openai', 'FORTUNE_FALLBACK_PROVIDER=qwen',
                     'OPENAI_API_KEY=test-openai-secret', 'OPENAI_REASONING_EFFORT=low',
                     'WESTERN_REVIEW_ENABLED=true', 'KIMI_API_KEY=test-kimi-secret',
-                    'SUNLANDS_ORDER_ONLY=true', 'SUNLANDS_APP_SECRET="test-payment-secret"'):
+                    'SUNLANDS_ORDER_ONLY=true', 'SUNLANDS_APP_SECRET=test-payment-secret'):
         assert setting in runtime
     with tarfile.open(latest / 'application.tar.gz') as archive:
         for member in archive.getmembers():

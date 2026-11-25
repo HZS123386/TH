@@ -33,18 +33,7 @@ def generate(source, target, characters, family):
     return set(font.getBestCmap())
 
 
-def generate_welcome_fonts():
-    copy = json.loads((ROOT / 'src/content/jy.json').read_text(encoding='utf8'))['jy']
-    for language, source, target in (
-        ('th', 'NotoSansThai.ttf', 'FateWelcomeThai.ttf'),
-        ('zh', 'NotoSansSC-Regular.otf', 'FateWelcomeChinese.otf'),
-    ):
-        text = ' '.join(copy[language]['welcome'].values()) + ' ✦✧↑'
-        generate(source, target, set(map(ord, text)), Path(target).stem)
-
-
 def main():
-    generate_welcome_fonts()
     ui = set()
     paths = [ROOT / 'web-client/assets/copy.json', ROOT.parent / 'TH/backend/content/birth-regions.json']
     paths += [p for p in (ROOT / 'web-client/lib').rglob('*.dart') if p.name != 'chinese_coverage.dart']

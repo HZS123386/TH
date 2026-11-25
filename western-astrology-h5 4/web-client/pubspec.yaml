@@ -30,7 +30,6 @@ flutter:
     - assets/support/
     - assets/images/
     - assets/images/badges/
-    - assets/licenses/welcome-strokes.txt
     - assets/fonts/OFL.txt
     - assets/fonts/OFL-CJK.txt
     - assets/fonts/OFL-Symbols.txt
@@ -43,8 +42,6 @@ flutter:
     - assets/fonts/NotoSansSC-Regular.otf
     - assets/fonts/FateChineseUI.otf
     - assets/fonts/FateChineseCommon.otf
-    - assets/fonts/FateWelcomeThai.ttf
-    - assets/fonts/FateWelcomeChinese.otf
   fonts:
     - family: FateMyanmarLabel
       fonts:

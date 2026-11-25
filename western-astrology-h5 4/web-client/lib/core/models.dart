@@ -99,9 +99,8 @@ class Copy {
     };
     if (report.western) {
       labels['methodValue'] = forLanguage(language).t('jy', 'chart.western');
-      labels['plan'] = forLanguage(
-        language,
-      ).t('jy', 'report.westernSections.plan');
+      labels['plan'] = forLanguage(language)
+          .t('jy', 'report.westernSections.plan');
     }
     final question = object(report.input['career_question']);
     if (question.isNotEmpty) {
@@ -239,6 +238,8 @@ class LifeReport {
   bool get personalReport => json['format'] == 'western-personal';
   bool get relationshipReport => personalReport && input['relationship'] is Map;
   bool get marriageReport => json['format'] == 'thai-marriage';
+  bool get marriageFullFailed =>
+      marriageReport && json['full_state'] == 'unavailable';
   bool get sectionedReport => marriageReport || relationshipReport;
   Json get marriage => object(json['marriage']);
   bool get western => personalReport || json['format'] == 'western-compact';
@@ -266,21 +267,22 @@ class LifeReport {
     final showFull = complete && ready;
     if (marriageReport) {
       final sections = objects(marriage[showFull ? 'full' : 'preview']);
-      if (showFull) return sections;
       // A saved preview can carry headings from an older server release.
-      final titles = language == 'zh' && copy != null
+      final titles = !showFull && language == 'zh' && copy != null
           ? copy.forLanguage(language).list('marriage', 'preview')
           : const <String>[];
       return [
         for (final (index, section) in sections.indexed)
-          if (section['key'] != 'birth_details')
-            if (titles.length == sections.length &&
-                index > 0 &&
-                (section['key'] != 'relationship_style' ||
-                    text(profile['birth_time']).isNotEmpty))
-              {...section, 'title': titles[index]}
-            else
-              section,
+          if (section['visible'] != false &&
+              (showFull || section['key'] != 'birth_details'))
+            {
+              ...section,
+              if (titles.length == sections.length &&
+                  index > 0 &&
+                  (section['key'] != 'relationship_style' ||
+                      text(profile['birth_time']).isNotEmpty))
+                'title': titles[index],
+            },
       ];
     }
     final content = showFull
@@ -308,6 +310,7 @@ class LifeReport {
   bool get paysoTest => price['mode'] == 'payso_test';
   bool get orderOnly => price['mode'] == 'sunlands_order_only';
   bool get canPay =>
+      json['checkout_enabled'] == true &&
       (!personalReport ||
           object(personal['availability'])['full_report'] == true) &&
       (orderOnly || paysoTest || json['payment_simulation'] == true);
@@ -423,9 +426,8 @@ class LifeReport {
       final traits = personal['traits'];
       final opportunityAction = personal['opportunity_action'];
       final relationship = report.relationshipPreview;
-      final relationshipVersion = RegExp(
-        r'^western-personal-(\d+)$',
-      ).firstMatch(text(row['version']));
+      final relationshipVersion = RegExp(r'^western-personal-(\d+)$')
+          .firstMatch(text(row['version']));
       final requiresRelationship =
           (int.tryParse(relationshipVersion?.group(1) ?? '') ?? 0) >= 8;
       if (personal['relationship'] != null ||
@@ -523,9 +525,8 @@ class LifeReport {
             nodes.map((item) => item['month']).toSet().length != 3 ||
             nodes.any(
               (item) =>
-                  !RegExp(
-                    r'^\d{4}-(0[1-9]|1[0-2])$',
-                  ).hasMatch(text(item['month'])) ||
+                  !RegExp(r'^\d{4}-(0[1-9]|1[0-2])$')
+                      .hasMatch(text(item['month'])) ||
                   [
                     'theme',
                     'benefit',

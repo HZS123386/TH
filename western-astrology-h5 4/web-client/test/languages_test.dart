@@ -31,7 +31,7 @@ void main() {
       );
       final browser = TestBrowser();
       final repo = ReportRepository(browser);
-      final h5 = H5Controller(translations(), repo, browser)..enterLanding();
+      final h5 = H5Controller(translations(), repo, browser);
       expect(h5.language, 'th');
       await tester.pumpWidget(
         H5App(controller: h5, initialLocation: '/?topic=love&startup=1'),

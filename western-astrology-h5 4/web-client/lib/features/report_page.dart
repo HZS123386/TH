@@ -680,10 +680,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 18),
         ],
-        if (!report.marriageReport) ...[
-          AppLoginCodePanel(h5: widget.h5, reportId: report.id),
-          const SizedBox(height: 16),
-        ],
         if (!report.sectionedReport)
           if (report.personalReport)
             ..._personalPreview(report, c)
@@ -1095,7 +1091,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           relationshipOffer:
               r.sixPersonalThemes && r.relationshipPreview.isNotEmpty,
           onPay: _usesCheckout(r) && r.canPay ? _pay : null,
-          priceLabel: _usesCheckout(r) ? r.priceLabel : '',
+          priceLabel: _usesCheckout(r) && r.canPay ? r.priceLabel : '',
           onBack: _usesCheckout(r) ? _backHome : null,
           freePreview: _freePreview(r, c),
           onExportPdf: r.relationshipReport && !_model.exporting
@@ -1118,10 +1114,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                 const FateBrand(compact: true),
                 const SizedBox(height: 24),
                 Text(c.t('report', 'previewStates.${r.json['preview_state']}')),
-                if (r.previewInProgress) ...[
-                  const SizedBox(height: 12),
-                  AppLoginCodePanel(h5: widget.h5, reportId: r.id),
-                ],
                 const SizedBox(height: 18),
                 JYButton(
                   label: c.t(
@@ -1184,10 +1176,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               ],
             ),
             const SizedBox(height: 12),
-            if (!r.sectionedReport) ...[
-              AppLoginCodePanel(h5: widget.h5, reportId: r.id),
-              const SizedBox(height: 18),
-            ],
             JYCard(
               padding: const EdgeInsets.all(24),
               radius: 20,
@@ -1371,10 +1359,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               icon: const Icon(Icons.download_outlined, size: 17),
               label: Text(c.t('report', 'save')),
             ),
-            if (r.sectionedReport) ...[
-              const SizedBox(height: 14),
-              AppLoginCodePanel(h5: widget.h5, reportId: r.id),
-            ],
             if (_model.exportStatus.isNotEmpty)
               Text(
                 _model.exportStatus,

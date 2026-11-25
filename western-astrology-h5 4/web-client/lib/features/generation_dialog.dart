@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'generation_video.dart'
     if (dart.library.js_interop) 'generation_video_web.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
-import '../core/repository.dart';
 import '../ui/site_header.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
@@ -40,136 +38,6 @@ class GenerationState extends ChangeNotifier {
     phase = 'ready';
     complete = true;
     notifyListeners();
-  }
-}
-
-class AppLoginCodePanel extends StatefulWidget {
-  const AppLoginCodePanel({
-    required this.h5,
-    required this.reportId,
-    this.issueOnOpen = false,
-    super.key,
-  });
-
-  final H5Controller h5;
-  final String reportId;
-  final bool issueOnOpen;
-
-  @override
-  State<AppLoginCodePanel> createState() => _AppLoginCodePanelState();
-}
-
-class _AppLoginCodePanelState extends State<AppLoginCodePanel> {
-  Future<AppLoginCode>? _request;
-  Timer? _expiry;
-  bool _copied = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _track(
-      widget.issueOnOpen
-          ? widget.h5.requestAppLoginCode(widget.reportId)
-          : widget.h5.currentAppLoginCode,
-    );
-  }
-
-  void _track(Future<AppLoginCode>? request) {
-    _expiry?.cancel();
-    _request = request;
-    _copied = false;
-    unawaited(
-      request?.then<void>((code) {
-        if (mounted && _request == request && !code.expired) {
-          _expiry = Timer(code.expiresAt.difference(DateTime.now()), () {
-            if (mounted) setState(() {});
-          });
-        }
-      }, onError: (Object _, StackTrace _) {}),
-    );
-  }
-
-  Future<void> _copy(AppLoginCode code) async {
-    if (code.expired) {
-      setState(() {});
-      return;
-    }
-    try {
-      await Clipboard.setData(ClipboardData(text: code.value));
-      if (mounted) setState(() => _copied = true);
-    } catch (_) {
-      // The code can still be selected manually.
-    }
-  }
-
-  @override
-  void dispose() {
-    _expiry?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = widget.h5.copy;
-    String label(String key) => c.t('jy', 'appLogin.$key');
-    return JYCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label('title'),
-            style: const TextStyle(color: gold, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          FutureBuilder<AppLoginCode>(
-            future: _request,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(label('loading')),
-                );
-              }
-              final code = snapshot.data;
-              return Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 6,
-                children: [
-                  if (snapshot.hasError) Text(label('failed')),
-                  if (code?.expired == true) Text(label('expired')),
-                  if (code != null && !code.expired) ...[
-                    SelectableText(
-                      code.value,
-                      key: const ValueKey('h5-app-login-code'),
-                      style: const TextStyle(
-                        fontSize: 21,
-                        letterSpacing: 3,
-                        color: cream,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => _copy(code),
-                      child: Text(label(_copied ? 'copied' : 'copy')),
-                    ),
-                  ],
-                  TextButton(
-                    onPressed: () => setState(
-                      () => _track(
-                        widget.h5.requestAppLoginCode(
-                          widget.reportId,
-                          refresh: true,
-                        ),
-                      ),
-                    ),
-                    child: Text(label(_request == null ? 'get' : 'refresh')),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -406,18 +274,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                       ),
                                     ),
                                     const SizedBox(height: 15),
-                                    if (report != null && state.error.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 12,
-                                        ),
-                                        child: AppLoginCodePanel(
-                                          key: ValueKey(report.id),
-                                          h5: widget.h5,
-                                          reportId: report.id,
-                                          issueOnOpen: true,
-                                        ),
-                                      ),
                                     AnimatedSwitcher(
                                       duration: Duration(
                                         milliseconds: _reduced ? 0 : 380,
