@@ -111,4 +111,10 @@ pnpm build:release
 
 后端支持 Sunlands、Payso Demo 和开发环境模拟支付；配置项见相邻 `TH/.env.example`，不把商户密钥写入页面。金额由服务端报告及订单返回值一致校验。详细取舍见 `../TH/docs/JY_MERGE_20261116.md`。
 
+本次以 JY `36ddad5` 恢复支付方式查询、渠道收银台发起、原报告返回及查单核验接口。默认仍为 LINE 领取：`H5_CHECKOUT_ENABLED=false` 且 `SUNLANDS_PAYMENT_REQUIRED=false` 时，报告返回 `checkout_enabled=false`，页面不显示支付入口，新建单和收银台接口拒绝请求；已有订单仍可查询核验。启用支付时，服务端返回的 `checkout_enabled` 决定入口是否可用。
+
+Sunlands 正式付费模式设置 `APP_ENV=production`、`SUNLANDS_PAYMENT_REQUIRED=true` 和 `SUNLANDS_ORDER_ONLY=true`，并填写 `TH/.env.example` 中的商户凭据、销售区域、`SUNLANDS_ORDER_MOBILE`、`SUNLANDS_ORDER_NATION_CODE` 及 `SUNLANDS_H5_RETURN_URL`。返回地址必须是同源 HTTPS `report.html`，不能带查询或片段；报告编号和语言由服务端添加。H5 不传联系资料时使用配置中的商户手机号，原有显式手机号建单接口也保留。缺少必要配置时正式付费模式会拒绝启动。
+
+本地显式启用 `H5_CHECKOUT_ENABLED=true` 时，统一开发启动器会把返回地址设为本地 H5 预览端口，生产配置不受影响。验收使用隔离数据库和模拟网关；创建订单、选择付款方式、返回报告页或接收通知均不直接解锁，只有服务端查单匹配该订单、商户、币种与足额到账结果后才授予完整报告权限。LINE 客服确认与发放权限继续独立处理。
+
 免费报告的排盘与时段计算在原有校验、缓存和额度限制内并行执行。模型总并发保持四个位置，付费章节及其备用提供商共用最多三个位置，给免费试读保留处理余量。免费报告校验并保存后立即打开，不再等待演示阶段或视频结束；完整报告保留原有完成呈现。

@@ -84,7 +84,8 @@ def client(postgres_url, monkeypatch):
         calls.append(deepcopy(bundle))
         if bundle["stage"] == "chapter" and bundle["reading"] == mode["fail"]:
             raise InvalidBaziReport("synthetic unavailable")
-        return self.validate(json.dumps(story_for(bundle), ensure_ascii=False), bundle)
+        fixture = thai_story_for if bundle["language"] == "th" else story_for
+        return self.validate(json.dumps(fixture(bundle), ensure_ascii=False), bundle)
     monkeypatch.setattr(LifeWriter, "write", write)
     settings = Settings(database_url=postgres_url, app_env="production", h5_checkout_enabled=True,
                         providers={"qwen": ProviderConfig("test-key", "https://model.example/v1", "test")},
@@ -100,8 +101,9 @@ def client(postgres_url, monkeypatch):
         yield http, app, calls, mode
 
 
-def preview(http):
-    response = http.post("/api/life-reports", json={"profile": PROFILE, "year": 2027}, headers=HEADERS)
+def preview(http, *, language="zh"):
+    response = http.post("/api/life-reports", json={"profile": {**PROFILE, "language": language}, "year": 2027},
+                         headers={**HEADERS, "Accept-Language": language})
     assert response.status_code == 200, response.text
     result = response.json()
     assert result["preview_state"] == "ready", result
@@ -309,7 +311,7 @@ def test_sunlands_data_envelope_persists_order_without_pay_number(client, monkey
     assert order["order_number"] == expected["orderNumber"] and order["stu_id"] == str(expected["stuId"])
     assert order["pay_number"] is None and order["amount"] == 1000 and order["currency"] == "THB"
     assert "payDirectUrl" not in order
-    assert order["checkout_url"] == expected["payDirectUrl"]
+    assert order["checkout_url"] == expected["payDirectUrl"].replace("http://", "https://", 1)
     restarted = LifeCardPayments(payments.store, payments.settings)
     monkeypatch.setattr(app.state.life_reports, "card_payments", restarted)
     assert http.get(path + "/payment", headers=HEADERS).json() == order

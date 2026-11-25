@@ -121,6 +121,10 @@ class SimulatedPayment(Input):
     reference: str = Field(pattern=r"^[0-9]{12}$")
 
 
+class SunlandsPayment(Input):
+    method: str = Field(max_length=64, pattern=r"^FM_[A-Z0-9_]+$")
+
+
 class PaymentContact(Input):
     mobile: str = Field(default="", max_length=32)
     nationCode: str = Field(default="", max_length=4)
@@ -937,6 +941,7 @@ class LifeReports:
                       "mode": "sunlands_order_only" if self.card_payments.order_only else
                       "payso_test" if self.card_payments.enabled and not career else "direct"},
             "payment_simulation": simulation,
+            "checkout_enabled": self.settings.h5_checkout_enabled or self.settings.sunlands_payment_required,
             "preview_state": row["preview_state"], "access": "full" if full_access else "preview",
             "full_state": "queued" if full_state == "pending" else full_state,
             "progress": {"completed": completed, "total": len(sections)},
@@ -1083,7 +1088,7 @@ class LifeReports:
         if not row["preview"]:
             raise HTTPException(409, "life_preview_required")
         if not row["unlocked"]:
-            if not self.settings.h5_checkout_enabled:
+            if not (self.settings.h5_checkout_enabled or self.settings.sunlands_payment_required):
                 raise HTTPException(403, "life_line_claim_required")
             body = json.loads(row["input"])
             career = body.get("career")
@@ -1103,8 +1108,8 @@ class LifeReports:
     def can_simulate_payment(self, career):
         return not self.card_payments.order_only and self.development and (bool(career) or not self.card_payments.enabled)
 
-    async def create_card_order(self, report_id, owner, network, contact=None, *, visit_id=None):
-        if not self.settings.h5_checkout_enabled:
+    async def create_card_order(self, report_id, owner, network, contact=None, *, visit_id=None, origin=None):
+        if not (self.settings.h5_checkout_enabled or self.settings.sunlands_payment_required):
             raise HTTPException(404, "life_payment_unavailable")
         row = self.row(report_id, owner)
         body = json.loads(row["input"])
@@ -1119,15 +1124,28 @@ class LifeReports:
         if row["unlocked"]:
             raise HTTPException(409, "life_payment_unavailable")
         if self.card_payments.order_only:
+            return_url = self.card_payments.report_return_url(report_id, body["profile"]["language"], origin)
             return await self.card_payments.create_sunlands(
-                report_id, network, contact.mobile if contact else "", contact.nationCode if contact else "",
-                visit_id=visit_id)
+                report_id, network, contact.mobile if contact else None, contact.nationCode if contact else None,
+                visit_id=visit_id, return_url=return_url)
         if self.can_simulate_payment(career):
             return self.card_payments.create_simulated(report_id, network, visit_id=visit_id)
         return self.card_payments.create(report_id, network, body["profile"]["language"], visit_id=visit_id)
 
+    def sunlands_checkout_language(self, report_id, owner):
+        if not (self.settings.h5_checkout_enabled or self.settings.sunlands_payment_required):
+            raise HTTPException(404, "life_payment_unavailable")
+        row = self.row(report_id, owner)
+        if not self.card_payments.order_only:
+            raise HTTPException(409, "life_payment_unavailable")
+        if row["unlocked"]:
+            return None
+        if not row["preview"]:
+            raise HTTPException(409, "life_preview_required")
+        return "th-TH" if json.loads(row["input"])["profile"]["language"] == "th" else "zh-CN"
+
     async def simulate_payment(self, report_id, owner, reference):
-        if not self.settings.h5_checkout_enabled:
+        if not (self.settings.h5_checkout_enabled or self.settings.sunlands_payment_required):
             raise HTTPException(404, "life_payment_unavailable")
         row = self.row(report_id, owner)
         if not self.can_simulate_payment(json.loads(row["input"]).get("career")):
@@ -1395,7 +1413,7 @@ def life_report_router(service):
 
     @router.get("/{report_id}/payment")
     async def existing_payment(report_id: str, request: Request, key: key_header):
-        if not service.settings.h5_checkout_enabled:
+        if not (service.settings.h5_checkout_enabled or service.settings.sunlands_payment_required):
             raise HTTPException(404, "life_payment_unavailable")
         service.row(report_id, scopes(key, request)[0])
         order = service.card_payments.existing_sunlands(report_id)
@@ -1404,7 +1422,23 @@ def life_report_router(service):
     @router.post("/{report_id}/payment")
     async def create_payment(report_id: str, request: Request, key: key_header, body: PaymentContact | None = None):
         return await service.create_card_order(
-            report_id, *scopes(key, request), contact=body, visit_id=request.headers.get("X-Visit-Id"))
+            report_id, *scopes(key, request), contact=body if body and (body.mobile or body.nationCode) else None,
+            visit_id=request.headers.get("X-Visit-Id"), origin=request.headers.get("origin"))
+
+    @router.get("/{report_id}/payment/methods")
+    async def payment_methods(report_id: str, request: Request, key: key_header):
+        language = service.sunlands_checkout_language(report_id, scopes(key, request)[0])
+        if language is None:
+            return {"methods": [], "check_payment": True}
+        return await service.card_payments.sunlands_methods(report_id, language)
+
+    @router.post("/{report_id}/payment/start")
+    async def start_payment(report_id: str, body: SunlandsPayment, request: Request, key: key_header):
+        language = service.sunlands_checkout_language(report_id, scopes(key, request)[0])
+        if language is None:
+            return {"redirect_url": None}
+        return await service.card_payments.start_sunlands_payment(
+            report_id, body.method, language, origin=request.headers.get("origin"))
 
     @router.post("/{report_id}/payment/check")
     async def check_payment(report_id: str, request: Request, key: key_header):

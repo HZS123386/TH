@@ -60,10 +60,14 @@ class Settings:
     payso_test_api_key: str = field(default="", repr=False)
     payso_test_secret_key: str = field(default="", repr=False)
     h5_checkout_enabled: bool = False
+    sunlands_payment_required: bool = False
     sunlands_order_only: bool = False
     sunlands_base_url: str = "https://api-prod.sunlands.com"
     sunlands_app_key: str = "sunlands_fb_fate"
     sunlands_app_secret: str = field(default="", repr=False)
+    sunlands_order_mobile: str = field(default="", repr=False)
+    sunlands_order_nation_code: str = "86"
+    sunlands_h5_return_url: str = ""
     sunlands_channel_code: str | None = None
     sunlands_item_no: str = "193261112000101"
     sunlands_product_no: str = "1932611120001"
@@ -130,6 +134,10 @@ class Settings:
             payso_test_api_key=os.getenv("PAYSO_TEST_API_KEY", ""),
             payso_test_secret_key=os.getenv("PAYSO_TEST_SECRET_KEY", ""),
             h5_checkout_enabled=os.getenv("H5_CHECKOUT_ENABLED", "false").lower() == "true",
+            sunlands_payment_required=os.getenv("SUNLANDS_PAYMENT_REQUIRED", "false").lower() == "true",
+            sunlands_order_mobile=os.getenv("SUNLANDS_ORDER_MOBILE", ""),
+            sunlands_order_nation_code=os.getenv("SUNLANDS_ORDER_NATION_CODE", "86"),
+            sunlands_h5_return_url=os.getenv("SUNLANDS_H5_RETURN_URL", ""),
             sunlands_order_only=os.getenv("SUNLANDS_ORDER_ONLY", "false").lower() == "true",
             sunlands_base_url=os.getenv("SUNLANDS_BASE_URL", "https://api-prod.sunlands.com"),
             sunlands_app_key=os.getenv("SUNLANDS_APP_KEY", "sunlands_fb_fate"),

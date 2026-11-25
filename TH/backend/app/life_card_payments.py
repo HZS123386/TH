@@ -6,10 +6,12 @@ from email.utils import formatdate
 import hashlib
 import hmac
 import json
+import logging
+from posixpath import normpath
 import re
 import secrets
 import time
-from urllib.parse import parse_qs, urlencode, urlsplit
+from urllib.parse import parse_qs, unquote, urlencode, urljoin, urlsplit
 from uuid import UUID
 
 import httpx
@@ -27,6 +29,30 @@ SUNLANDS_AMOUNT = 1000
 SUNLANDS_CREATE_ORDER = "/tradeApi/trade/externalCreateOrder"
 SUNLANDS_QUERY_ORDER = "/tradeApi/trade/queryOrderDetailInfo"
 
+SUNLANDS_LOAD_CHECKOUT = "/tradeApi/trade/loadCheckout"
+SUNLANDS_PAY_SINGLE = "/tradeApi/trade/paySingle"
+SUNLANDS_METHODS = (
+    "FM_ANTOM_LINEPAY", "FM_PAYPAL", "FM_ANTOM_PIX", "FM_ANTOM_PAGALEVE", "FM_ANTOM_MERCADOPAGO_BR",
+)
+SUNLANDS_CASHIER_ENTRIES = {
+    ("trade.sunlands.com", "/trade/web/trade/payDirect.action"),
+    ("epay.sunlands.com", "/epay-war/ep_pay/epayPay/payDirect.action"),
+}
+SUNLANDS_CHECKOUT_REDIRECTS = SUNLANDS_CASHIER_ENTRIES | {
+    ("epay.sunlands.com", "/paymentApi/base/redirectCashier"),
+    ("pay.sunlands.com", "/paymentApi/base/redirectCashier"),
+}
+SUNLANDS_SIGNED_CHECKOUT = {
+    ("epay.sunlands.com", "/epay-h5/index.html"),
+    ("epay.sunlands.com", "/epay-pc/index.html"),
+    ("epay.sunlands.com", "/paymentApi/base/redirectCashier"),
+    ("pay.sunlands.com", "/paymentApi/base/redirectCashier"),
+}
+SUNLANDS_CASHIER_PATHS = {path.lower() for _, path in SUNLANDS_CHECKOUT_REDIRECTS | SUNLANDS_SIGNED_CHECKOUT} | {
+    "/epay-h5", "/epay-pc",
+}
+PAYMENT_LOG = logging.getLogger("uvicorn.error").getChild("sunlands_payment")
+
 
 def _platform_number(value):
     return value if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", value) else None
@@ -34,25 +60,64 @@ def _platform_number(value):
 
 def _sunlands_checkout_url(details):
     value = details.get("payDirectUrl")
-    if not isinstance(value, str) or any(char.isspace() or ord(char) < 32 for char in value):
+    if not isinstance(value, str) or "\\" in value or any(char.isspace() or ord(char) < 32 for char in value):
         return None
     try:
         url = urlsplit(value)
-        # Keep the returned link intact and only expose the official entry for this order.
-        if (url.scheme in {"http", "https"} and url.netloc == "trade.sunlands.com"
-                and url.path == "/trade/web/trade/payDirect.action" and not url.fragment
+        # Open the group's original order and query over HTTPS, including for older HTTP links.
+        if (url.scheme in {"http", "https"} and (url.netloc, url.path) in SUNLANDS_CASHIER_ENTRIES
+                and not url.fragment
                 and parse_qs(url.query, keep_blank_values=True).get("orderNumber") == [details.get("orderNumber")]):
+            return url._replace(scheme="https").geturl()
+    except ValueError:
+        pass
+    return None
+
+
+def _sunlands_money(value):
+    try:
+        amount = Decimal(str(value))
+    except InvalidOperation:
+        return None
+    return amount if amount.is_finite() and amount >= 0 else None
+
+def _sunlands_payment_redirect(value):
+    if not isinstance(value, str) or not value or "\\" in value or any(char.isspace() or ord(char) < 32 for char in value):
+        return None
+    try:
+        target = urlsplit(value)
+        if target.scheme == "https" and re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,63}", target.netloc, re.I):
+            if target.hostname == "sunlands.com" or target.hostname.endswith(".sunlands.com"):
+                # The group serves the same cashier at the directory URL and at index.html.
+                path = normpath("/" + unquote(target.path).lstrip("/")).lower()
+                if path in SUNLANDS_CASHIER_PATHS:
+                    return None
             return value
     except ValueError:
         pass
     return None
 
+def _valid_sunlands_return_page(value, app_env):
+    if any(char.isspace() or ord(char) < 32 or char in "\\?#" for char in value):
+        return False
+    try:
+        url = urlsplit(value)
+        local_preview = app_env == "development" and url.scheme == "http" and url.hostname in {"127.0.0.1", "localhost"}
+        return (bool(url.hostname) and (url.scheme == "https" or local_preview) and url.username is None
+                and url.port != 0 and re.fullmatch(r"/(?:[A-Za-z0-9_-]+/)*report\.html", url.path) is not None)
+    except ValueError:
+        return False
 
 class LifeCardPayments:
     def __init__(self, store, settings):
         self.store = store
         self.settings = settings
         self.order_only = settings.sunlands_order_only
+        if settings.sunlands_payment_required:
+            if settings.app_env != "production":
+                raise RuntimeError("Paid H5 requires APP_ENV=production")
+            if not self.order_only:
+                raise RuntimeError("Paid H5 requires SUNLANDS_ORDER_ONLY=true")
         if settings.sunlands_merchant_notify_uri and not re.fullmatch(r"/[A-Za-z0-9/_-]{1,255}", settings.sunlands_merchant_notify_uri):
             raise RuntimeError("SUNLANDS_MERCHANT_NOTIFY_URI must be the registered API gateway URI")
         sunlands_gateways = {"https://api-prod.sunlands.com"}
@@ -60,7 +125,13 @@ class LifeCardPayments:
             sunlands_gateways.add("https://api-test.sunlands.com")
         # Production can use the live gateway, while test payments stay in development.
         if self.order_only and settings.sunlands_base_url not in sunlands_gateways:
-            raise RuntimeError("Sunlands requires an approved gateway; production requires the live gateway")
+            raise RuntimeError("SUNLANDS_BASE_URL requires an approved gateway; production requires the live gateway")
+        if self.order_only:
+            if settings.sunlands_payment_required and (not self.sunlands_ready or not self._shared_contact_ready()):
+                raise RuntimeError("Incomplete Sunlands payment configuration for production")
+            if (settings.sunlands_payment_required or settings.sunlands_h5_return_url) and not _valid_sunlands_return_page(
+                    settings.sunlands_h5_return_url, settings.app_env):
+                raise RuntimeError("SUNLANDS_H5_RETURN_URL must point to the H5 report.html page")
         self.merchant = settings.payso_test_merchant_id
         self.api_key = settings.payso_test_api_key
         self.secret_key = settings.payso_test_secret_key
@@ -79,8 +150,17 @@ class LifeCardPayments:
                     and (s.sunlands_channel_code in (None, "")
                          or re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", s.sunlands_channel_code)))
 
-    async def _sunlands_post(self, path, body, content_type):
-        if not self.order_only or path not in {SUNLANDS_CREATE_ORDER, SUNLANDS_QUERY_ORDER, "/product/api/item/by/page"}:
+    def _shared_contact_ready(self):
+        mobile = self.settings.sunlands_order_mobile.strip()
+        nation = self.settings.sunlands_order_nation_code.strip().removeprefix("+")
+        return bool(re.fullmatch(r"[0-9]{6,14}", mobile) and re.fullmatch(r"[1-9][0-9]{0,2}", nation)
+                    and len(nation + mobile) <= 15)
+
+    async def _sunlands_post(self, path, body, content_type, *, language=None):
+        if not self.order_only or path not in {
+            SUNLANDS_CREATE_ORDER, SUNLANDS_QUERY_ORDER, SUNLANDS_LOAD_CHECKOUT, SUNLANDS_PAY_SINGLE,
+            "/product/api/item/by/page",
+        }:
             raise HTTPException(409, "life_payment_unavailable")
         date = formatdate(usegmt=True)
         digest = "SHA-256=" + base64.b64encode(hashlib.sha256(body).digest()).decode()
@@ -90,6 +170,8 @@ class LifeCardPayments:
         headers = {"Content-Type": content_type, "x-date": date, "digest": digest,
                    "proxy-authorization": f'hmac username="{self.settings.sunlands_app_key}", '
                    f'algorithm="hmac-sha256", headers="x-date digest", signature="{signature}"'}
+        if language:
+            headers["Accept-Language"] = language
         async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
             response = await client.post(self.settings.sunlands_base_url + path, content=body, headers=headers)
         return response
@@ -98,7 +180,7 @@ class LifeCardPayments:
         if not isinstance(value, (str, int, float, bool, Decimal, type(None))):
             return f"<{type(value).__name__}>"
         value = str(value)
-        sensitive = [mobile, self.settings.sunlands_app_secret]
+        sensitive = [mobile or self.settings.sunlands_order_mobile, self.settings.sunlands_app_secret]
         if response is not None:
             authorization = response.request.headers.get("proxy-authorization", "")
             sensitive.append(authorization)
@@ -173,10 +255,154 @@ class LifeCardPayments:
             raise HTTPException(409, "life_payment_unavailable")
         return self._sunlands_view(order)
 
-    async def create_sunlands(self, report_id, network, mobile, nation_code, *, visit_id=None):
+    async def _sunlands_checkout_sign(self, order, language):
+        location = order["checkout_url"]
+        if not location:
+            raise HTTPException(503, "life_checkout_unavailable")
+        # Follow only official redirects for the saved order to obtain its issued signature.
+        try:
+            async with asyncio.timeout(12), httpx.AsyncClient(timeout=8, follow_redirects=False) as client:
+                for _ in range(4):
+                    url = urlsplit(location)
+                    endpoint = (url.netloc, url.path)
+                    query = parse_qs(url.query, keep_blank_values=True)
+                    if (url.scheme not in {"http", "https"} or "\\" in location
+                            or any(char.isspace() or ord(char) < 32 for char in location)
+                            or query.get("orderNumber") != [order["order_number"]]):
+                        break
+                    signs = query.get("sign", [])
+                    if (endpoint in SUNLANDS_SIGNED_CHECKOUT and len(signs) == 1
+                            and re.fullmatch(r"[A-Za-z0-9_+/=-]{1,256}", signs[0])):
+                        return signs[0]
+                    if endpoint not in SUNLANDS_CHECKOUT_REDIRECTS:
+                        break
+                    response = await client.head(url._replace(scheme="https").geturl(),
+                                                 headers={"Accept-Language": language})
+                    if not response.is_redirect or not response.headers.get("location"):
+                        break
+                    location = urljoin(location, response.headers["location"])
+        except (httpx.HTTPError, TimeoutError, ValueError):
+            pass
+        raise HTTPException(503, "life_checkout_unavailable")
+
+    async def _sunlands_checkout_post(self, path, form, language, error_code):
+        http_status = gateway_flag = business_code = error_type = None
+        try:
+            response = await self._sunlands_post(path, urlencode(form).encode(), "application/x-www-form-urlencoded",
+                                                 language=language)
+            http_status = response.status_code
+            response.raise_for_status()
+            envelope = response.json(parse_float=Decimal)
+            if isinstance(envelope, dict) and "flag" in envelope:
+                gateway_flag = envelope["flag"]
+                envelope = envelope.get("data") if envelope["flag"] in (1, "1") else None
+            if isinstance(envelope, dict):
+                business_code = envelope.get("code")
+                if business_code in (1, "1") and isinstance(envelope.get("data"), dict):
+                    return envelope["data"]
+        except (httpx.HTTPError, ValueError) as error:
+            error_type = type(error).__name__
+        # Record only the gateway's short result codes, never the payload or a signed URL.
+        flag, code = (str(v) if isinstance(v, (int, str)) and re.fullmatch(r"[A-Za-z0-9_.-]{1,32}", str(v)) else "-"
+                      for v in (gateway_flag, business_code))
+        PAYMENT_LOG.warning("Sunlands checkout failed endpoint=%s order_last4=%s method=%s http=%s flag=%s code=%s error=%s",
+                            path.rsplit("/", 1)[-1], form["orderNumber"][-4:], form.get("payMethodCode", "-"),
+                            http_status, flag, code, error_type or "upstream_result")
+        raise HTTPException(503, error_code)
+
+    async def _sunlands_checkout(self, order, language):
+        sign = await self._sunlands_checkout_sign(order, language)
+        form = {"orderNumber": order["order_number"], "termType": "mobile", "sign": sign}
+        data = await self._sunlands_checkout_post(SUNLANDS_LOAD_CHECKOUT, form, language, "life_checkout_unavailable")
+        amount = Decimal(order["amount"]) / 100
+        due = _sunlands_money(data.get("waitPaidAmount"))
+        if (data.get("orderNumber") != order["order_number"] or data.get("currency") != order["currency"]
+                or _sunlands_money(data.get("totalAmount")) != amount or due not in (0, amount)):
+            raise HTTPException(409, "life_checkout_unavailable")
+        if due == 0:
+            return form, [], True
+        banks = data.get("payBankList")
+        if not isinstance(banks, list):
+            raise HTTPException(503, "life_checkout_unavailable")
+        # A method must be offered for the full outstanding balance on this order.
+        accepted = set()
+        for bank in banks:
+            if not isinstance(bank, dict) or bank.get("payMethodCode") not in SUNLANDS_METHODS:
+                continue
+            minimum = _sunlands_money(bank.get("payMinLimitAmount", 0))
+            maximum = _sunlands_money(bank.get("payMaxLimitAmount", amount))
+            if minimum is not None and maximum is not None and minimum <= amount <= maximum:
+                accepted.add(bank["payMethodCode"])
+        return form, [method for method in SUNLANDS_METHODS if method in accepted], False
+
+    async def sunlands_methods(self, report_id, language):
+        order = self.existing_sunlands(report_id)
+        if order is None:
+            raise HTTPException(409, "life_payment_required")
+        _, methods, check_payment = await self._sunlands_checkout(order, language)
+        return {"methods": methods, "check_payment": check_payment}
+
+    def report_return_url(self, report_id, language, origin):
+        page = self.settings.sunlands_h5_return_url
+        # The browser can reopen its report only on the origin that holds its report key.
+        if not page or (origin is not None and origin != str(httpx.URL(page).copy_with(path=""))):
+            return None
+        query = urlencode({"id": report_id, "lang": language.split("-", 1)[0], "payment_return": "1"})
+        return f"{page}?{query}"
+
+    async def start_sunlands_payment(self, report_id, method, language, *, origin=None):
+        if method not in SUNLANDS_METHODS:
+            raise HTTPException(409, "life_checkout_method_unavailable")
+        # Serialize payment launches for the same report across tabs and workers.
+        with self.store.connect() as db:
+            lock = db.execute("SELECT pg_try_advisory_xact_lock(hashtextextended(%s, 0)) AS acquired",
+                              ("sunlands-pay:" + report_id,)).fetchone()
+            if not lock["acquired"]:
+                raise HTTPException(409, "life_checkout_start_busy")
+            order = self.existing_sunlands(report_id)
+            if order is None:
+                raise HTTPException(409, "life_payment_required")
+            form, methods, check_payment = await self._sunlands_checkout(order, language)
+            if check_payment:
+                return {"redirect_url": None}
+            if method not in methods:
+                raise HTTPException(409, "life_checkout_method_unavailable")
+            form.update(payMethodCode=method, payAmountInput=f"{Decimal(order['amount']) / 100:.2f}")
+            if method in {"FM_PAYPAL", "FM_ANTOM_PIX"}:
+                return_url = self.report_return_url(report_id, language, origin)
+                if not return_url:
+                    raise HTTPException(503, "life_checkout_return_unavailable")
+                form["payBizContent"] = json.dumps({"versionCode": "NEW", "successRedirectUrl": return_url})
+            data = await self._sunlands_checkout_post(SUNLANDS_PAY_SINGLE, form, language, "life_checkout_start_failed")
+            if (data.get("orderNumber", order["order_number"]) != order["order_number"]
+                    or data.get("payMethodCode", data.get("payMthodCode", method)) != method):
+                raise HTTPException(503, "life_checkout_start_failed")
+            if data.get("actionType") == "RELOAD":
+                return {"redirect_url": None}
+            if data.get("actionType") == "REDIRECT":
+                redirect_method = data.get("redirectMethod") or "get"
+                target = _sunlands_payment_redirect(data.get("payUrl"))
+                # Use only the selected channel's navigable link.
+                if (target and target != data.get("cashierUrl")
+                        and isinstance(redirect_method, str) and redirect_method.lower() == "get"):
+                    host = urlsplit(target).hostname
+                    action = "-"
+                    if method == "FM_PAYPAL" and (host == "paypal.com" or host.endswith(".paypal.com")):
+                        value = parse_qs(urlsplit(target).query).get("useraction", [""])[0].upper()
+                        action = value if value in {"CONTINUE", "COMMIT", "PAY_NOW"} else "unspecified"
+                    PAYMENT_LOG.info("Sunlands paySingle method=%s redirect_host=%s order_last4=%s wallet_action=%s",
+                                     method, host, order["order_number"][-4:], action)
+                    return {"redirect_url": target}
+                PAYMENT_LOG.info("Sunlands paySingle method=%s has no direct channel link", method)
+                raise HTTPException(503, "life_checkout_channel_link_missing")
+            raise HTTPException(503, "life_checkout_start_failed")
+
+    async def create_sunlands(self, report_id, network, mobile=None, nation_code=None, *, visit_id=None, return_url=None):
         if not self.order_only or not self.sunlands_ready:
             raise HTTPException(503, "life_order_configuration_required")
         s = self.settings
+        mobile = s.sunlands_order_mobile if mobile is None else mobile
+        nation_code = s.sunlands_order_nation_code if nation_code is None else nation_code
         mobile = re.sub(r"[ \t()-]", "", mobile.strip())
         nation_code = nation_code.strip().removeprefix("+")
         if (not re.fullmatch(r"[0-9]{6,14}", mobile)
@@ -203,6 +429,9 @@ class LifeCardPayments:
                 if (saved.get("state") != "ACCESS_DENIED" or saved.get("orderNumber") or saved.get("payNumber")
                         or order["sunlands_order_number"] or order["sunlands_pay_number"]):
                     return self._sunlands_view(order)
+            if (s.sunlands_payment_required or s.sunlands_h5_return_url) and not return_url:
+                raise HTTPException(503, "life_checkout_return_unavailable")
+            if order:
                 reference = order["reference"]
                 details["createdAt"] = saved.get("createdAt", details["createdAt"])
                 details["attemptCount"] = saved.get("attemptCount", 1) + 1
@@ -227,6 +456,8 @@ class LifeCardPayments:
             form["channelCode"] = s.sunlands_channel_code
         if s.sunlands_merchant_notify_uri:
             form["merchantNotifyUrl"] = s.sunlands_merchant_notify_uri
+        if return_url:
+            form["returnUrl"] = return_url
         details["requestSummary"] = {**form, "mobile": "***" + mobile[-4:]}
         # Zero-deposit validation prevents the documented automatic use of an existing deposit.
         started = time.monotonic()
