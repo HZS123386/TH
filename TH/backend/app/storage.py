@@ -10,7 +10,10 @@ import psycopg
 from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 
-from .accounts import DUMMY_PASSWORD_HASH, H5_LOGIN_SECONDS, new_h5_login_code, password_hash, password_matches
+from .accounts import (
+    DUMMY_PASSWORD_HASH, H5_LOGIN_RETENTION_AFTER_EXPIRY, H5_LOGIN_SECONDS,
+    new_h5_login_code, password_hash, password_matches,
+)
 
 
 class Storage:
@@ -32,7 +35,7 @@ class Storage:
                 version = db.execute("SELECT version_num FROM alembic_version").fetchone()
         except psycopg.Error:
             raise RuntimeError("PostgreSQL is unavailable or the FATE schema has not been installed.") from None
-        if version is None or version["version_num"] != "20261121_merge_h_jy":
+        if version is None or version["version_num"] != "20261123_tarot_fulfillment":
             raise RuntimeError("Apply the FATE PostgreSQL migrations before starting the backend.")
 
     def login(self, hours: int):
@@ -67,25 +70,38 @@ class Storage:
     def _h5_code_digest(key: str, code: str) -> str:
         return hmac.digest(key.encode(), code.encode(), "sha256").hex()
 
-    def issue_h5_login_code(self, owner: str):
+    def prune_h5_login_codes(self):
+        cutoff = time.time() - H5_LOGIN_RETENTION_AFTER_EXPIRY
+        with self.connect() as db:
+            db.execute("SET LOCAL statement_timeout = '5s'")
+            db.execute("DELETE FROM h5_app_login_codes WHERE expires<=%s", (cutoff,))
+
+    def issue_h5_login_code(self, owner: str, report_id: str):
         with self.connect() as db:
             db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,20261118))", (owner,))
             now = time.time()
             key = db.execute("SELECT secret FROM h5_app_login_key WHERE id=1").fetchone()["secret"]
-            db.execute("DELETE FROM h5_app_login_codes WHERE expires<=%s", (now,))
             for _ in range(6):
                 code = new_h5_login_code()
                 try:
                     with db.transaction():
                         db.execute("UPDATE h5_app_login_codes SET active=FALSE WHERE owner=%s AND active", (owner,))
                         db.execute(
-                            "INSERT INTO h5_app_login_codes(owner,digest,expires) VALUES (%s,%s,%s)",
-                            (owner, self._h5_code_digest(key, code), now + H5_LOGIN_SECONDS),
+                            "INSERT INTO h5_app_login_codes(owner,digest,expires,report_id) VALUES (%s,%s,%s,%s)",
+                            (owner, self._h5_code_digest(key, code), now + H5_LOGIN_SECONDS, report_id),
                         )
                     return {"code": code, "expires_in": H5_LOGIN_SECONDS}
                 except psycopg.errors.UniqueViolation:
                     continue
         return None
+
+    def expired_h5_login_code(self, db, code: str, now: float):
+        key = db.execute("SELECT secret FROM h5_app_login_key WHERE id=1").fetchone()["secret"]
+        return db.execute(
+            """SELECT owner,report_id FROM h5_app_login_codes
+               WHERE digest=%s AND expires<=%s AND expires>%s""",
+            (self._h5_code_digest(key, code.upper()), now, now - H5_LOGIN_RETENTION_AFTER_EXPIRY),
+        ).fetchone()
 
     def redeem_h5_login_code(self, code: str, network: str, hours: int):
         with self.connect() as db:

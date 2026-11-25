@@ -533,21 +533,28 @@ function mountFateWelcome(){
   if(welcome){
     fateWelcomeStartedAt=performance.now();
     writeWelcomeName(welcome);
-    const trackWelcome = () => {
-      if (document.visibilityState !== 'visible') return;
-      document.removeEventListener('visibilitychange', trackWelcome);
+    const trackWelcome = action => {
       try {
         const visit = fateVisitContext();
         if (!visit) return;
         const owner = fateOwnerKey();
         if (!owner) return;
-        window.fateH5.trackActivity(JSON.stringify({ ...visit, activity: { page: 'welcome', action: 'view' } }),
+        window.fateH5.trackActivity(JSON.stringify({ ...visit, activity: { page: 'welcome', action } }),
           owner, '/api/landing/visits');
-        void flushFateActivity();
       } catch {}
     };
-    if (document.visibilityState === 'visible') trackWelcome();
-    else document.addEventListener('visibilitychange', trackWelcome);
+    const trackWelcomeView = () => {
+      if (document.visibilityState !== 'visible') return;
+      document.removeEventListener('visibilitychange', trackWelcomeView);
+      trackWelcome('view');
+      void flushFateActivity();
+    };
+    if (document.visibilityState === 'visible') trackWelcomeView();
+    else document.addEventListener('visibilitychange', trackWelcomeView);
+    document.getElementById('fate-welcome-start')?.addEventListener('click', () => {
+      trackWelcome('click_welcome_start');
+      window.fateBoot.enterWelcome();
+    });
   }
   if(image){
     window.fateBoot.welcomePaint = new Promise(resolve => {
@@ -573,7 +580,6 @@ function mountFateWelcome(){
     });
     document.getElementById('fate-welcome-portrait-slot').replaceWith(image);
   }
-  document.getElementById('fate-welcome-start')?.addEventListener('click',()=>window.fateBoot.enterWelcome());
   let touchStart;
   welcome?.addEventListener('touchstart',event=>{touchStart=event.touches[0]?.clientY;},{passive:true});
   welcome?.addEventListener('touchend',event=>{if(touchStart!==undefined&&touchStart-event.changedTouches[0]?.clientY>48)window.fateBoot.enterWelcome();touchStart=undefined;},{passive:true});

@@ -2,6 +2,7 @@ import 'models.dart';
 import 'repository.dart';
 
 abstract interface class BrowserPort implements DeviceStore {
+  bool get supportsLineApp;
   void openPage(String path, {bool sameTab = false});
   String today(String zone);
   bool get visible;

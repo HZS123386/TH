@@ -1,7 +1,7 @@
 part of 'tarot_page.dart';
 
 const _spreadCount = 30;
-const _flightDuration = Duration(milliseconds: 2620);
+const _flightDuration = Duration(seconds: 1);
 const _cardAspectRatio = .58;
 const _night = Color(0xFF120A2A);
 const _tarotGold = Color(0xFFF6E2A8);
@@ -280,12 +280,19 @@ class _FlyingCard extends StatelessWidget {
         animation: motion,
         child: _TarotFace(flight.entry.card),
         builder: (context, face) {
-          final ms = motion.value * _flightDuration.inMilliseconds;
-          final intoCenter = Curves.easeOutCubic.transform(_unit(ms / 950));
-          final intoSlot = Curves.easeOutCubic.transform(
-            _unit((ms - 2000) / 620),
-          );
-          final movingToSlot = ms >= 2000;
+          final progress = motion.value;
+          const slotStart = .76;
+          final intoCenter = const Interval(
+            0,
+            .36,
+            curve: Curves.easeOutCubic,
+          ).transform(progress);
+          final intoSlot = const Interval(
+            slotStart,
+            1,
+            curve: Curves.easeOutCubic,
+          ).transform(progress);
+          final movingToSlot = progress >= slotStart;
           final start = flight.start.center;
           final slot = flight.slot.center;
           final position = movingToSlot
@@ -300,16 +307,18 @@ class _FlyingCard extends StatelessWidget {
           final size = movingToSlot
               ? Size.lerp(large, flight.slot.size, intoSlot)!
               : Size.lerp(flight.start.size, large, intoCenter)!;
-          final turn = const Cubic(
-            .3,
-            .6,
-            .3,
-            1,
-          ).transform(_unit((ms - 425) / 480));
+          final turn = const Interval(
+            .16,
+            .35,
+            curve: Cubic(.3, .6, .3, 1),
+          ).transform(progress);
           final front = turn >= .5;
-          final glow = _unit((ms - 320) / 420) * (1 - .8 * intoSlot);
+          final glow =
+              const Interval(.12, .28).transform(progress) *
+              (1 - .8 * intoSlot);
           final wordOpacity =
-              _unit((ms - 880) / 220) * (1 - _unit((ms - 1880) / 220));
+              const Interval(.34, .42).transform(progress) *
+              (1 - const Interval(.72, .80).transform(progress));
           return Stack(
             children: [
               if (glow > 0)
@@ -363,16 +372,24 @@ class _FlyingCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (ms >= 910 && ms < 1870)
+              if (progress >= .35 && progress < .71)
                 Positioned.fill(
                   child: CustomPaint(
-                    painter: _TarotSparks(center, _unit((ms - 910) / 960), 16),
+                    painter: _TarotSparks(
+                      center,
+                      const Interval(.35, .71).transform(progress),
+                      16,
+                    ),
                   ),
                 ),
-              if (ms >= 2330)
+              if (progress >= .89)
                 Positioned.fill(
                   child: CustomPaint(
-                    painter: _TarotSparks(slot, _unit((ms - 2330) / 290), 7),
+                    painter: _TarotSparks(
+                      slot,
+                      const Interval(.89, 1).transform(progress),
+                      7,
+                    ),
                   ),
                 ),
               if (wordOpacity > 0)

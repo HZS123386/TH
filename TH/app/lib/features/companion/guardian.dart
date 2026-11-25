@@ -91,11 +91,9 @@ class GuardianAvatar extends StatelessWidget {
         border: Border.all(color: guardian.color.withValues(alpha: .7)),
       ),
       child: ClipOval(
-        child: Image.asset(
-          guardian.image,
-          fit: BoxFit.cover,
+        child: GuardianPortrait(
+          guardian,
           alignment: const Alignment(0, -.65),
-          excludeFromSemantics: true,
           cacheWidth: (size * 3).round(),
         ),
       ),
@@ -111,4 +109,46 @@ class GuardianAvatar extends StatelessWidget {
           )
         : portrait;
   }
+}
+
+class GuardianPortrait extends StatelessWidget {
+  const GuardianPortrait(
+    this.guardian, {
+    this.alignment = Alignment.center,
+    this.cacheWidth,
+    super.key,
+  });
+  final Guardian guardian;
+  final Alignment alignment;
+  final int? cacheWidth;
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    guardian.image,
+    fit: BoxFit.cover,
+    alignment: alignment,
+    cacheWidth: cacheWidth,
+    excludeFromSemantics: true,
+    errorBuilder: (context, error, stack) => LayoutBuilder(
+      builder: (context, box) => DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0, -.22),
+            colors: [
+              guardian.color.withValues(alpha: .24),
+              panelColor,
+              canvasColor,
+            ],
+          ),
+        ),
+        child: Center(
+          child: FateEmblem(
+            guardian.icon,
+            color: guardian.color,
+            size: box.biggest.shortestSide * .58,
+          ),
+        ),
+      ),
+    ),
+  );
 }

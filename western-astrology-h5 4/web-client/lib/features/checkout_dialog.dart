@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
@@ -38,7 +39,7 @@ class ReportPreview extends StatelessWidget {
   final bool busy;
   final String error;
 
-  Widget _claimNumber(BuildContext context) {
+  Widget _claimNumber(BuildContext context, {required bool desktop}) {
     final copy = h5.copy;
     final number = claimCode.isEmpty ? reportId : claimCode;
     return Column(
@@ -58,6 +59,7 @@ class ReportPreview extends StatelessWidget {
           onPressed: () async {
             try {
               await Clipboard.setData(ClipboardData(text: number));
+              if (desktop) _trackLineContact();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(copy.t('jy', 'appLogin.copied'))),
@@ -73,57 +75,64 @@ class ReportPreview extends StatelessWidget {
     );
   }
 
-  void _showLineContact(BuildContext context) {
-    final copy = h5.copy;
-    h5.trackActivity('preview_report', 'open_line_contact');
-    var qrRecorded = false;
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(copy.t('jy', 'lineContact.title')),
-        scrollable: true,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/images/line-contact-qr.jpg',
-              width: 232,
-              excludeFromSemantics: true,
-              frameBuilder: (context, child, frame, _) {
-                if (frame != null &&
-                    !qrRecorded &&
-                    ModalRoute.isCurrentOf(context) == true) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (qrRecorded ||
-                        !context.mounted ||
-                        ModalRoute.of(context)?.isCurrent != true)
-                      return;
-                    qrRecorded = true;
-                    h5.trackActivity('preview_report', 'line_qr_shown');
-                    unawaited(h5.trackReport(reportId, 'line_contact'));
-                  });
-                }
-                return child;
-              },
+  void _trackLineContact([String action = 'open_line_contact']) {
+    h5.trackActivity('preview_report', action);
+    unawaited(h5.trackReport(reportId, 'line_contact'));
+  }
+
+  void _openLine() {
+    _trackLineContact('click_line');
+    h5.browser.openPage('https://line.me/ti/p/TrGGcMWmuV', sameTab: true);
+  }
+
+  Widget _lineContact(BuildContext context) {
+    final c = h5.copy;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (marriage) ...[
+          Text(
+            c.t('marriage', 'line_hook.title'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: gold,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 12),
-            Text(copy.t('jy', 'lineContact.scan'), textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            _claimNumber(context),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(copy.t('jy', 'close')),
           ),
-          FilledButton(
-            onPressed: () =>
-                h5.browser.openPage('https://line.me/ti/p/TrGGcMWmuV'),
-            child: Text(copy.t('jy', 'lineContact.open')),
+          const SizedBox(height: 8),
+          Text(
+            c.t('marriage', 'line_hook.body'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: cream, fontSize: 14, height: 1.6),
           ),
+          const SizedBox(height: 16),
         ],
-      ),
+        Center(
+          child: _ReportLineQr(
+            key: ValueKey(reportId),
+            label: c.t('jy', 'lineContact.title'),
+            onShown: () => h5.trackActivity('preview_report', 'line_qr_shown'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(c.t('jy', 'lineContact.scan'), textAlign: TextAlign.center),
+        const SizedBox(height: 12),
+        _claimNumber(context, desktop: !h5.browser.supportsLineApp),
+        Text(
+          c.t('jy', 'lineContact.claimHint'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13),
+        ),
+        const SizedBox(height: 12),
+        JYButton(
+          key: const ValueKey('jy-line-contact'),
+          label: marriage
+              ? c.t('marriage', 'line_hook.action')
+              : c.t('jy', 'lineContact.open'),
+          onPressed: busy ? null : _openLine,
+        ),
+      ],
     );
   }
 
@@ -161,6 +170,14 @@ class ReportPreview extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               freePreview,
+              if (marriage) ...[
+                const SizedBox(height: 18),
+                JYCard(
+                  radius: 18,
+                  borderColor: gold,
+                  child: _lineContact(context),
+                ),
+              ],
               if (onExportPdf != null || exportStatus.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -199,9 +216,11 @@ class ReportPreview extends StatelessWidget {
                       copy: c,
                       labelsInside: marriage,
                     ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1, color: Color(0x40E4BC78)),
-                    const SizedBox(height: 14),
+                    if (priceLabel.isNotEmpty || !marriage) ...[
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: Color(0x40E4BC78)),
+                      const SizedBox(height: 14),
+                    ],
                     if (priceLabel.isNotEmpty) ...[
                       Text(priceLabel, textAlign: TextAlign.center),
                       const SizedBox(height: 8),
@@ -220,20 +239,9 @@ class ReportPreview extends StatelessWidget {
                         ),
                         onPressed: busy ? null : onPay,
                       ),
-                      const SizedBox(height: 14),
+                      if (!marriage) const SizedBox(height: 14),
                     ],
-                    _claimNumber(context),
-                    Text(
-                      c.t('jy', 'lineContact.claimHint'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                    JYButton(
-                      key: const ValueKey('jy-line-contact'),
-                      label: c.t('jy', 'lineContact.action'),
-                      onPressed: busy ? null : () => _showLineContact(context),
-                    ),
+                    if (!marriage) _lineContact(context),
                   ],
                 ),
               ),
@@ -313,6 +321,68 @@ class ReportPreview extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReportLineQr extends StatefulWidget {
+  const _ReportLineQr({required this.label, required this.onShown, super.key});
+
+  final String label;
+  final VoidCallback onShown;
+
+  @override
+  State<_ReportLineQr> createState() => _ReportLineQrState();
+}
+
+class _ReportLineQrState extends State<_ReportLineQr> {
+  ScrollPosition? _position;
+  bool _loaded = false, _shown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = Scrollable.of(context).position;
+    if (position == _position) return;
+    _position?.removeListener(_checkAfterFrame);
+    _position = position..addListener(_checkAfterFrame);
+  }
+
+  @override
+  void dispose() {
+    _position?.removeListener(_checkAfterFrame);
+    super.dispose();
+  }
+
+  void _checkAfterFrame() {
+    if (!_loaded || _shown) return;
+    // The report builds its full contents, including parts below the fold.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _shown || ModalRoute.isCurrentOf(context) != true) return;
+      final image = context.findRenderObject();
+      if (image == null) return;
+      final viewport = RenderAbstractViewport.maybeOf(image);
+      if (viewport == null) return;
+      final bounds = MatrixUtils.transformRect(
+        image.getTransformTo(viewport),
+        image.paintBounds,
+      );
+      if (!viewport.paintBounds.overlaps(bounds)) return;
+      _shown = true;
+      widget.onShown();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    'assets/images/line-contact-qr.jpg',
+    width: 232,
+    fit: BoxFit.contain,
+    semanticLabel: widget.label,
+    frameBuilder: (context, child, frame, _) {
+      _loaded = frame != null;
+      _checkAfterFrame();
+      return child;
+    },
+  );
 }
 
 const _paymentOptions = {

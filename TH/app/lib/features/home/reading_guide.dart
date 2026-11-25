@@ -71,28 +71,7 @@ enum ReadingGuide {
         final hasBirth = DependencyScope.of(context).session.profile != null;
         context.push(hasBirth ? '/chart/thai' : '/birth?reading=thai');
       case arun:
-        final s = AppLocalizations.of(context);
-        showDialog<void>(
-          context: context,
-          animationStyle: FateMotion.dialog(context),
-          builder: (sheet) => AlertDialog(
-            title: Text(s.sevenGuide),
-            content: Text(s.sevenPreviewNote),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(sheet),
-                child: Text(s.close),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(sheet);
-                  openChat(context, sample: true);
-                },
-                child: Text(s.textChat),
-              ),
-            ],
-          ),
-        );
+        openChat(context, sample: true);
       case mira:
         context.push('/fortune/tarot');
     }

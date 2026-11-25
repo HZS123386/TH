@@ -39,6 +39,15 @@ class WebBrowserPort implements BrowserPort {
       Duration(microseconds: (_welcomeAge().toDartDouble * 1000).round());
 
   @override
+  bool get supportsLineApp {
+    final navigator = web.window.navigator;
+    final agent = navigator.userAgent;
+    // iPadOS can identify itself as a Mac in desktop browsing mode.
+    return RegExp(r'Android|iPhone|iPad|iPod').hasMatch(agent) ||
+        (agent.contains('Macintosh') && navigator.maxTouchPoints > 1);
+  }
+
+  @override
   void openPage(String path, {bool sameTab = false}) {
     final url = Uri.base.resolve(path).toString();
     if (sameTab) {

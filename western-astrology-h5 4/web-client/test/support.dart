@@ -180,6 +180,8 @@ Json personalFixture({String language = 'zh', bool full = false}) {
 class TestBrowser implements BrowserPort {
   final openedPages = <String>[];
   @override
+  bool supportsLineApp = false;
+  @override
   Duration get welcomeAge => Duration.zero;
   @override
   void openPage(String path, {bool sameTab = false}) {

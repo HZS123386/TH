@@ -1360,7 +1360,7 @@ def life_report_router(service):
     def app_login_code(report_id: str, request: Request, key: key_header):
         owner, _ = scopes(key, request)
         service.row(report_id, owner)
-        result = service.store.issue_h5_login_code(owner)
+        result = service.store.issue_h5_login_code(owner, report_id)
         if result is None:
             raise HTTPException(503, "h5_login_code_unavailable")
         return result

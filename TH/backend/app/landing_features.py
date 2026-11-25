@@ -28,7 +28,7 @@ class VisitActivity(Input):
                     "payment_result", "close_history", "leave_page", "request_failed", "select_birth_date",
                     "select_birth_time", "select_birthplace", "form_progress_empty", "form_progress_date",
                     "form_progress_time", "form_progress_place", "form_progress_complete",
-                    "open_line_contact", "line_qr_shown"]
+                    "open_line_contact", "line_qr_shown", "click_welcome_start", "click_generate_report", "click_line"]
     state: Literal["visible", "hidden", "pagehide"]
     sequence: int = Field(strict=True, ge=1, le=9007199254740991)
 

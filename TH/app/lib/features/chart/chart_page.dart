@@ -17,8 +17,35 @@ class ChartPage extends StatefulWidget {
 
 class _ChartPageState extends State<ChartPage> {
   String selected = 'sun';
+  final _planetDetails = GlobalKey();
   String? requestedScope;
   int tab = 0;
+
+  void _selectPlanet(String key, {bool showDetails = false}) {
+    if (selected != key) {
+      FateMotion.selectionFeedback();
+      setState(() => selected = key);
+    } else if (showDetails) {
+      _scrollToPlanetDetails();
+      return;
+    }
+    if (!showDetails) return;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scrollToPlanetDetails(),
+    );
+  }
+
+  void _scrollToPlanetDetails() {
+    final target = _planetDetails.currentContext;
+    if (!mounted || target == null) return;
+    Scrollable.ensureVisible(
+      target,
+      alignment: .08,
+      duration: FateMotion.duration(context, FateMotion.page),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = DependencyScope.of(context), s = AppLocalizations.of(context);
@@ -138,7 +165,7 @@ class _ChartPageState extends State<ChartPage> {
                       ChartWheel(
                         result: result,
                         selected: selected,
-                        onSelected: (key) => setState(() => selected = key),
+                        onSelected: _selectPlanet,
                       ),
                       Row(
                         children: [
@@ -200,6 +227,7 @@ class _ChartPageState extends State<ChartPage> {
                 const SizedBox(height: 12),
                 if (planet != null)
                   FateCard(
+                    key: _planetDetails,
                     child: FateEntrance(
                       key: ValueKey(planet.key),
                       child: Column(
@@ -261,8 +289,11 @@ class _ChartPageState extends State<ChartPage> {
                     ),
                   ],
                   selected: {tab},
-                  onSelectionChanged: (value) =>
-                      setState(() => tab = value.first),
+                  onSelectionChanged: (value) {
+                    if (tab == value.first) return;
+                    FateMotion.selectionFeedback();
+                    setState(() => tab = value.first);
+                  },
                 ),
                 const SizedBox(height: 15),
                 FateCard(
@@ -281,6 +312,10 @@ class _ChartPageState extends State<ChartPage> {
                           if (tab == 0)
                             for (final p in result.planets)
                               ListTile(
+                                selected: selected == p.key,
+                                selectedTileColor: goldColor.withValues(
+                                  alpha: .08,
+                                ),
                                 contentPadding: EdgeInsets.zero,
                                 leading: Text(
                                   p.symbol,
@@ -302,7 +337,8 @@ class _ChartPageState extends State<ChartPage> {
                                     color: mutedColor,
                                   ),
                                 ),
-                                onTap: () => setState(() => selected = p.key),
+                                onTap: () =>
+                                    _selectPlanet(p.key, showDetails: true),
                               ),
                           if (tab == 1)
                             if (result.houses.isEmpty)

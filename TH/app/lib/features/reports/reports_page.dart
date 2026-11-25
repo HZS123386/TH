@@ -36,6 +36,18 @@ class _ReportsPageState extends State<ReportsPage> {
   bool opening = false, movingToProgress = false;
   String? openedScope;
   final sectionKeys = <String, GlobalKey>{};
+  final _contents = GlobalKey();
+
+  void _jumpTo(BuildContext? target) {
+    if (target == null) return;
+    FateMotion.selectionFeedback();
+    Scrollable.ensureVisible(
+      target,
+      alignment: .03,
+      duration: FateMotion.duration(context, FateMotion.page),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -438,6 +450,7 @@ class _ReportsPageState extends State<ReportsPage> {
                         ),
                       if (sections.isNotEmpty) ...[
                         FateCard(
+                          key: _contents,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -464,25 +477,9 @@ class _ReportsPageState extends State<ReportsPage> {
                                         'reading-jump-${section.key}',
                                       ),
                                       label: Text(section.title),
-                                      onPressed: () {
-                                        final target = sectionKey(
-                                          section.key,
-                                        ).currentContext;
-                                        if (target != null) {
-                                          Scrollable.ensureVisible(
-                                            target,
-                                            alignment: .03,
-                                            duration:
-                                                MediaQuery.disableAnimationsOf(
-                                                  context,
-                                                )
-                                                ? Duration.zero
-                                                : const Duration(
-                                                    milliseconds: 300,
-                                                  ),
-                                          );
-                                        }
-                                      },
+                                      onPressed: () => _jumpTo(
+                                        sectionKey(section.key).currentContext,
+                                      ),
                                     ),
                                 ],
                               ),
@@ -774,6 +771,14 @@ class _ReportsPageState extends State<ReportsPage> {
                           ],
                         ),
                       ),
+                      if (sections.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: () => _jumpTo(_contents.currentContext),
+                          icon: const Icon(Icons.vertical_align_top_rounded),
+                          label: Text(s.readingBackToContents),
+                        ),
+                      ],
                     ],
                   ),
                 ),

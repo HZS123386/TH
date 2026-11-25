@@ -59,30 +59,28 @@ class _WelcomePageState extends State<WelcomePage> {
                             semanticLabel: 'FATE',
                           ),
                           const SizedBox(height: 7),
-                          const Text(
-                            'YOUR DESTINY, YOUR STORY',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: mutedColor,
-                              letterSpacing: 2,
-                            ),
-                          ),
                           const SizedBox(height: 18),
                           FateEntrance(
                             child: GuideCarousel(
                               selected: _guide,
                               showDetails: false,
-                              onSelect: (guide) =>
-                                  setState(() => _guide = guide),
+                              onSelect: (guide) {
+                                if (_guide == guide) return;
+                                FateMotion.selectionFeedback();
+                                setState(() => _guide = guide);
+                              },
                             ),
                           ),
                           const SizedBox(height: 12),
-                          Text(
-                            s.guideWelcomeLabel,
-                            style: const TextStyle(
-                              color: goldColor,
-                              fontSize: 11,
-                              letterSpacing: 1,
+                          FateEntrance(
+                            key: ValueKey(_guide),
+                            child: Text(
+                              '${_guide.displayName(s)} · ${_guide.method(s)}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _guide.color,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -152,15 +150,6 @@ class _WelcomePageState extends State<WelcomePage> {
                                   const Icon(Icons.arrow_forward, size: 17),
                                 ],
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${s.thaiGuide} · ${s.sevenGuide} · ${s.tarotGuide}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: mutedColor,
                             ),
                           ),
                           Text(

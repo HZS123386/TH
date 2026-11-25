@@ -822,6 +822,10 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                               './?lang=${h5.language}&preview=notice-${DateTime.now().millisecondsSinceEpoch}',
                             )
                           : () {
+                              h5.trackActivity(
+                                'birth_form',
+                                'click_generate_report',
+                              );
                               if (widget.topic == 'life') {
                                 h5.browser.trackViewReadingClick();
                               }

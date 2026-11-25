@@ -1,10 +1,8 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import '../companion/guardian.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme.dart';
@@ -93,9 +91,6 @@ enum _Arcana implements _TarotCard {
 }
 
 const _drawCount = 3;
-const _readingDuration = Duration(milliseconds: 3500);
-
-enum _TarotPhase { selecting, reading, result }
 
 class TarotPage extends StatefulWidget {
   const TarotPage({super.key});
@@ -104,80 +99,30 @@ class TarotPage extends StatefulWidget {
   State<TarotPage> createState() => _TarotPageState();
 }
 
-class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
+class _TarotPageState extends State<TarotPage>
+    with SingleTickerProviderStateMixin {
   final _stageKey = GlobalKey();
   final _slotKeys = List.generate(_drawCount, (_) => GlobalKey());
   final _scroll = ScrollController();
   final _drawn = <_TarotCard>[];
   late final AnimationController _flightMotion;
-  late final AnimationController _readingMotion;
 
   late List<_DeckEntry> _spread = _deal();
-  _TarotPhase _phase = _TarotPhase.selecting;
   _CardFlight? _flight;
-  VideoPlayerController? _seer;
-  bool _seerReady = false;
+  bool get _selecting => _drawn.length < _drawCount;
 
   @override
   void initState() {
     super.initState();
     _flightMotion = AnimationController(vsync: this, duration: _flightDuration)
       ..addStatusListener(_finishFlight);
-    _readingMotion = AnimationController(
-      vsync: this,
-      duration: _readingDuration,
-    )..addStatusListener(_finishReading);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (FateMotion.reduced(context)) {
-      if (_flightMotion.isAnimating) _flightMotion.value = 1;
-      if (_readingMotion.isAnimating) _readingMotion.value = 1;
-      unawaited(_pauseSeer());
-    } else if (_seer == null) {
-      final player = VideoPlayerController.asset('assets/tarot/seer.mp4');
-      _seer = player;
-      unawaited(_prepareSeer(player));
-    }
-  }
-
-  Future<void> _prepareSeer(VideoPlayerController player) async {
-    try {
-      await player.initialize();
-      if (!mounted) return;
-      await player.setVolume(0);
-      if (!mounted) return;
-      _seerReady = true;
-      if (_phase == _TarotPhase.reading) await _playSeer();
-    } catch (_) {
-      // The portrait stays visible when video playback is unavailable.
-    }
-  }
-
-  Future<void> _playSeer() async {
-    final player = _seer;
-    if (player == null || !_seerReady) return;
-    try {
-      await player.seekTo(Duration.zero);
-      if (mounted &&
-          !FateMotion.reduced(context) &&
-          _phase == _TarotPhase.reading) {
-        await player.play();
-      }
-    } catch (_) {
-      // The reading animation can finish with the static portrait.
-    }
-  }
-
-  Future<void> _pauseSeer() async {
-    final player = _seer;
-    if (player == null || !_seerReady) return;
-    try {
-      await player.pause();
-    } catch (_) {
-      // The player is removed from the scene when the reading ends.
+    if (FateMotion.reduced(context) && _flightMotion.isAnimating) {
+      _flightMotion.value = 1;
     }
   }
 
@@ -213,16 +158,13 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
   }
 
   void _draw(_DeckEntry entry, BuildContext face) {
-    if (_phase != _TarotPhase.selecting ||
-        _flight != null ||
-        _drawn.contains(entry.card)) {
+    if (!_selecting || _flight != null || _drawn.contains(entry.card)) {
       return;
     }
     final start = _rectInStage(face);
     final slot = _rectInStage(_slotKeys[_drawn.length].currentContext);
-    if (MediaQuery.disableAnimationsOf(context) ||
-        start == null ||
-        slot == null) {
+    FateMotion.selectionFeedback();
+    if (FateMotion.reduced(context) || start == null || slot == null) {
       _collect(entry.card);
       return;
     }
@@ -238,34 +180,18 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
   }
 
   void _collect(_TarotCard card) {
-    final motionAllowed = !MediaQuery.disableAnimationsOf(context);
     setState(() {
       _flight = null;
       _drawn.add(card);
-      if (_drawn.length == _drawCount) {
-        _phase = motionAllowed ? _TarotPhase.reading : _TarotPhase.result;
-      }
     });
-    if (_drawn.length < _drawCount) return;
-    if (_scroll.hasClients) _scroll.jumpTo(0);
-    if (_phase == _TarotPhase.reading) {
-      _readingMotion.forward(from: 0);
-      unawaited(_playSeer());
-    }
-  }
-
-  void _finishReading(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-    setState(() => _phase = _TarotPhase.result);
-    unawaited(_pauseSeer());
+    if (!_selecting && _scroll.hasClients) _scroll.jumpTo(0);
   }
 
   void _shuffle() {
-    if (_flight != null || _phase == _TarotPhase.reading) return;
+    if (_flight != null) return;
     setState(() {
       _drawn.clear();
       _spread = _deal();
-      _phase = _TarotPhase.selecting;
     });
     if (_scroll.hasClients) _scroll.jumpTo(0);
   }
@@ -274,26 +200,21 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
   void dispose() {
     _scroll.dispose();
     _flightMotion.dispose();
-    _readingMotion.dispose();
-    final player = _seer;
-    if (player != null) unawaited(player.dispose());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final selecting = _phase == _TarotPhase.selecting;
-    final reading = _phase == _TarotPhase.reading;
+    final selecting = _selecting;
     final flight = _flight;
-    final caption = switch (_phase) {
-      _TarotPhase.reading => s.tarotSeerReading,
-      _TarotPhase.result => s.tarotReadingComplete,
-      _TarotPhase.selecting when flight != null => s.tarotRevealing,
-      _TarotPhase.selecting when _drawn.isNotEmpty => s.tarotCardsRemaining(
+    final caption = switch (selecting) {
+      false => s.tarotReadingComplete,
+      true when flight != null => s.tarotRevealing,
+      true when _drawn.isNotEmpty => s.tarotCardsRemaining(
         _drawCount - _drawn.length,
       ),
-      _TarotPhase.selecting => s.tarotSeerWaiting,
+      true => s.tarotSeerWaiting,
     };
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -331,17 +252,16 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
                       children: [
                         _heading(s),
                         const SizedBox(height: 4),
-                        _SeerStage(
-                          height: portraitHeight,
-                          motion: reading ? _readingMotion : null,
-                          player: reading ? _seer : null,
-                        ),
-                        Text(
-                          caption,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: _tarotGold,
+                        if (selecting) _SeerStage(height: portraitHeight),
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            caption,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: _tarotGold,
+                            ),
                           ),
                         ),
                         if (selecting)
@@ -354,9 +274,9 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
                             },
                             height: spreadHeight,
                             onDraw: _draw,
-                          ),
-                        if (reading) _readingProgress(s),
-                        if (_phase == _TarotPhase.result) _result(s),
+                          )
+                        else
+                          _result(s),
                       ],
                     ),
                   ),
@@ -389,12 +309,14 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
           color: _tarotGold,
         ),
       ),
-      const SizedBox(height: 3),
-      Text(
-        s.tarotDrawHint,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 12, height: 1.4, color: mutedColor),
-      ),
+      if (_selecting) ...[
+        const SizedBox(height: 3),
+        Text(
+          s.tarotDrawHint,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, height: 1.4, color: mutedColor),
+        ),
+      ],
       const SizedBox(height: 8),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -501,115 +423,49 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
     ),
   );
 
-  Widget _readingProgress(AppLocalizations s) {
-    final words = [
-      s.tarotReadingStepOne,
-      s.tarotReadingStepTwo,
-      s.tarotReadingStepThree,
-      s.tarotReadingStepFour,
-    ];
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: AnimatedBuilder(
-        animation: _readingMotion,
-        builder: (context, _) {
-          final progress = _readingMotion.value;
-          final word =
-              words[math.min(
-                (progress * words.length).floor(),
-                words.length - 1,
-              )];
-          return Column(
+  Widget _result(AppLocalizations s) => Padding(
+    padding: const EdgeInsets.only(top: 15),
+    child: FateCard(
+      gold: true,
+      padding: const EdgeInsets.all(15),
+      child: Column(
+        children: [
+          Row(
             children: [
-              AnimatedSwitcher(
-                duration: FateMotion.duration(context, FateMotion.change),
+              Expanded(
                 child: Text(
-                  word,
-                  key: ValueKey(word),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, color: _tarotGold),
+                  s.tarotResult,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: 180,
-                child: LinearProgressIndicator(
-                  value: Curves.easeInOut.transform(progress),
-                  color: goldColor,
-                  backgroundColor: const Color(0xFF4B3A7A),
-                  minHeight: 3,
-                  borderRadius: BorderRadius.circular(6),
-                ),
+              TextButton.icon(
+                onPressed: _shuffle,
+                icon: const Icon(Icons.shuffle_rounded, size: 16),
+                label: Text(s.tarotDrawAgain),
               ),
             ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _result(AppLocalizations s) => TweenAnimationBuilder<double>(
-    tween: Tween(begin: 0, end: 1),
-    duration: MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 650),
-    curve: Curves.easeOutCubic,
-    builder: (context, value, child) => Opacity(
-      opacity: value,
-      child: Transform.translate(
-        offset: Offset(0, 14 * (1 - value)),
-        child: child,
-      ),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.only(top: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          FateCard(
-            gold: true,
-            padding: const EdgeInsets.all(15),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        s.tarotResult,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _shuffle,
-                      icon: const Icon(Icons.shuffle_rounded, size: 16),
-                      label: Text(s.tarotDrawAgain),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                for (var i = 0; i < _drawn.length; i++) ...[
-                  if (i > 0) const Divider(height: 18),
-                  _readingRow(s, i),
-                ],
-                const SizedBox(height: 20),
-                OutlinedButton.icon(
-                  onPressed: () => openGuardian(
-                    context,
-                    reading: ReadingHandoff(
-                      title: s.tarotResult,
-                      text: _drawn
-                          .map((card) {
-                            final reading = card.reading(s);
-                            return '${reading.name}: ${reading.meaning}';
-                          })
-                          .join('\n'),
-                    ),
-                  ),
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  label: Text(s.continueReading),
-                ),
-              ],
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < _drawn.length; i++) ...[
+            if (i > 0) const Divider(height: 18),
+            _readingRow(s, i),
+          ],
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: () => openGuardian(
+              context,
+              reading: ReadingHandoff(
+                title: s.tarotResult,
+                text: _drawn
+                    .map((card) {
+                      final reading = card.reading(s);
+                      return '${reading.name}: ${reading.meaning}';
+                    })
+                    .join('\n'),
+              ),
             ),
+            icon: const Icon(Icons.chat_bubble_outline),
+            label: Text(s.continueReading),
           ),
         ],
       ),
@@ -661,119 +517,37 @@ class _TarotPageState extends State<TarotPage> with TickerProviderStateMixin {
 }
 
 class _SeerStage extends StatelessWidget {
-  const _SeerStage({required this.height, this.motion, this.player});
+  const _SeerStage({required this.height});
   final double height;
-  final Animation<double>? motion;
-  final VideoPlayerController? player;
 
   @override
-  Widget build(BuildContext context) {
-    final video = player;
-    final animation = motion;
-    return SizedBox(
-      height: height,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                radius: .66,
-                colors: [Color(0x558B53D8), Color(0x008B53D8)],
-              ),
-            ),
-          ),
-          Center(
-            child: AspectRatio(
-              aspectRatio: .92,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ShaderMask(
-                    blendMode: BlendMode.dstIn,
-                    shaderCallback: (bounds) => const RadialGradient(
-                      radius: .82,
-                      colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0, .57, 1],
-                    ).createShader(bounds),
-                    child: Image.asset(
-                      'assets/tarot/seer.webp',
-                      fit: BoxFit.contain,
-                      excludeFromSemantics: true,
-                    ),
-                  ),
-                  if (video != null)
-                    ValueListenableBuilder<VideoPlayerValue>(
-                      valueListenable: video,
-                      child: VideoPlayer(video),
-                      builder: (context, value, child) {
-                        if (!value.isInitialized ||
-                            !value.isPlaying ||
-                            value.position == Duration.zero) {
-                          return const SizedBox.shrink();
-                        }
-                        return Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            FittedBox(
-                              fit: BoxFit.contain,
-                              child: SizedBox(
-                                width: value.size.width,
-                                height: value.size.height,
-                                child: child,
-                              ),
-                            ),
-                            const DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Color(0xFF221746),
-                                    Color(0x00221746),
-                                    Color(0x00221746),
-                                    Color(0xFF221746),
-                                  ],
-                                  stops: [0, .13, .87, 1],
-                                ),
-                              ),
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Color(0xFF241949),
-                                      Color(0x00241949),
-                                      Color(0x00241949),
-                                      Color(0xFF211542),
-                                    ],
-                                    stops: [0, .09, .84, 1],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                ],
-              ),
-            ),
-          ),
-          if (animation != null)
-            LayoutBuilder(
-              builder: (context, constraints) => AnimatedBuilder(
-                animation: animation,
-                builder: (context, _) => CustomPaint(
-                  painter: _TarotSparks(
-                    Offset(constraints.maxWidth * .48, height * .69),
-                    (animation.value * 3) % 1,
-                    12,
-                  ),
-                ),
-              ),
-            ),
-        ],
+  Widget build(BuildContext context) => SizedBox(
+    height: height,
+    child: DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          radius: .66,
+          colors: [Color(0x558B53D8), Color(0x008B53D8)],
+        ),
       ),
-    );
-  }
+      child: Center(
+        child: AspectRatio(
+          aspectRatio: .92,
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) => const RadialGradient(
+              radius: .82,
+              colors: [Colors.white, Colors.white, Colors.transparent],
+              stops: [0, .57, 1],
+            ).createShader(bounds),
+            child: Image.asset(
+              'assets/tarot/seer.webp',
+              fit: BoxFit.contain,
+              excludeFromSemantics: true,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }

@@ -66,12 +66,16 @@ class MarriagePreview(MarriageDraft):
 
     @model_validator(mode="before")
     @classmethod
-    def bind_preview_evidence(cls, draft, info: ValidationInfo):
-        # Some fields have exactly one possible citation, which the writer need not return.
-        if isinstance(draft, dict) and info.context:
-            for key, identifiers in info.context["allowed_evidence"].items():
-                if len(identifiers) == 1 and isinstance(draft.get(key), dict):
-                    draft[key].setdefault("evidence_ids", identifiers)
+    def bind_preview_fields(cls, draft, info: ValidationInfo):
+        if not isinstance(draft, dict) or not info.context:
+            return draft
+        draft.pop("field_sources", None)
+        for key, identifiers in info.context["allowed_evidence"].items():
+            if len(identifiers) == 1 and isinstance(draft.get(key), dict):
+                draft[key].setdefault("evidence_ids", identifiers)
+        # An unknown birth time fixes the verdict while the writer supplies the observation text.
+        if not info.context["birth_time_known"] and isinstance(draft.get("current"), dict):
+            draft["current"]["state"] = "observe"
         return draft
 
 
@@ -200,10 +204,6 @@ def bundle(body, chart, *, full=False, free_story=None):
     }
 
 
-def preview_states(bundle):
-    return list(STATES[:3] if bundle["birth_time_known"] else STATES[3:])
-
-
 def preview_input(bundle):
     return {
         "language": bundle["language"],
@@ -213,7 +213,7 @@ def preview_input(bundle):
             key: identifiers[0] if len(identifiers) == 1 else identifiers
             for key, identifiers in bundle["allowed_evidence"].items()
         },
-        "current_states": preview_states(bundle),
+        **({"current_states": list(STATES[:3])} if bundle["birth_time_known"] else {}),
     }
 
 
@@ -221,7 +221,7 @@ def bind_preview_schema(bundle, contract):
     definitions = contract.pop("$defs")
     for key, identifiers in bundle["allowed_evidence"].items():
         # This field's available citations can be narrower than those for other points.
-        definition = "CurrentRelationship" if key == "current" else "MarriagePoint"
+        definition = "CurrentRelationship" if key == "current" and bundle["birth_time_known"] else "MarriagePoint"
         point = deepcopy(definitions[definition])
         properties = point["properties"]
         if len(identifiers) == 1:
@@ -230,29 +230,35 @@ def bind_preview_schema(bundle, contract):
             properties["evidence_ids"].update(
                 minItems=1, maxItems=2, items={"type": "string", "enum": identifiers},
             )
-        if key == "current":
-            properties["state"]["enum"] = preview_states(bundle)
+        if "state" in properties:
+            properties["state"]["enum"] = list(STATES[:3])
         point["required"] = list(properties)
         contract["properties"][key] = point
 
 
 def preview_prompt(bundle):
+    state_instruction = (
+        "Set current.state to one of current_states based on the cited recent positions. "
+        if bundle["birth_time_known"] else
+        "In current.text give an observable check. Omit current.state and infer no personal timing. "
+    )
     prompt = (
         f"Write {bundle['writing_version']}, a free Thai Suriyayatra marriage preview. "
         "Sign indexes are zero-based, Aries through Pisces. H7 is partnership. "
-        "Return one JSON object with the supplied language and reading and the six field_sources fields. "
-        "Each field has text. A single source ID binds that field and needs no evidence_ids in the response. "
-        "For a list, cite one or two distinct IDs from that field in evidence_ids. "
-        "Also return current.state from current_states. Use only the supplied facts. "
+        "Return one JSON object with only these top-level keys: language, reading, "
+        "needs, reaction, trap, current, attracts, drains. "
+        "field_sources is input guidance. Never include field_sources in the response. "
+        "Each of the six report sections has text. A single source ID is assigned by the app. "
+        "When a section has a list of sources, return one or two distinct IDs from that list in evidence_ids. "
+        f"{state_instruction}Use only the supplied facts. "
         "The app adds exact chart placements and dates to the prose. Use short, direct second-person statements "
         "without technical terms, dates, rhetorical questions or assumed real events, partners or outcomes. "
         "needs: open with the main mistake in how the reader tries to get a relationship need met. "
         "Name the need in everyday words, based on the bound Ascendant or Sun. "
         "reaction: say what the reader does when unsure and what the other person sees or hears as a result. "
         "trap: describe one distinct pattern the reader can recognize and say where it leaves the relationship. "
-        "current.state is the verdict based on the cited recent positions. In current.text give the one concrete "
+        "In current.text give one concrete "
         "condition for taking someone seriously, changing the pattern, or holding back. The app prints the verdict first. "
-        "When the available state is observe, give an observable check and infer no personal timing. "
         "attracts: describe an observable quality that draws them in. "
         "drains: show the behavior that costs them time or effort. "
         "Give each point a distinct idea in one or two sentences, around 30–72 Chinese characters "
@@ -263,7 +269,7 @@ def preview_prompt(bundle):
             "免费正文要接住首页「该断该续？」和「揪出搅局的人」的话术。"
             "needs 直接点出关系卡在哪。trap 用「搅局」点题，点出哪类人容易拖住关系，写清一个可辨认的行为和具体后果。"
             "语气示例「你最容易在这类搅局者身上耗时间。对方每次都说想见你，一谈具体哪天就说再看看，关系就一直停在聊天」。"
-            "current 接上当下判断，给一个现实中能核对的断续标准。"
+            "current 给一个现实中能核对的断续标准。"
             "比如「再改约时，先看对方会不会主动定个新时间。反复只说改天，就该放慢投入」。"
             "drains 说清另一种投入代价，同一种行为警示只讲一次。"
             "例句只示范语气。人物类型、行为和判断都以各段引用的实际盘面为依据。"
@@ -334,17 +340,29 @@ def prompt(bundle):
 
 
 def validate(raw, bundle, validate_text, validate_distinct):
+    stage = bundle["stage"]
     try:
-        record = schema(bundle["stage"]).model_validate_json(raw, context=bundle)
+        record = schema(stage).model_validate_json(raw, context=bundle)
     except ValidationError as error:
+        if stage == "marriage_preview":
+            # Keep the diagnostic actionable without logging arbitrary keys from the model.
+            allowed = {*fields(stage), "language", "reading", "translations", "text", "state", "evidence_ids"}
+            details = []
+            for item in error.errors(include_input=False, include_url=False)[:2]:
+                path = ".".join(str(key) if key in allowed or isinstance(key, int) else "extra_field"
+                                for key in item["loc"])
+                details.append(f"{path or 'response'} {item['type']}")
+            raise InvalidBaziReport("marriage_preview_schema: " + ", ".join(details)) from None
         paths = [".".join(map(str, item["loc"])) for item in error.errors(include_input=False, include_url=False)[:8]]
         raise InvalidBaziReport("Marriage report is missing or has malformed fields: " + ", ".join(paths)) from None
     if record.language != bundle["language"] or record.reading != bundle["reading"] or record.translations:
         raise InvalidBaziReport("Use the requested marriage report stage and language")
-    if isinstance(record, MarriagePreview) and (record.current.state == "observe") == bundle["birth_time_known"]:
-        raise InvalidBaziReport("Match the current relationship state to the birth-time precision")
+    if isinstance(record, MarriagePreview) and bundle["birth_time_known"] and record.current.state == "observe":
+        failure = InvalidBaziReport("current.state: invalid for known birth time")
+        failure.repair_fields = {"current": ["current"]}
+        raise failure
     points = {}
-    for key in fields(bundle["stage"]):
+    for key in fields(stage):
         point = getattr(record, key)
         try:
             identifiers = set(point.evidence_ids)

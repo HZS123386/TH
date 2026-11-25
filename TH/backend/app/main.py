@@ -5,11 +5,13 @@ import mimetypes
 import re
 import time
 from collections import defaultdict, deque
+from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import datetime, timedelta
 from math import ceil
 from zoneinfo import ZoneInfo
 
+import psycopg
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -36,11 +38,25 @@ from .bazi_reports import BaziReports
 from .thai_readings import ThaiReports, generate_reading
 from .life_reports import LifeReports, life_report_router
 from .landing_features import LandingFeatures, landing_router, owner_for
+from .tarot_receipts import RECEIPT_PATH, tarot_receipt_router
 from .western_app import NOTICE as WESTERN_NOTICE, WesternApp, WesternProfileInput, western_router
 from .static_assets import LandingStaticFiles
 from h5_admin.service import H5Admin, admin_page_router, admin_router
 
 logger = logging.getLogger(__name__)
+H5_LOGIN_CODE_CLEANUP_INTERVAL = 60
+
+
+async def prune_h5_login_codes(store: Storage, stop: asyncio.Event):
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(store.prune_h5_login_codes)
+        except psycopg.Error:
+            logger.exception("H5 login code cleanup failed")
+        try:
+            await asyncio.wait_for(stop.wait(), H5_LOGIN_CODE_CLEANUP_INTERVAL)
+        except TimeoutError:
+            pass
 
 
 def event(name: str, data: dict) -> str:
@@ -56,9 +72,20 @@ def create_app(settings: Settings | None = None):
         raise RuntimeError("APP_ENV must be development or production")
     if settings.bazi_provider not in ("github", "roxy"):
         raise RuntimeError("BAZI_PROVIDER must be github or roxy")
-    app = FastAPI(title="Sabai API", version="0.1.0")
     store, registry = Storage(settings.database_url), ProviderRegistry(settings)
     store.verify_schema()
+
+    @asynccontextmanager
+    async def lifespan(_app):
+        stop = asyncio.Event()
+        cleanup = asyncio.create_task(prune_h5_login_codes(store, stop))
+        try:
+            yield
+        finally:
+            stop.set()
+            await cleanup
+
+    app = FastAPI(title="Sabai API", version="0.1.0", lifespan=lifespan)
     models = CompanionModels(registry)
     roxy = RoxyBazi(settings, store)
     app.state.roxy = roxy
@@ -86,6 +113,7 @@ def create_app(settings: Settings | None = None):
     app.state.life_reports = life_reports
     app.include_router(life_report_router(life_reports))
     app.include_router(landing_router(LandingFeatures(store, settings, life_reports)))
+    app.include_router(tarot_receipt_router(store))
     app.state.h5_admin = H5Admin(store, settings, life_reports)
     app.include_router(admin_router(app.state.h5_admin))
     app.include_router(admin_page_router())
@@ -144,6 +172,9 @@ def create_app(settings: Settings | None = None):
 
     @app.middleware("http")
     async def boundaries(request: Request, call_next):
+        if (request.method == "POST" and request.url.path == RECEIPT_PATH
+                and settings.app_env == "production" and request.url.scheme != "https"):
+            return error_response("tarot_https_required", 403, request)
         started = time.monotonic()
         h5_request = request.url.path in ("/api/life-reports", "/api/thai-locations") or request.url.path.startswith(("/api/life-reports/", "/api/landing/"))
         if request.url.path.startswith("/api/"):
@@ -661,6 +692,10 @@ def create_app(settings: Settings | None = None):
     # Serve the landing build alongside its existing calculation API, on one origin.
     if settings.thai_landing_dir and Path(settings.thai_landing_dir).is_dir():
         app.mount("/thai-landing", LandingStaticFiles(directory=settings.thai_landing_dir, html=True), name="thai-landing")
+
+    # Keep the shared reading scripts available to the admin page.
+    tarot_site = Path(__file__).resolve().parents[1] / "tarot_web"
+    app.mount("/tarot", LandingStaticFiles(directory=tarot_site), name="tarot")
     dist = Path(__file__).resolve().parents[2] / "dist"
     if dist.is_dir():
         app.mount("/", StaticFiles(directory=dist, html=True), name="web")

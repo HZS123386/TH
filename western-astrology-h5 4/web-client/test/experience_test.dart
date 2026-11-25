@@ -220,6 +220,10 @@ void main() {
       expect(tester.widget<Opacity>(shimmer).opacity, lessThan(bright));
       expect(find.byType(LandingPage), findsNothing);
       await tester.tap(find.byKey(const ValueKey('welcome-start')));
+      expect(browser.activities.last, {
+        'page': 'welcome',
+        'action': 'click_welcome_start',
+      });
       await tester.pump();
       final landingState = tester.state(find.byType(LandingPage));
       await tester.pump(const Duration(milliseconds: 850));
@@ -231,6 +235,18 @@ void main() {
       ).routeInformationProvider.value.uri;
       expect(uri.queryParameters['topic'], 'love');
       expect(uri.queryParameters['utm_source'], 'facebook');
+      final generate = find.byKey(const ValueKey('generate-report'));
+      await tester.ensureVisible(generate);
+      await tester.tap(generate);
+      expect(
+        browser.activities.where(
+          (activity) => activity['action'] == 'click_generate_report',
+        ),
+        [
+          {'page': 'birth_form', 'action': 'click_generate_report'},
+        ],
+      );
+      expect(browser.activities.last['action'], 'invalid_form');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();

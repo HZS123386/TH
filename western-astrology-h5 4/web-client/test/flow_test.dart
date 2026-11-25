@@ -337,147 +337,145 @@ void main() {
       },
     );
   }
-  testWidgets('legacy H5 checkout opens the free report with LINE contact', (
-    tester,
-  ) async {
-    phone(tester);
-    final browser = TestBrowser();
-    final paid = fixture(full: true);
-    final data = {
-      ...fixture(),
-      'claim_code': '57248',
-      'payment_simulation': false,
-      'price': {
-        'amount': 3000,
-        'currency': 'THB',
-        'display': '฿30',
-        'mode': 'sunlands_order_only',
-      },
-      'chapters': paid['chapters'],
-      'plan': paid['plan'],
-    };
-    final calls = <String>[];
-    final repo = ReportRepository(
-      browser,
-      baseUrl: 'https://example.test',
-      client: MockClient((request) async {
-        calls.add('${request.method} ${request.url.path}');
-        return response(data);
-      }),
-    );
-    final h5 = H5Controller(translations(), repo, browser, language: 'zh');
-    await tester.pumpWidget(
-      H5App(
-        controller: h5,
-        initialLocation: '/report.html?id=${data['id']}&lang=zh&checkout=1',
-      ),
-    );
-    await waitForDeferredView(
+  for (final mobile in [false, true]) {
+    final device = mobile ? 'mobile' : 'desktop';
+    testWidgets('legacy H5 checkout offers LINE delivery on $device', (
       tester,
-      find.byKey(const ValueKey('free-report-content')),
-    );
-    expect(find.byKey(const ValueKey('free-report-content')), findsOneWidget);
-    expect(browser.activities.last, {
-      'page': 'preview_report',
-      'action': 'report_ready',
-    });
-    final paidText = text(
-      object(objects(paid['chapters']).first['summary'])['text'],
-    );
-    expect(find.text(paidText), findsNothing);
-    expect(find.byKey(const ValueKey('checkout-theme-badges')), findsOneWidget);
-    final contact = find.byKey(const ValueKey('jy-line-contact'));
-    expect(find.text(h5.copy.t('jy', 'lineContact.action')), findsOneWidget);
-    final claimNumber = find.byWidgetPredicate(
-      (widget) => widget is SelectableText && widget.data == data['claim_code'],
-    );
-    expect(claimNumber, findsOneWidget);
-    expect(
-      find.text(h5.copy.t('jy', 'lineContact.claimNumber')),
-      findsOneWidget,
-    );
-    final messenger = tester.binding.defaultBinaryMessenger;
-    String? copied;
-    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
-      if (call.method == 'Clipboard.setData') {
-        copied = (call.arguments as Map)['text'] as String;
-      }
-      return null;
-    });
-    addTearDown(
-      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
-    );
-    await click(
-      tester,
-      find.widgetWithText(
-        TextButton,
-        h5.copy.t('jy', 'lineContact.copyReportId'),
-      ),
-    );
-    expect(copied, data['claim_code']);
-    expect(find.byType(AlertDialog), findsNothing);
-    await tester.runAsync(() async {
-      await precacheImage(
-        const AssetImage('assets/images/line-contact-qr.jpg'),
-        tester.element(contact),
+    ) async {
+      phone(tester);
+      if (!mobile) tester.view.physicalSize = const Size(1200, 720);
+      final browser = TestBrowser()..supportsLineApp = mobile;
+      final paid = fixture(full: true);
+      final data = {
+        ...fixture(),
+        'claim_code': '57248',
+        'payment_simulation': false,
+        'price': {
+          'amount': 3000,
+          'currency': 'THB',
+          'display': '฿30',
+          'mode': 'sunlands_order_only',
+        },
+        'chapters': paid['chapters'],
+        'plan': paid['plan'],
+      };
+      final calls = <String>[];
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          calls.add('${request.method} ${request.url.path}');
+          return response(data);
+        }),
       );
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+      await tester.pumpWidget(
+        H5App(
+          controller: h5,
+          initialLocation: '/report.html?id=${data['id']}&lang=zh&checkout=1',
+        ),
+      );
+      await waitForDeferredView(
+        tester,
+        find.byKey(const ValueKey('free-report-content')),
+      );
+      expect(find.byKey(const ValueKey('free-report-content')), findsOneWidget);
+      expect(browser.activities.last, {
+        'page': 'preview_report',
+        'action': 'report_ready',
+      });
+      final paidText = text(
+        object(objects(paid['chapters']).first['summary'])['text'],
+      );
+      expect(find.text(paidText), findsNothing);
+      expect(
+        find.byKey(const ValueKey('checkout-theme-badges')),
+        findsOneWidget,
+      );
+      final contact = find.byKey(const ValueKey('jy-line-contact'));
+      final claimNumber = find.byWidgetPredicate(
+        (widget) =>
+            widget is SelectableText && widget.data == data['claim_code'],
+      );
+      expect(claimNumber, findsOneWidget);
+      expect(
+        find.text(h5.copy.t('jy', 'lineContact.claimNumber')),
+        findsOneWidget,
+      );
+      final qr = find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName ==
+                'assets/images/line-contact-qr.jpg',
+      );
+      expect(qr, findsOneWidget);
+      expect(find.text(h5.copy.t('jy', 'lineContact.scan')), findsOneWidget);
+      await tester.runAsync(() async {
+        await precacheImage(
+          const AssetImage('assets/images/line-contact-qr.jpg'),
+          tester.element(qr),
+        );
+      });
+      await tester.ensureVisible(qr);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      final messenger = tester.binding.defaultBinaryMessenger;
+      String? copied;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String;
+        }
+        return null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+      await click(
+        tester,
+        find.widgetWithText(
+          TextButton,
+          h5.copy.t('jy', 'lineContact.copyReportId'),
+        ),
+      );
+      expect(copied, data['claim_code']);
+      expect(browser.openedPages, isEmpty);
+      expect(find.text(h5.copy.t('jy', 'lineContact.open')), findsOneWidget);
+      await click(tester, contact);
+      expect(browser.sameTabPages, ['https://line.me/ti/p/TrGGcMWmuV']);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(
+        browser.activities.where(
+          (event) => event['action'] == 'open_line_contact',
+        ),
+        hasLength(mobile ? 0 : 1),
+      );
+      expect(
+        browser.activities.where((event) => event['action'] == 'click_line'),
+        hasLength(1),
+      );
+      expect(
+        browser.activities.where((event) => event['action'] == 'line_qr_shown'),
+        hasLength(1),
+      );
+      expect(find.byKey(const ValueKey('jy-app-download')), findsNothing);
+      expect(find.byKey(const ValueKey('jy-payment-preview')), findsNothing);
+      expect(find.text('฿30'), findsNothing);
+      expect(find.byType(ReportPaymentDialog), findsNothing);
+      expect(find.byType(ReportPreview), findsOneWidget);
+      expect(
+        calls.where(
+          (call) => call.contains('/payment') || call.endsWith('/unlock'),
+        ),
+        isEmpty,
+      );
+      await click(tester, find.byTooltip(h5.copy.t('jy', 'checkout.back')));
+      expect(find.byType(ReportPreview), findsNothing);
+      expect(find.byKey(const ValueKey('welcome-start')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
     });
-    await click(tester, contact);
-    final qr = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(Image),
-    );
-    expect(
-      (tester.widget<Image>(qr).image as AssetImage).assetName,
-      'assets/images/line-contact-qr.jpg',
-    );
-    expect(
-      find.descendant(of: find.byType(AlertDialog), matching: claimNumber),
-      findsOneWidget,
-    );
-    expect(find.text(h5.copy.t('jy', 'lineContact.scan')), findsOneWidget);
-    expect(browser.openedPages, isEmpty);
-    await click(tester, find.text(h5.copy.t('jy', 'lineContact.open')));
-    expect(browser.openedPages, ['https://line.me/ti/p/TrGGcMWmuV']);
-    browser.openedPages.clear();
-    await click(
-      tester,
-      find.widgetWithText(TextButton, h5.copy.t('jy', 'close')),
-    );
-    expect(find.byType(AlertDialog), findsNothing);
-    await click(tester, contact);
-    await click(
-      tester,
-      find.widgetWithText(TextButton, h5.copy.t('jy', 'close')),
-    );
-    expect(
-      browser.activities.where(
-        (event) => event['action'] == 'open_line_contact',
-      ),
-      hasLength(2),
-    );
-    expect(
-      browser.activities.where((event) => event['action'] == 'line_qr_shown'),
-      hasLength(2),
-    );
-    expect(find.byKey(const ValueKey('jy-app-download')), findsNothing);
-    expect(find.byKey(const ValueKey('jy-payment-preview')), findsNothing);
-    expect(find.text('฿30'), findsNothing);
-    expect(find.byType(ReportPaymentDialog), findsNothing);
-    expect(find.byType(ReportPreview), findsOneWidget);
-    expect(
-      calls.where(
-        (call) => call.contains('/payment') || call.endsWith('/unlock'),
-      ),
-      isEmpty,
-    );
-    expect(browser.openedPages, isEmpty);
-    await click(tester, find.byTooltip(h5.copy.t('jy', 'checkout.back')));
-    expect(find.byType(ReportPreview), findsNothing);
-    expect(find.byKey(const ValueKey('welcome-start')), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
-    h5.dispose();
-  });
+  }
 
   for (final language in ['zh', 'th']) {
     for (final existingOrder in [false, true]) {

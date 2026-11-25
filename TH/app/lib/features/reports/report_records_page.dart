@@ -149,6 +149,8 @@ class _ReportRecordsPageState extends State<ReportRecordsPage> {
               child: busy
                   ? const Center(child: CircularProgressIndicator())
                   : ListView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                       children: [
                         if (d.reports.historyError != null)

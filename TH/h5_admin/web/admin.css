@@ -728,6 +728,57 @@ nav {
   color: #9b9fad;
   padding-top: 1px;
 }
+.visit-funnel {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  max-width: 760px;
+  margin: 16px auto;
+}
+.visit-funnel-step {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  min-width: 0;
+  padding: 14px clamp(12px, 3vw, 28px);
+  border: 1px solid #ded8fa;
+  border-radius: 10px;
+  background: #eae5fc;
+  color: #3f345f;
+}
+.visit-funnel-step:nth-child(2) {
+  width: 90%;
+  background: #eeeafd;
+}
+.visit-funnel-step:nth-child(3) {
+  width: 80%;
+  background: #f2effd;
+}
+.visit-funnel-step:nth-child(4) {
+  width: 70%;
+  background: #f6f4fd;
+}
+.visit-funnel-step dt {
+  font-size: 14px;
+  font-weight: 600;
+}
+.visit-funnel-step dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.visit-funnel-step dd strong {
+  font-size: 22px;
+  font-weight: 650;
+  color: #33236e;
+}
+.visit-funnel-step dd span {
+  margin-inline-start: 12px;
+  color: #5f5575;
+  white-space: nowrap;
+}
 .table-wrap {
   overflow-x: auto;
 }

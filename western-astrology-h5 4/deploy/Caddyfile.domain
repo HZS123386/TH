@@ -1,5 +1,5 @@
     # BEGIN FATE landing routes
-    @fateLanding path /thai-landing /thai-landing/*
+    @fateLanding path /thai-landing /thai-landing/* /tarot /tarot/*
     @fateEngine path_regexp fateEngine ^/thai-landing/engine/[a-f0-9]{40}/
     @fateRevalidated {
         not path /thai-landing/engine/*
@@ -9,7 +9,7 @@
         header @fateEngine Cache-Control "public, max-age=31536000, immutable"
         reverse_proxy astro-life-report:8000
     }
-    @fateReportApi path /api/life-reports /api/life-reports/* /api/thai-locations /api/landing/*
+    @fateReportApi path /api/life-reports /api/life-reports/* /api/thai-locations /api/landing/* /api/tarot/receipts
     handle @fateReportApi {
         header Cache-Control "no-store"
         reverse_proxy astro-life-report:8000 {

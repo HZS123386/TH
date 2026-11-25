@@ -402,7 +402,13 @@ class _WelcomePageState extends State<WelcomePage>
                                             ),
                                             onPressed: _leaving
                                                 ? null
-                                                : () => unawaited(_enter()),
+                                                : () {
+                                                    widget.h5.trackActivity(
+                                                      'welcome',
+                                                      'click_welcome_start',
+                                                    );
+                                                    unawaited(_enter());
+                                                  },
                                             style: FilledButton.styleFrom(
                                               backgroundColor:
                                                   Colors.transparent,

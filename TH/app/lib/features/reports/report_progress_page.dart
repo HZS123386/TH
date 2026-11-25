@@ -132,11 +132,17 @@ class _ReportProgressPageState extends State<ReportProgressPage> {
                       size: 32,
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                    Semantics(
+                      liveRegion: true,
+                      child: FateEntrance(
+                        key: ValueKey(title),
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
