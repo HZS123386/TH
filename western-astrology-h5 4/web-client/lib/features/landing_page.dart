@@ -767,29 +767,12 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                     ],
                     errorMessage(_error),
                     const SizedBox(height: 14),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          c.t('jy', 'birthDataNotice'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 11, color: lavender),
-                        ),
-                        TextButton(
-                          onPressed: () => h5.browser.openPage(
-                            'privacy.html?lang=${h5.language}',
-                          ),
-                          child: Text(
-                            c.t('jy', 'privacy'),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      c.t('jy', 'birthDataNotice'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 11, color: lavender),
                     ),
+                    const SizedBox(height: 8),
                     JYButton(
                       key: const ValueKey('generate-report'),
                       label: c.t('jy', 'topics.${widget.topic}.action'),

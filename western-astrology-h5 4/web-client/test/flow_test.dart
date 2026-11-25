@@ -1328,6 +1328,11 @@ void main() {
         ),
       );
       expect(find.byKey(const ValueKey('data-use-notice')), findsNothing);
+      expect(find.text(h5.copy.t('jy', 'birthDataNotice')), findsOneWidget);
+      expect(
+        find.widgetWithText(TextButton, h5.copy.t('jy', 'privacy')),
+        findsNothing,
+      );
       for (final field in [
         'relationship-status',
         'custom-question',
