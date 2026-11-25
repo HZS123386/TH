@@ -9,6 +9,8 @@ import 'repository.dart';
 external JSString _today(JSString zone);
 @JS('fateH5.exportDocument')
 external JSPromise<JSString> _export(JSString payload, JSString format);
+@JS('fateH5.postPayment')
+external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
 @JS('fateH5.welcomeAge')
@@ -55,11 +57,15 @@ class WebBrowserPort implements BrowserPort {
       Duration(microseconds: (_welcomeAge().toDartDouble * 1000).round());
 
   @override
-  void openPage(String path) => web.window.open(
-    Uri.base.resolve(path).toString(),
-    '_blank',
-    'noopener,noreferrer',
-  );
+  void openPage(String path, {bool sameTab = false}) {
+    final url = Uri.base.resolve(path).toString();
+    if (sameTab) {
+      web.window.location.assign(url);
+    } else {
+      web.window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
   @override
   String ownerKey() {
     final key = _ownerKey()?.toDart;
@@ -83,6 +89,9 @@ class WebBrowserPort implements BrowserPort {
         jsonEncode(report.exportPayload()).toJS,
         format.toJS,
       ).toDart).toDart;
+  @override
+  void postPayment(String action, Map<String, String> fields) =>
+      _payment(action.toJS, jsonEncode(fields).toJS);
   @override
   void pageReady(String page) => _ready(page.toJS);
 

@@ -15,9 +15,15 @@ import 'generation_dialog.dart';
 import 'report_view_model.dart';
 
 class ReportPage extends StatefulWidget {
-  const ReportPage({required this.h5, required this.id, super.key});
+  const ReportPage({
+    required this.h5,
+    required this.id,
+    this.paymentReturn = false,
+    super.key,
+  });
   final H5Controller h5;
   final String id;
+  final bool paymentReturn;
   @override
   State<ReportPage> createState() => _ReportPageState();
 }
@@ -27,10 +33,13 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   CancelToken? _generationRequest;
   final _anchors = <String, GlobalKey>{};
   final _deleteRequest = CancelToken();
-  bool _deleting = false;
+  bool _deleting = false, _paying = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
-  bool _resumedPreview = false;
+  bool _resumedPreview = false, _checkedPaymentReturn = false;
+
+  bool _usesCheckout(LifeReport report) =>
+      report.sectionedReport || report.personalReport;
 
   void _backHome() {
     widget.h5.restoreLandingFromReport(_model.report);
@@ -65,6 +74,31 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_generating) unawaited(_generate(false));
       });
+    }
+    if (!_checkedPaymentReturn &&
+        _usesCheckout(r) &&
+        r.orderOnly &&
+        r.hasPreview) {
+      _checkedPaymentReturn = true;
+      final browser = widget.h5.browser;
+      final pending = browser.readSetting(
+        ReportPaymentDialog.pendingReportKey,
+        session: true,
+      );
+      if (widget.paymentReturn || r.id == pending) {
+        if (r.id == pending) {
+          browser.writeSetting(
+            ReportPaymentDialog.pendingReportKey,
+            '',
+            session: true,
+          );
+        }
+        if (!r.full) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) unawaited(_pay(returning: true));
+          });
+        }
+      }
     }
     if (!_reported && r.hasPreview) {
       _reported = true;
@@ -148,6 +182,43 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       }
     } finally {
       if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  Future<void> _pay({bool returning = false}) async {
+    final report = _model.report;
+    if (report == null ||
+        !report.canPay ||
+        report.full ||
+        _paying ||
+        _deleting) {
+      return;
+    }
+    setState(() => _paying = true);
+    try {
+      final latest = await _model.load(background: true);
+      if (!mounted || latest == null || !latest.canPay || latest.full) return;
+      final paid = await showDialog<bool>(
+        context: context,
+        builder: (_) => ReportPaymentDialog(
+          h5: widget.h5,
+          report: latest,
+          returning: returning,
+        ),
+      );
+      if (!mounted) return;
+      widget.h5.trackActivity(
+        _model.report?.ready == true ? 'full_report' : 'preview_report',
+        'close_payment',
+      );
+      if (paid == true) {
+        await _model.load(background: true);
+        if (mounted && _model.report?.fullInProgress == true) {
+          await _generate(true);
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _paying = false);
     }
   }
 
@@ -1042,12 +1113,13 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         return ReportCheckout(
           h5: widget.h5,
           report: r,
+          onPay: _usesCheckout(r) && r.canPay ? _pay : null,
           freePreview: _freePreview(r, c),
           onExportPdf: r.relationshipReport && !_model.exporting
               ? () => _model.export('pdf')
               : null,
           exportStatus: r.relationshipReport ? _model.exportStatus : '',
-          busy: _deleting || _generating,
+          busy: _deleting || _generating || _paying,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
           onBack: _backHome,
           onErase: () => _erase(),

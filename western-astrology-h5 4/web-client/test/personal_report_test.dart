@@ -17,7 +17,7 @@ void main() {
   setUpAll(H5App.loadRoutesForWidgetTests);
 
   test('free report can open checkout before paid timing is prepared', () {
-    final data = personalFixture();
+    final data = personalFixture()..['checkout_enabled'] = true;
     data['outlook'] = {'state': 'not_started'};
     data['personal'] = {
       ...object(data['personal']),

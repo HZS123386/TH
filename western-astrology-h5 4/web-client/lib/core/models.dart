@@ -310,6 +310,7 @@ class LifeReport {
   bool get paysoTest => price['mode'] == 'payso_test';
   bool get orderOnly => price['mode'] == 'sunlands_order_only';
   bool get canPay =>
+      json['checkout_enabled'] == true &&
       (!personalReport ||
           object(personal['availability'])['full_report'] == true) &&
       (orderOnly || paysoTest || json['payment_simulation'] == true);

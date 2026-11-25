@@ -52,6 +52,13 @@ class ApiFailure implements Exception {
   final Duration? retryAfter;
 }
 
+typedef PaymentOrder = ({
+  String reference,
+  String gatewayOrder,
+  String action,
+  Map<String, String> fields,
+});
+
 class ReportRepository {
   static const _reportReadTimeout = Duration(seconds: 15);
   static const _marriagePreviewWait = Duration(seconds: 60);
@@ -256,6 +263,138 @@ class ReportRepository {
   }) =>
       _wait(initial.json, initial.input, token, full, progress, id: initial.id);
 
+  Future<PaymentOrder> createPayment(
+    LifeReport report,
+    CancelToken token,
+  ) async {
+    final order = object(
+      await request('/api/life-reports/${report.id}/payment', token, body: {}),
+    );
+    return _paymentOrder(report, order);
+  }
+
+  Future<PaymentOrder?> existingPayment(
+    LifeReport report,
+    CancelToken token,
+  ) async {
+    final order = await request(
+      '/api/life-reports/${report.id}/payment',
+      token,
+    );
+    return order == null ? null : _paymentOrder(report, object(order));
+  }
+
+  Future<({List<String> methods, bool checkPayment})> paymentMethods(
+    LifeReport report,
+    CancelToken token,
+  ) async {
+    final result = object(
+      await request(
+        '/api/life-reports/${report.id}/payment/methods',
+        token,
+        timeout: const Duration(seconds: 35),
+      ),
+    );
+    final methods = result['methods'];
+    final checkPayment = result['check_payment'];
+    if (methods is! List ||
+        methods.any((method) => method is! String) ||
+        checkPayment is! bool) {
+      throw const ApiFailure('badResult');
+    }
+    return (methods: methods.cast<String>(), checkPayment: checkPayment);
+  }
+
+  Future<String?> startPayment(
+    LifeReport report,
+    String method,
+    CancelToken token,
+  ) async {
+    final result = object(
+      await request(
+        '/api/life-reports/${report.id}/payment/start',
+        token,
+        body: {'method': method},
+        timeout: const Duration(seconds: 55),
+      ),
+    );
+    final value = result['redirect_url'];
+    if (value == null && result.containsKey('redirect_url')) return null;
+    final url = value is String ? Uri.tryParse(value) : null;
+    if (url == null ||
+        url.scheme != 'https' ||
+        url.host.isEmpty ||
+        url.userInfo.isNotEmpty) {
+      throw const ApiFailure('badResult');
+    }
+    return value as String;
+  }
+
+  PaymentOrder _paymentOrder(LifeReport report, Json order) {
+    if (!report.paysoTest) {
+      final reference = text(order['reference']);
+      if (!RegExp(r'^[0-9]{12}$').hasMatch(reference) ||
+          order['amount'] != report.price['amount'] ||
+          order['currency'] != report.price['currency']) {
+        throw const ApiFailure('badResult');
+      }
+      final gatewayOrder = text(order['order_number']);
+      if (report.orderOnly &&
+          (order['order_only'] != true ||
+              order['state'] != 'CREATED' ||
+              !RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(gatewayOrder))) {
+        throw const ApiFailure('badResult');
+      }
+      return (
+        reference: reference,
+        gatewayOrder: gatewayOrder,
+        action: '',
+        fields: const <String, String>{},
+      );
+    }
+    final action = text(order['action']), fields = object(order['fields']);
+    final reference = text(fields['refno']);
+    if (action.isEmpty ||
+        !RegExp(r'^[0-9]{12}$').hasMatch(reference) ||
+        fields.values.any((value) => value is! String)) {
+      throw const ApiFailure('badResult');
+    }
+    return (
+      reference: reference,
+      gatewayOrder: '',
+      action: action,
+      fields: Map<String, String>.from(fields),
+    );
+  }
+
+  Future<void> simulatePayment(
+    LifeReport report,
+    PaymentOrder order,
+    CancelToken token,
+  ) async {
+    final result = object(
+      await request(
+        '/api/life-reports/${report.id}/payment/simulate',
+        token,
+        body: {'reference': order.reference},
+      ),
+    );
+    if (result['paid'] != true) throw const ApiFailure('badResult');
+  }
+
+  Future<bool> checkPayment(LifeReport report, CancelToken token) async {
+    final result = object(
+      await request(
+        '/api/life-reports/${report.id}/payment/check',
+        token,
+        body: {},
+      ),
+    );
+    final paid = result['paid'];
+    if (paid is! bool) throw const ApiFailure('badResult');
+    return paid;
+  }
+
   Future<LifeReport> _wait(
     dynamic value,
     Json input,
@@ -297,6 +436,7 @@ class ReportRepository {
         }
         return duration < remaining ? duration : remaining;
       }
+
       // Count the server's wait toward the polling budget.
       var delay = full
           ? interval

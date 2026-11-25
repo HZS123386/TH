@@ -85,6 +85,7 @@ class _H5AppState extends State<H5App> {
                 key: ValueKey(state.uri.queryParameters['id']),
                 h5: widget.controller,
                 id: state.uri.queryParameters['id'] ?? '',
+                paymentReturn: state.uri.queryParameters['payment_return'] == '1',
               ),
             ),
           ),
