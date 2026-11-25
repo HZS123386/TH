@@ -1,9 +1,11 @@
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
+import json
 import mimetypes
 import re
+from urllib.parse import urlsplit
 
 from starlette.exceptions import HTTPException
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 from starlette.staticfiles import StaticFiles
 
 
@@ -36,18 +38,48 @@ def accepted_encodings(value: str) -> list[str]:
 class LandingStaticFiles(StaticFiles):
     """Negotiate build-time Brotli/gzip files through the existing landing mount."""
 
+    def __init__(self, *, directory=None, **options):
+        super().__init__(directory=directory, **options)
+        self.wasm_redirects = {}
+        manifest = Path(directory) / 'wasm-redirects.json' if directory is not None else None
+        if manifest and manifest.is_file():
+            redirects = json.loads(manifest.read_text(encoding='utf-8'))
+            if (not isinstance(redirects, dict) or len(redirects) != 2 or 'main.dart.wasm' not in redirects
+                    or any(path != 'main.dart.wasm' and not re.fullmatch(r'engine/[a-f0-9]{40}/skwasm\.wasm', path)
+                           for path in redirects)):
+                raise ValueError('Invalid H5 Wasm redirect paths')
+            for variants in redirects.values():
+                if not isinstance(variants, dict) or 'identity' not in variants or variants.keys() - {'identity', 'br'}:
+                    raise ValueError('Invalid H5 Wasm redirect variants')
+                for url in variants.values():
+                    if not isinstance(url, str) or any(char.isspace() for char in url) or '\\' in url:
+                        raise ValueError('Invalid H5 Wasm redirect URL')
+                    address = urlsplit(url)
+                    if (address.scheme != 'https' or not address.hostname or address.username is not None
+                            or address.query or address.fragment):
+                        raise ValueError('H5 Wasm redirects require public HTTPS URLs')
+            self.wasm_redirects = redirects
+
     async def get_response(self, path, scope):
+        asset = 'index.html' if path in ('', '.') else path.replace('\\', '/')
+        headers = {key.lower(): value for key, value in scope['headers']}
+        encodings = accepted_encodings(headers.get(b'accept-encoding', b'').decode('latin1'))
+        variants = self.wasm_redirects.get(asset)
+        if variants and scope['method'] in {'GET', 'HEAD'}:
+            for encoding in encodings:
+                if encoding in variants and (b'range' not in headers or encoding == 'identity'):
+                    return RedirectResponse(variants[encoding], headers={
+                        'Cache-Control': 'no-store', 'Vary': 'Accept-Encoding',
+                    })
+            return Response(status_code=406, headers={'Vary': 'Accept-Encoding'})
         response = await super().get_response(path, scope)
-        asset = 'index.html' if path in ('', '.') else path
         suffix = PurePosixPath(asset).suffix.lower()
         if response.status_code not in (200, 206, 304):
             return response
         # Stable app URLs must revalidate; only revisioned engine files are immutable.
         cache_control = ('public, max-age=31536000, immutable'
-                         if re.match(r'^engine/[a-f0-9]{40}/', asset.replace('\\', '/')) else 'no-cache')
+                         if re.match(r'^engine/[a-f0-9]{40}/', asset) else 'no-cache')
         response.headers['Cache-Control'] = cache_control
-        headers = {key.lower(): value for key, value in scope['headers']}
-        encodings = accepted_encodings(headers.get(b'accept-encoding', b'').decode('latin1'))
         if b'range' in headers or suffix not in {'.html', '.js', '.mjs', '.css', '.json', '.svg', '.wasm', '.ttf', '.otf'}:
             encodings = [name for name in encodings if name == 'identity']
         for encoding in encodings:

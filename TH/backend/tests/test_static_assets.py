@@ -1,4 +1,6 @@
 import gzip
+from pathlib import Path
+from runpy import run_path
 
 import pytest
 from starlette.applications import Starlette
@@ -135,3 +137,49 @@ def test_revisioned_engine_retains_long_cache_for_unchanged_runtime(assets, tmp_
     cached = client.get(url, headers={**headers, 'If-None-Match': response.headers['etag']})
     assert cached.status_code == 304
     assert cached.headers['cache-control'] == response.headers['cache-control']
+
+
+def test_release_redirects_only_offloaded_startup_wasm(tmp_path):
+    root = Path(__file__).resolve().parents[3]
+    packaging = root / 'western-astrology-h5 4' / 'deploy' / 'prepare_release.py'
+    offload_wasm = run_path(str(packaging))['offload_wasm']
+    site = tmp_path / 'site'
+    revision = 'a' * 40
+    engine = site / 'engine' / revision
+    engine.mkdir(parents=True)
+    main = site / 'main.dart.wasm'
+    main.write_bytes(b'web-assembly-payload' * 200)
+    main.with_suffix('.wasm.br').write_bytes(BROTLI_PAYLOAD)
+    main.with_suffix('.wasm.gz').write_bytes(gzip.compress(main.read_bytes(), mtime=0))
+    renderer = engine / 'skwasm.wasm'
+    renderer.write_bytes(b'renderer')
+    (engine / 'skwasm_heavy.wasm').write_bytes(b'heavy renderer')
+    (site / 'main.dart_module1.wasm').write_bytes(b'deferred module')
+
+    release = tmp_path / 'release'
+    assert offload_wasm(site, release, '') == [] and main.is_file()
+    storage = 'https://assets.example.invalid/fate'
+    uploads = offload_wasm(site, release, storage)
+    assert len(uploads) == 3
+    assert not main.exists() and not renderer.exists()
+    assert not main.with_suffix('.wasm.br').exists() and not main.with_suffix('.wasm.gz').exists()
+    compressed = next(item for item in uploads if item['content_encoding'] == 'br')
+    assert compressed['content_type'] == 'application/wasm'
+    assert (release / compressed['path']).read_bytes() == BROTLI_PAYLOAD
+
+    app = Starlette(routes=[Mount('/thai-landing', LandingStaticFiles(directory=site, html=True))])
+    with TestClient(app, follow_redirects=False) as client:
+        prefix = '/thai-landing/'
+        result = client.get(prefix + 'main.dart.wasm', headers={'Accept-Encoding': 'br'})
+        assert result.status_code == 307 and result.content == b''
+        assert result.headers['location'] == f"{storage}/{compressed['object_key']}"
+        assert result.headers['cache-control'] == 'no-store'
+        assert result.headers['vary'] == 'Accept-Encoding'
+        identity = next(item for item in uploads if item['object_key'].endswith('/main.dart.wasm')
+                        and item['content_encoding'] is None)
+        raw = client.head(prefix + 'main.dart.wasm', headers={'Accept-Encoding': 'identity'})
+        assert raw.headers['location'] == f"{storage}/{identity['object_key']}"
+        engine_response = client.get(prefix + f'engine/{revision}/skwasm.wasm')
+        assert engine_response.status_code == 307 and engine_response.headers['location'].endswith('/skwasm.wasm')
+        assert client.get(prefix + f'engine/{revision}/skwasm_heavy.wasm').content == b'heavy renderer'
+        assert client.get(prefix + 'main.dart_module1.wasm').content == b'deferred module'

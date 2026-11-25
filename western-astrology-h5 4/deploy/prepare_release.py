@@ -4,10 +4,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import tarfile
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +21,44 @@ SKIP = {'__pycache__', '.pytest_cache', '.ruff_cache', 'tests', 'node_modules', 
 def copy_tree(source: Path, target: Path):
     shutil.copytree(source, target, symlinks=False,
                     ignore=lambda _directory, names: [name for name in names if name in SKIP or name.endswith(('.pyc', '.pyo'))])
+
+
+def offload_wasm(site: Path, release: Path, storage_base: str):
+    if not storage_base:
+        return []
+    address = urlsplit(storage_base)
+    if (address.scheme != 'https' or not address.hostname or address.username is not None
+            or address.query or address.fragment or any(char.isspace() for char in storage_base)
+            or '\\' in storage_base):
+        raise ValueError('FATE_H5_WASM_BASE_URL must be a public HTTPS directory URL')
+    main = site / 'main.dart.wasm'
+    renderers = list((site / 'engine').glob('*/skwasm.wasm'))
+    if not main.is_file() or len(renderers) != 1 or not re.fullmatch(r'[a-f0-9]{40}', renderers[0].parent.name):
+        raise RuntimeError('Build H5 before offloading its two startup Wasm files')
+
+    # Only the release copy moves off-origin. Hash the uploaded bytes to pin the build.
+    redirects, uploads = {}, []
+    for wasm in (main, renderers[0]):
+        destinations = {}
+        brotli = wasm.with_suffix('.wasm.br')
+        for encoding, payload in (('identity', wasm), ('br', brotli)):
+            if not payload.is_file():
+                continue
+            digest = hashlib.sha256(payload.read_bytes()).hexdigest()
+            key = f'{digest}/{wasm.name}'
+            target = release / 'wasm-objects' / key
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(payload, target)
+            destinations[encoding] = storage_base.rstrip('/') + '/' + key
+            uploads.append({'path': target.relative_to(release).as_posix(), 'object_key': key,
+                            'content_type': 'application/wasm',
+                            'content_encoding': 'br' if encoding == 'br' else None,
+                            'cache_control': 'public, max-age=31536000, immutable'})
+        redirects[wasm.relative_to(site).as_posix()] = destinations
+        for variant in (wasm, brotli, wasm.with_suffix('.wasm.gz')):
+            variant.unlink(missing_ok=True)
+    (site / 'wasm-redirects.json').write_text(json.dumps(redirects), encoding='utf-8')
+    return uploads
 
 
 def prepare(release: Path, version: str):
@@ -36,7 +76,9 @@ def prepare(release: Path, version: str):
         copy_tree(TH / 'src' / directory, context / 'TH' / 'src' / directory)
     shutil.copy2(TH / 'package.json', context / 'TH' / 'package.json')
     copy_tree(TH / 'node_modules' / 'thai-astrology', context / 'TH' / 'node_modules' / 'thai-astrology')
-    copy_tree(ROOT / 'site', context / 'western-astrology-h5 4' / 'site')
+    site = context / 'western-astrology-h5 4' / 'site'
+    copy_tree(ROOT / 'site', site)
+    wasm_objects = offload_wasm(site, release, os.environ.get('FATE_H5_WASM_BASE_URL', '').strip())
 
     env = {}
     for line in (TH / '.env').read_text(encoding='utf-8-sig').splitlines():
@@ -106,7 +148,7 @@ def prepare(release: Path, version: str):
         for path in sorted(context.iterdir()):
             output.add(path, arcname=path.name)
     metadata = {'version': version, 'archive': str(PRIVATE / 'latest' / archive.name), 'archive_bytes': archive.stat().st_size,
-                'files': len(manifest), 'manifest': manifest,
+                'files': len(manifest), 'manifest': manifest, 'wasm_objects': wasm_objects,
                 'secrets_excluded_from_build': True, 'old_user_database_excluded': True,
                 'image_source': 'astrologer-purple-stars.png'}
     (release / 'manifest.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')
