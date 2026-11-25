@@ -125,7 +125,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Image.asset(
-                'assets/images/line-contact-qr.jpg',
+                'assets/images/line-contact-qr-956ed148.jpg',
                 width: 232,
                 height: 232,
                 fit: BoxFit.contain,
@@ -164,7 +164,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
             FilledButton(
               onPressed: () {
                 unawaited(h5.trackReport(reportId, 'line_contact'));
-                h5.browser.openPage('https://line.me/ti/p/TrGGcMWmuV');
+                h5.browser.openPage('https://line.me/ti/p/SmujXXCH9v');
               },
               child: Text(copy.t('jy', 'lineContact.open')),
             ),

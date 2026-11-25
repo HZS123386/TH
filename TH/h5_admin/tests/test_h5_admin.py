@@ -92,7 +92,7 @@ def admin(postgres_url):
 
 def test_admin_data_requires_separate_login_and_static_page_has_no_business_data(admin):
     http, _ = admin
-    for path in ("/overview", "/sources", "/records/reports", "/reports/report-1",
+    for path in ("/overview", "/sources", "/records/reports", "/records/reports?report_scope=first", "/reports/report-1",
                  "/reports/report-1/content?edition=preview", "/visits/first"):
         assert http.get("/api/admin" + path).status_code == 401
     html = http.get("/admin/")
@@ -188,6 +188,11 @@ def test_line_report_counts_filter_first_contact_and_group_current_status(admin)
     midnight = int(contact_day.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
     noon = midnight + 12 * 3600
     with app.state.store.connect() as db:
+        db.cursor().executemany("UPDATE life_reports SET owner=%s WHERE id=%s", [
+            (owner_for("pending-visitor"), "report-2"),
+            (owner_for("sent-visitor"), "report-3"),
+            (owner_for("earlier-visitor"), "report-5"),
+        ])
         db.cursor().executemany(
             "UPDATE life_reports SET line_contact_at=%s, line_confirmed_at=%s, line_sent_at=%s WHERE id=%s",
             [
@@ -199,6 +204,12 @@ def test_line_report_counts_filter_first_contact_and_group_current_status(admin)
                 (None, midnight + 60, midnight + 120, "report-7"),
             ],
         )
+        db.execute("""
+            INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview,preview_state,full_state,
+                                     line_contact_at,line_confirmed_at,line_sent_at)
+            SELECT 'report-repeat',owner,'repeat-click',input,chart,created,preview,preview_state,'ready',%s,%s,%s
+            FROM life_reports WHERE id='report-1'
+        """, (midnight + 1, noon + 60, noon + 120))
     path = "/api/admin/line-contacts"
     morning = {"contact_start": midnight, "contact_end": noon}
     assert http.get(path, params=morning).status_code == 401
@@ -206,11 +217,13 @@ def test_line_report_counts_filter_first_contact_and_group_current_status(admin)
 
     result = http.get(path, params={**morning, "report_id": "report-7", "days": 7})
     assert result.status_code == 200
-    assert result.json()["report_counts"] == {"total": 3, "unconfirmed": 1, "pending": 1, "sent": 1}
+    assert result.json()["report_counts"] == {"total": 4, "unconfirmed": 1, "pending": 1, "sent": 2}
+    assert result.json()["first_contact_visitor_counts"] == {"total": 3, "unconfirmed": 1, "pending": 1, "sent": 1}
     assert [row["id"] for row in result.json()["items"]] == ["report-7"]
     assert result.json()["total"] == 1 and result.json()["metrics"]["line_sent"] == 0
     result = http.get(path, params={"contact_start": noon, "contact_end": midnight + 86400})
     assert result.json()["report_counts"] == {"total": 1, "unconfirmed": 1, "pending": 0, "sent": 0}
+    assert result.json()["first_contact_visitor_counts"] == {"total": 0, "unconfirmed": 0, "pending": 0, "sent": 0}
     assert http.get(path, params={"contact_start": midnight}).status_code == 422
     assert http.get(path, params={"contact_start": noon, "contact_end": noon}).status_code == 422
 
@@ -376,7 +389,7 @@ def test_metrics_separate_real_receipts_simulation_permissions_and_failed_attemp
     data = http.get("/api/admin/overview?days=30").json()
     metrics = {key: value for key, value in data["metrics"].items() if key != "next_day_return_visitors"}
     assert metrics == {"visits": 3, "visitors": 1, "submitted": 3, "seen": 3, "reports": 7, "line_sent": 0,
-                       "report_failures": 2, "unlocked": 5, "orders": 4, "paid": 1, "revenue": 3000,
+                       "first_report_creators": 1, "report_failures": 2, "unlocked": 5, "orders": 4, "paid": 1, "revenue": 3000,
                        "order_issues": 1, "calls": 2, "failed_calls": 1, "missing_usage": 0, "tokens": 300}
     visits = http.get("/api/admin/records/visits?days=30").json()["items"]
     visitor_number = visits[0]["visitor_number"]
@@ -390,6 +403,46 @@ def test_metrics_separate_real_receipts_simulation_permissions_and_failed_attemp
     assert issues["total"] == 4
     assert next(row for row in issues["items"] if row["category"] == "model")["attribution"] == "tagged"
     assert next(row for row in issues["items"] if row["report_id"] == "report-6")["attribution"] == "unattributed"
+
+
+def test_report_creation_counts_each_visitor_at_their_first_report(admin):
+    http, app = admin
+    now = time.time()
+    with app.state.store.connect() as db:
+        db.execute("UPDATE life_reports SET created=%s WHERE id='report-1'", (now - 40 * 86400,))
+        db.execute("UPDATE life_reports SET owner=%s WHERE id IN ('report-2','report-3')", (owner_for("recent-visitor"),))
+        db.execute("UPDATE life_reports SET landing_source='repeat-source' WHERE id='report-3'")
+        db.execute("UPDATE life_reports SET owner=%s WHERE id='report-6'", (owner_for("first-failed-report"),))
+        db.execute("UPDATE life_reports SET owner=%s,created=%s WHERE id='report-7'",
+                   (owner_for("earlier-visitor"), now - 20 * 86400))
+
+    login(http)
+    for days, report_total, first_ids in (
+        (7, 5, {"report-2", "report-6"}),
+        (30, 6, {"report-2", "report-6", "report-7"}),
+        (0, 7, {"report-1", "report-2", "report-6", "report-7"}),
+    ):
+        response = http.get("/api/admin/overview", params={"days": days})
+        assert response.status_code == 200
+        metrics = response.json()["metrics"]
+        assert (metrics["reports"], metrics["first_report_creators"]) == (report_total, len(first_ids))
+        response = http.get("/api/admin/records/reports", params={"days": days, "report_scope": "first"})
+        assert response.status_code == 200
+        records = response.json()
+        assert records["total"] == metrics["first_report_creators"]
+        assert {row["id"] for row in records["items"]} == first_ids
+        assert "repeat-source" not in records["source_options"]
+
+    for row in records["items"]:
+        detail = http.get(f"/api/admin/reports/{row['id']}")
+        assert detail.status_code == 200
+        assert detail.json()["report"]["id"] == row["id"]
+
+    scope = {"days": 7, "report_scope": "first"}
+    for filters in ({"q": "report-3"}, {"status": "ready"}, {"source": "repeat-source"}):
+        assert http.get("/api/admin/records/reports", params={**scope, **filters}).json()["total"] == 0
+    second_page = http.get("/api/admin/records/reports", params={**scope, "page_size": 1, "page": 2}).json()
+    assert second_page["total"] == 2 and [row["id"] for row in second_page["items"]] == ["report-2"]
 
 
 def test_verified_revenue_and_its_detail_use_the_verification_date(admin):

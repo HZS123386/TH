@@ -131,13 +131,25 @@
             </form>
             <p id="line-range-error" class="error-text" role="alert" hidden></p>
             <p id="line-applied-range" class="stat-hint"></p>
-            <dl id="line-report-counts" class="line-report-counts" aria-live="polite">
-              <div><dt>首次弹码</dt><dd data-line-count="total">—</dd></div>
-              <div><dt>待确认加好友</dt><dd data-line-count="unconfirmed">—</dd></div>
-              <div><dt>已确认待发</dt><dd data-line-count="pending">—</dd></div>
-              <div><dt>其中已发送</dt><dd data-line-count="sent">—</dd></div>
-            </dl>
-            <p class="stat-hint">每份报告按首次弹码时间计一次，发放状态以当前记录为准。</p>
+            <div id="line-report-counts" class="line-report-counts" aria-live="polite">
+              <dl class="line-report-count-pair">
+                <div><dt>首次弹码 <small>未去重</small></dt><dd data-line-count="total">—</dd></div>
+                <div class="line-report-count-dedup"><dt>首次弹码 <small>去重</small></dt><dd data-line-count="total" data-line-dedup>—</dd></div>
+              </dl>
+              <dl class="line-report-count-pair">
+                <div><dt>待确认加好友 <small>未去重</small></dt><dd data-line-count="unconfirmed">—</dd></div>
+                <div class="line-report-count-dedup"><dt>待确认加好友 <small>去重</small></dt><dd data-line-count="unconfirmed" data-line-dedup>—</dd></div>
+              </dl>
+              <dl class="line-report-count-pair">
+                <div><dt>已确认待发 <small>未去重</small></dt><dd data-line-count="pending">—</dd></div>
+                <div class="line-report-count-dedup"><dt>已确认待发 <small>去重</small></dt><dd data-line-count="pending" data-line-dedup>—</dd></div>
+              </dl>
+              <dl class="line-report-count-pair">
+                <div><dt>其中已发送 <small>未去重</small></dt><dd data-line-count="sent">—</dd></div>
+                <div class="line-report-count-dedup"><dt>其中已发送 <small>去重</small></dt><dd data-line-count="sent" data-line-dedup>—</dd></div>
+              </dl>
+            </div>
+            <p class="stat-hint">未去重按报告计数。去重按浏览器访客的最早一次弹码计数，显示对应报告的当前发放状态。</p>
           </section>
           <div id="content" aria-live="polite"></div>
           <footer class="page-footer">

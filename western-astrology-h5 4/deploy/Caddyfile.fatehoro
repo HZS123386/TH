@@ -3,6 +3,10 @@ fatehoro.top {
     route {
         # Keep the existing Flutter base path and preserve language query options.
         redir / /thai-landing/?{query} 302
+        redir /admin /admin/ 308
+        @fate_admin path /admin/* /api/admin /api/admin/*
+        reverse_proxy @fate_admin astro-life-report:8000
+
         import astro_landing_routes
     }
 }

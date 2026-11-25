@@ -61,7 +61,7 @@ flutter:
         - asset: assets/fonts/FateLatin.otf
     - family: NotoSansThai
       fonts:
-        - asset: assets/fonts/NotoSansThai.ttf
+        - asset: assets/fonts/FateThaiUI.ttf
     - family: FateLanguageLabel
       fonts:
         - asset: assets/fonts/FateLanguageLabel.otf

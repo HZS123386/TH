@@ -17,9 +17,13 @@ class GenerationState extends ChangeNotifier {
   String phase = 'preview', error = '';
   LifeReport? report;
   bool complete = false;
-  void retry() {
+  void retry({bool resetProgress = false}) {
     error = '';
     complete = false;
+    if (resetProgress) {
+      percent = 0;
+      phase = 'preview';
+    }
     notifyListeners();
   }
 
@@ -48,13 +52,11 @@ class AppLoginCodePanel extends StatefulWidget {
   const AppLoginCodePanel({
     required this.h5,
     required this.reportId,
-    this.issueOnOpen = false,
     super.key,
   });
 
   final H5Controller h5;
   final String reportId;
-  final bool issueOnOpen;
 
   @override
   State<AppLoginCodePanel> createState() => _AppLoginCodePanelState();
@@ -68,11 +70,7 @@ class _AppLoginCodePanelState extends State<AppLoginCodePanel> {
   @override
   void initState() {
     super.initState();
-    _track(
-      widget.issueOnOpen
-          ? widget.h5.requestAppLoginCode(widget.reportId)
-          : widget.h5.currentAppLoginCode,
-    );
+    _track(widget.h5.currentAppLoginCode);
   }
 
   void _track(Future<AppLoginCode>? request) {
@@ -197,6 +195,7 @@ class GenerationDialog extends StatefulWidget {
 
 class _GenerationDialogState extends State<GenerationDialog> {
   Timer? _reviewTimer, _stageTimer, _detailsTimer, _finishTimer;
+  String? _loginCodeReportId;
   int _step = 0, _detail = 0;
   bool _prepared = false,
       _reduced = false,
@@ -247,7 +246,16 @@ class _GenerationDialogState extends State<GenerationDialog> {
 
   void _changed() {
     if (!mounted || !_prepared || _navigating) return;
-    if (!widget.state.complete || widget.state.error.isNotEmpty) {
+    final state = widget.state;
+    final report = state.report;
+    if (state.error.isNotEmpty) {
+      _loginCodeReportId = null;
+    } else if (report != null && report.id != _loginCodeReportId) {
+      _loginCodeReportId = report.id;
+      // Keep the code available for the report and history views.
+      widget.h5.requestAppLoginCode(report.id).ignore();
+    }
+    if (!state.complete || state.error.isNotEmpty) {
       if (_finishing) {
         _finishTimer?.cancel();
         setState(() => _finishing = false);
@@ -366,6 +374,10 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     report = state.report,
                                     input = widget.input ?? report?.input ?? {};
                                 final complete = state.complete;
+                                final marriagePreview =
+                                    !widget.full &&
+                                    (report?.marriageReport == true ||
+                                        input['report_kind'] == 'marriage');
                                 final marriageFailed =
                                     widget.full &&
                                     report?.marriageFullFailed == true &&
@@ -386,7 +398,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     ? 'interpretation.queued'
                                     : state.phase == 'calculating'
                                     ? 'interpretation.preparing'
-                                    : state.percent >= 99
+                                    : state.percent >= (marriagePreview ? 85 : 99)
                                     ? 'interpretation.validating'
                                     : state.percent == 0
                                     ? report == null
@@ -418,18 +430,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                       ),
                                     ),
                                     const SizedBox(height: 15),
-                                    if (report != null && state.error.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 12,
-                                        ),
-                                        child: AppLoginCodePanel(
-                                          key: ValueKey(report.id),
-                                          h5: widget.h5,
-                                          reportId: report.id,
-                                          issueOnOpen: true,
-                                        ),
-                                      ),
                                     AnimatedSwitcher(
                                       duration: Duration(
                                         milliseconds: _reduced ? 0 : 380,
@@ -576,7 +576,9 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                             ),
                                           ),
                                           const SizedBox(height: 10),
-                                          if (!marriageFailed)
+                                          if (!marriageFailed &&
+                                              !(marriagePreview &&
+                                                  state.error.isNotEmpty))
                                             ReadingProgress(
                                               percent: state.percent,
                                               reduced: _reduced || complete,

@@ -85,9 +85,9 @@ export async function buildLanding({release=false,noPub=false}={}){
     if(!info.isFile()||info.size<1024)continue;
     const original=await readFile(file);
     await writeFile(file+'.gz',gzipSync(original,{level:9}));
-    // Use denser Brotli for large startup binaries even in the regular site build.
-    const startupBinary=relative==='main.dart.js'||path.extname(relative)==='.wasm';
-    const quality=release?11:(startupBinary?10:6);
+    // Compress the entry points and the normal Skwasm renderer most tightly.
+    const startupBinary=['main.dart.js','main.dart.wasm','skwasm.wasm'].includes(path.basename(relative));
+    const quality=release||startupBinary?11:path.extname(relative)==='.wasm'?10:6;
     const brotli=brotliCompressSync(original,{params:{[constants.BROTLI_PARAM_QUALITY]:quality}});
     if(!brotliDecompressSync(brotli).equals(original))throw Error(`Brotli verification failed: ${relative}`);
     if(brotli.length<original.length)await writeFile(file+'.br',brotli);

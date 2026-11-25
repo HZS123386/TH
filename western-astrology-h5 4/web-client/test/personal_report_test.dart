@@ -172,7 +172,7 @@ void main() {
       },
     );
   }
-  testWidgets('saved marriage preview hides birth details', (tester) async {
+  testWidgets('marriage preview shows a short birth line', (tester) async {
     tester.view.physicalSize = const Size(360, 740);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -220,6 +220,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     final titles = controller.copy.list('marriage', 'preview');
+    final birthDetails = find.text('1995-08-17 · 09:30 · Bangkok, TH');
+    expect(birthDetails, findsOneWidget);
     expect(find.text(titles.first), findsNothing);
     for (final title in titles.skip(1)) {
       expect(
@@ -269,6 +271,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     final titles = controller.copy.list('marriage', 'full');
+    expect(find.text('1995-08-17 · 09:30 · Bangkok, TH'), findsOneWidget);
     for (var i = 0; i < titles.length; i++) {
       expect(find.text(titles[i]), findsOneWidget);
       expect(find.text('Paid marriage section ${i + 1}.'), findsOneWidget);

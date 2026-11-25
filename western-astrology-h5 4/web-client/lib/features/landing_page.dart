@@ -14,14 +14,8 @@ import 'birth_date_dialog.dart';
 import 'generation_dialog.dart';
 import 'history_dialog.dart';
 import 'place_picker.dart';
-import 'support_content.dart';
 
 enum _BirthFormProgress { empty, date, time, place, complete }
-
-const _footerLinkStyle = TextStyle(
-  fontSize: 10,
-  decoration: TextDecoration.underline,
-);
 
 class LandingPage extends StatefulWidget {
   const LandingPage({this.topic = 'life', super.key});
@@ -114,18 +108,15 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
   Future<void> _timePicker(H5Controller h5) async {
     final current = _time.split(':');
     h5.trackActivity('birth_form', 'select_birth_time');
-    final value = await showTimePicker(
-      context: context,
-      initialTime: current.length == 2
+    final value = await chooseBirthTime(
+      context,
+      h5.copy,
+      current.length == 2
           ? TimeOfDay(
               hour: int.parse(current[0]),
               minute: int.parse(current[1]),
             )
           : const TimeOfDay(hour: 7, minute: 15),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child!,
-      ),
     );
     if (!mounted) return;
     if (value != null) {
@@ -225,7 +216,7 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
       _request?.cancel();
       final token = CancelToken();
       _request = token;
-      state.retry();
+      state.retry(resetProgress: true);
       h5.trackActivity(
         'generating_preview',
         attempts++ == 0 ? 'generate' : 'retry_generation',
@@ -749,7 +740,10 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                           ),
                           child: Text(
                             c.t('jy', 'privacy'),
-                            style: _footerLinkStyle,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
                       ],
@@ -761,7 +755,12 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
                       bounce: true,
                       onPressed: h5.languageLoading
                           ? null
-                          : () => _generate(h5),
+                          : () {
+                              if (widget.topic == 'life') {
+                                h5.browser.trackViewReadingClick();
+                              }
+                              _generate(h5);
+                            },
                     ),
                     const SizedBox(height: 19),
                     ThemeBoards(copy: c, viewportHeight: box.maxHeight),
@@ -770,79 +769,16 @@ class _LandingPageState extends State<LandingPage> with WidgetsBindingObserver {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 3, 18, 28),
-                child: Column(
-                  children: [
-                    Text(
-                      c.t('jy', 'disclaimer'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 10, color: lavender),
-                    ),
-                    const SizedBox(height: 7),
-                    _footerLinks(h5, box.maxWidth - 36),
-                  ],
+                child: Text(
+                  c.t('jy', 'disclaimer'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 10, color: lavender),
                 ),
               ),
             ],
           ),
         );
       },
-    );
-  }
-
-  Widget _footerLinks(H5Controller h5, double availableWidth) {
-    final c = h5.copy;
-    final privacy = c.t('jy', 'privacy'), support = c.t('jy', 'support');
-    final links = [
-      TextButton(
-        onPressed: () => context.go('/privacy.html?lang=${h5.language}'),
-        child: Text(privacy, style: _footerLinkStyle),
-      ),
-      TextButton(
-        onPressed: () => context.go('/support.html?lang=${h5.language}'),
-        child: Text(support, style: _footerLinkStyle),
-      ),
-      for (final policy in PurchasePolicy.values)
-        PurchasePolicyLink(policy, h5: h5, textStyle: _footerLinkStyle),
-    ];
-    final labels = [
-      privacy,
-      support,
-      for (final policy in PurchasePolicy.values)
-        c.t('purchasePolicies', policy.name),
-    ];
-    const dividerWidth = 6.0;
-    final labelStyle = Theme.of(
-      context,
-    ).textTheme.labelLarge!.merge(_footerLinkStyle);
-    var rowWidth = dividerWidth * (links.length - 1);
-    // Material 3 text buttons use a 64 px minimum width and 24 px horizontal padding.
-    for (final label in labels) {
-      final width = TextPainter.computeMaxIntrinsicWidth(
-        text: TextSpan(text: label, style: labelStyle),
-        textDirection: Directionality.of(context),
-        textScaler: MediaQuery.textScalerOf(context),
-      );
-      rowWidth += (width + 24).clamp(64.0, double.infinity);
-    }
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        for (final (index, link) in links.indexed) ...[
-          if (index > 0 && rowWidth <= availableWidth)
-            const ExcludeSemantics(
-              child: SizedBox(
-                width: dividerWidth,
-                child: Text(
-                  '|',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, color: Color(0xA6E4BC78)),
-                ),
-              ),
-            ),
-          link,
-        ],
-      ],
     );
   }
 }

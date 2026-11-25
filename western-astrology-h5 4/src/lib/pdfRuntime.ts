@@ -1,6 +1,6 @@
 import { isLifeReport, lifeLabels, type LifeReport } from './lifeReport';
 import { reportHtml } from './reading';
-import { saveReportPdf } from './reportPdf';
+import { saveReportPdf, type ReportPdfOptions } from './reportPdf';
 
 function readReport(payload: string): LifeReport {
   const report: unknown = JSON.parse(payload);
@@ -14,11 +14,11 @@ export function renderReportHtml(payload: string) {
 }
 
 // Keep the original permission-aware PDF and HTML document generation.
-export async function exportDocument(payload: string, format: string) {
+export async function exportDocument(payload: string, format: string, pdfOptions?: ReportPdfOptions) {
   const report = readReport(payload);
   if (format !== 'pdf' && format !== 'html') throw new Error('Invalid export format');
   const labels = lifeLabels(report);
-  if (format === 'pdf') return saveReportPdf(report, labels, new AbortController().signal);
+  if (format === 'pdf') return saveReportPdf(report, labels, new AbortController().signal, pdfOptions);
   const blob = new Blob([reportHtml(report, labels)], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

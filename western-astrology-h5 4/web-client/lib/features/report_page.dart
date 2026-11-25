@@ -163,7 +163,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       _generationRequest?.cancel();
       final token = CancelToken();
       _generationRequest = token;
-      state.retry();
+      state.retry(resetProgress: !full);
       final first = attempts++ == 0;
       widget.h5.trackActivity(page, first ? 'generate' : 'retry_generation');
       try {
@@ -496,6 +496,23 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     );
   }
 
+  Widget _marriageBirthDetails(LifeReport report, Copy c) {
+    final profile = report.profile;
+    final time = text(profile['birth_time']);
+    final details = [
+      text(profile['birth_date']),
+      time.isEmpty ? c.t('report', 'timeUnknown') : time,
+      text(profile['birthplace']),
+    ].where((value) => value.isNotEmpty).join(' · ');
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(
+        details,
+        style: const TextStyle(color: lavender, fontSize: 12, height: 1.5),
+      ),
+    );
+  }
+
   Widget _freePreview(LifeReport report, Copy c) => JYCard(
     key: const ValueKey('free-report-content'),
     padding: const EdgeInsets.all(20),
@@ -514,6 +531,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               fontWeight: FontWeight.w700,
             ),
           ),
+          _marriageBirthDetails(report, c),
           const SizedBox(height: 12),
         ],
         if (report.sectionedReport)
@@ -1154,7 +1172,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (!r.personalReport) ...[
+                  if (r.marriageReport)
+                    _marriageBirthDetails(r, c)
+                  else if (!r.personalReport) ...[
                     const SizedBox(height: 8),
                     Text(
                       r.western

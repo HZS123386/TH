@@ -13,12 +13,12 @@ if(!window.fateBoot.upgrading)_flutter.loader.load({
       const app = await initializer.initializeEngine(fateFlutterConfig);
       window.fateBoot.stage('app');
       await app.runApp();
-    } catch {
-      window.fateBoot.fail();
+    } catch (error) {
+      window.fateBoot.fail(error);
       console.error('FATE startup failed');
     }
   }
-}).catch(() => {
-  window.fateBoot.fail();
+}).catch(error => {
+  window.fateBoot.fail(error);
   console.error('FATE loader failed');
 });

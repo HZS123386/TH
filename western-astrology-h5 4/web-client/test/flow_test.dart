@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -185,14 +186,7 @@ void main() {
           find.text(h5.copy.t('jy', 'interpretation.queued')),
           findsOneWidget,
         );
-        expect(
-          tester
-              .widget<SelectableText>(
-                find.byKey(const ValueKey('h5-app-login-code')),
-              )
-              .data,
-          'A2B3C4',
-        );
+        expect(find.byType(AppLoginCodePanel), findsNothing);
         expect(requests.every((request) => request.startsWith('GET ')), isTrue);
         tester
             .widget<GenerationDialog>(find.byType(GenerationDialog))
@@ -202,6 +196,7 @@ void main() {
         expect(queuedLabel, isNotEmpty);
         expect(find.text(queuedLabel), findsOneWidget);
         expect(find.text(h5.copy.t('life', 'viewProgress')), findsOneWidget);
+        expect(find.byType(AppLoginCodePanel), findsOneWidget);
         current = done;
         await tester.pump(const Duration(seconds: 3));
         await tester.pumpAndSettle();
@@ -209,6 +204,7 @@ void main() {
           find.byKey(const ValueKey('free-report-content')),
           findsOneWidget,
         );
+        expect(find.byKey(const ValueKey('h5-app-login-code')), findsOneWidget);
         expect(codeRequests, 1);
         expect(requests.every((request) => request.startsWith('GET ')), isTrue);
         for (final width in [320.0, 360.0, 1100.0]) {
@@ -291,6 +287,7 @@ void main() {
         expect(find.text(h5.copy.t('life', 'viewProgress')), findsNothing);
         expect(methods.length, greaterThan(1));
         expect(methods.every((method) => method == 'GET'), isTrue);
+        expect(find.byType(AppLoginCodePanel), findsOneWidget);
         expect(codeRequests, 1);
         for (final width in [320.0, 1100.0]) {
           tester.view.physicalSize = Size(width, 640);
@@ -903,7 +900,7 @@ void main() {
       expect(copied, '57248');
       await tester.runAsync(() async {
         await precacheImage(
-          const AssetImage('assets/images/line-contact-qr.jpg'),
+          const AssetImage('assets/images/line-contact-qr-956ed148.jpg'),
           tester.element(contact),
         );
       });
@@ -920,7 +917,7 @@ void main() {
         hasLength(1),
       );
       await click(tester, find.text(h5.copy.t('jy', 'lineContact.open')));
-      expect(browser.openedPages, ['https://line.me/ti/p/TrGGcMWmuV']);
+      expect(browser.openedPages, ['https://line.me/ti/p/SmujXXCH9v']);
       await click(
         tester,
         find.descendant(
@@ -986,7 +983,7 @@ void main() {
       expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(completed, 0);
       expect(find.text('正在校验并保存解读内容'), findsOneWidget);
-      expect(find.byType(AppLoginCodePanel), findsOneWidget);
+      expect(find.byType(AppLoginCodePanel), findsNothing);
       state.fail('连接中断');
       await tester.pump();
       expect(find.text('本次生成暂未完成，请重试'), findsOneWidget);
@@ -1065,6 +1062,46 @@ void main() {
       h5.dispose();
     },
   );
+
+  testWidgets('failed free marriage report hides draft progress and can retry', (
+    tester,
+  ) async {
+    phone(tester);
+    final browser = TestBrowser();
+    final h5 = H5Controller(
+      translations(),
+      ReportRepository(browser),
+      browser,
+      language: 'zh',
+    );
+    final report = LifeReport.parse(marriageFixture());
+    final state = GenerationState()..update(report, 85, 'preview');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GenerationDialog(
+          h5: h5,
+          state: state,
+          full: false,
+          onCancel: () {},
+          onRetry: () => state.retry(resetProgress: true),
+          onComplete: (_) {},
+        ),
+      ),
+    );
+    expect(find.text(h5.copy.t('jy', 'interpretation.validating')), findsOneWidget);
+    expect(find.byType(ReadingProgress), findsOneWidget);
+
+    state.fail('免费解读暂未生成成功。');
+    await tester.pump();
+    expect(find.byType(ReadingProgress), findsNothing);
+    await click(tester, find.text(h5.copy.t('jy', 'interpretation.retryFree')));
+    expect(state.percent, 0);
+    expect(state.error, isEmpty);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    state.dispose();
+    h5.dispose();
+  });
 
   for (final (wait, full) in [
     (Duration.zero, false),
@@ -1158,6 +1195,77 @@ void main() {
   );
 
   testWidgets(
+    'birth wheels clamp leap days and convert AM/PM to 24-hour time',
+    (tester) async {
+      phone(tester);
+      final browser = TestBrowser();
+      final h5 =
+          H5Controller(
+              translations(),
+              ReportRepository(browser),
+              browser,
+              language: 'zh',
+            )
+            ..landingInput = {
+              'profile': {'birth_date': '2000-02-29', 'birth_time': '12:15'},
+            }
+            ..enterLanding();
+      await tester.pumpWidget(
+        H5App(controller: h5, initialLocation: '/?lang=zh'),
+      );
+      await tester.pumpAndSettle();
+      final date = find.byKey(const ValueKey('birth-date'));
+      final time = find.byKey(const ValueKey('birth-time'));
+      final wheels = find.byType(CupertinoPicker);
+      final confirm = find.widgetWithText(
+        FilledButton,
+        h5.copy.t('ui', 'confirm'),
+      );
+
+      await click(tester, date);
+      expect(wheels, findsNWidgets(3));
+      await tester.timedDrag(
+        wheels.first,
+        const Offset(0, -54),
+        const Duration(milliseconds: 600),
+      );
+      await tester.pumpAndSettle();
+      await click(tester, confirm);
+      expect(
+        find.descendant(of: date, matching: find.text('2001年2月28日')),
+        findsOneWidget,
+      );
+
+      await click(tester, time);
+      expect(wheels, findsNWidgets(3));
+      final am = find.descendant(of: wheels.last, matching: find.text('上午'));
+      await tester.tap(am);
+      await tester.pumpAndSettle();
+      await click(tester, confirm);
+      expect(
+        find.descendant(of: time, matching: find.text('00:15')),
+        findsOneWidget,
+      );
+
+      await click(tester, time);
+      final pm = find.descendant(of: wheels.last, matching: find.text('下午'));
+      await tester.tap(pm);
+      await tester.pumpAndSettle();
+      await click(
+        tester,
+        find.widgetWithText(TextButton, h5.copy.t('ui', 'close')),
+      );
+      expect(
+        find.descendant(of: time, matching: find.text('00:15')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
+    },
+  );
+
+  testWidgets(
     'birth details alone start a free marriage report with one click',
     (tester) async {
       phone(tester);
@@ -1226,7 +1334,9 @@ void main() {
       }
       expect(input, isNull);
       expect(calls, isNot(contains('POST /api/landing/consents')));
+      expect(browser.viewReadingClicks, 0);
       await click(tester, find.byKey(const ValueKey('generate-report')));
+      expect(browser.viewReadingClicks, 1);
       expect(find.text('确认使用出生资料'), findsNothing);
       expect(find.byKey(const ValueKey('data-use-agree')), findsNothing);
       await tester.pump(const Duration(milliseconds: 300));
@@ -1263,7 +1373,7 @@ void main() {
       }
       expect(centers[0].dy, lessThan(centers[3].dy));
       expect(find.byKey(const ValueKey('jy-payment-preview')), findsNothing);
-      expect(find.text('泰式占星 · 婚姻关系报告'), findsOneWidget);
+      expect(find.text('从出生时刻，揪出感情的搅局者'), findsOneWidget);
       for (final title in ['上升在感情里的真实样子', '当前感情能量', '领取完整报告']) {
         expect(find.text(title), findsOneWidget);
       }

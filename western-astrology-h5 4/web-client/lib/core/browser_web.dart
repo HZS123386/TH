@@ -13,6 +13,8 @@ external JSPromise<JSString> _export(JSString payload, JSString format);
 external void _ready(JSString page);
 @JS('fateH5.welcomeAge')
 external JSNumber _welcomeAge();
+@JS('fateH5.trackViewReadingClick')
+external void _viewReadingClick();
 @JS('fateH5.trackActivity')
 external void _activity(JSString payload, JSString key, JSString endpoint);
 @JS('fateH5.trackFailure')
@@ -83,6 +85,15 @@ class WebBrowserPort implements BrowserPort {
       ).toDart).toDart;
   @override
   void pageReady(String page) => _ready(page.toJS);
+
+  @override
+  void trackViewReadingClick() {
+    try {
+      _viewReadingClick();
+    } catch (_) {
+      // An older landing page may still be open during a release.
+    }
+  }
 
   @override
   void trackActivity(String page, String action) {

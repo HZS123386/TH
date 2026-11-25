@@ -20,7 +20,7 @@ from pydantic import Field, model_validator
 
 from . import marriage_report, thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, FORECAST_VERSION, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
-from .bazi_reports import report_progress_context, report_usage_context
+from .bazi_reports import preview_review_deadline_context, report_progress_context, report_usage_context
 from .roxy import RoxyError
 from .landing_features import VisitInput, record_submission, record_visit
 from .life_card_payments import CARD_AMOUNT, SIMULATED_AMOUNT, SIMULATED_MERCHANT, SUNLANDS_AMOUNT, LifeCardPayments
@@ -228,6 +228,8 @@ class LifeReports:
     chapter_concurrency = 3
     full_concurrency = 10
     lease_seconds = 180
+    marriage_preview_timeout = 45
+    marriage_preview_review_seconds = 15
     heartbeat_seconds = 30
 
     def __init__(self, store, settings, model_slots, calculation_slots):
@@ -436,7 +438,7 @@ class LifeReports:
     async def start_preview_generation(self, row, body, owner, network, *, wait=False):
         # Retries reuse the persisted input/chart and cannot duplicate an active job.
         with self.store.connect() as db:
-            db.execute("UPDATE life_reports SET preview_state='queued',preview_network=%s,lease='',lease_until=0 "
+            db.execute("UPDATE life_reports SET preview_state='queued',preview_network=%s,lease='',lease_until=0,generation_progress='{}' "
                        "WHERE id=%s AND preview IS NULL AND lease_until<%s AND "
                        "(preview_state NOT IN ('queued','generating') OR "
                        "(preview_state='generating' AND preview_network=''))",
@@ -489,7 +491,7 @@ class LifeReports:
         now = time.time()
         with self.store.connect() as db:
             # Expired leases recover after a crash; old failed reports remain available for manual retry.
-            db.execute("UPDATE life_reports SET preview_state='queued',lease='',lease_until=0 "
+            db.execute("UPDATE life_reports SET preview_state='queued',lease='',lease_until=0,generation_progress='{}' "
                        "WHERE preview IS NULL AND preview_state='generating' AND lease_until<%s "
                        "AND preview_network<>'' AND id<>ALL(%s)", (now, list(self.preview_tasks)))
             rows = db.execute("SELECT * FROM life_reports WHERE preview IS NULL AND preview_state='queued' "
@@ -558,6 +560,11 @@ class LifeReports:
         four_questions = western(chart)
         is_marriage = body.report_kind == "marriage"
         last_progress = 0
+        review_deadline = None
+        if is_marriage:
+            queued = max(0, time.time() - row["created"]) if chart.get("status") == "queued" else 0
+            review_deadline = asyncio.get_running_loop().time() + max(0, self.marriage_preview_review_seconds - queued)
+        review_token = preview_review_deadline_context.set(review_deadline)
 
         def record_preview(raw):
             nonlocal last_progress
@@ -615,7 +622,8 @@ class LifeReports:
             else:
                 self.fail_preview(row["id"], lease)
         except asyncio.CancelledError:
-            self.update(row["id"], expected_lease=lease, preview_state="queued", lease="", lease_until=time.time() + 21)
+            self.update(row["id"], expected_lease=lease, preview_state="queued", lease="", lease_until=time.time() + 21,
+                        generation_progress="{}")
             raise
         except Exception:
             logger.exception("Life preview generation failed: %s", row["id"])
@@ -623,6 +631,7 @@ class LifeReports:
         finally:
             heartbeat.cancel()
             await asyncio.gather(heartbeat, return_exceptions=True)
+            preview_review_deadline_context.reset(review_token)
             report_progress_context.reset(progress_token)
             report_usage_context.reset(usage_token)
 
@@ -644,7 +653,15 @@ class LifeReports:
             return
         if body.report_kind == "marriage":
             bundle = marriage_report.bundle(body, chart)
-            result = await self.preview_writer_for(body.profile.language).generate(bundle, owner, network)
+            try:
+                async with asyncio.timeout(self.marriage_preview_timeout) as budget:
+                    result = await self.preview_writer_for(body.profile.language).generate(
+                        bundle, owner, network, deadline=budget.when(),
+                    )
+            except TimeoutError:
+                logger.warning("Marriage preview exceeded its writing deadline")
+                self.fail_preview(row["id"], lease)
+                return
             values = {"preview_state": result["state"], "lease": "", "lease_until": 0}
             if result["state"] == "pending":
                 values.update(preview_state="queued", lease_until=time.time() + 2)
@@ -833,7 +850,8 @@ class LifeReports:
             title = preview["story"].get("title", labels["title"]) if preview else labels["title"]
             version = preview.get("version", "career-decision-1") if preview else CAREER_VERSION
         marks = json.loads(row.get("generation_progress", "{}"))
-        preview_sections = [{"key": key, "percent": 100 if preview else min(99, marks.get(key, 0))}
+        preview_marks = marks if not is_marriage or row["preview_state"] == "generating" else {}
+        preview_sections = [{"key": key, "percent": 100 if preview else min(99, preview_marks.get(key, 0))}
                             for key in ("preview_summary", "preview_strength", "preview_decisions", "preview_relationships")]
         chapter_keys = WESTERN_CHAPTERS if is_western else FORTUNE_CHAPTERS if fortune else CHAPTERS
         full_marks = marks if full_access else {}

@@ -148,6 +148,8 @@ const fateBootRetry=(()=>{
     return previous;
   }catch{return null;}
 })();
+const fateResumeWelcome=fateBootRetry?.pending===true && fateBootRetry.entered===true &&
+  performance.getEntriesByType('navigation')[0]?.type==='reload';
 const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateAppReady){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
 // A truncated HTML stream may render the overlay without ever reaching the inline bootstrap.
 const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail();},20000);
@@ -172,14 +174,16 @@ window.fateBoot={
     deliverFateWelcome();
     if (fateAppReady) void revealFateApp(true);
   },
-  fail(){
+  fail(error){
     if(fateHttpsUpgrading||fateAppReady||fateBootFailed)return;
     fateBootFailed=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);
     // A failed ES-module import stays rejected for this document; retry it once in a fresh document.
     let recover=false;
     if(!fateBootRetry){try{
-      // App assets can fail after the engine is ready; those retries retain the normal renderer.
-      const marker=JSON.stringify({at:Date.now(),path:location.pathname,pending:true,compatibility:fateBootPhase!=='app'});
+      // A transient fetch failure can retry the same (smaller) renderer.
+      const fetchFailed=error?.name==='TypeError' && /fetch|network|load failed/i.test(error.message);
+      const marker=JSON.stringify({at:Date.now(),path:location.pathname,pending:true,
+        compatibility:fateBootPhase!=='app'&&!fetchFailed,entered:fateWelcomeRequested});
       sessionStorage.setItem(fateBootRetryKey,marker);
       recover=sessionStorage.getItem(fateBootRetryKey)===marker;
     }catch{}}
@@ -227,17 +231,21 @@ function preloadFateWasm(engineRevision) {
   const priority = document.documentElement.dataset.welcome === 'true' ? 'low' : 'high';
   const runtime = priorityPreload('main.dart.mjs', 'script', priority);
   runtime.rel = 'modulepreload';
+  const rendererBase = `engine/${engineRevision}/${renderer}`;
+  const rendererModule = priorityPreload(rendererBase + '.js', 'script', priority);
+  rendererModule.rel = 'modulepreload';
   document.head.append(
     runtime,
     priorityPreload('main.dart.wasm', 'fetch', priority),
-    priorityPreload(`engine/${engineRevision}/${renderer}.wasm`, 'fetch', priority),
+    rendererModule,
+    priorityPreload(rendererBase + '.wasm', 'fetch', priority),
   );
 }
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
 window.addEventListener('error',event=>{
-  if(event.error||event.message||(event.target?.tagName==='SCRIPT'&&/\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src)))window.fateBoot.fail();
+  if(event.error||event.message||(event.target?.tagName==='SCRIPT'&&/\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src)))window.fateBoot.fail(event.error);
 },true);
-window.addEventListener('unhandledrejection',()=>window.fateBoot.fail());
+window.addEventListener('unhandledrejection',event=>window.fateBoot.fail(event.reason));
 // The HTML response can stall after rendering the button but before DOMContentLoaded.
 document.addEventListener('click',event=>{
   if(event.target?.closest?.('#fate-startup-retry')) location.reload();
@@ -255,6 +263,75 @@ let fateActivity, fateActivitySequence = 0, fatePending = [], fateDropped = {};
 let fateUnstored = new Map(), fateRemoved = new Set(), fateStoredKeys = new Set(), fateStoredDropped = {}, fateOverflow = {};
 let fateSending = 0, fateRetryAt = 0, fateRetryCount = 0, fateSendTimer, fateDwellTimer;
 const fateTrackingAllowed = () => window.navigator?.globalPrivacyControl !== true && window.navigator?.doNotTrack !== '1';
+const fateMetaPixelId = '2150104392567893';
+let fateMetaPixelStarted = false;
+
+function fateMetaPixelAllowed() {
+  if (location.hostname !== 'ipplay.top' || !fateTrackingAllowed()) return false;
+  const landing = new URL('.', document.baseURI).pathname;
+  const path = location.pathname;
+  return (path === '/' || path === landing || path === landing + 'index.html') &&
+    !new URLSearchParams(location.search).has('id');
+}
+
+function trackFateMetaPixel(event) {
+  if (!fateMetaPixelAllowed()) return;
+  try {
+    if (!fateMetaPixelStarted) {
+      if (!window.fbq) {
+        const fbq = function () {
+          if (fbq.callMethod) fbq.callMethod.apply(fbq, arguments);
+          else fbq.queue.push(arguments);
+        };
+        Object.assign(fbq, { push: fbq, loaded: true, version: '2.0', queue: [] });
+        window.fbq = window._fbq = fbq;
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+        document.head.append(script);
+      }
+      // Send the explicit landing events with automatic form and route tracking disabled.
+      window.fbq.disablePushState = true;
+      window.fbq('set', 'autoConfig', false, fateMetaPixelId);
+      window.fbq('init', fateMetaPixelId);
+      window.fbq('track', 'PageView');
+      fateMetaPixelStarted = true;
+    }
+    if (event === 'AddToCart') window.fbq('track', 'AddToCart');
+  } catch {
+    // Tracking is optional for report generation.
+  }
+}
+
+async function trackFirstFateReadingClick() {
+  if (!fateMetaPixelAllowed()) return;
+  try {
+    const owner = fateOwnerKey();
+    if (!owner) return;
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(owner));
+    const marker = fateHex(new Uint8Array(digest));
+    const request = indexedDB.open('fate-meta-pixel-' + fateMetaPixelId, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('add-to-cart');
+    request.onsuccess = () => {
+      const database = request.result;
+      try {
+        const transaction = database.transaction('add-to-cart', 'readwrite');
+        transaction.onabort = () => database.close();
+        transaction.oncomplete = () => {
+          database.close();
+          trackFateMetaPixel('AddToCart');
+        };
+        // Only one tab can save the first click for this browser ID.
+        transaction.objectStore('add-to-cart').add(true, marker);
+      } catch {
+        database.close();
+      }
+    };
+  } catch {
+    // Skip tracking when the browser cannot store the marker.
+  }
+}
+
 const fateState = () => document.visibilityState === 'hidden' ? 'hidden' : 'visible';
 const fateEventKey = item => `${item.visit.id}:${item.event.sequence}`;
 const fateEntryParams = new URLSearchParams(location.search);
@@ -451,6 +528,7 @@ let fateWelcomeStartedAt;
 try { fateVisitContext(); } catch {}
 window.fateH5 = {
   ownerKey: fateOwnerKey,
+  trackViewReadingClick() { void trackFirstFateReadingClick(); },
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },
   welcomeAge(){return fateWelcomeStartedAt===undefined?0:performance.now()-fateWelcomeStartedAt;},
   trackFailure(path, code, method) {
@@ -505,6 +583,7 @@ window.fateH5 = {
     if(page==='app-ready')requestAnimationFrame(()=>requestAnimationFrame(()=>{
       rememberFateVisit();
       window.fateBoot.ready();
+      trackFateMetaPixel('PageView');
     }));
     if(!fatePerfEnabled)return;
     requestAnimationFrame(()=>console.debug('[FATE H5 performance] '+JSON.stringify({page,readyMs:Math.round(performance.now()),resources:performance.getEntriesByType('resource').filter(e=>/api\/|main\.dart|skwasm|canvaskit|fonts\/|astrologer/.test(e.name)).map(e=>({name:new URL(e.name).pathname.replace(/(life-reports\/)\w{8,}/,'$1:id'),startMs:Math.round(e.startTime),endMs:Math.round(e.responseEnd),bytes:e.transferSize}))})));
@@ -578,6 +657,7 @@ function writeWelcomeName(welcome){
 }
 function mountFateWelcome(){
   if(document.documentElement.dataset.welcome!=='true')return;
+  if(fateResumeWelcome)window.fateBoot.enterWelcome();
   const welcome=document.getElementById('fate-welcome');
   const portraitSlot=document.getElementById('fate-welcome-portrait-slot');
   const image=typeof fateWelcomePortrait==='undefined'?null:fateWelcomePortrait;

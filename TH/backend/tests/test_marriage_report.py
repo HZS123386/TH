@@ -11,10 +11,10 @@ import httpx
 import pytest
 
 from backend.app import marriage_report, thai
-from backend.app.bazi_reports import InvalidBaziReport
+from backend.app.bazi_reports import InvalidBaziReport, preview_review_deadline_context
 from backend.app.config import ProviderConfig
 from backend.app.life_report_content import LifeWriter
-from backend.app.life_reports import LifeInput
+from backend.app.life_reports import LifeInput, LifeReports
 from backend.app.main import create_app
 from backend.app.storage import Storage
 from backend.tests.test_roxy_astrology import HEADERS, PROFILE, settings
@@ -28,6 +28,147 @@ FREE_TEXT = {
     "attracts": "你容易吸引想被认真听懂的人，他们愿意和你讲出平时没有机会说的话。",
     "drains": "只在方便时出现的人会消耗你。他们接受你的照顾，却很少为见面腾出时间。",
 }
+
+THAI_FREE_TEXT = {
+    "needs": "คุณอยากรู้ว่าอีกฝ่ายตั้งใจคบกันจริงแค่ไหน คำตอบที่ชัดช่วยให้คุณวางใจและใช้เวลาร่วมกันได้สบายขึ้น",
+    "reaction": "เมื่ออีกฝ่ายพูดคลุมเครือ คุณจะถามซ้ำเพื่อให้แน่ใจ พอถามแล้วได้คำตอบเหมือนเดิม คุณมักหยุดชวนคุย",
+    "trap": "คนที่คุยกับคุณทุกวันแต่เลื่อนนัดบ่อยทำให้ความสัมพันธ์ค้างอยู่ที่การส่งข้อความ ลองดูว่าเขาเสนอวันพบกันใหม่เองไหม",
+    "current": "ลองตกลงเวลาสั้น ๆ ที่ทั้งคู่สะดวก แล้วดูว่าอีกฝ่ายทำตามที่รับปากหรือแจ้งให้รู้ทันทีเมื่อแผนเปลี่ยน",
+    "attracts": "คุณมักดึงดูดคนที่ฟังเรื่องของคุณจนจบ เขาจะถามให้เข้าใจก่อนค่อยเล่าเรื่องของตัวเอง",
+    "drains": "คนที่ปล่อยให้คุณจัดการนัดทุกครั้งทำให้คุณเสียเวลา โดยเฉพาะเมื่อเขารอจนถึงเวลานัดจึงบอกว่ามาไม่ได้",
+}
+
+
+@pytest.mark.parametrize("known", [False, True])
+def test_marriage_preview_contract(known):
+    allowed = {key: [f"source_{key}"] for key in FREE_TEXT}
+    bundle = {
+        "stage": "marriage_preview",
+        "language": "zh",
+        "reading": "marriage-preview",
+        "birth_time_known": known,
+        "allowed_evidence": allowed,
+        "required_evidence": {},
+    }
+    draft = {"language": "zh", "reading": "marriage-preview", "field_sources": {"needs": "fake_source"}}
+    draft.update({key: {"text": text} for key, text in FREE_TEXT.items()})
+    draft["attracts"]["evidence_ids"] = " source_attracts "
+    draft["drains"]["evidence_ids"] = ["source_drains", "source_drains"]
+    if known:
+        draft["current"]["state"] = "ready_to_assess"
+    result = LifeWriter.validate(json.dumps(draft, ensure_ascii=False), bundle)
+    assert result["current"]["state"] == ("ready_to_assess" if known else "observe")
+    assert result["needs"]["evidence_ids"] == allowed["needs"]
+    assert result["attracts"]["evidence_ids"] == allowed["attracts"]
+    assert result["drains"]["evidence_ids"] == allowed["drains"]
+    assert "field_sources" not in result
+
+    draft["current"]["state"] = "observe" if known else "ready_to_assess"
+    with pytest.raises(InvalidBaziReport, match="birth-time precision") as error:
+        LifeWriter.validate(json.dumps(draft, ensure_ascii=False), bundle)
+    assert error.value.repair_fields == {"current": ["current"]}
+
+    del draft["trap"]
+    with pytest.raises(InvalidBaziReport, match="malformed fields: trap") as error:
+        LifeWriter.validate(json.dumps(draft, ensure_ascii=False), bundle)
+    assert error.value.repair_fields == {"trap": ["trap"]}
+
+
+@pytest.mark.parametrize("available_slots", [0, 1])
+def test_marriage_preview_deadline_cancels_the_writer(monkeypatch, available_slots):
+    service = LifeReports.__new__(LifeReports)
+    monkeypatch.setattr(service, "marriage_preview_timeout", 0.05)
+    finished, failed = [], []
+    monkeypatch.setattr(marriage_report, "bundle", lambda body, chart: {"stage": "marriage_preview"})
+    monkeypatch.setattr(service, "fail_preview", lambda report, lease: failed.append((report, lease)))
+    body = LifeInput(profile=PROFILE, year=2026, report_kind="marriage")
+    row = {"id": "test-report", "chart": "{}"}
+
+    async def generate_preview():
+        slots = asyncio.Semaphore(available_slots)
+        writer = LifeWriter(None, settings("postgresql://localhost/fate_test_preview"), slots)
+        writer_finished = asyncio.Event()
+        model_calls = []
+
+        async def write(bundle):
+            model_calls.append(bundle["stage"])
+            await asyncio.Event().wait()
+
+        def finish(key, lease, story=None):
+            finished.append((lease, story))
+            writer_finished.set()
+
+        monkeypatch.setattr(writer, "prompt", lambda bundle: "Test free preview")
+        monkeypatch.setattr(writer, "claim", lambda key, owner, network: ("claimed", None, "writer-lease"))
+        monkeypatch.setattr(writer, "write", write)
+        monkeypatch.setattr(writer, "finish", finish)
+        monkeypatch.setattr(service, "preview_writer_for", lambda language: writer)
+        await service.write_preview(row, body, "test-owner", "test-network", "test-lease")
+        await asyncio.wait_for(writer_finished.wait(), timeout=1)
+        assert model_calls == ["marriage_preview"] * available_slots
+        if available_slots:
+            await asyncio.wait_for(slots.acquire(), timeout=1)
+
+    asyncio.run(generate_preview())
+    assert finished == [("writer-lease", None)]
+    assert failed == [("test-report", "test-lease")]
+
+
+def test_marriage_preview_uses_readable_draft_at_review_deadline(monkeypatch):
+    draft = {"language": "zh", "reading": "marriage-preview"}
+    draft.update({key: {"text": value} for key, value in FREE_TEXT.items()})
+    draft["reaction"]["text"] = draft["needs"]["text"]
+    bundle = {"stage": "marriage_preview", "language": "zh", "reading": "marriage-preview",
+              "birth_time_known": False, "allowed_evidence": {key: ["source"] for key in FREE_TEXT},
+              "required_evidence": {}}
+    raw = json.dumps(draft, ensure_ascii=False)
+    writes, saved = [], []
+
+    async def generate():
+        writer = LifeWriter(None, settings("postgresql://localhost/fate_test_preview"), asyncio.Semaphore(1))
+        stopped = asyncio.Event()
+
+        async def write(bundle, *, correction=None):
+            writes.append(correction)
+            if correction is None:
+                try:
+                    return writer.validate(raw, bundle)
+                except InvalidBaziReport as error:
+                    error.candidate = raw
+                    raise
+            try:
+                await asyncio.Event().wait()
+            finally:
+                stopped.set()
+
+        monkeypatch.setattr(writer, "prompt", lambda bundle: "Test preview")
+        monkeypatch.setattr(writer, "claim", lambda key, owner, network: ("claimed", None, "writer-lease"))
+        monkeypatch.setattr(writer, "finish", lambda key, lease, story=None: saved.append(story))
+        monkeypatch.setattr(writer, "write", write)
+        # Keep the real 15-second service setting and exercise the code with a short deadline.
+        loop = asyncio.get_running_loop()
+        token = preview_review_deadline_context.set(loop.time() + 0.12)
+        try:
+            result = await asyncio.wait_for(writer.generate(bundle, "owner", "network"), timeout=1)
+            assert result["state"] == "ready"
+            assert result["story"]["reaction"]["text"] == FREE_TEXT["needs"]
+            assert stopped.is_set() and len(writes) == 2
+            assert saved == [result["story"]]
+            assert writer.validate(raw, bundle) == result["story"]
+
+            draft["reaction"]["text"] = "This is an English paragraph in a Chinese free report."
+            with pytest.raises(InvalidBaziReport, match="language"):
+                writer.validate(json.dumps(draft, ensure_ascii=False), bundle)
+            draft["reaction"]["text"] = FREE_TEXT["needs"]
+            draft["reaction"]["evidence_ids"] = ["invented"]
+            with pytest.raises(InvalidBaziReport, match="supplied evidence"):
+                writer.validate(json.dumps(draft, ensure_ascii=False), bundle)
+        finally:
+            preview_review_deadline_context.reset(token)
+
+    asyncio.run(generate())
+
+
 FULL_TEXT = {
     "fit": "适合你的关系有清楚的分工，也能留出自己的空间。临时加班时，两个人能够重新安排见面，而不是靠一方一直等候。",
     "conflict": "长期问题容易出在累积的小失约。要是每次改时间都不了了之，讨论一次晚饭很快会变成争论谁比较在乎。",
@@ -115,9 +256,19 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
             assert model_input["field_sources"]["needs"] == ("N0" if known else "P_sun")
             assert model_input["field_sources"]["current"] == bundle["allowed_evidence"]["current"]
             assert model_input["current_states"] == (list(marriage_report.STATES[:3]) if known else ["observe"])
-            draft["current"]["state"] = "ready_to_assess" if known else "observe"
+            current_schema = contract["properties"]["current"]["properties"]
             if known:
+                assert current_schema["state"]["enum"] == list(marriage_report.STATES[:3])
+                draft["current"]["state"] = "ready_to_assess"
                 draft["trap"]["evidence_ids"] = ["P_venus"]
+            else:
+                assert "state" not in current_schema
+                draft["field_sources"] = model_input["field_sources"]
+            illegal_state = deepcopy(draft)
+            illegal_state["current"]["state"] = "observe" if known else "ready_to_assess"
+            with pytest.raises(InvalidBaziReport, match="birth-time precision") as error:
+                self.validate(json.dumps(illegal_state, ensure_ascii=False), bundle)
+            assert error.value.repair_fields == {"current": ["current"]}
         invalid = deepcopy(draft)
         invalid["needs" if is_free else "period_two"]["evidence_ids"] = ["invented"]
         with pytest.raises(InvalidBaziReport, match="supplied evidence"):
@@ -162,6 +313,16 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert bool(free["chart"]) == known and free["time_accuracy"]["assumed_local_time"] is None
         assert free["marriage"]["full"] is None
         assert [section["key"] for section in free["marriage"]["preview"]] == list(marriage_report.PREVIEW)
+        with app.store.connect() as db:
+            saved_row = dict(db.execute("SELECT * FROM life_reports WHERE id=%s", (free["id"],)).fetchone())
+        draft_row = {**saved_row, "preview": None,
+                     "generation_progress": json.dumps(dict.fromkeys(
+                         ("preview_summary", "preview_strength", "preview_decisions", "preview_relationships"), 85,
+                     ))}
+        generating = app.public({**draft_row, "preview_state": "generating"})
+        failed = app.public({**draft_row, "preview_state": "unavailable"})
+        assert generating["preview_generation_progress"]["percent"] == 85
+        assert failed["preview_generation_progress"]["percent"] == 0
         assert [call["stage"] for call in calls] == ["marriage_preview"]
         assert not long_windows and not any(key.startswith("Y") for key in calls[0]["evidence"])
         report_path = f"/api/life-reports/{free['id']}"
@@ -245,9 +406,12 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert FULL_TEXT["contrast"] in earlier_full[2]["paragraphs"]
 
 
-def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch):
+@pytest.mark.parametrize("known", [True, False])
+def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch, known):
     requests = []
     client_class = httpx.AsyncClient
+    path = ["current"] if known else ["needs", "text"]
+    field = "current" if known else "1"
 
     def respond(request):
         assert str(request.url) == "https://preview-model.example/v1/chat/completions"
@@ -256,19 +420,30 @@ def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch):
         requests.append(contract["name"])
         context = json.loads(payload["messages"][1]["content"])
         if requests == ["life_marriage_preview"]:
-            assert context["field_sources"]["needs"] == "P_sun"
+            assert context["field_sources"]["needs"] == ("N0" if known else "P_sun")
             draft = {
                 "language": "zh",
                 "reading": "marriage-preview",
                 **{key: {"text": value} for key, value in FREE_TEXT.items()},
             }
-            draft["needs"]["text"] = "你的星盘显示你需要对方说一句能兑现的承诺。"
-            draft["current"].update(state="observe", evidence_ids=context["field_sources"]["current"][:1])
+            draft["field_sources"] = context["field_sources"]
+            for name, identifiers in context["field_sources"].items():
+                if isinstance(identifiers, list):
+                    draft[name]["evidence_ids"] = identifiers[:1]
+            if known:
+                draft["current"]["state"] = "observe"
+            else:
+                draft["needs"]["text"] = "你的星盘显示你需要对方说一句能兑现的承诺。"
         else:
             assert requests == ["life_marriage_preview", "life_marriage_preview_repair"]
-            assert set(contract["schema"]["properties"]) == {"needs"}
-            assert context["correction"]["fields"] == {"needs": ["needs"]}
-            draft = {"needs": {"text": FREE_TEXT["needs"]}}
+            assert set(contract["schema"]["properties"]) == {field}
+            assert context["correction"]["fields"] == {field: path}
+            rejected = json.loads(context["correction"]["draft"])
+            assert (rejected["current"] if known else rejected["needs"]["text"]) is None
+            draft = {field: {"text": FREE_TEXT["current"]} if known else FREE_TEXT["needs"]}
+            if known:
+                assert contract["schema"]["properties"][field]["properties"]["state"]["enum"] == list(marriage_report.STATES[:3])
+                draft[field].update(state="ready_to_assess", evidence_ids=context["field_sources"]["current"][:1])
         return httpx.Response(200, json={
             "choices": [{"message": {"content": json.dumps(draft, ensure_ascii=False)}, "finish_reason": "stop"}],
         })
@@ -279,7 +454,7 @@ def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch):
     with TestClient(create_app(config)) as client:
         response = client.post("/api/life-reports", headers=HEADERS, json={
             "report_kind": "marriage",
-            "profile": {**PROFILE, "birth_time": None},
+            "profile": {**PROFILE, "birth_time": PROFILE["birth_time"] if known else None},
             "year": 2026,
         })
         assert response.status_code == 200, response.text
@@ -288,6 +463,65 @@ def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch):
         assert requests == ["life_marriage_preview", "life_marriage_preview_repair"]
         assert report["marriage"]["preview"][1]["paragraphs"][0].endswith(FREE_TEXT["needs"])
         assert report["marriage"]["full"] is None
+
+
+@pytest.mark.parametrize("mixed", [False, True])
+def test_thai_marriage_preview_recovers_leaked_field_names(postgres_url, monkeypatch, mixed):
+    calls = []
+    client_class = httpx.AsyncClient
+
+    def respond(request):
+        payload = json.loads(request.content)
+        assert payload["response_format"] == {"type": "json_object"}
+        context = json.loads(payload["messages"][1]["content"])
+        calls.append(context)
+        if len(calls) == 1:
+            draft = {"language": "th", "reading": "marriage-preview"}
+            for key, text in THAI_FREE_TEXT.items():
+                sources = context["field_sources"][key]
+                draft[key] = {"text": text}
+                if isinstance(sources, list):
+                    draft[key]["evidence_ids"] = sources[:1]
+            draft["current"]["state"] = "ready_to_assess"
+            draft["needs"]["text"] = "needs " + THAI_FREE_TEXT["needs"]
+            draft["attracts"]["text"] = "**Attracts**： " + THAI_FREE_TEXT["attracts"] + " [evidence_ids]"
+            draft["drains"]["text"] = THAI_FREE_TEXT["drains"] + " (drains)"
+            draft["attracts"]["evidence_ids"] = context["field_sources"]["attracts"][0]
+            draft["drains"]["evidence_ids"] *= 2
+            if mixed:
+                draft["attracts"]["text"] = "คุณมัก attracts คนที่ฟังเรื่องของคุณจนจบและถามให้เข้าใจ"
+                draft["drains"]["text"] = "คนที่รอให้คุณ reschedule ทุกครั้งทำให้คุณเสียเวลา"
+        else:
+            assert len(calls) == 2 and mixed
+            correction = context["correction"]
+            assert correction["fields"] == {"1": ["attracts", "text"], "2": ["drains", "text"]}
+            assert correction["field_errors"] == [
+                {"field": "attracts.text", "rule": "language"},
+                {"field": "drains.text", "rule": "language"},
+            ]
+            retained = json.loads(correction["draft"])
+            assert retained["attracts"]["text"] is None and retained["drains"]["text"] is None
+            assert retained["attracts"]["evidence_ids"] == calls[0]["field_sources"]["attracts"][0]
+            assert "reschedule" not in json.dumps(correction)
+            draft = {"1": THAI_FREE_TEXT["attracts"], "2": THAI_FREE_TEXT["drains"]}
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": json.dumps(draft, ensure_ascii=False)}, "finish_reason": "stop"}],
+        })
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: client_class(transport=httpx.MockTransport(respond), **kwargs))
+    config = replace(settings(postgres_url), fortune_provider="deepseek",
+                     providers={"deepseek": ProviderConfig("test-key", "https://preview-model.example/v1", "test-model")})
+    with TestClient(create_app(config)) as client:
+        response = client.post("/api/life-reports", headers=HEADERS, json={
+            "report_kind": "marriage", "profile": {**PROFILE, "language": "th"}, "year": 2026,
+        })
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["preview_state"] == "ready"
+        assert len(calls) == (2 if mixed else 1)
+        sections = result["marriage"]["preview"]
+        assert sections[1]["paragraphs"][0].endswith(THAI_FREE_TEXT["needs"])
+        assert sections[3]["paragraphs"] == [THAI_FREE_TEXT["attracts"], THAI_FREE_TEXT["drains"]]
 
 
 def test_paid_marriage_repairs_failed_fields_after_an_incomplete_reply(postgres_url, monkeypatch):
