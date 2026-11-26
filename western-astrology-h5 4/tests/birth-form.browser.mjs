@@ -97,7 +97,7 @@ function visitCollector() {
   };
 }
 
-for (const scenario of ['refresh-after-accept','refresh-before-delivery','flutter-recovers-first','refresh-with-accepted-history-receipt']) {
+for (const scenario of ['refresh-after-accept','refresh-before-delivery','refresh-with-accepted-history-receipt']) {
   test('continues the original report: ' + scenario, async () => {
     const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
     let releaseEngine, releaseResponse;
@@ -163,13 +163,7 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','flutte
       await page.locator('#birth-submit').click();
       await expect(page.locator('#birth-generation')).toBeVisible();
       await expect.poll(() => posts.length).toBe(1);
-      if (scenario === 'flutter-recovers-first') {
-        // Trigger the existing watchdog callback while the engine download is stalled.
-        await page.evaluate(() => window.fateBoot.fail());
-        releaseEngine();
-        await page.waitForFunction(() => performance.getEntriesByName('fate-app-ready').length > 0);
-        await expect(page.locator('#birth-generation-retry')).toBeHidden();
-      } else if (scenario === 'refresh-with-accepted-history-receipt') {
+      if (scenario === 'refresh-with-accepted-history-receipt') {
         releaseResponse();
         await page.waitForFunction(id => history.state?.['fate-birth-submission']?.reportId === id,fixture.id);
         await page.reload({waitUntil:'commit'});
@@ -197,10 +191,6 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','flutte
       }
       assert.ok(actions().every(event => event.source === 'example' && event.campaign === 'handoff'));
       assert.ok(actions().some(event => event.page === 'generating_preview' && event.action === 'view'));
-      if (scenario === 'flutter-recovers-first') {
-        const pixels = await page.evaluate(() => window.fbq.queue.filter(call => call[0] === 'track' && call[1] === 'PageView').length);
-        assert.equal(pixels,1,'one Meta PageView queued for this landing document');
-      }
       assert.deepEqual(errors,[]);
     } finally { releaseEngine(); releaseResponse(); await context.close(); }
   });
@@ -342,65 +332,4 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.doesNotMatch(JSON.stringify(actions),/1995-08-17|My career question|北京|09:30/);
     assert.deepEqual(errors,[]);
   } finally { release(); await context.close(); }
-});
-
-test('an interrupted startup keeps the edited form and a manual retry restores it', async () => {
-  const context = await browser.newContext({viewport:{width:360,height:640}});
-  let release;
-  const gate = new Promise(resolve => { release = resolve; });
-  let fail = true, finishCreate, created = 0;
-  const visits = visitCollector();
-  const server = new Promise(resolve => { finishCreate = resolve; });
-  try {
-    const page = await context.newPage();
-    await page.route('**/*',async route => {
-      const req = new URL(route.request().url());
-      if (req.origin !== new URL(url).origin && /^https?:$/.test(req.protocol)) return route.abort();
-      if (req.pathname === '/api/landing/visits') return visits.accept(route);
-      if (req.pathname === '/api/thai-locations') return route.fulfill({json:{items:[beijing],total:1}});
-      if (req.pathname === '/api/landing/config') return route.fulfill({json:{notice_version:'h5-data-use-3'}});
-      if (req.pathname === '/api/landing/consents') return route.fulfill({json:{accepted:true,notice_version:'h5-data-use-3'}});
-      if (req.pathname === '/api/life-reports') {
-        created++;
-        const {landing_visit,...input} = route.request().postDataJSON();
-        assert.equal(input.report_kind,'marriage');
-        assert.equal(input.profile.birth_time,null);
-        assert.equal(input.profile.location_id,beijing.id);
-        assert.equal(input.profile.language,'zh');
-        await server;
-        return route.fulfill({json:{id:'accepted-missing-fields',input}});
-      }
-      if (req.pathname.startsWith('/api/')) return route.fulfill({json:{recorded:true}});
-      if (fail && /\/main\.dart\.(wasm|js)$/.test(req.pathname)) { await gate; return route.abort(); }
-      return route.continue();
-    });
-    await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
-    await selectBirthValue(page,'date','2001-02-03');
-    await page.locator('#birth-unknown').check();
-    await expect(page.locator('#birth-career')).toBeHidden();
-    release();
-    await expect(page.locator('#birth-retry')).toBeVisible({timeout:15000});
-    await expect(page.locator('#birth-date')).toHaveValue('2001-02-03');
-    fail = false;
-    await Promise.all([page.waitForNavigation(),page.locator('#birth-retry').click()]);
-    await expect(page.locator('#birth-date')).toHaveValue('2001-02-03');
-    await expect(page.locator('#birth-unknown')).toBeChecked();
-    await expect.poll(() => new Set([...visits.events.values()].filter(e => e.page === 'birth_form' && e.action === 'view').map(e => e.page_view_id)).size).toBe(2);
-    const restoredEvents = [...visits.events.values()].sort((a,b) => a.sequence - b.sequence);
-    const restoredId = restoredEvents.filter(e => e.action === 'view' && e.page === 'birth_form').at(-1).page_view_id;
-    assert.deepEqual(restoredEvents.filter(e => e.page_view_id === restoredId && e.kind === 'action' && e.action.startsWith('form_progress')).map(e => e.action),['form_progress_place']);
-    assert.equal(await page.evaluate(() => sessionStorage.getItem('fate-birth-reload')),null);
-    await expect(page.locator('#fate-birth footer a')).toHaveCount(0);
-    await expect(page.locator('#birth-date')).toHaveValue('2001-02-03');
-    await page.locator('#birth-city').click();
-    await page.getByRole('option',{name:beijing.nameChinese,exact:false}).click();
-    await page.locator('#birth-submit').click();
-    await expect(page.locator('#birth-generation')).toBeVisible();
-    await expect.poll(() => created).toBe(1);
-    finishCreate();
-    await expect(page.locator('#birth-form')).toBeVisible();
-    await expect(page.locator('#birth-message')).toHaveText(/完整/);
-    assert.equal(await page.evaluate(() => sessionStorage.getItem('active-preview')),null);
-    assert.equal(created,1);
-  } finally { release(); finishCreate(); await context.close(); }
 });

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const source = readFileSync("web-client/web/browser.js", "utf8");
 const bootstrapSource = readFileSync("web-client/web/flutter_bootstrap.js", "utf8").replace(/\{\{flutter_(?:js|build_config)\}\}/g, "");
+const buildSource = readFileSync("scripts/build-flutter.mjs", "utf8");
 const recoveryKey = "fate-startup-recovery-at";
 
 function openDocument(storage = new Map<string, string>(), storageBlocked = false, options: {
@@ -24,7 +25,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   const window = { dispatchEvent: vi.fn(), addEventListener: vi.fn((type: string, listener: (event: any) => void) => {
     listeners.set(type, [...(listeners.get(type) ?? []), listener]);
   }) } as any;
-  const url = new URL(options.url ?? "http://127.0.0.1/thai-landing/?lang=zh&id=retained-report");
+  const url = new URL(options.url ?? "http://127.0.0.1/thai-landing/report.html?lang=zh&id=retained-report");
   const location = { href: url.href, host: url.host, hostname: url.hostname, pathname: url.pathname, protocol: url.protocol, search: url.search, reload: vi.fn(), replace: vi.fn() };
   const local = options.local ?? new Map<string, string>();
   const cookie = options.cookie ?? { value: "" };
@@ -35,7 +36,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   });
   window.localStorage = makeStorage(local);
   window.sessionStorage = makeStorage(storage);
-  const document = { readyState: options.streamingHtml ? "loading" : "complete", visibilityState: "visible", documentElement: { lang: options.language ?? "zh" }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn((_type: string, _callback: (event?: any) => void) => {}), removeEventListener: vi.fn() };
+  const document = { baseURI: new URL("./", url).href, readyState: options.streamingHtml ? "loading" : "complete", visibilityState: "visible", documentElement: { lang: options.language ?? "zh" }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn((_type: string, _callback: (event?: any) => void) => {}), removeEventListener: vi.fn() };
   const fetch = options.fetch ?? vi.fn().mockImplementation(async (_url, options) => ({
     ok: true, json: async () => ({ ok: true, accepted_sequences: JSON.parse(options.body).events.map((event: any) => event.sequence) }),
   }));
@@ -427,7 +428,20 @@ it('does not let a cached former owner overwrite the current owner queue', async
   expect(pendingItems(storage).every(item => item.visit.id === 'other-visit')).toBe(true);
 });
 
-it.each(["", "report.html?id=retained-report", "privacy.html", "support.html"])(
+it("keeps the landing form independent from Flutter startup", () => {
+  const page = openDocument(new Map(), false, { url: "http://127.0.0.1/thai-landing/?lang=zh" });
+  expect(page.startFlutter()).not.toHaveBeenCalled();
+  expect(page.startup.remove).toHaveBeenCalledOnce();
+  expect(page.window.dispatchEvent).not.toHaveBeenCalled();
+  expect(page.location.replace).not.toHaveBeenCalled();
+});
+
+it("preloads the Dart runtime on Flutter pages but not on the native landing entry", () => {
+  expect(buildSource).toContain("writeFile(indexPath,index.replace(runtimeSlot,''))");
+  expect(buildSource).toContain("writeFile(path.join(generated,page),index.replace(runtimeSlot,runtimePreload))");
+});
+
+it.each(["report.html?id=retained-report", "privacy.html", "support.html"])(
   "starts Flutter immediately for %s and retains the original URL", (route) => {
     const page = openDocument(new Map(), false, { url: "http://127.0.0.1/thai-landing/" + route });
     expect(page.startFlutter()).toHaveBeenCalledOnce();

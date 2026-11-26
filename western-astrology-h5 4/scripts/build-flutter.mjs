@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
 import { brotliCompressSync, brotliDecompressSync, constants, gzipSync } from 'node:zlib';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -50,7 +50,7 @@ export async function buildLanding({release=false,noPub=false}={}){
   // Start loading the small Dart module as soon as the browser parses the entry.
   const runtimeSlot='<!-- FATE_WASM_RUNTIME_PRELOAD -->';
   if(!index.includes(runtimeSlot))throw Error('Missing Wasm runtime preload slot');
-  index=index.replace(runtimeSlot,'<link rel="modulepreload" href="main.dart.mjs" crossorigin fetchpriority="low">');
+  const runtimePreload='<link rel="modulepreload" href="main.dart.mjs" crossorigin fetchpriority="low">';
   // Discover engine fonts during the HTML request instead of after the Wasm download.
   const fontManifest=JSON.parse(await readFile(path.join(generated,'assets','FontManifest.json'),'utf8'));
   const fontAssets=new Set(fontManifest.flatMap(family=>family.fonts.map(font=>font.asset)));
@@ -85,10 +85,12 @@ export async function buildLanding({release=false,noPub=false}={}){
   index=index.replace('<!-- FATE_BIRTH_COPY -->',()=>`<script>window.fateBirthCopies=${JSON.stringify(copies).replaceAll('<','\\u003c')}</script>`)
     .replace('<link rel="stylesheet" href="birth-form.css">',()=>`<style>${formStyle}</style>`)
     .replace('<script src="birth-form.js"></script>',()=>`<script>${formScript}</script>`);
-  await writeFile(indexPath,index);
+  // The landing form must be interactive without fetching Flutter. Only pages
+  // rendered by Flutter receive the Dart module preload.
+  await writeFile(indexPath,index.replace(runtimeSlot,''));
   // Preserve the existing report.html deep links, including saved report IDs.
   for (const page of ['report.html','privacy.html','support.html']) {
-    await cp(path.join(generated,'index.html'),path.join(generated,page));
+    await writeFile(path.join(generated,page),index.replace(runtimeSlot,runtimePreload));
   }
   for(const file of ['main.dart.wasm','main.dart.mjs','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','fonts/pdf/NotoSansMyanmar-Regular.ttf','fonts/pdf/NotoSansKhmer-Regular.ttf','fonts/pdf/NotoSansLao-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
   const compressible=new Set(['.html','.js','.mjs','.css','.json','.svg','.wasm','.ttf','.otf']);

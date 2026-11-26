@@ -644,10 +644,11 @@
       }
       if (history.state?.[submissionKey]?.reportId !== report.id) await saveSubmission(null);
       else submission = null;
-      pending = {page:'report',language,report,input};
       byId('birth-generation-status').textContent = report.preview_state === 'ready' ? copy.generation.ready : copy.generation.preview;
-      if (failed) engineFailed();
-      else dispatch();
+      // The landing page owns report creation. Opening the accepted report must
+      // never wait for Flutter to initialize or for the Dart bridge to attach.
+      reopenAcceptedReport(report.id);
+      return;
     } catch (error) {
       if (!screen.isConnected) return;
       if (submission?.sent && ![400,401,403,409,422].includes(error.status) &&

@@ -98,6 +98,13 @@ const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateBootFini
 // A truncated HTML stream may render the overlay without ever reaching the inline bootstrap.
 const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail('runtime_boot_html');},20000);
 const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBoot.fail('runtime_boot_timeout'),90000);
+function finishFateBoot(appReady){
+  if(fateBootFinished)return;
+  fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);clearTimeout(fateBootRecovery);
+  try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
+  document.getElementById('fate-startup')?.remove();
+  if(appReady){performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));}
+}
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
   compatibility:fateBootRetry?.compatibility===true,
@@ -125,12 +132,8 @@ window.fateBoot={
     window.fateBirthForm?.engineFailed();
     this.stage('failed');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;
   },
-  ready(){
-    if(fateBootFinished)return;
-    fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);clearTimeout(fateBootRecovery);
-    try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
-    document.getElementById('fate-startup')?.remove();performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));
-  }
+  ready(){finishFateBoot(true);},
+  landingReady(){finishFateBoot(false);}
 };
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
 window.addEventListener('error',event=>{
