@@ -247,6 +247,13 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
+    if (window.fateH5.metaBrowser === 'facebook') {
+      // Facebook's WebView receives the tap through the menu-level gesture
+      // handler below, which also implements scrolling when native nested
+      // scrolling is unavailable.
+      button.addEventListener('click',action);
+      return button;
+    }
     let gesture, touchActivation = 0;
     const point = event => event.touches?.[0] || event.changedTouches?.[0] || event;
     const releaseLocationTouch = () => setTimeout(() => { locationTouchActive = false; },0);
@@ -293,6 +300,73 @@
     return button;
   }
 
+  function installFacebookLocationScroller(menu) {
+    if (window.fateH5.metaBrowser !== 'facebook') return;
+    let gesture;
+    const point = event => event.touches?.[0] || event.changedTouches?.[0] || event;
+    const release = () => setTimeout(() => { locationTouchActive = false; },0);
+    const start = event => {
+      if (event.pointerType === 'mouse') return;
+      const current = point(event);
+      const target = event.target.closest('button');
+      locationTouchActive = true;
+      gesture = {target,y:current.clientY,scrollTop:menu.scrollTop,moved:false};
+      if (event.pointerId !== undefined) {
+        try { menu.setPointerCapture(event.pointerId); } catch {}
+      }
+    };
+    const move = event => {
+      if (!gesture) return;
+      const delta = gesture.y - point(event).clientY;
+      if (Math.abs(delta) > 5) gesture.moved = true;
+      if (!gesture.moved) return;
+      event.preventDefault();
+      menu.scrollTop = gesture.scrollTop + delta;
+    };
+    const end = event => {
+      if (!gesture) return;
+      const {target,moved} = gesture;
+      gesture = null;
+      event.preventDefault();
+      release();
+      if (!moved) target?.click();
+    };
+    const cancel = () => { gesture = null; release(); };
+    if (window.PointerEvent) {
+      menu.addEventListener('pointerdown',start);
+      menu.addEventListener('pointermove',move,{passive:false});
+      menu.addEventListener('pointerup',end,{passive:false});
+      menu.addEventListener('pointercancel',cancel);
+    } else {
+      menu.addEventListener('touchstart',start,{passive:true});
+      menu.addEventListener('touchmove',move,{passive:false});
+      menu.addEventListener('touchend',end,{passive:false});
+      menu.addEventListener('touchcancel',cancel);
+    }
+  }
+
+  function keepLocationVisible() {
+    if (!window.fateH5.embedded || document.activeElement !== byId('birth-city')) return;
+    const viewport = window.visualViewport;
+    const viewportTop = viewport?.offsetTop || 0;
+    const viewportBottom = viewportTop + (viewport?.height || innerHeight);
+    const location = byId('birth-city').getBoundingClientRect();
+    const top = viewportTop + 66, bottom = viewportBottom - 8;
+    if (location.bottom > bottom) main.scrollTop += location.bottom - bottom;
+    else if (location.top < top) main.scrollTop += location.top - top;
+    positionLocationOptions();
+  }
+
+  function positionLocationOptions() {
+    const menu = byId('birth-options'), city = byId('birth-city');
+    if (menu.hidden) return;
+    const viewport = window.visualViewport;
+    const rect = city.getBoundingClientRect();
+    const viewportTop = viewport?.offsetTop || 0;
+    const viewportBottom = viewportTop + (viewport?.height || innerHeight);
+    menu.classList.toggle('open-above',viewportBottom - rect.bottom < 155 && rect.top - viewportTop > 155);
+  }
+
   async function searchPlaces(more = false) {
     if (!copy) return;
     locationRequest?.abort();
@@ -306,9 +380,7 @@
     menu.append(status);
     menu.hidden = false;
     city.setAttribute('aria-expanded','true');
-    const viewport = window.visualViewport;
-    const rect = city.getBoundingClientRect();
-    menu.classList.toggle('open-above',(viewport ? viewport.height + viewport.offsetTop : innerHeight) - rect.bottom < 155 && rect.top > 155);
+    positionLocationOptions();
     let result;
     try {
       result = !more && !query ? await firstPage(country) : await fetchPlaces(country,query,more ? offset : 0,request.signal);
@@ -792,7 +864,8 @@
   function mount() {
     if (main.firstElementChild) return;
     main.append(byId('fate-birth-template').content.cloneNode(true));
-    const form = byId('birth-form'), city = byId('birth-city');
+    const form = byId('birth-form'), city = byId('birth-city'), menu = byId('birth-options');
+    installFacebookLocationScroller(menu);
     form.addEventListener('submit',submit);
     form.addEventListener('input',markEdited);
     for (const field of ['date','time']) {
@@ -815,6 +888,11 @@
       byId('birth-custom').value = '';
     });
     city.addEventListener('click',() => { if (byId('birth-options').hidden) { track('select_birthplace'); searchPlaces(); } });
+    city.addEventListener('focus',() => {
+      setTimeout(keepLocationVisible,50);
+      setTimeout(keepLocationVisible,250);
+    });
+    window.visualViewport?.addEventListener('resize',() => requestAnimationFrame(keepLocationVisible));
     city.addEventListener('input',() => {
       place = null;
       closeOptions();
