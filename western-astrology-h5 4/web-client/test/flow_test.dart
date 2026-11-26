@@ -339,7 +339,6 @@ void main() {
       expect(find.text(h5.copy.t('jy', 'lineContact.open')), findsOneWidget);
       await click(tester, contact);
       expect(browser.sameTabPages, ['https://line.me/ti/p/SmujXXCH9v']);
-      expect(browser.lineClaimClicks, 0);
       expect(find.byType(AlertDialog), findsNothing);
       expect(
         browser.activities.where(

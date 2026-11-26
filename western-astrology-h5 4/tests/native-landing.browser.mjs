@@ -50,7 +50,7 @@ after(async () => { try { await browser?.close(); } finally { await new Promise(
 
 test('the native landing form creates a report without loading or waiting for Flutter', async () => {
   const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
-  const requests = [], posts = [];
+  const requests = [], posts = [], conversions = [];
   let releasePost;
   const postGate = new Promise(resolve => { releasePost = resolve; });
   try {
@@ -59,6 +59,10 @@ test('the native landing form creates a report without loading or waiting for Fl
     page.on('pageerror',error => errors.push(error.message));
     await page.route('**/*',async route => {
       const request = route.request(), address = new URL(request.url());
+      if (address.origin === 'https://www.facebook.com' && address.pathname === '/tr/') {
+        conversions.push(address.searchParams);
+        return route.fulfill({status:204});
+      }
       if (address.origin !== new URL(url).origin) return route.abort();
       requests.push(address.pathname);
       if (!address.pathname.startsWith('/api/')) return route.continue();
@@ -84,8 +88,17 @@ test('the native landing form creates a report without loading or waiting for Fl
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
     await expect(page.locator('#birth-form')).toBeVisible();
     await expect(page.locator('#fate-flutter')).toBeHidden();
+    await expect(page.locator('#birth-submit')).toHaveText('查看解析');
     assert.equal(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button,'::before').animationName),'none');
     assert.equal(requests.some(path => /main\.dart|skwasm|canvaskit/.test(path)),false);
+    assert.equal(conversions.length,0);
+
+    await page.locator('#birth-submit').click();
+    await expect.poll(() => conversions.length).toBe(1);
+    assert.equal(conversions[0].get('ev'),'AddToCart');
+    assert.equal(conversions[0].get('id'),'2150104392567893');
+    assert.equal(conversions[0].get('dl'),url);
+    assert.equal(posts.length,0);
 
     await page.locator('#birth-date-trigger').click();
     await page.locator('#birth-picker-confirm').click();
@@ -114,6 +127,7 @@ test('the native landing form creates a report without loading or waiting for Fl
     await page.evaluate(() => window.fateBoot.ready());
     await expect(page.locator('#accepted-report')).toBeVisible();
     await expect(page.locator('#fate-startup')).toBeHidden();
+    assert.equal(conversions.length,1);
     assert.equal(posts.length,1);
     assert.equal(posts[0].search,'?wait=false');
     assert.match(posts[0].headers['idempotency-key'],/^[0-9a-f-]{36}$/);

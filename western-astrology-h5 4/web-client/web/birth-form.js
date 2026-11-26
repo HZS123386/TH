@@ -671,7 +671,7 @@
     }
   }
 
-  async function startReport(saved) {
+  async function startReport(saved, clickTracking) {
     const first = !creating;
     const form = byId('birth-form');
     retrySubmission = false;
@@ -721,7 +721,7 @@
       if (history.state?.[submissionKey]?.reportId !== report.id) await saveSubmission(null);
       else submission = null;
       byId('birth-generation-status').textContent = report.preview_state === 'ready' ? copy.generation.ready : copy.generation.preview;
-      await generationShown;
+      await Promise.all([generationShown,clickTracking]);
       // The landing page owns report creation. Opening the accepted report must
       // never wait for Flutter to initialize or for the Dart bridge to attach.
       reopenAcceptedReport(report.id);
@@ -776,6 +776,7 @@
     if (!copy || waiting) return;
     if (outdated) { const url = new URL(location.href); url.searchParams.set('preview','notice-' + Date.now()); location.assign(url.href); return; }
     track('click_generate_report');
+    const clickTracking = topic === 'life' ? window.fateH5.trackViewReadingClick() : null;
     const step = progress();
     track('form_progress_' + step);
     if (step !== 'complete') {
@@ -785,7 +786,7 @@
       track('invalid_form');
       return;
     }
-    startReport();
+    startReport(undefined,clickTracking);
   }
 
   function mount() {

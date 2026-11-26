@@ -13,8 +13,6 @@ external JSPromise<JSString> _export(JSString payload, JSString format);
 external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
-@JS('fateH5.trackLineClaimClick')
-external JSPromise<JSAny?> _lineClaimClick();
 @JS('fateH5.trackActivity')
 external void _activity(JSString payload, JSString key, JSString endpoint);
 @JS('fateH5.trackFailure')
@@ -112,11 +110,6 @@ class WebBrowserPort implements BrowserPort {
 
   @override
   void detachBirthForm() => _detachBirthForm();
-
-  @override
-  Future<void> trackLineClaimClick() async {
-    await _lineClaimClick().toDart;
-  }
 
   @override
   void trackActivity(String page, String action) {

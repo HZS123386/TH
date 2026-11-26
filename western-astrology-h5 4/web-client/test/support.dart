@@ -218,13 +218,6 @@ class TestBrowser implements BrowserPort {
   Json visitContext() => visit;
   final activities = <Json>[];
   @override
-  Future<void> trackLineClaimClick() async {
-    lineClaimClicks++;
-  }
-
-  int lineClaimClicks = 0;
-
-  @override
   void trackActivity(String page, String action) =>
       activities.add({'page': page, 'action': action});
   @override

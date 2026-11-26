@@ -88,12 +88,12 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-11T06:00:00Z")); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
-it("sends one LINE claim conversion across tabs without report details", async () => {
+it("deduplicates the reading-button conversion across tabs and omits URL parameters", async () => {
   vi.useRealTimers();
   const owner = "a".repeat(48);
-  const legacyHash = Buffer.from(await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(owner))).toString("hex");
+  const readingMarker = Buffer.from(await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(owner))).toString("hex");
   const local = new Map([["astro-life-report-key", owner]]);
-  const markers = new Set([legacyHash]);
+  const markers = new Set(["line-claim:" + readingMarker]);
   const db = {
     close() {},
     transaction() {
@@ -119,33 +119,34 @@ it("sends one LINE claim conversion across tabs without report details", async (
   };
   const fetch = vi.fn().mockResolvedValue({});
   const options = {
-    url: "https://fate.example/thai-landing/report.html?id=private-report&lang=zh",
+    url: "https://fate.example/thai-landing/?lang=zh&utm_source=test-ad",
     local, indexedDB, fetch,
     cookie: { value: "_fbp=fb.1.123456789.2345; _fbc=fb.1.123456789.adClick; another=private-data" },
   };
   const a = openDocument(new Map(), false, options);
   const b = openDocument(new Map(), false, options);
   expect(fetch).not.toHaveBeenCalled();
-  await Promise.all([a.h5.trackLineClaimClick(), b.h5.trackLineClaimClick()]);
+  await Promise.all([a.h5.trackViewReadingClick(), b.h5.trackViewReadingClick()]);
   expect(fetch).toHaveBeenCalledOnce();
+  expect(markers).toContain(readingMarker);
   const [destination, request] = fetch.mock.calls[0];
   const pixel = new URL(destination);
   expect(pixel.origin + pixel.pathname).toBe("https://www.facebook.com/tr/");
   expect(pixel.searchParams.get("ev")).toBe("AddToCart");
-  expect(pixel.searchParams.get("dl")).toBe("https://fate.example/thai-landing/report.html");
+  expect(pixel.searchParams.get("dl")).toBe("https://fate.example/thai-landing/");
   expect(pixel.searchParams.get("fbp")).toBe("fb.1.123456789.2345");
   expect(pixel.searchParams.get("fbc")).toBe("fb.1.123456789.adClick");
   expect([...pixel.searchParams.keys()].sort()).toEqual(["dl", "ev", "fbc", "fbp", "id", "ts"]);
   expect(request).toMatchObject({ keepalive: true, referrerPolicy: "no-referrer" });
   const privatePage = openDocument(new Map(), false, { ...options, privateBrowsing: true });
-  await privatePage.h5.trackLineClaimClick();
+  await privatePage.h5.trackViewReadingClick();
   expect(fetch).toHaveBeenCalledOnce();
 });
 
-it("releases LINE navigation when click deduplication stalls", async () => {
+it("finishes reading-button tracking when click deduplication stalls", async () => {
   const page = openDocument(new Map(), false, { indexedDB: { open: () => ({}) } });
   const complete = vi.fn();
-  const result = page.h5.trackLineClaimClick().then(complete);
+  const result = page.h5.trackViewReadingClick().then(complete);
   await vi.advanceTimersByTimeAsync(299);
   expect(complete).not.toHaveBeenCalled();
   await vi.advanceTimersByTimeAsync(1);

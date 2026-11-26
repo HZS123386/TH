@@ -260,13 +260,13 @@ function trackFatePageView() {
     // A tracking failure must never block report generation.
   }
 }
-function sendFateLineClaimPixel() {
+function sendFateViewReadingPixel() {
   if (!fateTrackingAllowed()) return;
   const pixel = new URL('https://www.facebook.com/tr/');
-  const reportPage = new URL(location.pathname, location.href);
+  const landingPage = new URL(location.pathname, location.href);
   pixel.searchParams.set('id', fateMetaPixelId);
   pixel.searchParams.set('ev', 'AddToCart');
-  pixel.searchParams.set('dl', reportPage.href);
+  pixel.searchParams.set('dl', landingPage.href);
   pixel.searchParams.set('ts', String(Date.now()));
   for (const name of ['fbp', 'fbc']) {
     const prefix = '_' + name + '=';
@@ -276,12 +276,12 @@ function sendFateLineClaimPixel() {
       pixel.searchParams.set(name, value);
     }
   }
-  // Keep the request alive across the LINE redirect and omit the report ID from the URL.
+  // Keep the request alive across report navigation and omit query parameters.
   void fetch(pixel.href, {
     mode: 'no-cors', keepalive: true, credentials: 'include', referrerPolicy: 'no-referrer',
   }).catch(() => {});
 }
-function trackFateLineClaimClick() {
+function trackFateViewReadingClick() {
   if (!fateTrackingAllowed()) return Promise.resolve();
   return new Promise(resolve => {
     let finished = false;
@@ -300,8 +300,8 @@ function trackFateLineClaimClick() {
       if (!owner) return finish();
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(owner));
       if (finished) return;
-      // A browser that clicked the former entry can still record first contact on LINE.
-      const marker = 'line-claim:' + fateHex(new Uint8Array(digest));
+      // Reuse the marker from the original reading-button event.
+      const marker = fateHex(new Uint8Array(digest));
       const request = indexedDB.open('fate-meta-pixel-' + fateMetaPixelId, 1);
       request.onupgradeneeded = () => request.result.createObjectStore('add-to-cart');
       request.onerror = finish;
@@ -323,7 +323,7 @@ function trackFateLineClaimClick() {
             database.close();
             if (finished) return;
             try {
-              sendFateLineClaimPixel();
+              sendFateViewReadingPixel();
             } catch {}
             finish();
           };
@@ -549,7 +549,7 @@ window.fateH5 = {
   ownerKey: fateOwnerKey,
   embedded: fateEmbeddedBrowser,
   trackRuntime: recordFateRuntime,
-  trackLineClaimClick: trackFateLineClaimClick,
+  trackViewReadingClick: trackFateViewReadingClick,
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },
   trackFailure(path, code, method) {
     recordFateActivity('action', fateState(), 'request_failed', { failure_path: path, failure_code: code, failure_method: method });

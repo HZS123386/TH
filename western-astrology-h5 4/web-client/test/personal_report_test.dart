@@ -163,7 +163,6 @@ void main() {
     expect(find.text('Free marriage section 3.'), findsOneWidget);
     final line = find.byKey(const ValueKey('jy-line-contact'));
     expect(line, findsOneWidget);
-    expect(browser.lineClaimClicks, 0);
     expect(find.byKey(const ValueKey('jy-payment-preview')), findsNothing);
     expect(find.text(LifeReport.parse(data).priceLabel), findsNothing);
     expect(find.text(controller.copy.t('jy', 'checkout.preview')), findsNothing);
@@ -176,7 +175,10 @@ void main() {
     await tester.ensureVisible(line);
     await tester.tap(line);
     await tester.pump();
-    expect(browser.lineClaimClicks, 1);
+    expect(
+      browser.activities.where((event) => event['action'] == 'click_line'),
+      hasLength(1),
+    );
     expect(browser.sameTabPages, ['https://line.me/ti/p/SmujXXCH9v']);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

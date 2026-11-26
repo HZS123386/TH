@@ -79,15 +79,8 @@ class ReportPreview extends StatelessWidget {
     unawaited(h5.trackReport(reportId, 'line_contact'));
   }
 
-  Future<void> _openLine() async {
+  void _openLine() {
     _trackLineContact('click_line');
-    if (marriage) {
-      try {
-        await h5.browser.trackLineClaimClick();
-      } catch (_) {
-        // Ads tracking must not stop the user from opening LINE.
-      }
-    }
     h5.browser.openPage('https://line.me/ti/p/SmujXXCH9v', sameTab: true);
   }
 

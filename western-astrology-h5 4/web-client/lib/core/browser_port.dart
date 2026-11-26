@@ -16,7 +16,6 @@ abstract interface class BrowserPort implements DeviceStore {
   String? readSetting(String key, {bool session = false});
   void writeSetting(String key, String value, {bool session = false});
   Json visitContext();
-  Future<void> trackLineClaimClick();
   void trackActivity(String page, String action);
   void trackFailure(String path, String code, String method);
 }

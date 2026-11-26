@@ -226,6 +226,7 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     let finishCancelled;
     page.on('pageerror',error => errors.push(error.message));
     const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));
+    const thaiCopy = JSON.parse(await readFile(new URL('../web-client/assets/copy/th.json',import.meta.url),'utf8'));
     await page.route('**/*',async route => {
       const address = new URL(route.request().url()), path = address.pathname;
       if (address.origin !== new URL(url).origin && /^https?:$/.test(address.protocol)) return route.abort();
@@ -319,6 +320,7 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     rejectConsent = false;
     await page.locator('#birth-submit').click();
     await expect(page.locator('#birth-generation')).toBeVisible();
+    await expect(page.locator('#birth-generation-title')).toHaveText(thaiCopy.generation.th.previewTitle);
     await expect(page.locator('#birth-form')).toBeHidden();
     await page.locator('#birth-form').evaluate(form => form.requestSubmit());
     releasePost();
