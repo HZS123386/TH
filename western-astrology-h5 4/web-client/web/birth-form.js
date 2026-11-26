@@ -17,7 +17,7 @@
   let edited = false, searchTimer, locationRequest, offset = 0, total = 0;
   let originalProfile, originalPlace, creating = false, acceptedReport;
   let submission, retrySubmission = false;
-  let checkedSubmission = false, activePicker;
+  let checkedSubmission = false, activePicker, locationTouchActive = false;
   const labels = window.fateBirthCopies || {};
   const firstPages = new Map();
 
@@ -246,16 +246,45 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
-    let touchActivation = 0;
-    // Facebook's iOS WebView can blur the search field and remove the menu
-    // before it dispatches the delayed compatibility click. Activate touch
-    // choices on the initial press while retaining click for mouse/keyboard.
-    button.addEventListener(window.PointerEvent ? 'pointerdown' : 'touchstart',event => {
+    let gesture, touchActivation = 0;
+    const point = event => event.touches?.[0] || event.changedTouches?.[0] || event;
+    const releaseLocationTouch = () => setTimeout(() => { locationTouchActive = false; },0);
+    const start = event => {
       if (event.pointerType === 'mouse') return;
+      const current = point(event);
+      locationTouchActive = true;
+      gesture = {x:current.clientX,y:current.clientY,moved:false};
+    };
+    const move = event => {
+      if (!gesture) return;
+      const current = point(event);
+      if (Math.abs(current.clientX - gesture.x) > 8 || Math.abs(current.clientY - gesture.y) > 8) gesture.moved = true;
+    };
+    const end = event => {
+      if (!gesture) return;
+      const activate = !gesture.moved;
+      gesture = null;
+      releaseLocationTouch();
+      if (!activate) return;
       event.preventDefault();
       touchActivation = Date.now();
       action();
-    },{passive:false});
+    };
+    const cancel = () => { gesture = null; releaseLocationTouch(); };
+    // Facebook's iOS WebView can blur the search field and remove the menu
+    // before its delayed click. Complete a short tap on pointer-up, but leave
+    // vertical drags untouched so the native momentum scroller can run.
+    if (window.PointerEvent) {
+      button.addEventListener('pointerdown',start);
+      button.addEventListener('pointermove',move);
+      button.addEventListener('pointerup',end);
+      button.addEventListener('pointercancel',cancel);
+    } else {
+      button.addEventListener('touchstart',start,{passive:true});
+      button.addEventListener('touchmove',move,{passive:true});
+      button.addEventListener('touchend',end,{passive:false});
+      button.addEventListener('touchcancel',cancel);
+    }
     button.addEventListener('click',event => {
       if (Date.now() - touchActivation < 1000) { event.preventDefault(); return; }
       action();
@@ -773,7 +802,7 @@
       // WebKit embedded browsers often omit relatedTarget. Let the pending
       // pointer/click finish before deciding whether the menu really lost focus.
       setTimeout(() => {
-        if (!document.activeElement?.closest('.birth-location')) closeOptions();
+        if (!locationTouchActive && !document.activeElement?.closest('.birth-location')) closeOptions();
       },0);
     });
     byId('birth-language').addEventListener('change',async event => {

@@ -63,9 +63,10 @@ test('the native landing form creates a report without loading or waiting for Fl
         const body = request.postDataJSON();
         return reply({ok:true,accepted_sequences:(body.events || []).map(event => event.sequence)});
       }
-      if (address.pathname === '/api/thai-locations') return reply({items:[{
-        id:'geonames:1816670',nameChinese:'北京市',nameEnglish:'Beijing',countryCode:'CN',timeZone:'Asia/Shanghai'
-      }],total:1});
+      if (address.pathname === '/api/thai-locations') return reply({items:Array.from({length:10},(_,index) => ({
+        id:'geonames:' + (1816670 + index),nameChinese:index ? `测试城市${index}` : '北京市',
+        nameEnglish:index ? `Test City ${index}` : 'Beijing',countryCode:'CN',timeZone:'Asia/Shanghai'
+      })),total:10});
       if (address.pathname === '/api/landing/config') return reply({notice_version:'h5-data-use-3'});
       if (address.pathname === '/api/landing/consents') return reply({accepted:true,notice_version:'h5-data-use-3'});
       if (address.pathname === '/api/life-reports') {
@@ -86,7 +87,15 @@ test('the native landing form creates a report without loading or waiting for Fl
     await page.locator('#birth-time-trigger').click();
     await page.locator('#birth-picker-confirm').click();
     await page.locator('#birth-city').fill('北京');
-    await page.getByRole('option',{name:'北京市',exact:false}).dispatchEvent('pointerdown',{pointerType:'touch',pointerId:1,isPrimary:true,buttons:1});
+    const menu = page.locator('#birth-options'), option = page.getByRole('option',{name:'北京市',exact:false});
+    await option.dispatchEvent('pointerdown',{pointerType:'touch',pointerId:1,isPrimary:true,buttons:1,clientX:100,clientY:160});
+    await option.dispatchEvent('pointermove',{pointerType:'touch',pointerId:1,isPrimary:true,buttons:1,clientX:100,clientY:80});
+    await option.dispatchEvent('pointerup',{pointerType:'touch',pointerId:1,isPrimary:true,buttons:0,clientX:100,clientY:80});
+    await expect(page.locator('#birth-city')).toHaveValue('北京');
+    await expect(menu).toBeVisible();
+    assert.ok(await menu.evaluate(element => { element.scrollTop = 80; return element.scrollTop; }));
+    await option.dispatchEvent('pointerdown',{pointerType:'touch',pointerId:2,isPrimary:true,buttons:1,clientX:100,clientY:100});
+    await option.dispatchEvent('pointerup',{pointerType:'touch',pointerId:2,isPrimary:true,buttons:0,clientX:100,clientY:100});
     await expect(page.locator('#birth-city')).toHaveValue('北京市');
     await page.locator('#birth-submit').click();
 
