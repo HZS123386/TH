@@ -18,6 +18,7 @@
   let originalProfile, originalPlace, creating = false, acceptedReport;
   let submission, retrySubmission = false;
   let checkedSubmission = false, activePicker, locationTouchActive = false;
+  let generationVisual;
   const labels = window.fateBirthCopies || {};
   const firstPages = new Map();
 
@@ -370,7 +371,7 @@
     byId('birth-custom').placeholder = j.questionTitle;
     byId('birth-custom').setAttribute('aria-label',j.writeQuestion);
     byId('birth-submit').textContent = outdated ? j.openLatest : j.topics[topic].action;
-    byId('birth-retry').textContent = copy.generation.retry;
+    byId('birth-retry').textContent = byId('birth-generation-retry').textContent = copy.generation.retry;
     const boards = copy.themes.map(group => {
       const board = document.createElement('div');
       board.className = 'birth-board';
@@ -451,8 +452,8 @@
     if (!main.firstElementChild || main.hidden || !copy) return;
     if (creating) {
       // Let the create response arrive before offering a reload that could lose its ID.
-      say(fateBootTranslations[language].failed);
-      byId('birth-retry').hidden = !acceptedReport && !retrySubmission;
+      byId('birth-generation-status').textContent = fateBootTranslations[language].failed;
+      byId('birth-generation-retry').hidden = !acceptedReport && !retrySubmission;
       return;
     }
     pending = null;
@@ -466,8 +467,9 @@
     if (!failed || !submitToFlutter) return;
     failed = false;
     if (!retrySubmission) {
-      byId('birth-retry').hidden = true;
-      say(creating ? copy.preparing : '');
+      byId('birth-retry').hidden = byId('birth-generation-retry').hidden = true;
+      if (creating) byId('birth-generation-status').textContent = acceptedReport ? copy.generation.preview : copy.preparing;
+      else say('');
     }
     queueMicrotask(dispatch);
   }
@@ -562,11 +564,42 @@
       track('form_progress_' + progress());
     }
     creating = waiting = false;
+    const screen = byId('birth-generation');
+    screen.hidden = true;
+    main.removeAttribute('data-generating');
     setFormWaiting(false);
     if (outdated) byId('birth-submit').textContent = copy.jy.openLatest;
     say(message);
     byId('birth-submit').focus();
     byId('birth-retry').hidden = !failed;
+  }
+
+  function showGeneration() {
+    const screen = byId('birth-generation');
+    document.activeElement?.blur?.();
+    byId('birth-generation-title').textContent = copy.generation.previewTitle;
+    byId('birth-generation-status').textContent = copy.preparing;
+    byId('birth-generation-retry').hidden = true;
+    main.setAttribute('data-generating','');
+    screen.hidden = false;
+    show(true);
+    main.scrollTop = 0;
+    screen.focus({preventScroll:true});
+
+    // Let WebKit paint the feedback before navigation. The timeout prevents a
+    // backgrounded in-app browser from waiting forever for animation frames.
+    const painted = new Promise(resolve => {
+      let complete = false;
+      const finish = () => {
+        if (complete) return;
+        complete = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(finish,160);
+      requestAnimationFrame(() => requestAnimationFrame(finish));
+    });
+    return Promise.all([painted,new Promise(resolve => setTimeout(resolve,320))]);
   }
 
   async function ownerDigest(owner) {
@@ -645,8 +678,7 @@
     creating = waiting = true;
     setFormWaiting(true);
     byId('birth-retry').hidden = true;
-    say(copy.preparing);
-    if (main.hidden) show(true);
+    const generationShown = showGeneration();
     if (first) track('view','generating_preview');
     let consentAccepted = false;
     try {
@@ -688,6 +720,8 @@
       }
       if (history.state?.[submissionKey]?.reportId !== report.id) await saveSubmission(null);
       else submission = null;
+      byId('birth-generation-status').textContent = report.preview_state === 'ready' ? copy.generation.ready : copy.generation.preview;
+      await generationShown;
       // The landing page owns report creation. Opening the accepted report must
       // never wait for Flutter to initialize or for the Dart bridge to attach.
       reopenAcceptedReport(report.id);
@@ -697,8 +731,8 @@
       if (submission?.sent && ![400,401,403,409,422].includes(error.status) &&
           !['badResult','noticeOutdated','consentError','storage'].includes(error.message)) {
         retrySubmission = true;
-        say(copy.generation[error.message] || copy.ui.network);
-        byId('birth-retry').hidden = false;
+        byId('birth-generation-status').textContent = copy.generation[error.message] || copy.ui.network;
+        byId('birth-generation-retry').hidden = false;
         return;
       }
       await saveSubmission(null);
@@ -724,8 +758,8 @@
     } catch (error) {
       if (send !== submitToFlutter) return;
       if (acceptedReport && error.message !== 'badResult') {
-        say(copy.ui.network);
-        byId('birth-retry').hidden = false;
+        byId('birth-generation-status').textContent = copy.ui.network;
+        byId('birth-generation-retry').hidden = false;
         return;
       }
       if (acceptedReport) {
@@ -821,6 +855,14 @@
       } catch { await localize(previous); say(copy.ui.network); }
     });
     byId('birth-retry').addEventListener('click',retry);
+    byId('birth-generation-retry').addEventListener('click',retry);
+    const warmGenerationVisual = () => {
+      generationVisual = new Image();
+      generationVisual.decoding = 'async';
+      generationVisual.src = new URL('assets/assets/images/report-loading-animated.webp',document.baseURI).href;
+    };
+    if ('requestIdleCallback' in window) requestIdleCallback(warmGenerationVisual,{timeout:2500});
+    else setTimeout(warmGenerationVisual,1200);
     localize(language).then(async () => {
       if (!form.isConnected) return;
       try {

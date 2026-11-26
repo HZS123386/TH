@@ -82,7 +82,6 @@ class _H5AppState extends State<H5App> {
               final openedFromForm = id == widget.openingReportId;
               return _DeferredPage(
                 load: reports.loadLibrary,
-                showLoading: !openedFromForm,
                 page: () => reports.ReportPage(
                   key: ValueKey(state.uri.queryParameters['id']),
                   h5: widget.controller,

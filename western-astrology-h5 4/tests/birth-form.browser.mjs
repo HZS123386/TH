@@ -178,8 +178,8 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
       await page.locator('#birth-city').click();
       await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
       await page.locator('#birth-submit').click();
-      await expect(page.locator('#birth-submit')).toBeDisabled();
-      await expect(page.locator('#birth-generation')).toHaveCount(0);
+      await expect(page.locator('#birth-generation')).toBeVisible();
+      await expect(page.locator('#birth-form')).toBeHidden();
       await expect.poll(() => posts.length).toBe(1);
       if (scenario === 'refresh-with-accepted-history-receipt') {
         releaseResponse();
@@ -318,15 +318,14 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.equal(generated,undefined);
     rejectConsent = false;
     await page.locator('#birth-submit').click();
-    await expect(page.locator('#birth-submit')).toBeDisabled();
-    await expect(page.locator('#birth-form')).toBeVisible();
-    await expect(page.locator('#birth-generation')).toHaveCount(0);
+    await expect(page.locator('#birth-generation')).toBeVisible();
+    await expect(page.locator('#birth-form')).toBeHidden();
     await page.locator('#birth-form').evaluate(form => form.requestSubmit());
     releasePost();
     await page.waitForFunction(id => sessionStorage.getItem('active-preview') === id,fixture.id);
     await expect(page).toHaveURL(/report\.html\?id=/,{timeout:60000});
     await page.waitForFunction(id => window.fateBoot?.openingReportId === id,fixture.id);
-    await expect(page.locator('#fate-startup')).toBeHidden();
+    await expect(page.locator('#fate-startup')).toBeVisible();
     assert.equal(await page.evaluate(() => performance.getEntriesByName('fate-app-ready').length),0);
     assert.equal(reads.length,0);
     release();

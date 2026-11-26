@@ -119,3 +119,18 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
   color:#ffe0a1; font-size:clamp(12px,3.5vw,16px); font-weight:700; line-height:1.2; text-align:center; overflow-wrap:anywhere; }
 #birth-boards .birth-board:nth-child(2) li { border-color:#9876ab; background:linear-gradient(#523860,#362347); }
 #fate-birth footer { text-align:center; padding:10px 17px 28px; }
+#fate-birth[data-generating] > :not(#birth-generation) { display:none; }
+#birth-generation { min-height:100%; padding:24px; display:grid; align-content:center; justify-items:center;
+  gap:16px; text-align:center; background:radial-gradient(ellipse at 50% 22%,#392353,#100b1b 70%); }
+#birth-generation h1 { color:#ffedcc; font-size:clamp(22px,5vw,28px); margin:0; }
+#birth-generation p { min-height:1.5em; margin:0; color:#d0bdd7; }
+.birth-generation-visual { width:min(72vw,300px); aspect-ratio:16/9;
+  background:url(assets/assets/images/report-loading-animated.webp) center/contain no-repeat,
+    url(assets/assets/images/report-loading-poster.webp) center/contain no-repeat;
+  -webkit-mask-image:radial-gradient(ellipse,#000 40%,transparent 73%); mask-image:radial-gradient(ellipse,#000 40%,transparent 73%);
+  animation:birth-generation-pulse 1.8s ease-in-out infinite; }
+#birth-generation-retry { min-height:44px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
+  background:transparent; color:#f4d399; font:inherit; cursor:pointer; }
+@keyframes birth-generation-pulse { 50% { transform:scale(1.035); filter:brightness(1.12); } }
+@media (prefers-reduced-motion:reduce) { .birth-generation-visual { animation:none;
+  background-image:url(assets/assets/images/report-loading-poster.webp); } }

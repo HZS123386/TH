@@ -104,11 +104,14 @@ test('the native landing form creates a report without loading or waiting for Fl
     await expect(page.locator('#birth-city')).toHaveValue('北京市');
     await page.locator('#birth-submit').click();
 
-    await expect(page.locator('#birth-submit')).toBeDisabled();
-    await expect(page.locator('#birth-form')).toBeVisible();
-    await expect(page.locator('#birth-generation')).toHaveCount(0);
+    await expect(page.locator('#birth-generation')).toBeVisible();
+    await expect(page.locator('#birth-generation-status')).toHaveText(/\S/);
+    await expect(page.locator('#birth-form')).toBeHidden();
+    assert.equal(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),'none');
     releasePost();
     await expect(page).toHaveURL(/report\.html\?id=native-accepted-report&lang=zh$/);
+    await expect(page.locator('#fate-startup')).toBeVisible();
+    await page.evaluate(() => window.fateBoot.ready());
     await expect(page.locator('#accepted-report')).toBeVisible();
     await expect(page.locator('#fate-startup')).toBeHidden();
     assert.equal(posts.length,1);
@@ -174,7 +177,11 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.getByRole('option',{name:'北京市',exact:false}).click();
     await page.locator('#birth-submit').click();
 
+    await expect(page.locator('#birth-generation')).toBeVisible();
+    assert.match(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),/birth-generation-pulse/);
     await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);
+    await expect(page.locator('#fate-startup')).toBeVisible();
+    await page.evaluate(() => window.fateBoot.ready());
     await expect(page.locator('#accepted-report')).toBeVisible();
     await expect(page.locator('#fate-startup')).toBeHidden();
     assert.equal(await page.evaluate(() => window.fateBoot.openingReportId),'embedded-accepted-report');
