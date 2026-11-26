@@ -27,6 +27,63 @@ after(async () => { try { await browser?.close(); } finally { preview?.kill(); }
 const bangkok = {id:'geonames:1609350',nameThai:'กรุงเทพมหานคร',nameEnglish:'Bangkok',countryCode:'TH',timeZone:'Asia/Bangkok'};
 const beijing = {id:'geonames:1816670',nameChinese:'北京市',nameEnglish:'Beijing',countryCode:'CN',timeZone:'Asia/Shanghai'};
 
+async function scrollBirthWheel(wheel, value) {
+  await wheel.evaluate((rail, number) => {
+    const row = rail.querySelector('.birth-wheel-item').getBoundingClientRect().height;
+    rail.scrollTop = (number - Number(rail.getAttribute('aria-valuemin'))) * row;
+  },value);
+  await expect(wheel).toHaveAttribute('aria-valuenow',String(value));
+}
+
+async function selectBirthValue(page, field, value) {
+  await page.locator('#birth-' + field + '-trigger').click();
+  const wheels = page.locator('#birth-picker').getByRole('spinbutton');
+  const parts = value.split(/[-:]/).map(Number);
+  for (const [index, part] of parts.entries()) await scrollBirthWheel(wheels.nth(index),part);
+  await page.locator('#birth-picker-confirm').click();
+  await expect(page.locator('#birth-' + field)).toHaveValue(value);
+}
+
+test('date and time wheels highlight the selection and commit only valid values', async () => {
+  const context = await browser.newContext({viewport:{width:390,height:844},hasTouch:true});
+  try {
+    const page = await context.newPage();
+    await context.route('**/api/**',route => route.fulfill({json:{items:[],total:0}}));
+    await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
+    const date = page.locator('#birth-date-trigger'), time = page.locator('#birth-time-trigger');
+    const dialog = page.getByRole('dialog', {name:'出生日期'});
+    await date.click();
+    await expect(dialog.locator('[data-selected]')).toHaveText(['1990年','7月','15日']);
+    const day = dialog.getByRole('spinbutton',{name:'日',exact:true});
+    await day.hover();
+    const row = await day.locator('.birth-wheel-item').first().evaluate(item => item.getBoundingClientRect().height);
+    await page.mouse.wheel(0,row);
+    await expect(day).toHaveAttribute('aria-valuenow','16');
+    await page.locator('#birth-picker-close').click();
+    await expect(page.locator('#birth-date')).toHaveValue('');
+
+    await date.click();
+    const year = dialog.getByRole('spinbutton',{name:'年',exact:true});
+    await scrollBirthWheel(year,2000);
+    await scrollBirthWheel(dialog.getByRole('spinbutton',{name:'月',exact:true}),2);
+    await scrollBirthWheel(day,29);
+    await scrollBirthWheel(year,2001);
+    await expect(day).toHaveAttribute('aria-valuenow','28');
+    await page.locator('#birth-picker-confirm').click();
+    await expect(date).toContainText('2001年2月28日');
+
+    await time.click();
+    await expect(page.getByRole('dialog',{name:'出生时间'}).locator('[data-selected]')).toHaveText(['07','15']);
+    const minute = page.locator('#birth-picker').getByRole('spinbutton',{name:'分钟',exact:true});
+    await minute.press('Home');
+    await minute.press('ArrowUp');
+    await page.locator('#birth-picker-confirm').click();
+    await expect(time).toContainText('07:01');
+    await page.locator('#birth-unknown').check();
+    await expect(time).toBeDisabled();
+  } finally { await context.close(); }
+});
+
 // Mirror the visit API's acknowledgement and (visit, sequence) uniqueness on retries.
 function visitCollector() {
   const events = new Map();
@@ -99,8 +156,8 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','flutte
         return reply({recorded:true});
       });
       await page.goto(url + '?topic=career&startup=1&utm_source=example&utm_campaign=handoff',{waitUntil:'domcontentloaded'});
-      await page.locator('#birth-date').fill('1995-08-17');
-      await page.locator('#birth-time').fill('09:30');
+      await selectBirthValue(page,'date','1995-08-17');
+      await selectBirthValue(page,'time','09:30');
       await page.locator('#birth-city').click();
       await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
       await page.locator('#birth-submit').click();
@@ -205,7 +262,7 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
       return respond({recorded:true,accepted:true});
     });
     await page.goto(url + '?topic=career&utm_source=example',{waitUntil:'domcontentloaded'});
-    const date = page.locator('#birth-date'), city = page.locator('#birth-city'), time = page.locator('#birth-time');
+    const date = page.locator('#birth-date-trigger'), city = page.locator('#birth-city'), time = page.locator('#birth-time-trigger');
     await expect(date).toBeVisible();
     await expect(page.locator('#fate-flutter')).toBeHidden();
     const language = page.locator('#birth-language');
@@ -217,13 +274,13 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     }
     await page.locator('#birth-submit').click();
     await expect(date).toBeFocused();
-    await date.fill('1995-08-17');
+    await selectBirthValue(page,'date','1995-08-17');
     await page.locator('#birth-unknown').check();
     await expect(time).toBeDisabled();
     await city.click();
     await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
     await language.selectOption('zh');
-    await expect(date).toHaveValue('1995-08-17');
+    await expect(date).toContainText('1995年8月17日');
     await expect(city).toHaveValue('');
     await city.fill('cancel-me');
     await expect.poll(() => typeof finishCancelled).toBe('function');
@@ -239,7 +296,7 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     await expect(page.locator('.birth-board li')).toHaveCount(6);
     await language.selectOption('th');
     await page.locator('#birth-unknown').uncheck();
-    await time.fill('09:30');
+    await selectBirthValue(page,'time','09:30');
     await city.click();
     await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
     await page.locator('#birth-question').selectOption('custom');
@@ -318,7 +375,7 @@ test('an interrupted startup keeps the edited form and a manual retry restores i
       return route.continue();
     });
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
-    await page.locator('#birth-date').fill('2001-02-03');
+    await selectBirthValue(page,'date','2001-02-03');
     await page.locator('#birth-unknown').check();
     await expect(page.locator('#birth-career')).toBeHidden();
     release();

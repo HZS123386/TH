@@ -65,7 +65,7 @@ export async function buildLanding({release=false,noPub=false}={}){
   index=index.replace('<script src="browser.js"></script>',()=>`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`);
   // Keep the editable form and just its labels in the first response, ahead of Flutter.
   const copies = {};
-  const formKeys = 'title language portrait formTitle formCaption date calendar time unknown city citySearch questionTitle questions writeQuestion topics topicLabel disclaimer privacy support submitConsent regionPending regionRetry noticeOutdated consentError openLatest'.split(' ');
+  const formKeys = 'title language portrait formTitle formCaption date dateParts calendar time unknown city citySearch questionTitle questions writeQuestion topics topicLabel disclaimer privacy support submitConsent regionPending regionRetry noticeOutdated consentError openLatest'.split(' ');
   for (const file of await readdir(path.join(flutterRoot,'assets','copy'))) {
     if (!file.endsWith('.json')) continue;
     const lang = path.basename(file,'.json');
@@ -73,7 +73,7 @@ export async function buildLanding({release=false,noPub=false}={}){
     const pick = (object, keys) => Object.fromEntries(keys.map(key => [key,object[key]]));
     copies[lang] = {
       jy: pick(data.jy[lang],formKeys),
-      ui: pick(data.ui[lang],['invalidDate','timeRequired','invalidPlace','network','badResult','noCity','morePlaces']),
+      ui: pick(data.ui[lang],['invalidDate','timeRequired','invalidPlace','network','badResult','noCity','morePlaces','confirm','close']),
       marriage: pick(data.marriage[lang],['title','form_hint']),
       generation: pick(data.generation[lang],['previewTitle','preview','ready','storage','busy','retry']),
       preparing: data.jy[lang].interpretation.steps.basics.status,

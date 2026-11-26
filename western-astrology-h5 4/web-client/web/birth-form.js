@@ -17,7 +17,7 @@
   let edited = false, searchTimer, locationRequest, returnDraft, offset = 0, total = 0;
   let originalProfile, originalPlace, creating = false, acceptedReport;
   let submission, retrySubmission = false;
-  let checkedSubmission = false;
+  let checkedSubmission = false, activePicker;
   const labels = window.fateBirthCopies || {};
   const firstPages = new Map();
 
@@ -52,6 +52,7 @@
   }
 
   function show(visible) {
+    if (!visible && byId('birth-picker')?.open) byId('birth-picker').close();
     main.hidden = !visible;
     host.inert = visible;
     document.documentElement.toggleAttribute('data-birth-visible',visible);
@@ -62,14 +63,164 @@
     return item[field] || item.nameEnglish || item.nameChinese || item.nameThai || '';
   }
 
-  function today() {
-    return window.fateH5.today(place?.timeZone || 'Asia/Bangkok');
+  function latestBirthDate() {
+    const today = window.fateH5.today(place?.timeZone || 'Asia/Bangkok');
+    return today < '2099-12-31' ? today : '2099-12-31';
+  }
+
+  function updatePickerField(field) {
+    const input = byId('birth-' + field);
+    byId('birth-' + field + '-trigger').disabled = input.disabled;
+    if (!copy) return;
+    let display = input.value;
+    if (field === 'date') {
+      display = display ? new Intl.DateTimeFormat(language,{
+        year:'numeric',month:'long',day:'numeric',calendar:'gregory',timeZone:'UTC'
+      }).format(new Date(display + 'T00:00:00Z')) : copy.jy.dateParts.placeholder;
+    }
+    byId('birth-' + field + '-value').textContent = display || '--:--';
+  }
+
+  function setWheelValue(wheel, value, align = false) {
+    const selected = Math.max(wheel.minimum,Math.min(wheel.maximum,value));
+    wheel.items.children[wheel.value - wheel.minimum]?.removeAttribute('data-selected');
+    wheel.value = selected;
+    const item = wheel.items.children[selected - wheel.minimum];
+    item.setAttribute('data-selected','');
+    wheel.rail.setAttribute('aria-valuenow',String(selected));
+    wheel.rail.setAttribute('aria-valuetext',item.textContent);
+    if (align) wheel.rail.scrollTop = item.getBoundingClientRect().height * (selected - wheel.minimum);
+  }
+
+  function setWheelBounds(wheel, maximum, value) {
+    if (wheel.maximum === maximum) {
+      if (value !== wheel.value) setWheelValue(wheel,value,true);
+      return;
+    }
+    wheel.maximum = maximum;
+    wheel.rail.setAttribute('aria-valuemax',String(maximum));
+    const options = [];
+    for (let number = wheel.minimum; number <= maximum; number++) {
+      const item = document.createElement('div');
+      item.className = 'birth-wheel-item';
+      item.dataset.value = String(number);
+      item.textContent = wheel.text(number);
+      options.push(item);
+    }
+    wheel.items.replaceChildren(...options);
+    setWheelValue(wheel,value,true);
+  }
+
+  function makeWheel(minimum, label, text, onChange) {
+    const rail = document.createElement('div'), items = document.createElement('div');
+    rail.className = 'birth-wheel';
+    rail.tabIndex = 0;
+    rail.setAttribute('role','spinbutton');
+    rail.setAttribute('aria-label',label);
+    rail.setAttribute('aria-valuemin',String(minimum));
+    items.className = 'birth-wheel-items';
+    items.setAttribute('aria-hidden','true');
+    rail.append(items);
+    const wheel = {rail,items,minimum,text};
+    const select = (value,align) => {
+      const before = wheel.value;
+      setWheelValue(wheel,value,align);
+      if (wheel.value !== before) onChange?.();
+    };
+    rail.addEventListener('scroll',() => {
+      if (!byId('birth-picker').open || !rail.isConnected) return;
+      const height = items.firstElementChild.getBoundingClientRect().height;
+      if (!height) return;
+      const value = minimum + Math.round(rail.scrollTop / height);
+      if (value !== wheel.value) select(value,false);
+    },{passive:true});
+    rail.addEventListener('click',event => {
+      const item = event.target.closest('.birth-wheel-item');
+      if (item) select(Number(item.dataset.value),true);
+    });
+    rail.addEventListener('keydown',event => {
+      const steps = {ArrowUp:1,ArrowDown:-1,PageUp:10,PageDown:-10};
+      let value;
+      if (Object.hasOwn(steps,event.key)) value = wheel.value + steps[event.key];
+      else if (event.key === 'Home') value = minimum;
+      else if (event.key === 'End') value = wheel.maximum;
+      else return;
+      event.preventDefault();
+      select(value,true);
+    });
+    return wheel;
+  }
+
+  function limitDateWheels(month, day) {
+    const [yearWheel,monthWheel,dayWheel] = activePicker.wheels;
+    const [lastYear,lastMonth,lastDay] = activePicker.maximum;
+    const year = yearWheel.value;
+    setWheelBounds(monthWheel,year === lastYear ? lastMonth : 12,month ?? monthWheel.value);
+    const chosenMonth = monthWheel.value;
+    const daysInMonth = new Date(Date.UTC(year,chosenMonth,0)).getUTCDate();
+    const dayLimit = year === lastYear && chosenMonth === lastMonth ? Math.min(daysInMonth,lastDay) : daysInMonth;
+    setWheelBounds(dayWheel,dayLimit,day ?? dayWheel.value);
+  }
+
+  function openPicker(field) {
+    const dialog = byId('birth-picker'), input = byId('birth-' + field);
+    if (!copy || dialog.open || input.disabled) return;
+    closeOptions();
+    track('select_birth_' + field);
+    firstPage(countries[language]).catch(() => {});
+    const wrapper = byId('birth-picker-wheels');
+    const dates = field === 'date';
+    const pad = number => String(number).padStart(2,'0');
+    let wheels;
+    if (dates) {
+      input.max = latestBirthDate();
+      const parts = copy.jy.dateParts;
+      const months = new Intl.DateTimeFormat(language,{month:'short',calendar:'gregory',timeZone:'UTC'});
+      const refresh = () => limitDateWheels();
+      const label = (part,number) => {
+        if (language === 'zh') return number + parts[part];
+        return part === 'month' ? months.format(new Date(Date.UTC(2000,number - 1,1))) : String(number);
+      };
+      wheels = ['year','month','day'].map((part,index) =>
+        makeWheel(index === 0 ? Number(input.min.slice(0,4)) : 1,parts[part],number => label(part,number),
+          index < 2 ? refresh : undefined));
+      activePicker = {field,wheels,maximum:input.max.split('-').map(Number)};
+    } else {
+      wheels = ['hour','minute'].map(unit => {
+        const parts = new Intl.NumberFormat(language,{style:'unit',unit,unitDisplay:'long'}).formatToParts(1);
+        return makeWheel(0,parts.find(part => part.type === 'unit').value,pad);
+      });
+      activePicker = {field,wheels};
+    }
+    byId('birth-picker-title').textContent = copy.jy[field];
+    wrapper.toggleAttribute('data-time',!dates);
+    wrapper.replaceChildren(...wheels.map(wheel => wheel.rail));
+    dialog.showModal();
+    if (dates) {
+      const [year,month,day] = (input.value || '1990-07-15').split('-').map(Number);
+      setWheelBounds(wheels[0],activePicker.maximum[0],year);
+      limitDateWheels(month,day);
+    } else {
+      const [hour,minute] = (input.value || '07:15').split(':').map(Number);
+      setWheelBounds(wheels[0],23,hour);
+      setWheelBounds(wheels[1],59,minute);
+    }
+  }
+
+  function confirmPicker() {
+    const {field,wheels} = activePicker;
+    const input = byId('birth-' + field);
+    const parts = wheels.map(wheel => String(wheel.value).padStart(2,'0'));
+    input.value = parts.join(field === 'date' ? '-' : ':');
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    input.dispatchEvent(new Event('change',{bubbles:true}));
+    byId('birth-picker').close();
   }
 
   function progress() {
     const date = byId('birth-date'), time = byId('birth-time');
     if (!date.value && !time.value && !time.disabled && !place) return 'empty';
-    if (!date.value || !date.validity.valid || date.value > today() || date.value > '2099-12-31') return 'date';
+    if (!date.value || !date.validity.valid || date.value > latestBirthDate()) return 'date';
     if (!time.disabled && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time.value)) return 'time';
     return place?.countryCode === countries[language] && place.timeZone ? 'complete' : 'place';
   }
@@ -85,7 +236,7 @@
     markEdited();
     place = item;
     byId('birth-city').value = placeName(item);
-    byId('birth-date').max = today();
+    byId('birth-date').max = latestBirthDate();
     closeOptions();
     track('form_progress_' + progress());
     byId('birth-city').focus();
@@ -162,9 +313,12 @@
     for (const node of main.querySelectorAll('[data-copy]')) node.textContent = words[node.dataset.copy];
     byId('birth-language').value = language;
     byId('birth-language').setAttribute('aria-label',j.language);
-    byId('birth-date').lang = language + '-u-ca-gregory';
     byId('birth-city').placeholder = j.citySearch;
-    byId('birth-date').max = today();
+    byId('birth-date').max = latestBirthDate();
+    byId('birth-picker-confirm').textContent = copy.ui.confirm;
+    byId('birth-picker-close').textContent = copy.ui.close;
+    updatePickerField('date');
+    updatePickerField('time');
     byId('birth-career').hidden = !career;
     const question = byId('birth-question'), selected = question.value;
     question.replaceChildren(new Option(j.questionTitle,''),
@@ -219,7 +373,9 @@
     byId('birth-time').disabled = byId('birth-unknown').checked = !!data.unknown;
     place = data.place?.countryCode === countries[language] ? data.place : null;
     byId('birth-city').value = place ? placeName(place) : '';
-    byId('birth-date').max = today();
+    byId('birth-date').max = latestBirthDate();
+    updatePickerField('date');
+    updatePickerField('time');
     byId('birth-question').value = data.customQuestion ? 'custom' : data.question || '';
     byId('birth-custom').hidden = byId('birth-question').value !== 'custom';
     byId('birth-custom').value = data.customQuestion || '';
@@ -550,7 +706,7 @@
     if (step !== 'complete') {
       const field = step === 'time' ? 'time' : step === 'place' ? 'city' : 'date';
       say(copy.ui[{time:'timeRequired',city:'invalidPlace',date:'invalidDate'}[field]]);
-      byId('birth-' + field).focus();
+      byId('birth-' + (field === 'city' ? field : field + '-trigger')).focus();
       track('invalid_form');
       return;
     }
@@ -564,15 +720,18 @@
     form.addEventListener('submit',submit);
     form.addEventListener('input',markEdited);
     for (const field of ['date','time']) {
-      byId('birth-' + field).addEventListener('focus',() => {
-        byId('birth-date').max = today();
-        track('select_birth_' + field);
-        firstPage(countries[language]).catch(() => {});
-      });
+      byId('birth-' + field + '-trigger').addEventListener('click',() => openPicker(field));
+      byId('birth-' + field).addEventListener('input',() => updatePickerField(field));
       byId('birth-' + field).addEventListener('change',() => track('form_progress_' + progress()));
     }
+    byId('birth-picker-confirm').addEventListener('click',confirmPicker);
+    byId('birth-picker-close').addEventListener('click',() => byId('birth-picker').close());
+    byId('birth-picker').addEventListener('close',() => {
+      if (!byId('birth-picker').open) activePicker = undefined;
+    });
     byId('birth-unknown').addEventListener('change',event => {
       byId('birth-time').disabled = event.target.checked;
+      updatePickerField('time');
       track('form_progress_' + progress());
     });
     byId('birth-question').addEventListener('change',event => {
@@ -610,7 +769,7 @@
         const url = new URL(location.href);
         url.searchParams.set('lang',lang);
         history.replaceState(history.state,'',url);
-        byId('birth-date').max = today();
+        byId('birth-date').max = latestBirthDate();
         say('');
         track('form_progress_' + progress());
       } catch { await localize(previous); say(copy.ui.network); }
