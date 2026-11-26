@@ -70,7 +70,7 @@ const fateHttpsUpgrading=(()=>{
   return false;
 })();
 const fatePerfEnabled=new URLSearchParams(location.search).get('startup')==='1';
-const fateBootLabels={
+const fateBootTranslations={
   zh:{engine:'正在准备星空画面',app:'正在载入你的专属页面',slow:'网络有点慢，请稍候',retry:'连接暂时中断，正在重新加载',failed:'页面加载失败，请检查网络后重试'},
   th:{engine:'กำลังเตรียมภาพดวงดาว',app:'กำลังเปิดหน้าส่วนตัวของคุณ',slow:'เครือข่ายช้าเล็กน้อย กรุณารอสักครู่',retry:'การเชื่อมต่อขัดข้อง กำลังโหลดใหม่',failed:'โหลดไม่สำเร็จ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่'},
   en:{engine:'Preparing your sky',app:'Loading your page',slow:'The network is slow. Please wait',retry:'Connection interrupted. Reloading',failed:'The page could not load. Check your connection and try again'},
@@ -80,7 +80,8 @@ const fateBootLabels={
   "lo":{"engine": "ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ", "app": "ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ", "slow": "ເຄືອຂ່າຍຊ້າ. ກະລຸນາລໍຖ້າ", "retry": "ການເຊື່ອມຕໍ່ຂາດ. ກຳລັງໂຫຼດໃໝ່", "failed": "ໂຫຼດໜ້າບໍ່ໄດ້. ກວດເຄືອຂ່າຍ ແລະລອງໃໝ່"},
   "ms":{"engine": "Membuka langit anda", "app": "Membuka langit anda", "slow": "Rangkaian perlahan. Sila tunggu", "retry": "Sambungan terputus. Memuatkan semula", "failed": "Halaman tidak dapat dimuatkan. Semak sambungan dan cuba lagi"},
   "id":{"engine": "Membuka langit Anda", "app": "Membuka langit Anda", "slow": "Jaringan lambat. Silakan tunggu", "retry": "Koneksi terputus. Memuat ulang", "failed": "Halaman belum dapat dimuat. Periksa koneksi dan coba lagi"}
-}[document.documentElement.lang];
+};
+const fateBootLabels=fateBootTranslations[document.documentElement.lang];
 let fateBootFinished=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
 const fateBootRetryKey='fate-startup-recovery-at';
 // Consume a queued retry even if navigation stalled, then latch the path preference before its TTL expires.
@@ -95,15 +96,16 @@ const fateBootRetry=(()=>{
 })();
 const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateBootFinished){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
 // A truncated HTML stream may render the overlay without ever reaching the inline bootstrap.
-const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail();},20000);
-const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBoot.fail(),90000);
+const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail('runtime_boot_html');},20000);
+const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBoot.fail('runtime_boot_timeout'),90000);
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
   compatibility:fateBootRetry?.compatibility===true,
   stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
-  fail(){
+  fail(reason = 'runtime_boot_' + fateBootPhase){
     if(fateHttpsUpgrading||fateBootFinished||fateBootFailed)return;
     fateBootFailed=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);
+    if (reason) recordFateRuntime(reason);
     // A failed ES-module import stays rejected for this document; retry it once in a fresh document.
     let recover=false;
     if(!fateBootRetry){try{
@@ -112,7 +114,15 @@ window.fateBoot={
       sessionStorage.setItem(fateBootRetryKey,marker);
       recover=sessionStorage.getItem(fateBootRetryKey)===marker;
     }catch{}}
-    if(recover){this.stage('retry');fateBootRecovery=setTimeout(()=>location.reload(),700);return;}
+    if(recover && !window.fateBirthForm?.editing){
+      this.stage('retry');
+      fateBootRecovery=setTimeout(()=>{
+        if(window.fateBirthForm?.editing)window.fateBirthForm.engineFailed();
+        else location.reload();
+      },700);
+      return;
+    }
+    window.fateBirthForm?.engineFailed();
     this.stage('failed');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;
   },
   ready(){
@@ -124,9 +134,30 @@ window.fateBoot={
 };
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
 window.addEventListener('error',event=>{
-  if(event.error||event.message||(event.target?.tagName==='SCRIPT'&&/\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src)))window.fateBoot.fail();
+  const script = event.target?.tagName === 'SCRIPT' && /\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src);
+  if (!event.error && !event.message && !script) return;
+  const source = event.filename || (script && event.target.src);
+  // Browsers hide the source and exception of a muted cross-origin script error.
+  if (!source && !event.error && /^Script error\.?$/i.test(event.message || '')) return;
+  try { if (source && new URL(source, location.href).origin !== new URL(location.href).origin) return; } catch { return; }
+  const reason = script ? 'runtime_script_load' : fateJsErrorCode(event.error, 'runtime_js_error');
+  if (!fateBootFinished) window.fateBoot.fail(reason);
+  else recordFateRuntime(reason);
 },true);
-window.addEventListener('unhandledrejection',()=>window.fateBoot.fail());
+window.addEventListener('unhandledrejection',event=>{
+  const reason = fateJsErrorCode(event.reason, 'runtime_rejection');
+  if (fateBootFinished) recordFateRuntime(reason);
+  else window.fateBoot.fail(reason);
+});
+function fateJsErrorCode(error, fallback) {
+  switch (error?.name) {
+    case 'TypeError': return 'runtime_js_type';
+    case 'ReferenceError': return 'runtime_js_reference';
+    case 'SyntaxError': return 'runtime_js_syntax';
+    case 'RangeError': return 'runtime_js_range';
+    default: return fallback;
+  }
+}
 // The HTML response can stall after rendering the button but before DOMContentLoaded.
 document.addEventListener('click',event=>{if(event.target?.closest?.('#fate-startup-retry'))location.reload();});
 const fatePendingKey = 'fate-activity-pending';
@@ -409,6 +440,21 @@ function recordFateActivity(kind = 'action', state = fateState(), action, failur
   persistFateActivity({ visit: fateActivity.visit, event });
   scheduleFateActivity();
 }
+function recordFateRuntime(action) {
+  try {
+    if (!fateTrackingAllowed() || fateHttpsUpgrading) return;
+    if (!fateActivity) {
+      const visit = fateVisitContext(), key = visit && fateOwnerKey();
+      if (!key) return;
+      window.fateH5.trackActivity(JSON.stringify({...visit, activity: {page: 'unobserved', action}}), key, '/api/landing/visits');
+    } else {
+      if (fateActivity.runtimeErrors.has(action)) return;
+      recordFateActivity('action', fateState(), action);
+    }
+    // A repeating framework error can fire every frame of the same page.
+    fateActivity?.runtimeErrors.add(action);
+  } catch { /* Diagnostics must not interfere with startup or error handling. */ }
+}
 function scheduleFateDwell() {
   clearTimeout(fateDwellTimer);
   if (fateActivity && fateState() === 'visible') fateDwellTimer = setTimeout(() => {
@@ -437,6 +483,7 @@ window.addEventListener('online', () => { scheduleFateActivity(0); });
 try { fateVisitContext(); } catch {}
 window.fateH5 = {
   ownerKey: fateOwnerKey,
+  trackRuntime: recordFateRuntime,
   trackLineClaimClick: trackFateLineClaimClick,
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },
   trackFailure(path, code, method) {
@@ -460,7 +507,7 @@ window.fateH5 = {
       }
       if (!fateActivity) {
         fateActivity = { visit, activity, key, endpoint, visibleMs: 0, visibleSince: null,
-          pageViewId: fateUuid() };
+          pageViewId: fateUuid(), runtimeErrors: new Set() };
       } else fateActivity.activity = activity;
       recordFateActivity();
       scheduleFateDwell();

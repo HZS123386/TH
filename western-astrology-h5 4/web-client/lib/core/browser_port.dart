@@ -10,6 +10,9 @@ abstract interface class BrowserPort implements DeviceStore {
   Future<String> exportDocument(LifeReport report, String format);
   void postPayment(String action, Map<String, String> fields);
   void pageReady(String page);
+  void attachBirthForm(Json initial, Future<String> Function(Json) submit);
+  bool get birthFormSubmitting;
+  void detachBirthForm();
   String? readSetting(String key, {bool session = false});
   void writeSetting(String key, String value, {bool session = false});
   Json visitContext();

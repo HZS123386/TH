@@ -62,7 +62,30 @@ export async function buildLanding({release=false,noPub=false}={}){
   if(!index.includes('<!-- FATE_FONT_PRELOADS -->'))throw Error('Missing font preload slot');
   index=index.replace('<!-- FATE_FONT_PRELOADS -->',[...fontAssets].map(asset=>`<link rel="preload" href="assets/${asset}" as="fetch" fetchpriority="low" crossorigin>`).join('\n  '));
   if(!index.includes('<script src="browser.js"></script>'))throw Error('Missing browser bootstrap slot');
-  await writeFile(indexPath,index.replace('<script src="browser.js"></script>',`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`));
+  index=index.replace('<script src="browser.js"></script>',()=>`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`);
+  // Keep the editable form and just its labels in the first response, ahead of Flutter.
+  const copies = {};
+  const formKeys = 'title language portrait formTitle formCaption date calendar time unknown city citySearch questionTitle questions writeQuestion topics topicLabel disclaimer privacy support submitConsent regionPending regionRetry noticeOutdated consentError openLatest'.split(' ');
+  for (const file of await readdir(path.join(flutterRoot,'assets','copy'))) {
+    if (!file.endsWith('.json')) continue;
+    const lang = path.basename(file,'.json');
+    const data = JSON.parse(await readFile(path.join(flutterRoot,'assets','copy',file),'utf8'));
+    const pick = (object, keys) => Object.fromEntries(keys.map(key => [key,object[key]]));
+    copies[lang] = {
+      jy: pick(data.jy[lang],formKeys),
+      ui: pick(data.ui[lang],['invalidDate','timeRequired','invalidPlace','network','badResult','noCity','morePlaces']),
+      marriage: pick(data.marriage[lang],['title','form_hint']),
+      generation: pick(data.generation[lang],['previewTitle','preview','ready','storage','busy','retry']),
+      preparing: data.jy[lang].interpretation.steps.basics.status,
+      themes: Object.values(data.jyThemes).map(items => items.map(item => item[lang]))
+    };
+  }
+  const formScript = await readFile(path.join(flutterRoot,'web','birth-form.js'),'utf8');
+  const formStyle = await readFile(path.join(flutterRoot,'web','birth-form.css'),'utf8');
+  index=index.replace('<!-- FATE_BIRTH_COPY -->',()=>`<script>window.fateBirthCopies=${JSON.stringify(copies).replaceAll('<','\\u003c')}</script>`)
+    .replace('<link rel="stylesheet" href="birth-form.css">',()=>`<style>${formStyle}</style>`)
+    .replace('<script src="birth-form.js"></script>',()=>`<script>${formScript}</script>`);
+  await writeFile(indexPath,index);
   // Preserve the existing report.html deep links, including saved report IDs.
   for (const page of ['report.html','privacy.html','support.html']) {
     await cp(path.join(generated,'index.html'),path.join(generated,page));

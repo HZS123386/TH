@@ -178,6 +178,24 @@ Json personalFixture({String language = 'zh', bool full = false}) {
 }
 
 class TestBrowser implements BrowserPort {
+  Json? formInitial;
+  Future<String> Function(Json)? submitBirthForm;
+  bool formVisible = false;
+  @override
+  void attachBirthForm(Json initial, Future<String> Function(Json) submit) {
+    formInitial = initial;
+    submitBirthForm = submit;
+    formVisible = true;
+  }
+
+  @override
+  bool birthFormSubmitting = false;
+  @override
+  void detachBirthForm() {
+    submitBirthForm = null;
+    formVisible = false;
+  }
+
   final openedPages = <String>[];
   @override
   bool supportsLineApp = false;
@@ -186,6 +204,7 @@ class TestBrowser implements BrowserPort {
     openedPages.add(path);
     if (sameTab) sameTabPages.add(path);
   }
+
   final sameTabPages = <String>[];
   final settings = <String, String>{'fate-data-use-version': 'h5-data-use-3'};
   Json visit = {};

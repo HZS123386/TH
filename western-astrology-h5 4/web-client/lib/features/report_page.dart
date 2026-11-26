@@ -49,6 +49,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    if (widget.h5.browser.readSetting('active-preview', session: true) == widget.id) {
+      widget.h5.browser.writeSetting('active-preview', '', session: true);
+    }
     WidgetsBinding.instance.addObserver(this);
     widget.h5.trackActivity('report_loading');
     _model.addListener(_changed);
@@ -106,7 +109,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         if (mounted) {
           widget.h5.browser.pageReady('report-content');
           unawaited(widget.h5.trackReport(r.id, 'seen'));
-          if (!_generating && !r.ready) {
+          if (!r.ready) {
             widget.h5.trackActivity('preview_report', 'report_ready');
           }
         }
@@ -117,8 +120,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           widget.h5.browser.pageReady('report-full-content');
-          if (!_generating)
-            widget.h5.trackActivity('full_report', 'report_ready');
+          widget.h5.trackActivity('full_report', 'report_ready');
         }
       });
     }
@@ -235,14 +237,21 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       _generationRequest = token;
       state.retry();
       final first = attempts++ == 0;
-      widget.h5.trackActivity(page, first ? 'generate' : 'retry_generation');
       try {
-        final resume =
-            first &&
-            (full ? initial.fullInProgress : initial.previewInProgress);
+        // After a lost progress response, check the original ID before retrying generation.
+        final current = !full && !first
+            ? await widget.h5.repository.load(initial.id, token)
+            : initial;
+        final resume = full
+            ? first && current.fullInProgress
+            : current.previewInProgress || current.hasPreview;
+        final action = !first
+            ? 'retry_generation'
+            : !full && resume ? 'view' : 'generate';
+        widget.h5.trackActivity(page, action);
         final result = resume
             ? await widget.h5.repository.resumeGeneration(
-                initial,
+                current,
                 token,
                 state.update,
                 full: full,
@@ -268,8 +277,8 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     }
 
     unawaited(run());
-    await Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder<void>(
+    final completed = await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder<bool>(
         opaque: true,
         pageBuilder: (context, animation, secondaryAnimation) => GenerationDialog(
           h5: widget.h5,
@@ -278,11 +287,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           input: initial.input,
           onCancel: () {
             _generationRequest?.cancel();
-            Navigator.of(context, rootNavigator: true).pop();
+            Navigator.of(context, rootNavigator: true).pop(false);
           },
           onRetry: () => unawaited(run()),
           onComplete: (r) {
-            Navigator.of(context, rootNavigator: true).pop();
+            Navigator.of(context, rootNavigator: true).pop(true);
             if (r.id != widget.id) {
               context.go(
                 '/report.html?id=${Uri.encodeComponent(r.id)}&lang=${r.language}',
@@ -299,10 +308,16 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     if (mounted) {
       setState(() => _generating = false);
       _model.resume();
-      widget.h5.trackActivity(
-        _model.report?.ready == true ? 'full_report' : 'preview_report',
-        state.complete ? 'report_ready' : 'cancel_generation',
-      );
+      // The first displayed preview or full report records its own ready event.
+      if (completed != true) {
+        final report = _model.report;
+        final returnedPage = report?.ready == true
+            ? 'full_report'
+            : report?.hasPreview == true
+            ? 'preview_report'
+            : 'report_loading';
+        widget.h5.trackActivity(returnedPage, 'cancel_generation');
+      }
     }
   }
 

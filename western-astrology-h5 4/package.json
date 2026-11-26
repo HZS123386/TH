@@ -13,7 +13,8 @@
     "check:documents": "tsc --noEmit",
     "test": "pnpm test:contracts && pnpm test:flutter",
     "test:contracts": "vitest run",
-    "test:flutter": "node scripts/build-flutter.mjs test"
+    "test:flutter": "node scripts/build-flutter.mjs test",
+    "test:form": "node --test tests/birth-form.browser.mjs"
   },
   "dependencies": {
     "pdfmake": "0.3.13"

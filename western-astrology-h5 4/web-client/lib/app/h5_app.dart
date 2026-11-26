@@ -32,11 +32,14 @@ class _H5AppState extends State<H5App> {
     initialLocation: widget.initialLocation,
     routes: [
       ShellRoute(
-        builder: (context, state, child) => _Shell(
-          showLanguages: state.uri.path != '/report.html',
-          showHomeArrow: state.uri.path != '/',
-          child: child,
-        ),
+        builder: (context, state, child) => state.uri.path == '/'
+            // The outgoing report still needs a Material ancestor while the HTML form takes over.
+            ? Material(type: MaterialType.transparency, child: child)
+            : _Shell(
+                showLanguages: state.uri.path != '/report.html',
+                showHomeArrow: state.uri.path != '/',
+                child: child,
+              ),
         routes: [
           GoRoute(
             path: '/',
@@ -76,7 +79,8 @@ class _H5AppState extends State<H5App> {
                 key: ValueKey(state.uri.queryParameters['id']),
                 h5: widget.controller,
                 id: state.uri.queryParameters['id'] ?? '',
-                paymentReturn: state.uri.queryParameters['payment_return'] == '1',
+                paymentReturn:
+                    state.uri.queryParameters['payment_return'] == '1',
               ),
             ),
           ),

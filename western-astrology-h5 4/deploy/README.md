@@ -33,7 +33,7 @@ sudo docker compose logs --tail 80 app
 
 准备发布包时，可将 `FATE_H5_WASM_BASE_URL` 设为对象存储或 CDN 的公开 HTTPS 目录。启用后，发布包中的 `main.dart.wasm` 和当前引擎的 `skwasm.wasm` 会改为跳转到该目录下的内容哈希地址。其余 Dart 分包和兼容引擎继续由原站点提供。本地 `site` 可继续独立预览。
 
-切换前，按发布清单 `manifest.json` 中的 `wasm_objects` 上传 `wasm-objects/` 中的文件。使用清单里的对象键、`Content-Type`、`Content-Encoding` 和缓存设置。允许实际 H5 域名跨域 `GET` 和 `HEAD`，再验证两份 Wasm 能下载并启动 H5。火山 TOS 的配置见[跨域规则](https://docs.volcengine.com/docs/TorchObjectStorage/CORSrules?lang=zh)与[对象元数据](https://docs.volcengine.com/docs/torch-object-storage/managing-object-metadata?lang=zh)。
+切换前，按发布清单 `manifest.json` 中的 `wasm_objects` 上传文件。`path` 是本地文件，`object_key` 是上传到桶内的完整路径，已包含 `FATE_H5_WASM_BASE_URL` 的目录前缀。上传时设置清单里的 `Content-Type`、`Content-Encoding` 和缓存设置。允许实际 H5 域名跨域 `GET` 和 `HEAD`，再验证两份 Wasm 能下载并启动 H5。火山 TOS 的配置见[跨域规则](https://docs.volcengine.com/docs/TorchObjectStorage/CORSrules?lang=zh)与[对象元数据](https://docs.volcengine.com/docs/torch-object-storage/managing-object-metadata?lang=zh)。
 
 发布包包含后端、排盘脚本及库、`TH/src/content`、`TH/src/locales`、`TH/src/data` 中的运行资源，以及落地页 `site` 构建目录。报告校验代码会读取这些语言资源，不能只复制 Python 文件。
 

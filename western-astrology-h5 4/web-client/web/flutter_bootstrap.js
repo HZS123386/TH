@@ -2,7 +2,10 @@
 {{flutter_build_config}}
 
 // Keep the original Flutter loader, including its JavaScript compatibility build.
-const fateFlutterConfig = { canvasKitBaseUrl: 'engine/' + _flutter.buildConfig.engineRevision + '/' };
+const fateFlutterConfig = {
+  hostElement: document.getElementById('fate-flutter'),
+  canvasKitBaseUrl: 'engine/' + _flutter.buildConfig.engineRevision + '/'
+};
 // The official loader selects the shipped JavaScript build for this one recovery document.
 if(window.fateBoot.compatibility)fateFlutterConfig.renderer='canvaskit';
 if (!window.fateBoot.upgrading) {

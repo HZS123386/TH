@@ -9,7 +9,7 @@ import shutil
 import tarfile
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +31,9 @@ def offload_wasm(site: Path, release: Path, storage_base: str):
             or address.query or address.fragment or any(char.isspace() for char in storage_base)
             or '\\' in storage_base):
         raise ValueError('FATE_H5_WASM_BASE_URL must be a public HTTPS directory URL')
+    prefix = unquote(address.path, errors='strict').strip('/')
+    if '\\' in prefix or any(ord(char) < 32 for char in prefix) or {'.', '..'}.intersection(prefix.split('/')):
+        raise ValueError('FATE_H5_WASM_BASE_URL has an invalid directory prefix')
     main = site / 'main.dart.wasm'
     renderers = list((site / 'engine').glob('*/skwasm.wasm'))
     if not main.is_file() or len(renderers) != 1 or not re.fullmatch(r'[a-f0-9]{40}', renderers[0].parent.name):
@@ -45,11 +48,12 @@ def offload_wasm(site: Path, release: Path, storage_base: str):
             if not payload.is_file():
                 continue
             digest = hashlib.sha256(payload.read_bytes()).hexdigest()
-            key = f'{digest}/{wasm.name}'
-            target = release / 'wasm-objects' / key
+            relative_key = f'{digest}/{wasm.name}'
+            key = f'{prefix}/{relative_key}' if prefix else relative_key
+            target = release / 'wasm-objects' / relative_key
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(payload, target)
-            destinations[encoding] = storage_base.rstrip('/') + '/' + key
+            destinations[encoding] = address._replace(path='/' + quote(key, safe='/')).geturl()
             uploads.append({'path': target.relative_to(release).as_posix(), 'object_key': key,
                             'content_type': 'application/wasm',
                             'content_encoding': 'br' if encoding == 'br' else None,

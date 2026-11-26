@@ -16,7 +16,6 @@ import 'package:fate_h5/core/repository.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/features/information_page.dart';
 import 'package:fate_h5/features/landing_page.dart';
-import 'package:fate_h5/ui/jy_components.dart';
 
 import 'support.dart';
 
@@ -173,7 +172,7 @@ void main() {
   );
 
   testWidgets(
-    'the portrait and birth form open together and preserve the entry tags',
+    'the landing route mounts the HTML form and preserves the entry tags',
     (tester) async {
       phone(tester);
       final browser = TestBrowser()..settings.clear();
@@ -190,55 +189,13 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.byTooltip(h5.copy.t('jy', 'checkout.back')), findsNothing);
-      expect(find.text(h5.copy.t('jy', 'history')), findsNothing);
-      expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is FateImage &&
-              widget.asset == 'assets/images/astrologer-900.webp',
-        ),
-        findsOneWidget,
-      );
-      final birthDate = find.byKey(const ValueKey('birth-date'));
-      expect(find.text(h5.copy.t('jy', 'portrait.name')), findsOneWidget);
-      final pageCenter = tester.getCenter(find.byType(LandingPage)).dx;
-      final headline = find.text(h5.copy.t('jy', 'portrait.headline'));
-      final note = find.text(h5.copy.t('jy', 'portrait.note').replaceAll('\n', ''));
-      expect(tester.widget<Text>(note).maxLines, 1);
-      expect(
-        tester.widget<Text>(headline).style,
-        tester
-            .widget<Text>(find.text(h5.copy.t('jy', 'formTitle')))
-            .style!
-            .copyWith(fontSize: 20),
-      );
-      expect(
-        tester.widget<Text>(note).style,
-        tester.widget<Text>(find.text(h5.copy.t('jy', 'formCaption'))).style,
-      );
-      for (final caption in [headline, note]) {
-        expect(tester.getCenter(caption).dx, closeTo(pageCenter, .5));
-      }
-      expect(birthDate.hitTestable(), findsOneWidget);
-      expect(browser.activities.first, {'page': 'birth_form', 'action': 'view'});
+      expect(browser.formVisible, isTrue);
+      expect(browser.formInitial, containsPair('topic', 'love'));
       final uri = GoRouter.of(
         tester.element(find.byType(LandingPage)),
       ).routeInformationProvider.value.uri;
       expect(uri.queryParameters['topic'], 'love');
       expect(uri.queryParameters['utm_source'], 'facebook');
-      final generate = find.byKey(const ValueKey('generate-report'));
-      await tester.ensureVisible(generate);
-      await tester.tap(generate);
-      expect(
-        browser.activities.where(
-          (activity) => activity['action'] == 'click_generate_report',
-        ),
-        [
-          {'page': 'birth_form', 'action': 'click_generate_report'},
-        ],
-      );
-      expect(browser.activities.last['action'], 'invalid_form');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();

@@ -6,17 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:go_router/go_router.dart';
 import 'package:fate_h5/app/controller.dart';
 import 'package:fate_h5/app/h5_app.dart';
 import 'package:fate_h5/core/models.dart';
 import 'package:fate_h5/core/repository.dart';
-import 'package:fate_h5/features/birth_date_dialog.dart';
 import 'package:fate_h5/features/generation_dialog.dart';
 import 'package:fate_h5/features/generation_video.dart';
-import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/report_view_model.dart';
-import 'package:fate_h5/features/place_picker.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 
 import 'support.dart';
@@ -26,17 +22,6 @@ http.Response response(dynamic value) => http.Response(
   200,
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
-const province = {
-  'id': 'geonames:1609348',
-  'countryCode': 'TH',
-  'nameEnglish': 'Bangkok',
-  'nameChinese': '曼谷',
-  'nameThai': 'กรุงเทพมหานคร',
-  'timeZone': 'Asia/Bangkok',
-  'placeType': 'province',
-  'latitude': 13.75398,
-  'longitude': 100.50144,
-};
 
 void phone(WidgetTester tester) {
   tester.view.physicalSize = const Size(360, 640);
@@ -68,7 +53,6 @@ void main() {
   setUpAll(() async {
     // Native deferred library futures must complete outside the widget fake clock.
     await H5App.loadRoutesForWidgetTests();
-    await LandingPage.loadDialogsForWidgetTests();
   });
 
   for (final language in ['zh', 'th']) {
@@ -120,6 +104,14 @@ void main() {
             .onCancel();
         await tester.pumpAndSettle();
         final queuedLabel = h5.copy.t('life', 'previewStates.queued');
+        expect(browser.activities.last, {
+          'page': 'report_loading',
+          'action': 'cancel_generation',
+        });
+        expect(
+          browser.activities.where((event) => event['action'] == 'report_ready'),
+          isEmpty,
+        );
         expect(queuedLabel, isNotEmpty);
         expect(find.text(queuedLabel), findsOneWidget);
         expect(find.text(h5.copy.t('life', 'viewProgress')), findsOneWidget);
@@ -200,7 +192,7 @@ void main() {
           );
           await click(tester, find.byTooltip(h5.copy.t('jy', 'checkout.back')));
           expect(find.byType(GenerationDialog), findsNothing);
-          expect(find.byKey(const ValueKey('birth-date')), findsOneWidget);
+          expect(browser.formVisible, isTrue);
           expect(browser.readSetting('active-preview', session: true), isEmpty);
           expect(methods.every((method) => method == 'GET'), isTrue);
           await tester.pumpWidget(const SizedBox.shrink());
@@ -216,6 +208,11 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.textContaining(label), findsNothing);
         expect(find.text(h5.copy.t('life', 'viewProgress')), findsNothing);
+        expect(
+          browser.activities.where((event) =>
+              event['page'] == 'full_report' && event['action'] == 'report_ready'),
+          hasLength(1),
+        );
         expect(methods.length, greaterThan(1));
         expect(methods.every((method) => method == 'GET'), isTrue);
         for (final width in [320.0, 1100.0]) {
@@ -362,7 +359,7 @@ void main() {
       );
       await click(tester, find.byTooltip(h5.copy.t('jy', 'checkout.back')));
       expect(find.byType(ReportPreview), findsNothing);
-      expect(find.byKey(const ValueKey('birth-date')), findsOneWidget);
+      expect(browser.formVisible, isTrue);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
     });
@@ -1471,210 +1468,39 @@ void main() {
     );
   }
 
-  testWidgets(
-    'Thai birth picker fits a small phone and language switching preserves the entry URL',
-    (tester) async {
+  for (final language in ['zh', 'th']) {
+    testWidgets('an accepted native report opens without a second submission ($language)', (tester) async {
       phone(tester);
-      final browser = TestBrowser();
-      final h5 = H5Controller(
-        translations(),
-        ReportRepository(browser),
+      final browser = TestBrowser()..birthFormSubmitting = true;
+      final data = fixture(language: language);
+      final input = {...object(data['input']), 'report_kind': 'marriage'};
+      final ready = marriageFixture(input: input);
+      browser.writeSetting('active-preview', text(ready['id']), session: true);
+      final calls = <String>[];
+      final repo = ReportRepository(
         browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          calls.add('${request.method} ${request.url.path}');
+          return response(ready);
+        }),
       );
-      await tester.pumpWidget(
-        H5App(
-          controller: h5,
-          initialLocation: '/?lang=th&topic=love&startup=1',
-        ),
-      );
+      final h5 = H5Controller(translations(), repo, browser, language: language);
+      await tester.pumpWidget(H5App(controller: h5, initialLocation: '/?lang=$language'));
       await tester.pumpAndSettle();
-      await click(tester, find.byKey(const ValueKey('birth-date')));
-      expect(find.byType(BirthDateDialog), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, 'ยืนยัน'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await click(tester, find.widgetWithText(FilledButton, 'ยืนยัน'));
-      await click(tester, find.byKey(const ValueKey('language-menu')));
-      await click(tester, find.byKey(const ValueKey('language-option-zh')));
-      final route = GoRouter.of(
-        tester.element(find.byType(LandingPage)),
-      ).routeInformationProvider.value.uri;
-      expect(route.queryParameters, containsPair('lang', 'zh'));
-      expect(route.queryParameters, containsPair('topic', 'love'));
-      expect(route.queryParameters, containsPair('startup', '1'));
-      expect(find.text(h5.copy.t('jy', 'formTitle')), findsOneWidget);
+      expect(browser.formVisible, isTrue);
+      final open = browser.submitBirthForm!;
+      expect(await open({'page': 'report', 'language': language, 'report': ready, 'input': {...input, 'year': 1901}}), 'badResult');
+      final accepted = open({'page': 'report', 'language': language, 'report': ready, 'input': input});
+      await waitForDeferredView(tester, find.byType(ReportPreview));
+      expect(await accepted, '');
+      expect(calls, isEmpty);
+      expect(browser.readSetting('active-preview', session: true), isEmpty);
+      expect(browser.formVisible, isFalse);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
-    },
-  );
-  for (final language in ['zh', 'th']) {
-    testWidgets(
-      'JY submits with no data-use dialog and opens the free report ($language)',
-      (tester) async {
-        phone(tester);
-        final browser = TestBrowser()..settings.remove('fate-data-use-version');
-        Json? input;
-        final preview = fixture(language: language);
-        var current = preview;
-        var consentAttempts = 0;
-        final calls = <String>[];
-        final repo = ReportRepository(
-          browser,
-          baseUrl: 'https://example.test',
-          client: MockClient((request) async {
-            calls.add('${request.method} ${request.url.path}');
-            if (request.url.path == '/api/thai-locations') {
-              return response({
-                'items': request.url.queryParameters['level'] == 'province'
-                    ? [province]
-                    : [],
-                'total': request.url.queryParameters['level'] == 'province'
-                    ? 1
-                    : 0,
-              });
-            }
-            if (request.url.path == '/api/landing/config') {
-              return response({'notice_version': H5Controller.noticeVersion});
-            }
-            if (request.url.path == '/api/landing/consents') {
-              expect(jsonDecode(request.body), {
-                'notice_version': H5Controller.noticeVersion,
-                'granted': true,
-              });
-              consentAttempts++;
-              if (language == 'zh' && consentAttempts == 1) {
-                return http.Response(
-                  '{"code":"busy"}',
-                  503,
-                  headers: {'content-type': 'application/json'},
-                );
-              }
-              return response({
-                'accepted': true,
-                'notice_version': H5Controller.noticeVersion,
-              });
-            }
-            if (request.method == 'POST' &&
-                request.url.path == '/api/life-reports') {
-              input = object(jsonDecode(request.body));
-              final chart = object(preview['chart']);
-              current = {
-                ...preview,
-                'input': input,
-                'time_accuracy': {
-                  'mode': 'estimated',
-                  'assumed_local_time': '12:00',
-                },
-                'chart': {
-                  ...chart,
-                  'precision': 'estimated',
-                  'houses': [],
-                  'planets': [
-                    for (final p in objects(chart['planets']))
-                      if (p['id'] != 'ascendant') {...p, 'house': null},
-                  ],
-                },
-              };
-            }
-            return response(current);
-          }),
-        );
-        final h5 = H5Controller(
-          translations(),
-          repo,
-          browser,
-          language: language,
-        );
-        await tester.pumpWidget(
-          H5App(controller: h5, initialLocation: '/?lang=$language'),
-        );
-        await tester.pumpAndSettle();
-        expect(browser.activities.last['action'], 'form_progress_empty');
-        await click(tester, find.byKey(const ValueKey('birth-date')));
-        expect(browser.activities.last['action'], 'select_birth_date');
-        await click(
-          tester,
-          find.widgetWithText(FilledButton, h5.copy.t('ui', 'confirm')),
-        );
-        expect(browser.activities.last['action'], 'form_progress_time');
-        await click(tester, find.byKey(const ValueKey('birth-time-unknown')));
-        expect(browser.activities.last['action'], 'form_progress_place');
-        expect(find.byKey(const ValueKey('birth-country')), findsNothing);
-        expect(find.byKey(const ValueKey('birth-city')), findsNothing);
-        expect(find.byKey(const ValueKey('write-question')), findsNothing);
-        expect(find.byKey(const ValueKey('custom-question')), findsNothing);
-        expect(find.byKey(const ValueKey('question-0')), findsNothing);
-        await click(tester, find.byKey(const ValueKey('birth-province')));
-        await click(
-          tester,
-          find.descendant(
-            of: find.byType(PlacePicker),
-            matching: find.text(Place(province).label(language)),
-          ),
-        );
-        expect(browser.activities.last['action'], 'form_progress_complete');
-        expect(input, isNull);
-        await click(tester, find.byKey(const ValueKey('birth-time-unknown')));
-        expect(browser.activities.last['action'], 'form_progress_time');
-        await click(tester, find.byKey(const ValueKey('birth-time-unknown')));
-        expect(find.text(h5.copy.t('jy', 'submitConsent')), findsOneWidget);
-        expect(consentAttempts, 0);
-        final generate = find.byKey(const ValueKey('generate-report'));
-        await click(tester, generate);
-        expect(find.byType(AlertDialog), findsNothing);
-        if (language == 'zh') {
-          expect(find.text(h5.copy.t('jy', 'consentError')), findsOneWidget);
-          expect(input, isNull);
-          expect(h5.noticeAccepted, isFalse);
-          await click(tester, generate);
-        }
-        await tester.pump(const Duration(milliseconds: 300));
-        await tester.pump(const Duration(milliseconds: 600));
-        await waitForDeferredView(tester, find.byType(ReportPreview));
-        expect(input, isNotNull);
-        expect(object(input!['profile'])['birth_time'], isNull);
-        expect(object(input!['profile'])['birth_date'], '1999-01-01');
-        expect(object(input!['profile'])['location_id'], province['id']);
-        expect(object(input!['profile'])['country_code'], 'TH');
-        expect(object(input!['profile'])['timezone'], 'Asia/Bangkok');
-        expect(input!.containsKey('career_question'), isFalse);
-        expect(input!.containsKey('user_question'), isFalse);
-        expect(input!['report_kind'], 'fortune');
-        expect(
-          calls.indexOf('POST /api/landing/consents'),
-          greaterThanOrEqualTo(0),
-        );
-        expect(
-          calls.indexOf('POST /api/landing/consents'),
-          lessThan(calls.indexOf('POST /api/life-reports')),
-        );
-        expect(h5.noticeAccepted, isTrue);
-        expect(
-          browser.activities.any((activity) => activity['page'] == 'consent'),
-          isFalse,
-        );
-        expect(
-          browser.activities.where(
-            (activity) => activity['action'] == 'consent_accept',
-          ),
-          [
-            {'page': 'birth_form', 'action': 'consent_accept'},
-          ],
-        );
-        expect(calls.any((value) => value.endsWith('/unlock')), isFalse);
-        expect(find.byType(GenerationDialog), findsNothing);
-        expect(find.byType(ReportPreview), findsOneWidget);
-        expect(find.text(h5.copy.t('jy', 'report.freeTitle')), findsOneWidget);
-        expect(find.byKey(const ValueKey('jy-payment-preview')), findsNothing);
-        expect(
-          find.byKey(const ValueKey('free-report-content')),
-          findsOneWidget,
-        );
-        expect(tester.takeException(), isNull);
-        await tester.pumpWidget(const SizedBox.shrink());
-        h5.dispose();
-      },
-    );
+    });
   }
   testWidgets(
     'saved complete reports use JY sections and retain all original chapters, plan and PDF export',

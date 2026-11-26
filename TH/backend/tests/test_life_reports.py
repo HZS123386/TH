@@ -5,6 +5,7 @@ from copy import deepcopy
 import json
 import re
 import time
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 import httpx
@@ -135,6 +136,36 @@ def test_preview_is_personal_and_does_not_return_paid_chapters(client):
     assert "birth_date" not in json.dumps(calls[0])
     assert all(len(row["evidence"]) == 2 for row in result["preview"]["traits"])
     assert preview(http)["id"] == result["id"] and len(calls) == 1
+
+
+def test_submission_recovers_only_its_owned_report_across_retries(client, monkeypatch):
+    http, app, _, _ = client
+    submission = str(uuid4())
+    path = f"/api/life-reports/submissions/{submission}"
+    body = {"profile": PROFILE, "year": 2027}
+    headers = {**HEADERS, "Idempotency-Key": submission}
+    assert http.get(path, headers=HEADERS).status_code == 404
+
+    def submit():
+        result = http.post("/api/life-reports?wait=false", json=body, headers=headers)
+        assert result.status_code == 200, result.text
+        return result.json()["id"]
+
+    with ThreadPoolExecutor(2) as pool:
+        ids = list(pool.map(lambda _: submit(), range(2)))
+    report_id = ids[0]
+    assert ids == [report_id, report_id]
+    assert http.get(path, headers=HEADERS).json()["id"] == report_id
+    assert http.get(path, headers={"X-Report-Key": "different-test-device-with-a-long-owner-key"}).status_code == 404
+    finished = http.post("/api/life-reports", json=body, headers=headers).json()
+    assert (finished["id"], finished["preview_state"]) == (report_id, "ready")
+    # A new writer version changes ordinary deduplication, but not an accepted submission.
+    monkeypatch.setattr("backend.app.life_reports.VERSION", "new-writing-version")
+    assert submit() == report_id
+    assert http.post("/api/life-reports?wait=false", json={**body, "year": 2028}, headers=headers).status_code == 409
+    with app.state.store.connect() as db:
+        assert db.execute("SELECT count(*) AS n FROM life_reports").fetchone()["n"] == 1
+        assert db.execute("SELECT count(*) AS n FROM life_report_submissions").fetchone()["n"] == 1
 
 
 def test_fortune_topics_unlock_with_distinct_evidence_and_content_progress(client):
@@ -1202,7 +1233,7 @@ def test_line_migration_accepts_both_branch_heads(postgres_url):
     command.upgrade(config, "head")
     with store.connect() as db:
         assert db.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            {"version_num": "20261123_tarot_fulfillment"}
+            {"version_num": "20261126_h5_recovery_stats"}
         ]
         saved = db.execute("SELECT claim_code,unlocked FROM life_reports WHERE id='existing-report'").fetchone()
         assert saved["unlocked"] == 0 and 10000 <= saved["claim_code"] <= 99999

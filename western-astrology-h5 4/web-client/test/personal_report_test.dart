@@ -26,69 +26,6 @@ void main() {
     expect(report.ready, isFalse);
     expect(report.nodes, isEmpty);
   });
-  testWidgets(
-    'landing shows three labels next to each of the two illustrations',
-    (tester) async {
-      tester.view.physicalSize = const Size(360, 740);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: true);
-      addTearDown(
-        tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue,
-      );
-      final browser = TestBrowser();
-      final controller = H5Controller(
-        translations(),
-        ReportRepository(
-          browser,
-          client: MockClient(
-            (request) async => http.Response(
-              '{}',
-              200,
-              headers: {'content-type': 'application/json'},
-            ),
-          ),
-        ),
-        browser,
-        language: 'zh',
-      );
-      await tester.pumpWidget(
-        H5App(controller: controller, initialLocation: '/?lang=zh'),
-      );
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump();
-      expect(find.widgetWithText(JYButton, '查看解析'), findsOneWidget);
-      final board = find.byType(ThemeBoards);
-      for (final label in ['本命解读', '事业**', '财运解读', '感情姻缘', '***预警', '行动建议']) {
-        expect(
-          find.descendant(of: board, matching: find.text(label)),
-          findsOneWidget,
-        );
-      }
-      final artwork = find.descendant(
-        of: board,
-        matching: find.byType(FateImage),
-      );
-      expect(artwork, findsNWidgets(2));
-      Offset artworkCenter(Finder image) => tester.getCenter(
-        find.ancestor(of: image, matching: find.byType(ClipPath)).first,
-      );
-      final upperImage = artworkCenter(artwork.first);
-      final lowerImage = artworkCenter(artwork.last);
-      expect(upperImage.dy, lessThan(lowerImage.dy));
-      expect(upperImage.dx, lessThan(tester.getCenter(find.text('事业**')).dx));
-      expect(
-        lowerImage.dx,
-        greaterThan(tester.getCenter(find.text('***预警')).dx),
-      );
-      expect(find.text('从出生时刻，揪出感情的搅局者'), findsOneWidget);
-      expect(find.text('先免费获取本命星象特质，定位姻缘里的暗星阻碍'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-      controller.dispose();
-    },
-  );
   for (final full in [false, true]) {
     testWidgets(
       'relationship ${full ? 'full' : 'free'} report displays and exports only the authorized reading',

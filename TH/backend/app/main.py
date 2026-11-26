@@ -213,8 +213,10 @@ def create_app(settings: Settings | None = None):
             bucket.append(now)
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception as error:
             if h5_request:
+                # Keep the exception class for diagnosis without persisting its message or request data.
+                request.state.failure_code = "server_" + type(error).__name__
                 app.state.h5_admin.record_failure(request, 500, round((time.monotonic() - started) * 1000))
             raise
         if h5_request and response.status_code >= 400:

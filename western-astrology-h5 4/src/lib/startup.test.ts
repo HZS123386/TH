@@ -436,6 +436,32 @@ it.each(["", "report.html?id=retained-report", "privacy.html", "support.html"])(
   },
 );
 
+it("records startup and page errors without exception text, duplicate frame errors, or private visits", () => {
+  const page = openDocument();
+  page.boot.stage("engine");
+  page.boot.fail();
+  page.boot.ready();
+  const context = JSON.parse(page.h5.visitContext());
+  page.h5.trackActivity(JSON.stringify({ ...context, activity: { page: "preview_report", action: "view" } }),
+    page.h5.ownerKey(), "/api/landing/visits");
+  const error = { error: new TypeError("private birth data"), filename: "http://127.0.0.1/thai-landing/main.dart.js" };
+  page.emit("error", error);
+  page.emit("error", error);
+  page.emit("error", { ...error, filename: "https://external.invalid/pixel.js" });
+  page.h5.trackRuntime("runtime_flutter_rendering");
+  const saved = page.storage.get("fate-activity-pending")!;
+  expect(saved).not.toContain("private birth data");
+  expect(saved).not.toContain("main.dart.js");
+  const runtime = JSON.parse(saved).items.map((item: any) => item.event)
+    .filter((event: any) => event.kind === "action" && event.action.startsWith("runtime_"));
+  expect(runtime.map((event: any) => [event.page, event.action]).sort()).toEqual([
+    ["preview_report", "runtime_flutter_rendering"], ["preview_report", "runtime_js_type"], ["unobserved", "runtime_boot_engine"],
+  ]);
+  const privatePage = openDocument(new Map(), false, { privateBrowsing: true });
+  privatePage.boot.fail();
+  expect(privatePage.storage.has("fate-activity-pending")).toBe(false);
+});
+
 it("recovers a failed startup once and leaves persistent failures retryable", () => {
   const first = openDocument();
   first.boot.fail();
@@ -604,10 +630,25 @@ it.each(["error", "unhandledrejection"])("recovers a pre-ready %s while ignoring
 });
 
 it("handles callback-mode JavaScript entrypoint fetch errors", () => {
-  const page = openDocument();
+  const page = openDocument(new Map(), false, { url: "https://fate.example/thai-landing/" });
   page.emit("error", { target: { tagName: "SCRIPT", src: "https://fate.example/thai-landing/main.dart.js" } });
   vi.advanceTimersByTime(700);
   expect(page.location.reload).toHaveBeenCalledOnce();
+});
+
+it("keeps third-party and browser-muted script faults out of startup recovery and page errors", () => {
+  const external = { error: new TypeError("external"), filename: "https://external.invalid/pixel.js" };
+  const muted = { error: null, message: "Script error.", filename: "", lineno: 0, colno: 0 };
+  for (const event of [external, muted]) {
+    const page = openDocument();
+    page.emit("error", event);
+    vi.advanceTimersByTime(700);
+    expect(page.location.reload).not.toHaveBeenCalled();
+    expect(page.storage.has(recoveryKey)).toBe(false);
+    page.boot.ready();
+    page.emit("error", event);
+    expect(page.storage.has("fate-activity-pending")).toBe(false);
+  }
 });
 
 it("recovers inline bootstrap syntax errors and offers retry before DOMContentLoaded", () => {

@@ -15,6 +15,11 @@ import 'ui/language_fonts.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final browser = WebBrowserPort();
+  final previousHandler = FlutterError.onError;
+  FlutterError.onError = (details) {
+    browser.trackFrameworkError(details.library);
+    previousHandler?.call(details);
+  };
   try {
     await _startApp(browser);
   } catch (error, stack) {

@@ -11,6 +11,7 @@ import secrets
 import time
 from typing import Annotated, Literal
 from urllib.parse import parse_qs
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import psycopg
@@ -349,7 +350,29 @@ class LifeReports:
         languages = self.settings.life_preview_openai_languages
         return self.fast_preview_writer if not languages or language in languages else self.writer
 
-    async def create(self, body, owner, network, *, wait=True):
+    @staticmethod
+    def lock_submission(db, owner, submission_id):
+        # Use the same lock for accepting a report and recording an overlapping lookup miss.
+        identity = f"{owner}:{submission_id}"
+        db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,20261126))", (identity,))
+        return hashlib.sha256(identity.encode()).digest()
+
+    @staticmethod
+    def submitted_row(db, owner, submission_id):
+        return db.execute("""
+            SELECT r.* FROM life_report_submissions s
+            JOIN life_reports r ON r.id=s.report_id AND r.owner=s.owner
+            WHERE s.owner=%s AND s.submission_id=%s
+        """, (owner, submission_id)).fetchone()
+
+    def get_submission(self, owner, submission_id):
+        with self.store.connect() as db:
+            row = self.submitted_row(db, owner, submission_id)
+        if not row:
+            raise HTTPException(404, "life_submission_not_found")
+        return self.public(row)
+
+    async def create(self, body, owner, network, *, wait=True, submission_id=None):
         snapshot = body.model_dump(mode="json", exclude=None if body.career else {"career"})
         if body.report_kind == "life":
             snapshot.pop("report_kind")
@@ -386,54 +409,75 @@ class LifeReports:
                 identity.append([fallback.provider, config.base_url if config else None, config.model if config else None,
                                  config.reasoning_effort if config else None])
         fingerprint = hashlib.sha256(encoded(identity).encode()).hexdigest()
+        saved = None
         with self.store.connect() as db:
-            existing = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s", (owner, fingerprint)).fetchone()
-            visit_id, attribution = None, {}
-            if body.landing_visit is not None:
-                try:
-                    with db.transaction():
-                        record_visit(db, body.landing_visit, owner)
-                        if not existing:
-                            attribution = db.execute("""
-                                SELECT visitor_number,first_source,first_campaign,region_code
-                                FROM landing_visitors WHERE owner=%s
-                            """, (owner,)).fetchone() or {}
-                    visit_id = str(body.landing_visit.id)
-                except (psycopg.Error, HTTPException):
-                    logger.warning("H5 attribution was unavailable during report creation")
-            if existing:
-                report_id = existing["id"]
-            else:
-                # Save the job before any external calculation; no chart positions are fabricated.
-                chart = {"status": "queued", "provider": "roxy" if use_roxy else "thai",
-                         "domain": "astrology", "version": version}
-                if is_marriage:
-                    chart["reference_date"] = marriage_date
-                # Reuse concurrent submissions and retry a colliding claim code.
-                for _ in range(8):
-                    report_id = secrets.token_hex(16)
-                    inserted = db.execute("""
-                        INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview_state,preview_network,
-                                                 landing_visitor_number,landing_source,landing_campaign,landing_region)
-                        VALUES (%s,%s,%s,%s,%s,%s,'queued',%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING RETURNING id
-                    """, (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time(), network,
-                          attribution.get("visitor_number"), attribution.get("first_source"),
-                          attribution.get("first_campaign"), attribution.get("region_code"))).fetchone()
-                    if inserted:
-                        break
-                    existing = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s",
-                                          (owner, fingerprint)).fetchone()
-                    if existing:
-                        report_id = existing["id"]
-                        break
+            if submission_id is not None:
+                # Serialize this submission across workers, even when the daily report fingerprint changes.
+                recovery_key = self.lock_submission(db, owner, submission_id)
+                saved = self.submitted_row(db, owner, submission_id)
+                if saved and json.loads(saved["input"]) != snapshot:
+                    raise HTTPException(409, "life_submission_input_changed")
+            if not saved:
+                existing = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s", (owner, fingerprint)).fetchone()
+                visit_id, attribution = None, {}
+                if body.landing_visit is not None:
+                    try:
+                        with db.transaction():
+                            record_visit(db, body.landing_visit, owner)
+                            if not existing:
+                                attribution = db.execute("""
+                                    SELECT visitor_number,first_source,first_campaign,region_code
+                                    FROM landing_visitors WHERE owner=%s
+                                """, (owner,)).fetchone() or {}
+                        visit_id = str(body.landing_visit.id)
+                    except (psycopg.Error, HTTPException):
+                        logger.warning("H5 attribution was unavailable during report creation")
+                if existing:
+                    report_id = existing["id"]
                 else:
-                    raise HTTPException(503, "life_report_create_unavailable")
-            if visit_id is not None:
+                    # Save the job before any external calculation; no chart positions are fabricated.
+                    chart = {"status": "queued", "provider": "roxy" if use_roxy else "thai",
+                             "domain": "astrology", "version": version}
+                    if is_marriage:
+                        chart["reference_date"] = marriage_date
+                    # Reuse concurrent submissions and retry a colliding claim code.
+                    for _ in range(8):
+                        report_id = secrets.token_hex(16)
+                        inserted = db.execute("""
+                            INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview_state,preview_network,
+                                                     landing_visitor_number,landing_source,landing_campaign,landing_region)
+                            VALUES (%s,%s,%s,%s,%s,%s,'queued',%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING RETURNING id
+                        """, (report_id, owner, fingerprint, encoded(snapshot), encoded(chart), time.time(), network,
+                              attribution.get("visitor_number"), attribution.get("first_source"),
+                              attribution.get("first_campaign"), attribution.get("region_code"))).fetchone()
+                        if inserted:
+                            break
+                        existing = db.execute("SELECT id FROM life_reports WHERE owner=%s AND fingerprint=%s",
+                                              (owner, fingerprint)).fetchone()
+                        if existing:
+                            report_id = existing["id"]
+                            break
+                    else:
+                        raise HTTPException(503, "life_report_create_unavailable")
+                if submission_id is not None:
+                    db.execute("INSERT INTO life_report_submissions(owner,submission_id,report_id) VALUES (%s,%s,%s)",
+                               (owner, submission_id, report_id))
+                if visit_id is not None:
+                    try:
+                        with db.transaction():
+                            record_submission(db, visit_id, report_id, owner)
+                    except psycopg.Error:
+                        logger.warning("H5 submission tracking was unavailable during report creation")
+            if submission_id is not None:
                 try:
                     with db.transaction():
-                        record_submission(db, visit_id, report_id, owner)
+                        db.execute("""UPDATE h5_request_failures SET report_id=%s
+                                      WHERE recovery_key=%s AND report_id IS NULL""",
+                                   (saved["id"] if saved else report_id, recovery_key))
                 except psycopg.Error:
-                    logger.warning("H5 submission tracking was unavailable during report creation")
+                    logger.warning("H5 recovery statistics were unavailable during report creation")
+        if saved:
+            return await self.preview_result(saved, owner, wait=wait)
         row = self.row(report_id, owner)
         if existing and row["preview"]:
             return self.public(self.row(row["id"], owner))
@@ -448,11 +492,13 @@ class LifeReports:
                        "(preview_state='generating' AND preview_network=''))",
                        (network, row["id"], time.time()))
         self.wake_dispatcher()
-        current = self.row(row["id"], owner)
+        return await self.preview_result(self.row(row["id"], owner), owner, wait=wait)
+
+    async def preview_result(self, current, owner, *, wait):
         if wait:
             while current["preview_state"] in ("queued", "generating"):
                 await asyncio.sleep(0.05)
-                current = self.row(row["id"], owner)
+                current = self.row(current["id"], owner)
             completed_chart = json.loads(current["chart"])
             if completed_chart.get("status") == "invalid":
                 raise HTTPException(422, "thai_reading_details_required")
@@ -1371,16 +1417,22 @@ def life_report_router(service):
         return "life:" + hashlib.sha256(key.encode()).hexdigest(), "network:" + service.store.hash(request.client.host if request.client else "unknown")
 
     @router.post("")
-    async def create(body: LifeInput, request: Request, key: key_header, wait: bool = True):
+    async def create(body: LifeInput, request: Request, key: key_header, wait: bool = True,
+                     submission_id: Annotated[UUID | None, Header(alias="Idempotency-Key")] = None):
         owner, network = scopes(key, request)
         try:
-            return await service.create(body, owner, network, wait=wait)
+            return await service.create(body, owner, network, wait=wait, submission_id=submission_id)
         except RuntimeError as error:
             raise HTTPException(503, str(error)) from None
 
     @router.get("")
     async def listing(request: Request, key: key_header):
         return {"items": service.list(scopes(key, request)[0])}
+
+    @router.get("/submissions/{submission_id}")
+    async def get_submission(submission_id: UUID, request: Request, key: key_header, response: Response):
+        response.headers["Cache-Control"] = "no-store"
+        return service.get_submission(scopes(key, request)[0], submission_id)
 
     @router.get("/{report_id}")
     async def get(report_id: str, request: Request, key: key_header, wait_preview: bool = False):

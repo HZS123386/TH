@@ -40,6 +40,7 @@
     };
   </script>
   <script src="browser.js"></script>
+  <link rel="stylesheet" href="birth-form.css">
   <!-- FATE_WASM_RUNTIME_PRELOAD -->
   <style>
     html,body{margin:0;background:#130c24;color-scheme:dark}
@@ -56,12 +57,63 @@
   </style>
 </head>
 <body>
+  <div id="fate-flutter"></div>
+  <main id="fate-birth" hidden></main>
+  <template id="fate-birth-template">
+    <header class="birth-header">
+      <img src="assets/assets/images/fate-brand-gold.png" alt="FATE" width="91" height="23">
+      <select id="birth-language" aria-label="Language">
+        <option value="th">ภาษาไทย</option><option value="en">English</option><option value="zh">简体中文</option>
+        <option value="vi">Tiếng Việt</option><option value="my">မြန်မာဘာသာ</option><option value="km">ខ្មែរ</option>
+        <option value="lo">ລາວ</option><option value="ms">Bahasa Melayu</option><option value="id">Bahasa Indonesia</option>
+      </select>
+    </header>
+    <section class="birth-portrait">
+      <img src="assets/assets/images/astrologer-900.webp" alt="" width="1199" height="1312" decoding="async">
+      <div class="birth-name"><strong data-copy="name"></strong><small data-copy="role"></small></div>
+      <div class="birth-caption"><h1 data-copy="headline"></h1><p data-copy="note"></p></div>
+    </section>
+    <form id="birth-form" novalidate>
+      <h2 data-copy="formTitle"></h2><p class="birth-hint" data-copy="formCaption"></p>
+      <label for="birth-date"><span data-copy="date"></span><small data-copy="calendar"></small></label>
+      <input id="birth-date" type="date" min="1901-01-01" required>
+      <div class="birth-row"><label for="birth-time" data-copy="time"></label>
+        <label class="birth-check"><input type="checkbox" id="birth-unknown"><span data-copy="unknown"></span></label>
+      </div>
+      <input id="birth-time" type="time" required>
+      <label for="birth-city" data-copy="city"></label>
+      <div class="birth-location">
+        <input id="birth-city" type="search" role="combobox" aria-autocomplete="list" aria-controls="birth-options"
+               aria-expanded="false" maxlength="80" autocomplete="off" required>
+        <div id="birth-options" role="listbox" hidden></div>
+      </div>
+      <div id="birth-career" hidden>
+        <label for="birth-question" data-copy="questionTitle"></label><select id="birth-question"></select>
+        <input id="birth-custom" type="text" maxlength="120" hidden>
+      </div>
+      <p id="birth-message" role="status" aria-live="polite"></p>
+      <p class="birth-consent" data-copy="submitConsent"></p>
+      <button type="submit" id="birth-submit"></button>
+      <button type="button" id="birth-retry" hidden></button>
+      <section class="birth-themes"><h3 data-copy="topicLabel"></h3><div id="birth-boards"></div></section>
+    </form>
+    <footer><p data-copy="disclaimer"></p><a id="birth-privacy" data-copy="privacy"></a>
+      <a id="birth-support" data-copy="support"></a></footer>
+    <section id="birth-generation" hidden aria-labelledby="birth-generation-title" tabindex="-1">
+      <h1 id="birth-generation-title"></h1>
+      <div class="fate-startup-track" aria-hidden="true"></div>
+      <p id="birth-generation-status" role="status"></p>
+      <button id="birth-generation-retry" type="button" hidden></button>
+    </section>
+  </template>
   <div id="fate-startup" role="status" aria-live="polite">
     <img src="assets/assets/images/fate-brand-gold.png" alt="FATE" width="112" height="26">
     <div class="fate-startup-track" aria-hidden="true"></div>
     <p id="fate-startup-status"><span class="fate-startup-zh">正在开启你的星空</span><span class="fate-startup-th">กำลังเปิดท้องฟ้าของคุณ</span><span class="fate-startup-en">Opening your sky</span><span class="fate-startup-vi">Đang mở bầu trời của bạn</span><span class="fate-startup-my">သင့်ကြယ်ကောင်းကင်ကို ဖွင့်နေသည်</span><span class="fate-startup-km">កំពុងបើកមេឃរបស់អ្នក</span><span class="fate-startup-lo">ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ</span><span class="fate-startup-ms">Membuka langit anda</span><span class="fate-startup-id">Membuka langit Anda</span></p>
     <button id="fate-startup-retry" type="button" hidden><span class="fate-startup-zh">重新加载</span><span class="fate-startup-th">ลองโหลดใหม่</span><span class="fate-startup-en">Reload</span><span class="fate-startup-vi">Tải lại</span><span class="fate-startup-my">ပြန်တင်မယ်</span><span class="fate-startup-km">ផ្ទុកឡើងវិញ</span><span class="fate-startup-lo">ໂຫຼດໃໝ່</span><span class="fate-startup-ms">Muat semula</span><span class="fate-startup-id">Muat ulang</span></button>
   </div>
+  <!-- FATE_BIRTH_COPY -->
+  <script src="birth-form.js"></script>
   <script>{{flutter_bootstrap_js}}</script>
 </body>
 </html>

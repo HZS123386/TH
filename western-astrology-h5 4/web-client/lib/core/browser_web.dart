@@ -21,13 +21,33 @@ external void _activity(JSString payload, JSString key, JSString endpoint);
 external void _failure(JSString path, JSString code, JSString method);
 @JS('fateBoot.fail')
 external void _startupFailed();
+@JS('fateH5.trackRuntime')
+external void _runtimeError(JSString action);
 @JS('fateH5.ownerKey')
 external JSString? _ownerKey();
 @JS('fateH5.visitContext')
 external JSString _visitContext();
+@JS('fateBirthForm.attach')
+external void _attachBirthForm(JSString initial, JSFunction submit);
+@JS('fateBirthForm.submitting')
+external JSBoolean get _birthFormSubmitting;
+@JS('fateBirthForm.detach')
+external void _detachBirthForm();
 
 class WebBrowserPort implements BrowserPort {
   void startupFailed() => _startupFailed();
+  void trackFrameworkError(String? library) {
+    final action = switch (library) {
+      'widgets library' => 'runtime_flutter_widgets',
+      'rendering library' => 'runtime_flutter_rendering',
+      _ => 'runtime_flutter_framework',
+    };
+    try {
+      _runtimeError(action.toJS);
+    } catch (_) {
+      // Flutter still handles the error when diagnostics are unavailable.
+    }
+  }
   @override
   bool get supportsLineApp {
     final navigator = web.window.navigator;
@@ -46,6 +66,7 @@ class WebBrowserPort implements BrowserPort {
       web.window.open(url, '_blank', 'noopener,noreferrer');
     }
   }
+
   @override
   String ownerKey() {
     final key = _ownerKey()?.toDart;
@@ -74,6 +95,20 @@ class WebBrowserPort implements BrowserPort {
       _payment(action.toJS, jsonEncode(fields).toJS);
   @override
   void pageReady(String page) => _ready(page.toJS);
+
+  @override
+  void attachBirthForm(Json initial, Future<String> Function(Json) submit) {
+    JSPromise<JSString> receive(JSString payload) => submit(
+      object(jsonDecode(payload.toDart)),
+    ).then((value) => value.toJS).toJS;
+    _attachBirthForm(jsonEncode(initial).toJS, receive.toJS);
+  }
+
+  @override
+  bool get birthFormSubmitting => _birthFormSubmitting.toDart;
+
+  @override
+  void detachBirthForm() => _detachBirthForm();
 
   @override
   Future<void> trackLineClaimClick() async {

@@ -8,7 +8,6 @@ import 'package:fate_h5/app/controller.dart';
 import 'package:fate_h5/app/h5_app.dart';
 import 'package:fate_h5/core/models.dart';
 import 'package:fate_h5/core/repository.dart';
-import 'package:fate_h5/features/landing_page.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 import 'support.dart';
 
@@ -46,7 +45,6 @@ Future<void> waitForDeferredView(WidgetTester tester, Finder view) async {
 void main() {
   setUpAll(() async {
     await H5App.loadRoutesForWidgetTests();
-    await LandingPage.loadDialogsForWidgetTests();
   });
   for (final enabled in [false, true]) {
     testWidgets(

@@ -92,13 +92,15 @@ def admin(postgres_url):
 
 def test_admin_data_requires_separate_login_and_static_page_has_no_business_data(admin):
     http, _ = admin
-    for path in ("/overview", "/visit-funnel", "/ad-funnel", "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
+    for path in ("/overview", "/visit-funnel", "/ad-funnel", "/page-diagnostics", "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
         assert http.get("/api/admin" + path).status_code == 401
     html = http.get("/admin/")
     assert html.status_code == 200 and "report-1" not in html.text
     assert html.headers["cache-control"] == "no-store"
     assert "frame-ancestors 'none'" in html.headers["content-security-policy"]
     assert http.get("/admin/config.py").status_code == 404
+    login(http, "support-test")
+    assert http.get("/api/admin/page-diagnostics").status_code == 403
 
 
 def test_visit_funnels_count_form_and_historical_welcome_entries(admin):
@@ -174,11 +176,12 @@ def test_line_metrics_count_each_popup_and_dedupe_clicks_across_visits(admin):
     with app.state.store.connect() as db:
         db.execute("UPDATE life_reports SET owner=%s WHERE id='report-1'", (owner_for(owner_key),))
 
-    def visit(key, identifier, actions):
+    def visit(key, identifier, actions, *, occurred_at=None):
         page_view = str(uuid4())
+        event_time = time.time() if occurred_at is None else occurred_at
         body = {"id": identifier, "events": [
             {"sequence": seq, "page_view_id": page_view, "page": "preview_report", "action": action,
-             "kind": kind, "state": "visible", "occurred_at": time.time(), "visible_ms": 0}
+             "kind": kind, "state": "visible", "occurred_at": event_time, "visible_ms": 0}
             for seq, (action, kind) in enumerate(actions, 1)
         ]}
         response = http.post("/api/landing/visits", headers={"X-Report-Key": key}, json=body)
@@ -191,8 +194,9 @@ def test_line_metrics_count_each_popup_and_dedupe_clicks_across_visits(admin):
     ])
     assert http.post("/api/landing/visits", headers=headers, json=first).status_code == 200
     later = str(uuid4())
-    visit(owner_key, later, [("open_line_contact", "action"), ("line_qr_shown", "action")])
-    visit("synthetic-line-contact-other-browser", str(uuid4()), [("click_line", "action")])
+    delayed = time.time() - 9 * 86400
+    visit(owner_key, later, [("open_line_contact", "action"), ("line_qr_shown", "action")], occurred_at=delayed)
+    visit("synthetic-line-contact-other-browser", str(uuid4()), [("click_line", "action")], occurred_at=delayed)
     event_path = f"/api/landing/visits/{visit_id}/events"
     assert http.post(event_path, headers=headers, json={"report_id": "report-2", "event": "line_contact"}).status_code == 404
     event = {"report_id": "report-1", "event": "line_contact"}
@@ -201,14 +205,15 @@ def test_line_metrics_count_each_popup_and_dedupe_clicks_across_visits(admin):
     with app.state.store.connect() as db:
         row = db.execute("SELECT submitted_at, seen_at FROM landing_visits WHERE id=%s", (visit_id,)).fetchone()
         assert row == {"submitted_at": None, "seen_at": None}
-        db.execute("UPDATE landing_visit_activity SET received_at=%s WHERE visit_id=%s",
-                   (time.time() - 9 * 86400, later))
     csrf = login(http, "support-test")
     base = "/api/admin/line-contacts"
     contacts = http.get(base, params={"delivery": "unconfirmed"}).json()
     assert [row["id"] for row in contacts["items"]] == ["report-1"]
     assert contacts["metrics"] == {"qr_popups": 3, "click_visitors": 2, "line_sent": 0}
-    assert http.get(base, params={"days": 7}).json()["metrics"] == {"qr_popups": 2, "click_visitors": 2, "line_sent": 0}
+    assert contacts["activity_by_occurrence"] == {"qr_popups": 3, "click_visitors": 2}
+    last_week = http.get(base, params={"days": 7}).json()
+    assert last_week["metrics"] == contacts["metrics"]
+    assert last_week["activity_by_occurrence"] == {"qr_popups": 2, "click_visitors": 1}
     assert http.get(base).json()["items"] == []
     first_contact = contacts["items"][0]["line_contact_at"]
     assert http.post(f"{base}/report-1/actions", headers=csrf,
@@ -236,6 +241,7 @@ def test_line_delivery_counts_and_paginates_by_send_date_on_both_pages(admin):
         assert [row["id"] for row in data["items"]] == expected
     later_page = http.get(base, params={"days": 7, "delivery": "sent", "page": 2}).json()
     assert later_page["total"] == 1 and not later_page["items"] and not later_page["has_more"]
+    assert later_page["last_page"] == 1
     pending = http.get(base, params={"days": 7, "delivery": "pending"}).json()
     assert pending["total"] == 1 and pending["items"][0]["id"] == "report-4"
     unconfirmed = http.get(base, params={"days": 7, "delivery": "unconfirmed"}).json()
@@ -248,6 +254,30 @@ def test_line_delivery_counts_and_paginates_by_send_date_on_both_pages(admin):
     all_time = http.get("/api/admin/overview", params={"days": 0}).json()["metrics"]
     assert (recent["reports"], recent["line_sent"]) == (3, 1)
     assert (all_time["reports"], all_time["line_sent"]) == (7, 2)
+
+
+def test_line_delivery_lists_all_26_reports_across_two_pages(postgres_url):
+    app = create_app(Settings(database_url=postgres_url, report_support_username="support-test",
+                              report_support_password_hash=HASH))
+    now = time.time()
+    with app.state.store.connect() as db:
+        db.execute("""
+            INSERT INTO life_reports(id,owner,fingerprint,claim_code,input,chart,created,preview,preview_state,full_state,
+                                     line_contact_at,line_confirmed_at,line_sent_at)
+            SELECT 'delivery-' || n,'synthetic-owner','delivery-' || n,51000 + n,'{}','{}',%s,'{}','ready','ready',%s,%s,%s - n
+            FROM generate_series(1,26) AS n
+        """, (now - 90, now - 60, now - 50, now))
+
+    with TestClient(app, base_url="https://testserver") as http:
+        login(http, "support-test")
+        path = "/api/admin/line-contacts"
+        first = http.get(path, params={"delivery": "sent", "page": 1}).json()
+        second = http.get(path, params={"delivery": "sent", "page": 2}).json()
+    assert first["has_more"] is True and second["has_more"] is False
+    assert first["total"] == second["total"] == 26
+    assert first["last_page"] == second["last_page"] == 2
+    assert [row["id"] for row in first["items"]] == [f"delivery-{n}" for n in range(1, 26)]
+    assert [row["id"] for row in second["items"]] == ["delivery-26"]
 
 
 def test_line_report_counts_filter_first_contact_and_group_current_status(admin):
@@ -909,6 +939,51 @@ def test_request_failures_before_report_creation_are_categorized_without_private
         assert "DO-NOT-STORE" not in str(dict(db.execute("SELECT * FROM h5_request_failures").fetchone()))
 
 
+def test_only_accepted_submission_removes_its_lookup_misses_from_request_issues(client, monkeypatch):
+    http, app, _, _ = client
+    admin = app.state.h5_admin
+    http.base_url = httpx.URL("https://testserver")
+    admin.settings.admin_username, admin.settings.admin_password_hash = "admin-test", HASH
+    login(http)
+    submission, visit = str(uuid4()), str(uuid4())
+    headers = {**life_fixtures.HEADERS, "X-Visit-Id": visit}
+    retry_headers = {**headers, "Idempotency-Key": submission}
+    lookup = "/api/life-reports/submissions/" + submission
+    issues = "/api/admin/records/issues?category=request"
+    http.post("/api/landing/visits", json={"id": visit}, headers=headers).raise_for_status()
+
+    assert http.get(lookup, headers=headers).status_code == 404
+    initial = http.get(issues).json()
+    assert initial["total"] == 1
+    assert http.get(lookup, headers={"X-Report-Key": "another-synthetic-device-" + "b" * 32}).status_code == 404
+    assert http.get("/api/life-reports/submissions/" + str(uuid4()), headers=headers).status_code == 404
+    assert http.post("/api/life-reports?wait=false", json={}, headers=retry_headers).status_code == 422
+    before = http.get(issues).json()
+    assert before["total"] == 4
+
+    # An original request can commit after the lookup but before its 404 is logged.
+    late = []
+    with monkeypatch.context() as patch:
+        patch.setattr(admin, "record_failure", lambda *args: late.append(args))
+        assert http.get(lookup, headers=life_fixtures.HEADERS).status_code == 404
+    report = http.post("/api/life-reports?wait=false", json={"profile": PROFILE, "year": 2027}, headers=retry_headers)
+    report.raise_for_status()
+    assert len(late) == 1
+    admin.record_failure(*late[0])
+    after = http.get(issues).json()
+    assert after["total"] == 3
+    removed = {row["id"] for row in before["items"]} - {row["id"] for row in after["items"]}
+    assert removed == {initial["items"][0]["id"]}
+    assert sorted(row["http_status"] for row in after["items"]) == [404, 404, 422]
+    detail = http.get("/api/admin/visits/" + visit).json()
+    assert sorted(row["http_status"] for row in detail["failures"]) == [404, 422]
+    diagnostics = http.get("/api/admin/page-diagnostics").json()["errors"]
+    assert sorted(row["http_status"] for row in diagnostics if row["category"] == "request") == [404, 404, 422]
+    with app.state.store.connect() as db:
+        assert db.execute("SELECT count(*) AS n FROM h5_request_failures WHERE recovery_key IS NOT NULL AND report_id=%s",
+                          (report.json()["id"],)).fetchone()["n"] == 2
+
+
 def test_failure_links_to_visitor_even_when_visit_upload_arrives_later(admin):
     http, app = admin
     visit_id = str(uuid4())
@@ -928,6 +1003,43 @@ def test_failure_links_to_visitor_even_when_visit_upload_arrives_later(admin):
     assert failures[0]["visit_id"] is None and failures[0]["report_id"] is None
     assert failures[0]["visitor_number"] is None
     assert headers["X-Report-Key"] not in json.dumps(failures)
+
+
+def test_page_diagnostics_combines_page_stays_and_observed_errors(admin, monkeypatch):
+    http, app = admin
+    visit, view1, view2 = (str(uuid4()) for _ in range(3))
+    batch = {"id": visit, "events": [
+        {"sequence": seq, "page_view_id": view, "page": "birth_form", "action": action,
+         "kind": kind, "visible_ms": ms, "occurred_at": time.time(), "state": "visible"}
+        for seq, view, action, kind, ms in [
+            (1, view1, "view", "action", 0), (2, view1, "view", "dwell", 10000),
+            (3, view1, "runtime_js_type", "action", 12000), (4, view2, "view", "action", 0),
+        ]
+    ]}
+    for _ in range(2):
+        http.post("/api/landing/visits", json=batch, headers=life_fixtures.HEADERS).raise_for_status()
+    def fail_read(*args):
+        raise TimeoutError("synthetic private exception text")
+    monkeypatch.setattr(app.state.life_reports, "get", fail_read)
+    with pytest.raises(TimeoutError):
+        http.get("/api/life-reports/report-1", headers={**life_fixtures.HEADERS, "X-Visit-Id": visit})
+    login(http)
+    result = http.get("/api/admin/page-diagnostics?days=7").json()
+    assert result["pages"] == [{"page": "birth_form", "entries": 2, "visible_ms": 12000, "average_ms": 6000}]
+    runtime, = (row for row in result["errors"] if row["category"] == "runtime")
+    assert (runtime["path"], runtime["code"], runtime["visit_id"]) == ("birth_form", "runtime_js_type", visit)
+    assert any(row["category"] == "model" and row["code"] == "evidence_invalid" for row in result["errors"])
+    assert any(row["code"] == "server_TimeoutError" and row["http_status"] == 500 for row in result["errors"])
+    assert "synthetic private exception text" not in str(result)
+    detail = http.get("/api/admin/visits/" + visit).json()
+    assert detail["pages"][0]["visible_ms"] == 12000
+    assert {row["category"] for row in detail["failures"]} == {"runtime", "request"}
+    with app.state.store.connect() as db:
+        old = time.time() - 8 * 86400
+        db.execute("UPDATE landing_visits SET visited_at=%s WHERE id=%s", (old, visit))
+        db.execute("UPDATE landing_visit_activity SET received_at=%s WHERE visit_id=%s", (old, visit))
+    result = http.get("/api/admin/page-diagnostics?days=7").json()
+    assert result["pages"] == [] and not any(row["category"] == "runtime" for row in result["errors"])
 
 
 def test_client_network_failure_is_linked_once_and_labeled_separately(admin):

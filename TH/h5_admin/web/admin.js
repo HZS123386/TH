@@ -42,6 +42,7 @@ const icons = {
   visits:
     '<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M18 15a5 5 0 0 1 3 5"/>',
   'visit-funnel': '<path d="M3 5h18M5 10h14M7 15h10M9 20h6"/>',
+  'page-diagnostics': '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
   'ad-funnel': '<path d="M3 5h18l-7 8v5l-4 2v-7z"/>',
   reports: '<path d="M14 3H5v18h14V8zM14 3v6h5M8 13h8M8 17h5"/>',
   orders: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/>',
@@ -56,6 +57,7 @@ const icon = (name) =>
 const views = {
   overview: ['数据总览', '从访问到报告交付，查看每一个关键环节。'],
   visits: ['访问与来源', '查看每次访问的填写进度、前台停留和最后记录。'],
+  'page-diagnostics': ['页面停留与错误', '比较 H5 各页的前台停留时间，查看出错的环节和已记录的原因。'],
   'visit-funnel': ['H5 访问漏斗', '查看从填写资料到点击 LINE 的各步数据。'],
   'ad-funnel': ['广告转化', '查看带投放标签的访客，从进入 H5 到点击 LINE 的各步人数。'],
   reports: ['报告管理', '查看生成状态、解锁权限，追踪每一份报告。'],
@@ -70,7 +72,24 @@ const visitPages = {
   welcome: '欢迎页', birth_form: '资料填写页', consent: '数据使用确认', history: '历史报告列表',
   privacy: '隐私说明页', support: '帮助与联系页', generating_preview: '免费报告生成中',
   generating_full: '完整报告生成中', report_loading: '报告加载页', preview_report: '免费报告 / 解锁页',
-  full_report: '完整报告页', payment: '支付弹窗',
+  full_report: '完整报告页', payment: '支付弹窗', unobserved: '具体页面未采集',
+};
+const runtimeReasons = {
+  runtime_boot_html: '页面加载超过 20 秒，仍未收到 Flutter 启动配置',
+  runtime_boot_timeout: 'Flutter 启动超过 90 秒，仍未显示首屏',
+  runtime_boot_entry: 'Flutter 启动入口加载失败',
+  runtime_boot_engine: 'Flutter 渲染引擎初始化失败',
+  runtime_boot_app: 'Flutter 应用初始化失败',
+  runtime_script_load: '浏览器没能加载 Flutter 启动脚本',
+  runtime_js_type: '网页脚本使用了不符合预期的数据类型',
+  runtime_js_reference: '网页脚本引用了无法访问的变量',
+  runtime_js_syntax: '网页脚本遇到语法错误',
+  runtime_js_range: '网页脚本使用了超出范围的值',
+  runtime_rejection: '网页异步操作失败，程序未处理该异常',
+  runtime_js_error: '网页脚本抛出异常，未采到具体类型',
+  runtime_flutter_widgets: 'Flutter 页面组件处理出错',
+  runtime_flutter_rendering: 'Flutter 页面布局或绘制出错',
+  runtime_flutter_framework: 'Flutter 框架报告了异常，未采到具体环节',
 };
 const formProgress = {
   form_progress_empty: '尚无已确认的字段',
@@ -81,6 +100,7 @@ const formProgress = {
 };
 const visitActions = {
   ...formProgress,
+  ...runtimeReasons,
   view: '打开页面', enter_form: '进入资料填写', edit_form: '修改资料', invalid_form: '提交资料未通过校验',
   select_birth_date: '打开出生日期选择', select_birth_time: '打开出生时间选择', select_birthplace: '打开出生地选择',
   consent_accept: '确认数据使用', consent_cancel: '取消数据使用确认', generate: '开始生成报告',
@@ -136,6 +156,7 @@ const labels = {
   note: '记录跟进',
   payment: '支付异常',
   request: '接口失败',
+  runtime: '前端程序错误',
   model: '模型尝试',
   report: '报告异常',
   life: '人生报告',
@@ -232,6 +253,24 @@ const state = {
   revision: 0,
 };
 const label = (value) => labels[value] || value || '—';
+function errorReason(row) {
+  if (row.category === 'runtime') return runtimeReasons[row.code] || '未采到具体原因';
+  if (row.code === 'server_TimeoutError') return '服务端处理请求超时';
+  if (row.code?.startsWith('server_')) return '服务端抛出 ' + row.code.slice(7) + ' 异常';
+  if (row.category === 'model') {
+    const reasons = {ReadTimeout: '等待模型返回内容超时', ConnectTimeout: '连接模型服务超时',
+      ConnectError: '无法连接模型服务', TimeoutError: '模型调用超时', protocol: '模型返回的数据格式异常',
+      evidence_invalid: '报告内容未通过依据校验', validation_failed: '模型输出未通过校验'};
+    if (reasons[row.code]) return reasons[row.code];
+  }
+  return errors[row.code] || labels[row.code] || row.description ||
+    (row.category === 'model' ? '模型调用未通过，详见错误码' : '未记录更具体的原因');
+}
+function issueLocation(row) {
+  if (row.category === 'runtime') return visitPages[row.path] || row.path;
+  if (row.category === 'model') return '单次模型调用';
+  return row.path;
+}
 const badge = (value) => {
   const type = ['ready', 'paid', 'succeeded', 'resolved'].includes(value)
     ? 'success'
@@ -402,7 +441,7 @@ async function loadView({ refresh = false } = {}) {
     if (view === 'overview') {
       const params = new URLSearchParams({ days, page_size: 5 });
       data = await api('/records/reports?' + params);
-    } else if (view === 'visit-funnel' || view === 'ad-funnel') data = await api(`/${view}?days=${days}`);
+    } else if (['visit-funnel', 'ad-funnel', 'page-diagnostics'].includes(view)) data = await api(`/${view}?days=${days}`);
     else if (view === 'sources') data = await api('/sources');
     else if (view === 'line-contacts') {
       const params = new URLSearchParams({
@@ -430,8 +469,13 @@ async function loadView({ refresh = false } = {}) {
     if (view === 'overview') renderOverview(data.items);
     else if (view === 'visit-funnel') renderVisitFunnel(data);
     else if (view === 'ad-funnel') renderAdFunnel(data);
+    else if (view === 'page-diagnostics') renderPageDiagnostics(data);
     else if (view === 'sources') renderSources(data.items);
     else if (view === 'line-contacts') {
+      if (state.page > data.last_page) {
+        state.page = data.last_page;
+        if (data.total > 0) return loadView();
+      }
       renderLineCounts(data.report_counts, data.first_contact_visitor_counts);
       renderLineContacts(data);
     }
@@ -449,6 +493,7 @@ async function loadView({ refresh = false } = {}) {
 }
 
 function renderLineContacts(data) {
+  const occurred = data.activity_by_occurrence;
   const generation = {
     ready: '已生成', not_started: '未开始',
     queued: '等待生成', pending: '等待生成', generating: '正在生成',
@@ -480,12 +525,12 @@ function renderLineContacts(data) {
     <section class="stat-card">
       <div class="stat-top"><h3>二维码展示次数</h3></div>
       <div class="stat-value">${number(data.metrics.qr_popups)}<span class="unit">次</span></div>
-      <p class="stat-hint">二维码每成功显示一次计一次</p>
+      <p class="stat-hint">按收到时间计次。${occurred ? `其中在所选时段发生 ${number(occurred.qr_popups)} 次。` : ''}</p>
     </section>
     <section class="stat-card">
       <div class="stat-top"><h3>领取入口操作人数</h3></div>
       <div class="stat-value">${number(data.metrics.click_visitors)}<span class="unit">人</span></div>
-      <p class="stat-hint">手机点击打开 LINE，或电脑复制领取编号。同一浏览器只计一人。</p>
+      <p class="stat-hint">按收到时间去重。${occurred ? `其中在所选时段操作 ${number(occurred.click_visitors)} 人。` : ''}</p>
     </section>
   </div>
   <section class="panel line-stats" aria-labelledby="line-code-lookup-title">
@@ -498,7 +543,7 @@ function renderLineContacts(data) {
     </form>
     <div id="line-code-result" role="status"></div>
   </section>
-  <p class="data-note">页面顶部的「时间范围」筛选二维码弹出次数和按钮点击人数，最多保留最近 30 天。下方待办和领取编号查询可跨日期。</p>
+  <p class="data-note">「时间范围」筛选上方两项数据，最多保留 30 天。二维码展示按图片进入报告视口计次。点击打开 LINE 或在电脑复制领取编号，均算领取入口操作，同一浏览器计一人。下方待办和编号查询可跨日期。</p>
   <section class="panel table-panel">
     <div class="line-delivery-tabs" role="group" aria-label="报告发放分类">
       ${Object.entries(lineDeliveryTabs).map(([key, title]) =>
@@ -510,7 +555,7 @@ function renderLineContacts(data) {
       <button class="button" type="submit">查询</button>
     </form>
     <div class="summary-line"><span>共 <strong>${number(data.total)}</strong> 份</span></div>
-    ${rows.length ? table(['领取编号', '首次打开联系码', '确认加好友', '发送状态', '操作'], rows)
+    ${rows.length ? table(['领取编号', '首次领取记录', '确认加好友', '发送状态', '操作'], rows)
       : `<div class="empty">${icon('reports')}<strong>${state.q ? '未找到此编号的预览报告' : '此分类暂无报告'}</strong></div>`}
     <div class="table-footer"><span>第 ${state.page} 页</span><div class="pagination">
       <button type="button" class="button" id="line-prev" ${state.page <= 1 ? 'disabled' : ''}>上一页</button>
@@ -643,6 +688,16 @@ function reportTable(rows) {
         ),
       )
     : empty('当前范围没有报告');
+}
+function renderPageDiagnostics(data) {
+  const pageRows = data.pages.map(row => `<tr><td>${esc(visitPages[row.page] || row.page)}</td><td>${number(row.entries)}</td><td>${duration(row.average_ms)}</td><td>${duration(row.visible_ms)}</td></tr>`);
+  const errorRows = data.errors.map(row => `<tr><td>${date(row.created)}</td><td>${esc(label(row.category))}<small>${esc(issueLocation(row))}${row.http_status ? ' · HTTP ' + number(row.http_status) : ''}</small></td>
+    <td>${esc(errorReason(row))}<small class="mono">${esc(row.code)}</small></td><td>${visitorId(row)}${visitLink(row.visit_id)}${row.report_id ? reportLink(row) : ''}${!row.visit_id && !row.report_id ? '未关联' : ''}</td></tr>`);
+  $('#content').innerHTML = `<section class="panel table-panel"><div class="panel-header"><div><h3>各页面停留时间</h3><p class="muted">按访问开始时间筛选。平均每次停留按有记录的页面打开次数计算，只累计前台可见时间。</p></div><a href="#visits">逐次访问 ↗</a></div>
+    ${pageRows.length ? table(['页面', '有记录的打开次数', '平均每次停留', '累计前台停留'], pageRows) : empty('这段时间没有采到页面停留记录')}</section>
+    <section class="panel table-panel"><div class="panel-header"><div><h3>最近的程序错误</h3><p class="muted">按记录时间展示最近 25 条。同次打开页面的同类前端异常只记首次；模型失败按单次调用记录。</p></div><a href="#issues">全部异常 ↗</a></div>
+    ${errorRows.length ? table(['北京时间', '出错环节', '记录到的原因', '关联访问或报告'], errorRows) : empty('这段时间没有记录到程序错误')}</section>
+    <p class="data-note">最多显示最近 30 天。浏览器关闭前未送达的记录可能缺失。<a href="#sources">查看统计口径 ↗</a></p>`;
 }
 function renderVisitFunnel(metrics) {
   const steps = [
@@ -818,7 +873,7 @@ function renderRecords(data) {
     if (kind === 'calls')
       return `<tr><td><span class="mono" title="${esc(row.request_id)}">${esc(short(row.request_id) || '未返回请求号')}</span>${reportLink(row)}${visitorId(row)}</td><td>${esc(label(row.phase))}<small>${esc(row.reading)}</small></td><td>${esc(row.provider)}<small>${esc(row.model)}</small></td><td>${badge(row.status)}<small title="${esc(row.code)}">${esc(label(row.code))}</small></td><td>${row.usage_received ? number(row.prompt_tokens) + ' / ' + number(row.completion_tokens) : '未返回用量'}<small>缓存命中 ${number(row.cached_tokens)}</small></td><td>${row.duration_ms == null ? '历史未记录' : (row.duration_ms / 1000).toFixed(1) + ' 秒'}</td><td>${date(row.created)}</td></tr>`;
     if (kind === 'issues')
-      return `<tr><td><strong>${esc(label(row.category))}</strong><small>${row.category === 'model' ? '单次调用 · 报告可能已恢复' : row.category === 'request' ? row.http_status === 0 ? '客户端异常 · 无 HTTP 响应确认' : 'HTTP ' + row.http_status + ' · ' + (row.duration_ms / 1000).toFixed(2) + ' 秒' : '当前业务状态'}</small></td><td>${reportLink(row)}${visitorId(row)}${visitLink(row.visit_id)}<small title="${esc(row.path)}">${esc(row.path || row.name || '匿名访客')}</small></td><td>${sourceCell(row)}</td><td>${badge(row.status)}<small title="${esc(row.code)}">${esc(errors[row.code] || label(row.code))}</small></td><td>${date(row.created)}<small>${row.case_status ? '跟进：' + esc(label(row.case_status)) : '暂无关联报告'}</small></td></tr>`;
+      return `<tr><td><strong>${esc(label(row.category))}</strong><small>${row.category === 'model' ? '单次调用 · 报告可能已恢复' : row.category === 'request' ? row.http_status === 0 ? '客户端异常 · 无 HTTP 响应确认' : 'HTTP ' + row.http_status + ' · ' + (row.duration_ms / 1000).toFixed(2) + ' 秒' : row.category === 'runtime' ? '浏览器记录' : '当前业务状态'}</small></td><td>${reportLink(row)}${visitorId(row)}${visitLink(row.visit_id)}<small title="${esc(row.path)}">${esc(issueLocation(row) || row.name || '匿名访客')}</small></td><td>${sourceCell(row)}</td><td>${badge(row.status)}<small title="${esc(row.code)}">${esc(row.category === 'runtime' || row.code?.startsWith('server_') ? errorReason(row) : errors[row.code] || label(row.code))}</small></td><td>${date(row.created)}<small>${row.case_status ? '跟进：' + esc(label(row.case_status)) : '暂无关联报告'}</small></td></tr>`;
     return `<tr><td><strong>${esc(label(row.action))}</strong><small>${esc(row.actor)}</small></td><td>${reportLink(row)}${visitorId(row)}</td><td>${badge(row.status)}<small>${esc(label(row.code))}</small></td><td title="${esc(row.note)}">${esc(row.note)}</td><td>${date(row.created)}</td></tr>`;
   };
   const pages = Math.max(1, Math.ceil(data.total / data.page_size));
@@ -827,7 +882,7 @@ function renderRecords(data) {
   if (kind === 'issues')
     $('#status-filter').insertAdjacentHTML(
       'afterend',
-      `<select id="category-filter" aria-label="异常分类"><option value="">全部异常分类</option>${['report', 'payment', 'model', 'request'].map((value) => `<option value="${value}" ${state.category === value ? 'selected' : ''}>${label(value)}</option>`).join('')}</select>`,
+      `<select id="category-filter" aria-label="异常分类"><option value="">全部异常分类</option>${['report', 'payment', 'model', 'request', 'runtime'].map((value) => `<option value="${value}" ${state.category === value ? 'selected' : ''}>${label(value)}</option>`).join('')}</select>`,
     );
   if (['reports', 'issues'].includes(kind))
     $('#status-filter').insertAdjacentHTML(
@@ -983,7 +1038,7 @@ async function openVisit(id, page = 1) {
         ${data.events.length ? table(['页面与操作', '当时页面状态', '本次进入累计停留', '操作与接收时间'], data.events.map(row => `<tr><td>${esc(visitPages[row.page] || row.page)}<small>${esc(visitActions[row.action] || row.action)}${row.kind === 'state' ? ' · 页面状态变化' : ''}</small></td><td>${esc(visitStates[row.state] || row.state)}</td><td>${duration(row.visible_ms)}</td><td>操作 ${fullDate(row.occurred_at)}<small>接收 ${fullDate(row.received_at)}</small></td></tr>`), true) : '<p class="visit-detail-note muted">这条访问没有采到操作轨迹。</p>'}
         ${pages > 1 || page > 1 ? `<div class="pagination visit-detail-pagination"><button class="button" data-visit="${esc(id)}" data-visit-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}>上一页</button><span>${page} / ${pages}</span><button class="button" data-visit="${esc(id)}" data-visit-page="${page + 1}" ${page >= pages ? 'disabled' : ''}>下一页</button></div>` : ''}
       </section>
-      <section class="detail-section"><h3>关联失败 · 最近 ${data.failures.length} 条</h3>${data.failures.length ? table(['接口', '原因', '记录时间'], data.failures.map(row => `<tr><td>${esc(row.path)}<small>${row.http_status === 0 ? '客户端异常' : 'HTTP ' + row.http_status}</small></td><td>${esc(errors[row.code] || label(row.code))}</td><td>${fullDate(row.created)}</td></tr>`), true) : '<p class="visit-detail-note muted">暂无已记录的关联失败，不代表从未发生错误。</p>'}</section>`;
+      <section class="detail-section"><h3>关联失败 · 最近 ${data.failures.length} 条</h3>${data.failures.length ? table(['出错环节', '原因', '记录时间'], data.failures.map(row => `<tr><td>${esc(issueLocation(row))}<small>${row.category === 'runtime' ? '前端程序错误' : row.http_status === 0 ? '客户端异常' : 'HTTP ' + row.http_status}</small></td><td>${esc(errorReason(row))}<small class="mono">${esc(row.code)}</small></td><td>${fullDate(row.created)}</td></tr>`), true) : '<p class="visit-detail-note muted">暂无已记录的关联失败，不代表从未发生错误。</p>'}</section>`;
   } catch (error) {
     if (state.detailRequest === request) $('#detail-content').innerHTML = `<div class="error-banner">${esc(error.message)}</div>`;
   }

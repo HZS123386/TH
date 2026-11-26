@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse
 from pydantic import Field
 
 from backend.app.accounts import DUMMY_PASSWORD_HASH, password_matches
+from backend.app.i18n import MESSAGES
 from backend.app.landing_features import VISIT_RETENTION_SECONDS, owner_for
 from backend.app.life_reports import LifeInput
 from backend.app.schemas import H5AppLoginInput, Input
@@ -90,6 +91,9 @@ BASE = f"""WITH active_visits AS (
  CASE WHEN u.validated=0 THEN COALESCE(NULLIF(u.error_code,''),'historical_unknown') ELSE '' END code,
  r.status report_status,r.case_status,r.attribution
  FROM report_model_usage u JOIN reports r ON r.id=u.report_id
+), page_stays AS NOT MATERIALIZED (
+ SELECT visit_id,page_view_id,page,MAX(visible_ms) visible_ms FROM landing_visit_activity
+ GROUP BY visit_id,page_view_id,page
 ), visits AS (
  SELECT v.id,v.visited_at created,substr(v.owner,6,12) visitor,v.source,v.campaign,v.region_code entry_region,
  n.visitor_number,n.region_code,n.first_visit_date,
@@ -108,9 +112,7 @@ BASE = f"""WITH active_visits AS (
    WHERE l.visit_id=v.id
  ) links ON TRUE
  LEFT JOIN LATERAL (
-   SELECT SUM(t.visible_ms) visible_ms FROM (
-     SELECT MAX(a.visible_ms) visible_ms FROM landing_visit_activity a WHERE a.visit_id=v.id GROUP BY a.page_view_id
-   ) t
+   SELECT SUM(t.visible_ms) visible_ms FROM page_stays t WHERE t.visit_id=v.id
  ) dwell ON TRUE
 ), issues AS (
  SELECT 'report:'||id id,report_id,created,name,source,campaign,'report' category,status,code,case_status,'' path,NULL::bigint http_status,NULL::bigint duration_ms,attribution,visitor_number,NULL::text visit_id
@@ -124,6 +126,13 @@ BASE = f"""WITH active_visits AS (
  FROM h5_request_failures f LEFT JOIN reports r ON r.id=f.report_id
  LEFT JOIN active_visits v ON v.id=f.visit_id AND v.owner=f.owner
  LEFT JOIN active_visitors n ON n.owner=f.owner
+ WHERE f.recovery_key IS NULL OR f.report_id IS NULL
+ UNION ALL SELECT 'runtime:'||v.id||':'||a.sequence,NULL,a.received_at,'',v.source,v.campaign,
+ 'runtime','failed',a.action,'',a.page,NULL,NULL,CASE WHEN v.source='' THEN 'untagged' ELSE 'tagged' END,
+ n.visitor_number,v.id
+ FROM landing_visit_activity a JOIN active_visits v ON v.id=a.visit_id
+ LEFT JOIN active_visitors n ON n.owner=v.owner
+ WHERE a.kind='action' AND starts_with(a.action,'runtime_')
 ), audit AS (
  SELECT a.id,a.report_id,a.created,a.actor,a.action,a.status,a.code,a.note,'' source,'' campaign,
  r.visitor_number,r.id IS NOT NULL report_exists
@@ -145,6 +154,9 @@ SOURCES = [
      "rule": "时间为服务器收到最新事件的时间。前台表示上报时可见，不保证当前在线；切到后台不等于离开。离开事件不能区分关闭、刷新或跳转。外部收银台内部页面不可观测，支付结果以服务端核验为准。历史缺失显示未采集，隐私设置、断网或浏览器关闭可能造成漏报；不据此推断放弃或离开原因。"},
     {"name": "操作轨迹与停留", "table": "landing_visit_activity", "origin": "H5 原页面和操作埋点、可见状态变化及每 15 秒的时长检查点",
      "rule": "只累计前台可见时间，不等于阅读时间。每次进入页面按累计最大时长去重，再求和；补发不会重复计时。操作时间来自浏览器，接收时间来自服务器。保留 30 天，旧记录不回填；浏览器关闭可能缺最后一段。待发队列最多 500 条，溢出数量单独标记。"},
+    {"name": "程序错误原因", "table": "landing_visit_activity / h5_request_failures / report_model_usage",
+     "origin": "浏览器异常、Flutter 启动及框架错误、接口失败和模型调用失败",
+     "rule": "前端按服务器收到事件的时间展示，同一次页面打开只上报同类异常的首次记录。仅上传预定义错误类别。服务端未捕获的异常只记录异常类型。历史缺少的原因无法回填。"},
     {"name": "填写进度与已提交资料", "table": "landing_visit_activity / landing_visit_reports / life_reports.input",
      "origin": "H5 表单必填校验的状态，以及服务器保存的关联报告",
      "rule": "填写进度取最近一次记录，包括未选资料、下一项需要填写的内容、已填完。表单上报只包含状态。"
@@ -162,11 +174,11 @@ SOURCES = [
     {"name": "处理记录", "table": "admin_audit / admin_cases", "origin": "已登录管理员提交的业务操作和备注",
      "rule": "处理进度只是内部跟进状态，不修改订单支付状态或报告权限。所有操作记录管理员、时间、原因与结果。"},
     {"name": "LINE 联系与报告发放", "table": "landing_visit_activity / life_reports / admin_audit", "origin": "H5 添加好友按钮、二维码显示事件和客服确认",
-     "rule": "按北京时间筛选首次打开领取码的时间，每份报告计一次，展示当前发放状态。"
+     "rule": "按北京时间筛选报告的首次领取记录。系统收到领取入口操作时登记，缺记录时以客服首次确认时间补记。每份报告计一次，展示当前发放状态。"
              "总览和销售端的已登记发送量均按发送登记时间筛选。待发报告和待确认好友展示全部待办。"
-             "点击人数按匿名浏览器去重，二维码每次显示计一次，联系事件统计最多保留 30 天。"},
+             "领取入口操作按匿名浏览器去重。二维码展示和入口操作分别显示区间内收到的记录，以及其中在区间内发生的记录。发生时间取浏览器记录，最晚按服务器接收时间计算。最多保留 30 天。"},
     {"name": "接口失败", "table": "h5_request_failures", "origin": "现有 H5 API 请求边界中的非成功响应",
-     "rule": "保留最近 30 天且最多 20000 条。记录接口模板、HTTP 状态、错误码、耗时、匿名访客哈希和访问编号；按所有权核对关联。包含地点查询和报告创建前的失败；客户端网络或响应解析异常单独标注，不当作服务端 HTTP 失败。不保存请求体、手机号、访问密钥、IP 或查询参数。"},
+     "rule": "保留最近 30 天且最多 20000 条。同一设备的同一次提交被受理后，刷新恢复时产生的查询 404 从接口失败统计中排除。记录接口模板、HTTP 状态、错误码、耗时、匿名访客哈希和访问编号；按所有权核对关联。包含地点查询和报告创建前的失败；客户端网络或响应解析异常单独标注，不当作服务端 HTTP 失败。不保存请求体、手机号、访问密钥、IP 或查询参数。"},
 ]
 
 
@@ -214,8 +226,17 @@ class H5Admin:
                 db.execute("SET LOCAL lock_timeout = '100ms'")
                 if report_id and not db.execute("SELECT 1 FROM life_reports WHERE id=%s AND owner=%s", (report_id, key_owner)).fetchone():
                     report_id = ""
-                db.execute("INSERT INTO h5_request_failures(created,method,path,http_status,code,duration_ms,report_id,owner,visit_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                           (time.time(), request.method, path, status, code, duration_ms, report_id, owner, visit_id))
+                recovery_key = None
+                if (request.method == "GET" and path == "/api/life-reports/submissions/{submission_id}"
+                        and status == 404 and code == "life_submission_not_found" and key_owner):
+                    submission_id = UUID(str(request.path_params["submission_id"]))
+                    recovery_key = self.reports.lock_submission(db, key_owner, submission_id)
+                    receipt = db.execute("SELECT report_id FROM life_report_submissions WHERE owner=%s AND submission_id=%s",
+                                         (key_owner, submission_id)).fetchone()
+                    report_id = receipt["report_id"] if receipt else None
+                db.execute("""INSERT INTO h5_request_failures(created,method,path,http_status,code,duration_ms,report_id,owner,visit_id,recovery_key)
+                              VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                           (time.time(), request.method, path, status, code, duration_ms, report_id, owner, visit_id, recovery_key))
                 db.execute("DELETE FROM h5_request_failures WHERE created<%s", (time.time() - 30 * 86400,))
                 db.execute("DELETE FROM h5_request_failures WHERE id IN (SELECT id FROM h5_request_failures ORDER BY created DESC OFFSET 20000)")
         except psycopg.Error:
@@ -306,6 +327,23 @@ class H5Admin:
     def cutoff(days):
         return time.time() - days * 86400 if days else 0
 
+    def page_diagnostics(self, days):
+        since = max(self.cutoff(days), time.time() - VISIT_RETENTION_SECONDS)
+        pages = self.rows("""
+            SELECT s.page,COUNT(*) entries,SUM(s.visible_ms) visible_ms,ROUND(AVG(s.visible_ms)) average_ms
+            FROM page_stays s JOIN active_visits v ON v.id=s.visit_id
+            WHERE v.visited_at>=%s GROUP BY s.page ORDER BY SUM(s.visible_ms) DESC,s.page
+        """, (since,))
+        errors = self.rows("""
+            SELECT category,code,path,http_status,created,visit_id,visitor_number,report_id
+            FROM issues WHERE category IN ('runtime','request','model') AND created>=%s
+            ORDER BY created DESC,id DESC LIMIT 25
+        """, (since,))
+        for error in errors:
+            if error["category"] == "request" and error["code"] in MESSAGES:
+                error["description"] = MESSAGES[error["code"]][0]
+        return {"pages": pages, "errors": errors}
+
     def visit_funnel(self, days, *, tagged_only=False):
         metrics = self.rows("""
             , funnel_visits AS (
@@ -361,6 +399,7 @@ class H5Admin:
         elif report_id:
             match, params = "preview IS NOT NULL AND id=%s", (report_id,)
         retention = time.time() - VISIT_RETENTION_SECONDS
+        activity_since = max(retention, since)
         with self.store.connect() as db:
             # The count and page must see the same records while agents mark reports sent.
             db.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
@@ -373,13 +412,19 @@ class H5Admin:
             metrics = db.execute(f"""
                 SELECT COUNT(*) FILTER (WHERE a.action='line_qr_shown') AS qr_popups,
                        COUNT(DISTINCT v.owner) FILTER (WHERE a.action IN ('open_line_contact','click_line')) AS click_visitors,
+                       COUNT(*) FILTER (WHERE a.action='line_qr_shown' AND a.occurred_at >= %s) AS occurred_popups,
+                       COUNT(DISTINCT v.owner) FILTER (WHERE a.action IN ('open_line_contact','click_line')
+                                                      AND a.occurred_at >= %s) AS occurred_visitors,
                        (SELECT COUNT(*) FROM life_reports WHERE {LINE_SENT_REPORTS}) AS line_sent
                 FROM landing_visit_activity a JOIN landing_visits v ON v.id=a.visit_id
                 WHERE v.visited_at >= %s AND a.received_at >= %s
                   AND a.page='preview_report' AND a.kind='action'
                   AND a.action IN ('open_line_contact','click_line','line_qr_shown')
-            """, (since, retention, max(retention, since))).fetchone()
-            result = {"items": items[:25], "has_more": len(items) > 25, "metrics": metrics}
+            """, (activity_since, activity_since, since, retention, activity_since)).fetchone()
+            occurred = {"qr_popups": metrics.pop("occurred_popups"), "click_visitors": metrics.pop("occurred_visitors")}
+            last_page = max(1, (total + LINE_PAGE_SIZE - 1) // LINE_PAGE_SIZE)
+            result = {"items": items, "total": total, "last_page": last_page, "has_more": page < last_page, "metrics": metrics}
+            result["activity_by_occurrence"] = occurred
             if report_range is not None:
                 count_columns = f"""
                     COUNT(*) AS total,
@@ -617,10 +662,8 @@ class H5Admin:
                                 "FROM landing_visit_activity WHERE visit_id=%s AND kind<>'dwell' "
                                 "ORDER BY sequence LIMIT 50 OFFSET %s", (visit_id, (page - 1) * 50)).fetchall()
             total = db.execute("SELECT COUNT(*) count FROM landing_visit_activity WHERE visit_id=%s AND kind<>'dwell'", (visit_id,)).fetchone()["count"]
-            pages = db.execute("""SELECT page,SUM(visible_ms) visible_ms,COUNT(*) entries FROM (
-                SELECT page_view_id,page,MAX(visible_ms) visible_ms FROM landing_visit_activity
-                WHERE visit_id=%s GROUP BY page_view_id,page
-            ) t GROUP BY page ORDER BY page""", (visit_id,)).fetchall()
+            pages = db.execute(BASE + """SELECT page,SUM(visible_ms) visible_ms,COUNT(*) entries FROM page_stays
+                WHERE visit_id=%s GROUP BY page ORDER BY page""", (visit_id,)).fetchall()
             profiles = db.execute("""
                 SELECT r.id report_id,r.input::jsonb #>> '{profile,birth_date}' birth_date,
                        r.input::jsonb #>> '{profile,birth_time}' birth_time,
@@ -633,7 +676,7 @@ class H5Admin:
         return {"visit": visits[0], "events": [dict(row) for row in events], "pages": [dict(row) for row in pages],
                 "total": total, "page": page, "page_size": 50,
                 "submitted_profiles": [dict(row) for row in profiles],
-                "failures": self.rows("SELECT * FROM issues WHERE category='request' AND visit_id=%s ORDER BY created DESC LIMIT 100", (visit_id,))}
+                "failures": self.rows("SELECT * FROM issues WHERE category IN ('runtime','request') AND visit_id=%s ORDER BY created DESC,id DESC LIMIT 100", (visit_id,))}
 
     def report(self, report_id):
         with self.store.connect() as db:
@@ -785,6 +828,10 @@ def admin_router(service):
     @router.get("/visit-funnel")
     def visit_funnel(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
         return service.visit_funnel(days)
+
+    @router.get("/page-diagnostics")
+    def page_diagnostics(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
+        return service.page_diagnostics(days)
 
     @router.get("/ad-funnel")
     def ad_funnel(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
