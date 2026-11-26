@@ -522,7 +522,9 @@
   }
 
   async function ownerDigest(owner) {
-    return fateHex(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(owner))));
+    if (!crypto.subtle?.digest) return null;
+    try { return fateHex(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(owner)))); }
+    catch { return null; }
   }
 
   async function saveSubmission(value) {
@@ -535,12 +537,12 @@
     if (value) {
       const {owner,...receipt} = value;
       receipt.device = await ownerDigest(owner);
-      history.replaceState({...history.state,[submissionKey]:receipt},'');
+      try { history.replaceState({...history.state,[submissionKey]:receipt},''); } catch {}
     } else {
       const state = {...history.state};
       if (!state[submissionKey]) return;
       delete state[submissionKey];
-      history.replaceState(state,'');
+      try { history.replaceState(state,''); } catch {}
     }
   }
 
@@ -557,7 +559,8 @@
         return true;
       }
       const owner = window.fateH5.ownerKey();
-      if (!owner || saved.device !== await ownerDigest(owner)) { await saveSubmission(null); return; }
+      const digest = await ownerDigest(owner);
+      if (!owner || !digest || saved.device !== digest) { await saveSubmission(null); return; }
       saved = {...saved,owner};
     }
     if (!form.isConnected || creating) return;
@@ -606,11 +609,10 @@
     let consentAccepted = false;
     try {
       const owner = window.fateH5.ownerKey();
-      if (!owner) throw Error('storage');
       if (saved && saved.owner !== owner) throw Error('storage');
       const record = saved || {id:fateUuid(),owner,input:reportInput(),place,visit:JSON.parse(window.fateH5.visitContext()),
         path:location.pathname + location.search,notice:noticeVersion,sent:false};
-      try { await saveSubmission(record); } catch { throw Error('storage'); }
+      await saveSubmission(record);
       const {input,visit} = record;
       let report = record.sent ? await findSubmission(record) : null;
       if (!screen.isConnected) return;
@@ -628,7 +630,7 @@
           track('generate','generating_preview');
         }
         record.sent = true;
-        try { await saveSubmission(record); } catch { throw Error('storage'); }
+        await saveSubmission(record);
         report = await reportRequest('/api/life-reports?wait=false',owner,visit,{
           ...input,...(visit.id ? {landing_visit:visit} : {})
         },record.id);
@@ -697,7 +699,7 @@
   function submit(event) {
     event.preventDefault();
     if (!copy || waiting) return;
-    if (outdated) { const url = new URL(location.href); url.searchParams.set('preview','notice-' + Date.now()); window.open(url,'_blank','noopener'); return; }
+    if (outdated) { const url = new URL(location.href); url.searchParams.set('preview','notice-' + Date.now()); location.assign(url.href); return; }
     track('click_generate_report');
     const step = progress();
     track('form_progress_' + step);

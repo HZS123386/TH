@@ -102,3 +102,55 @@ test('the native landing form creates a report without loading or waiting for Fl
     await context.close();
   }
 });
+
+test('Meta embedded browsers can submit when Web Storage is unavailable', async () => {
+  const context = await browser.newContext({
+    viewport:{width:390,height:844},
+    reducedMotion:'reduce',
+    userAgent:'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Instagram 410.0.0.0 Mobile'
+  });
+  let owner, popups = 0;
+  try {
+    await context.addInitScript(() => {
+      for (const method of ['getItem','setItem','removeItem']) {
+        Object.defineProperty(Storage.prototype,method,{configurable:true,value(){ throw Error('storage disabled'); }});
+      }
+    });
+    const page = await context.newPage();
+    page.on('popup',() => { popups++; });
+    await page.route('**/*',async route => {
+      const request = route.request(), address = new URL(request.url());
+      if (address.origin !== new URL(url).origin) return route.abort();
+      if (!address.pathname.startsWith('/api/')) return route.continue();
+      const reply = json => route.fulfill({json});
+      if (address.pathname === '/api/landing/visits') return reply({ok:true,accepted_sequences:[]});
+      if (address.pathname === '/api/thai-locations') return reply({items:[{
+        id:'geonames:1816670',nameChinese:'北京市',nameEnglish:'Beijing',countryCode:'CN',timeZone:'Asia/Shanghai'
+      }],total:1});
+      if (address.pathname === '/api/landing/config') return reply({notice_version:'h5-data-use-3'});
+      if (address.pathname === '/api/landing/consents') return reply({accepted:true,notice_version:'h5-data-use-3'});
+      if (address.pathname === '/api/life-reports') {
+        owner = request.headers()['x-report-key'];
+        return reply({id:'embedded-accepted-report',preview_state:'queued'});
+      }
+      return reply({ok:true});
+    });
+
+    await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
+    assert.equal(await page.evaluate(() => window.fateH5.embedded),true);
+    assert.equal(await page.evaluate(() => window.fateBoot.embedded),true);
+    await page.locator('#birth-date-trigger').click();
+    await page.locator('#birth-picker-confirm').click();
+    await page.locator('#birth-time-trigger').click();
+    await page.locator('#birth-picker-confirm').click();
+    await page.locator('#birth-city').fill('北京');
+    await page.getByRole('option',{name:'北京市',exact:false}).click();
+    await page.locator('#birth-submit').click();
+
+    await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);
+    assert.match(owner,/^[0-9a-f]{48}$/);
+    assert.equal(popups,0);
+  } finally {
+    await context.close();
+  }
+});

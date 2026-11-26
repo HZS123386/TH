@@ -1,6 +1,26 @@
 const fateOwnerName = 'astro-life-report-key';
+const fateOwnerCookieName = 'fate-report-owner';
 const fateValidOwner = value => typeof value === 'string' && /^[A-Za-z0-9_-]{32,128}$/.test(value);
 const fateHex = bytes => Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+const fateEmbeddedBrowser = /(?:\bFBAN\b|\bFBAV\b|\bFB_IAB\b|\bFB4A\b|Instagram)/i.test(window.navigator?.userAgent || '');
+try {
+  if (fateEmbeddedBrowser) document.documentElement.dataset.embeddedBrowser = 'meta';
+} catch {}
+function fateCookieOwner() {
+  try {
+    const value = document.cookie.split(';').map(item => item.trim()).find(item => item.startsWith(fateOwnerCookieName + '='));
+    const owner = value && decodeURIComponent(value.slice(fateOwnerCookieName.length + 1));
+    return fateValidOwner(owner) ? owner : null;
+  } catch { return null; }
+}
+function fateSaveCookieOwner(owner) {
+  try {
+    const path = new URL('.', document.baseURI).pathname;
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${fateOwnerCookieName}=${encodeURIComponent(owner)}; Path=${path}; Max-Age=15552000; SameSite=Lax${secure}`;
+    return fateCookieOwner() === owner;
+  } catch { return false; }
+}
 function fateOwnerStores() {
   const stores = [];
   for (const read of [() => window.localStorage, () => window.sessionStorage]) {
@@ -15,7 +35,7 @@ function fateSavedOwner(stores) {
       if (fateValidOwner(value)) return value;
     } catch {}
   }
-  return null;
+  return fateCookieOwner();
 }
 let fateOwner;
 function fateOwnerKey() {
@@ -28,9 +48,24 @@ function fateOwnerKey() {
       persisted = store.getItem(fateOwnerName) === key || persisted;
     } catch {}
   }
-  fateOwner = persisted ? key : null;
-  return fateOwner;
+  // Meta's embedded browsers can expose Storage but reject writes. A first-party
+  // cookie preserves ownership across their WebView reloads; the in-memory key
+  // still lets the current form submit when every persistence API is blocked.
+  persisted = fateSaveCookieOwner(key) || persisted;
+  fateOwner = key;
+  return key;
 }
+
+function syncFateViewport() {
+  const height = window.visualViewport?.height || window.innerHeight;
+  if (Number.isFinite(height) && height > 0) {
+    document.documentElement.style?.setProperty('--fate-viewport-height', `${Math.round(height)}px`);
+  }
+}
+syncFateViewport();
+window.addEventListener('resize', syncFateViewport);
+window.visualViewport?.addEventListener('resize', syncFateViewport);
+window.visualViewport?.addEventListener('scroll', syncFateViewport);
 
 // Upgrade only the deployed IP site; local previews keep their existing origin.
 // The short-lived host cookie avoids putting report credentials in URLs or logs.
@@ -107,6 +142,7 @@ function finishFateBoot(appReady){
 }
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
+  embedded:fateEmbeddedBrowser,
   compatibility:fateBootRetry?.compatibility===true,
   stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
   fail(reason = 'runtime_boot_' + fateBootPhase){
@@ -486,6 +522,7 @@ window.addEventListener('online', () => { scheduleFateActivity(0); });
 try { fateVisitContext(); } catch {}
 window.fateH5 = {
   ownerKey: fateOwnerKey,
+  embedded: fateEmbeddedBrowser,
   trackRuntime: recordFateRuntime,
   trackLineClaimClick: trackFateLineClaimClick,
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },
@@ -529,7 +566,7 @@ window.fateH5 = {
     const target=new URL(action);
     if(target.origin!=='https://www.thaiepay.com'||target.pathname!=='/epaylink/payment.aspx'||target.username||target.password) throw new Error('Invalid payment URL');
     const form=document.createElement('form');
-    form.action=target.href;form.method='post';form.target='_blank';form.rel='noopener';
+    form.action=target.href;form.method='post';form.target=fateEmbeddedBrowser?'_self':'_blank';form.rel='noopener';
     for(const [name,value] of Object.entries(JSON.parse(fieldsJson))) {
       const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.append(input);
     }

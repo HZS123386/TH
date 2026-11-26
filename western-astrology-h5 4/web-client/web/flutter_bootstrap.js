@@ -9,7 +9,7 @@ const fateFlutterConfig = {
 const fateBasePath = new URL('.', document.baseURI).pathname;
 const fateLandingPath = location.pathname === fateBasePath || location.pathname === fateBasePath + 'index.html';
 // The official loader selects the shipped JavaScript build for this one recovery document.
-if(window.fateBoot.compatibility)fateFlutterConfig.renderer='canvaskit';
+if(window.fateBoot.compatibility||window.fateBoot.embedded)fateFlutterConfig.renderer='canvaskit';
 if (!window.fateBoot.upgrading && fateLandingPath) {
   // The native form is the complete landing experience. Do not make it compete
   // with Flutter's engine, Wasm and fonts before the visitor can enter details.

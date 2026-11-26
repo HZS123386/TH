@@ -14,6 +14,7 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   indexedDB?: { open: () => unknown };
   navigationType?: "navigate" | "reload" | "back_forward";
   historyEntry?: { state: Record<string, unknown> | null };
+  userAgent?: string;
 } = {}) {
   const status = { textContent: "" };
   const button = { hidden: true, addEventListener: vi.fn() };
@@ -36,11 +37,12 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   });
   window.localStorage = makeStorage(local);
   window.sessionStorage = makeStorage(storage);
-  const document = { baseURI: new URL("./", url).href, readyState: options.streamingHtml ? "loading" : "complete", visibilityState: "visible", documentElement: { lang: options.language ?? "zh" }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn((_type: string, _callback: (event?: any) => void) => {}), removeEventListener: vi.fn() };
+  const rootStyle = { setProperty: vi.fn() };
+  const document = { baseURI: new URL("./", url).href, readyState: options.streamingHtml ? "loading" : "complete", visibilityState: "visible", documentElement: { lang: options.language ?? "zh", dataset: {} as Record<string, string>, style: rootStyle }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn((_type: string, _callback: (event?: any) => void) => {}), removeEventListener: vi.fn() };
   const fetch = options.fetch ?? vi.fn().mockImplementation(async (_url, options) => ({
     ok: true, json: async () => ({ ok: true, accepted_sequences: JSON.parse(options.body).events.map((event: any) => event.sequence) }),
   }));
-  window.navigator = { doNotTrack: "0", globalPrivacyControl: options.privateBrowsing ?? false };
+  window.navigator = { doNotTrack: "0", globalPrivacyControl: options.privateBrowsing ?? false, userAgent: options.userAgent ?? "Test Browser" };
   const historyEntry = options.historyEntry ?? { state: null };
   const history = {
     get state() { return historyEntry.state; },
@@ -48,7 +50,19 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   };
   Object.defineProperty(document, "cookie", {
     get: () => options.cookieBlocked ? "" : cookie.value,
-    set: (value: string) => { if (!options.cookieBlocked) cookie.value = value.includes("Max-Age=0") ? "" : value.split(";")[0]; },
+    set: (value: string) => {
+      if (options.cookieBlocked) return;
+      const [pair,...attributes] = value.split(";").map(part => part.trim());
+      const separator = pair.indexOf("=");
+      const name = pair.slice(0,separator), item = pair.slice(separator + 1);
+      const jar = new Map(cookie.value.split(";").map(part => part.trim()).filter(Boolean).map(part => {
+        const index = part.indexOf("=");
+        return [part.slice(0,index),part.slice(index + 1)];
+      }));
+      if (attributes.some(part => part.toLowerCase() === "max-age=0")) jar.delete(name);
+      else jar.set(name,item);
+      cookie.value = [...jar].map(([key,current]) => `${key}=${current}`).join("; ");
+    },
   });
   const context = {
     window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history,
@@ -167,6 +181,36 @@ it("uses fresh tags on re-entry and keeps the corresponding visit through reload
   expect(JSON.parse(reload.h5.visitContext())).toEqual(next);
   const back = openDocument(storage, false, { local, url, historyEntry: entry, navigationType: "back_forward" });
   expect(JSON.parse(back.h5.visitContext())).toEqual(first);
+});
+
+it("keeps report ownership usable when embedded-browser storage is blocked", () => {
+  const cookie = { value: "" };
+  const first = openDocument(new Map(), true, { cookie, userAgent: "Instagram 410.0.0.0 Android" });
+  const owner = first.h5.ownerKey();
+  expect(owner).toMatch(/^[0-9a-f]{48}$/);
+  expect(first.h5.ownerKey()).toBe(owner);
+  expect(first.h5.embedded).toBe(true);
+  expect(first.boot.embedded).toBe(true);
+  expect(first.document.documentElement.dataset.embeddedBrowser).toBe("meta");
+  expect(cookie.value).toContain(`fate-report-owner=${owner}`);
+
+  const reload = openDocument(new Map(), true, { cookie, userAgent: "[FBAN/FBIOS;FBAV/500.0.0.0]" });
+  expect(reload.h5.ownerKey()).toBe(owner);
+
+  const fullyBlocked = openDocument(new Map(), true, { cookieBlocked: true, userAgent: "FB_IAB/FB4A" });
+  expect(fullyBlocked.h5.ownerKey()).toMatch(/^[0-9a-f]{48}$/);
+  expect(fullyBlocked.h5.ownerKey()).toBe(fullyBlocked.h5.ownerKey());
+});
+
+it("uses the compatible Flutter renderer for Meta embedded report pages", async () => {
+  const page = openDocument(new Map(), false, { userAgent: "Mozilla/5.0 Instagram 410.0.0.0" });
+  const initializeEngine = vi.fn(async (_config: any) => ({ runApp: vi.fn(async () => {}) }));
+  const load = page.startFlutter(vi.fn(async (options: any) => {
+    await options.onEntrypointLoaded({ initializeEngine });
+  }));
+  await Promise.resolve();
+  expect(load.mock.calls[0][0].config.renderer).toBe("canvaskit");
+  expect(initializeEngine.mock.calls[0][0].renderer).toBe("canvaskit");
 });
 
 it("retains the last page through hiding, leaving and restoring without losing ownership", async () => {

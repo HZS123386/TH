@@ -44,8 +44,9 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
 .birth-picker-clock::before { content:""; position:absolute; left:5px; top:2px; width:4px; height:5px;
   border-left:1.5px solid currentColor; border-bottom:1.5px solid currentColor; }
 #birth-picker {
+  --birth-wheel-row:clamp(36px,8vh,50px);
   --birth-wheel-row:clamp(36px,8dvh,50px);
-  width:min(440px,calc(100% - 16px)); max-width:none; max-height:calc(100dvh - 16px);
+  width:min(440px,calc(100% - 16px)); max-width:none; max-height:calc(var(--fate-viewport-height,100dvh) - 16px);
   padding:20px 23px 9px; border:1px solid #66516f; border-radius:18px; color:#fff1d8;
   background:#211730; box-shadow:0 12px 40px #0b061a70; overflow:auto; overscroll-behavior:contain;
 }
@@ -72,11 +73,11 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
 #birth-picker-confirm { width:100%; min-height:54px; margin-top:12px; border-radius:13px; background:#e2bb79; color:#2d1d33; }
 #birth-picker-close { min-height:42px; margin:2px auto 0; padding:0 16px; color:#c6b6d0; background:transparent; }
 @media (max-width:540px) {
-  #birth-picker { margin:auto auto 0; max-height:calc(100dvh - 8px); padding-bottom:max(9px,env(safe-area-inset-bottom)); }
+  #birth-picker { margin:auto auto 0; max-height:calc(var(--fate-viewport-height,100dvh) - 8px); padding-bottom:max(9px,env(safe-area-inset-bottom)); }
 }
 .birth-location { position:relative; }
 #birth-options { position:absolute; z-index:2; top:100%; margin-top:3px; width:100%; overflow:auto;
-  max-height:min(185px,30dvh); border:1px solid #816a82; border-radius:9px; background:#20162d; }
+  max-height:min(185px,calc(var(--fate-viewport-height,100dvh) * .3)); border:1px solid #816a82; border-radius:9px; background:#20162d; }
 #birth-options.open-above { top:auto; bottom:100%; margin:0 0 3px; }
 #birth-options button,#birth-options p { display:block; width:100%; margin:0; padding:9px 12px; border:0;
   color:inherit; background:transparent; font:inherit; text-align:start; }
