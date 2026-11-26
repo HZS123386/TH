@@ -50,6 +50,7 @@ after(async () => { try { await browser?.close(); } finally { await new Promise(
 
 test('the native landing form creates a report without loading or waiting for Flutter', async () => {
   const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
+  const pixelId = '29364528359833816';
   const requests = [], posts = [], conversions = [];
   let releasePost;
   const postGate = new Promise(resolve => { releasePost = resolve; });
@@ -92,11 +93,16 @@ test('the native landing form creates a report without loading or waiting for Fl
     assert.equal(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button,'::before').animationName),'none');
     assert.equal(requests.some(path => /main\.dart|skwasm|canvaskit/.test(path)),false);
     assert.equal(conversions.length,0);
+    const pixelCalls = await page.evaluate(() => window.fbq.queue.map(call => Array.from(call)));
+    assert.deepEqual(pixelCalls.filter(([command]) => command === 'init' || command === 'track'),[
+      ['init',pixelId],
+      ['track','PageView'],
+    ]);
 
     await page.locator('#birth-submit').click();
     await expect.poll(() => conversions.length).toBe(1);
     assert.equal(conversions[0].get('ev'),'AddToCart');
-    assert.equal(conversions[0].get('id'),'2150104392567893');
+    assert.equal(conversions[0].get('id'),pixelId);
     assert.equal(conversions[0].get('dl'),url);
     assert.equal(posts.length,0);
 

@@ -229,7 +229,7 @@ let fateActivity, fateActivitySequence = 0, fatePending = [], fateDropped = {};
 let fateUnstored = new Map(), fateRemoved = new Set(), fateStoredKeys = new Set(), fateStoredDropped = {}, fateOverflow = {};
 let fateSending = 0, fateRetryAt = 0, fateRetryCount = 0, fateSendTimer, fateDwellTimer;
 const fateTrackingAllowed = () => window.navigator?.globalPrivacyControl !== true && window.navigator?.doNotTrack !== '1';
-const fateMetaPixelId = '2150104392567893';
+const fateMetaPixelId = '29364528359833816';
 let fateMetaPixelStarted = false;
 function trackFatePageView() {
   if (!fateTrackingAllowed()) return;
