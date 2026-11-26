@@ -8,7 +8,7 @@ import { after, before, test } from 'node:test';
 const { chromium, expect } = createRequire(new URL('../../TH/package.json',import.meta.url))('@playwright/test');
 const web = new URL('../web-client/web/',import.meta.url);
 const assets = new URL('../web-client/assets/',import.meta.url);
-let browser, server, url, index;
+let browser, browserProcess, server, url, index;
 
 before(async () => {
   index = (await readFile(new URL('index.html',web),'utf8'))
@@ -43,10 +43,15 @@ before(async () => {
   server.listen(0,'127.0.0.1');
   await once(server,'listening');
   url = `http://127.0.0.1:${server.address().port}/thai-landing/`;
-  browser = await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'chrome' : 'chromium')});
+  browserProcess = await chromium.launchServer({host:'127.0.0.1',channel:process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'chrome' : 'chromium')});
+  browser = await chromium.connect(browserProcess.wsEndpoint());
 });
 
-after(async () => { try { await browser?.close(); } finally { await new Promise(resolve => server?.close(resolve)); } });
+after(async () => {
+  server?.close();
+  server?.closeAllConnections();
+  await browserProcess?.kill();
+});
 
 test('the native landing form creates a report without loading or waiting for Flutter', async () => {
   const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
@@ -193,7 +198,7 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).top),'0px');
     assert.equal((await page.locator('#fate-birth').boundingBox()).y,0);
     assert.match(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button,'::before').animationName),/birth-submit-breathe/);
-    await page.locator('#fate-birth').evaluate(element => { element.scrollTop = 420; });
+    await page.locator('#birth-content').evaluate(element => { element.scrollTop = 420; });
     await expect(page.locator('.birth-header')).toBeInViewport();
     assert.ok((await page.locator('.birth-header').boundingBox()).y >= 0);
     await page.locator('#birth-date-trigger').click();
@@ -214,6 +219,51 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     assert.equal(await page.evaluate(() => window.fateBoot.openingReportId),'embedded-accepted-report');
     assert.match(owner,/^[0-9a-f]{48}$/);
     assert.equal(popups,0);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Instagram on Android keeps the header above the form while scrolling and changing languages', async () => {
+  const context = await browser.newContext({
+    viewport:{width:412,height:824}, hasTouch:true, isMobile:true,
+    userAgent:'Mozilla/5.0 (Linux; Android 14; Pixel 7; wv) AppleWebKit/537.36 Version/4.0 Chrome/139.0.0.0 Mobile Safari/537.36 Instagram 410.0.0.0 Android'
+  });
+  try {
+    const page = await context.newPage();
+    await page.route('**/*',route => {
+      const address = new URL(route.request().url());
+      if (address.origin !== new URL(url).origin) return route.abort();
+      if (address.pathname.startsWith('/api/')) return route.fulfill({json:{ok:true,items:[],accepted_sequences:[]}});
+      return route.continue();
+    });
+    await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
+    const header = page.locator('.birth-header');
+    const language = header.locator('#birth-language');
+    const content = page.locator('#birth-content');
+    await expect(language).toHaveValue('zh');
+    assert.equal(await page.evaluate(() => window.fateH5.metaBrowser),'instagram');
+
+    const checkPosition = async () => {
+      const bar = await header.boundingBox();
+      const body = await content.boundingBox();
+      assert.equal(bar.y,0);
+      assert.equal(bar.y + bar.height,body.y);
+      await expect(header.getByRole('img',{name:'FATE'})).toBeInViewport({ratio:1});
+      await expect(language).toBeInViewport({ratio:1});
+    };
+    await checkPosition();
+    assert.ok(await content.evaluate(element => { element.scrollTop = 420; return element.scrollTop > 0; }));
+    await language.focus();
+    await page.evaluate(() => {
+      Object.defineProperty(window.visualViewport,'offsetTop',{configurable:true,value:44});
+      window.visualViewport.dispatchEvent(new Event('scroll'));
+    });
+    await page.setViewportSize({width:412,height:742});
+    await checkPosition();
+    await language.selectOption('en');
+    await expect(page.locator('html')).toHaveAttribute('lang','en');
+    await checkPosition();
   } finally {
     await context.close();
   }

@@ -3,14 +3,15 @@ html[data-birth-visible] #fate-flutter { visibility:hidden; pointer-events:none;
 html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden] { display:none !important; }
 #fate-birth {
   position:fixed; inset:var(--fate-viewport-top,0px) 0 auto; height:var(--fate-viewport-height,100vh);
-  overflow:auto; overscroll-behavior:contain; box-sizing:border-box; scroll-padding-top:58px;
+  display:flex; flex-direction:column; box-sizing:border-box;
   font:15px/1.5 system-ui,sans-serif; color:#f6ecdf; background:#100b1b; color-scheme:dark;
   padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
 }
 #fate-birth * { box-sizing:border-box; }
-#fate-birth .birth-header { max-width:900px; height:58px; margin:auto; padding:0 21px;
-  position:sticky; top:0; z-index:4; display:flex; align-items:center; justify-content:space-between;
-  background:#110b1ff2; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+/* Keep the header in its own row so viewport changes cannot shift it over the portrait. */
+#fate-birth .birth-header { flex:none; width:100%; max-width:900px; height:58px; margin:0 auto; padding:0 21px;
+  display:flex; align-items:center; justify-content:space-between; background:#110b1ff2; }
+#birth-content { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; }
 #birth-language { max-width:55%; border:0; color:#eac788; background:#110b1f; font:inherit; }
 .birth-portrait { position:relative; overflow:hidden; margin:auto; width:min(100%,560px);
   height:clamp(276px,78vw,420px); text-align:center; }
@@ -121,6 +122,7 @@ html[data-meta-browser=facebook] #birth-options button { touch-action:none; }
   color:#ffe0a1; font-size:clamp(12px,3.5vw,16px); font-weight:700; line-height:1.2; text-align:center; overflow-wrap:anywhere; }
 #birth-boards .birth-board:nth-child(2) li { border-color:#9876ab; background:linear-gradient(#523860,#362347); }
 #fate-birth footer { text-align:center; padding:10px 17px 28px; }
+#fate-birth[data-generating] { display:block; overflow:auto; overscroll-behavior:contain; }
 #fate-birth[data-generating] > :not(#birth-generation) { display:none; }
 #birth-generation { min-height:100%; padding:24px; display:grid; align-content:center; justify-items:center;
   gap:16px; text-align:center; background:radial-gradient(ellipse at 50% 22%,#392353,#100b1b 70%); }

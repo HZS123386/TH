@@ -75,48 +75,50 @@
         <option value="lo">ລາວ</option><option value="ms">Bahasa Melayu</option><option value="id">Bahasa Indonesia</option>
       </select>
     </header>
-    <section class="birth-portrait">
-      <img src="assets/assets/images/astrologer-900.webp" alt="" width="1199" height="1312" decoding="async">
-      <div class="birth-name"><strong data-copy="name"></strong><small data-copy="role"></small></div>
-      <div class="birth-caption"><h1 data-copy="headline"></h1><p data-copy="note"></p></div>
-    </section>
-    <form id="birth-form" novalidate>
-      <h2 data-copy="formTitle"></h2><p class="birth-hint" data-copy="formCaption"></p>
-      <label for="birth-date-trigger"><span id="birth-date-label" data-copy="date"></span><small data-copy="calendar"></small></label>
-      <input id="birth-date" type="date" min="1901-01-01" required hidden>
-      <button class="birth-picker-trigger" id="birth-date-trigger" type="button" aria-haspopup="dialog" aria-controls="birth-picker" aria-labelledby="birth-date-label birth-date-value">
-        <span id="birth-date-value"></span><span class="birth-picker-icon birth-picker-calendar" aria-hidden="true"></span>
-      </button>
-      <div class="birth-row"><label id="birth-time-label" for="birth-time-trigger" data-copy="time"></label>
-        <label class="birth-check"><input type="checkbox" id="birth-unknown"><span data-copy="unknown"></span></label>
-      </div>
-      <input id="birth-time" type="time" required hidden>
-      <button class="birth-picker-trigger" id="birth-time-trigger" type="button" aria-haspopup="dialog" aria-controls="birth-picker" aria-labelledby="birth-time-label birth-time-value">
-        <span id="birth-time-value"></span><span class="birth-picker-icon birth-picker-clock" aria-hidden="true"></span>
-      </button>
-      <label for="birth-city" data-copy="city"></label>
-      <div class="birth-location">
-        <input id="birth-city" type="search" role="combobox" aria-autocomplete="list" aria-controls="birth-options"
-               aria-expanded="false" maxlength="80" autocomplete="off" required>
-        <div id="birth-options" role="listbox" hidden></div>
-      </div>
-      <div id="birth-career" hidden>
-        <label for="birth-question" data-copy="questionTitle"></label><select id="birth-question"></select>
-        <input id="birth-custom" type="text" maxlength="120" hidden>
-      </div>
-      <p id="birth-message" role="status" aria-live="polite"></p>
-      <p class="birth-consent" data-copy="submitConsent"></p>
-      <button type="submit" id="birth-submit"></button>
-      <button type="button" id="birth-retry" hidden></button>
-      <section class="birth-themes"><h3 data-copy="topicLabel"></h3><div id="birth-boards"></div></section>
-    </form>
+    <div id="birth-content">
+      <section class="birth-portrait">
+        <img src="assets/assets/images/astrologer-900.webp" alt="" width="1199" height="1312" decoding="async">
+        <div class="birth-name"><strong data-copy="name"></strong><small data-copy="role"></small></div>
+        <div class="birth-caption"><h1 data-copy="headline"></h1><p data-copy="note"></p></div>
+      </section>
+      <form id="birth-form" novalidate>
+        <h2 data-copy="formTitle"></h2><p class="birth-hint" data-copy="formCaption"></p>
+        <label for="birth-date-trigger"><span id="birth-date-label" data-copy="date"></span><small data-copy="calendar"></small></label>
+        <input id="birth-date" type="date" min="1901-01-01" required hidden>
+        <button class="birth-picker-trigger" id="birth-date-trigger" type="button" aria-haspopup="dialog" aria-controls="birth-picker" aria-labelledby="birth-date-label birth-date-value">
+          <span id="birth-date-value"></span><span class="birth-picker-icon birth-picker-calendar" aria-hidden="true"></span>
+        </button>
+        <div class="birth-row"><label id="birth-time-label" for="birth-time-trigger" data-copy="time"></label>
+          <label class="birth-check"><input type="checkbox" id="birth-unknown"><span data-copy="unknown"></span></label>
+        </div>
+        <input id="birth-time" type="time" required hidden>
+        <button class="birth-picker-trigger" id="birth-time-trigger" type="button" aria-haspopup="dialog" aria-controls="birth-picker" aria-labelledby="birth-time-label birth-time-value">
+          <span id="birth-time-value"></span><span class="birth-picker-icon birth-picker-clock" aria-hidden="true"></span>
+        </button>
+        <label for="birth-city" data-copy="city"></label>
+        <div class="birth-location">
+          <input id="birth-city" type="search" role="combobox" aria-autocomplete="list" aria-controls="birth-options"
+                 aria-expanded="false" maxlength="80" autocomplete="off" required>
+          <div id="birth-options" role="listbox" hidden></div>
+        </div>
+        <div id="birth-career" hidden>
+          <label for="birth-question" data-copy="questionTitle"></label><select id="birth-question"></select>
+          <input id="birth-custom" type="text" maxlength="120" hidden>
+        </div>
+        <p id="birth-message" role="status" aria-live="polite"></p>
+        <p class="birth-consent" data-copy="submitConsent"></p>
+        <button type="submit" id="birth-submit"></button>
+        <button type="button" id="birth-retry" hidden></button>
+        <section class="birth-themes"><h3 data-copy="topicLabel"></h3><div id="birth-boards"></div></section>
+      </form>
+      <footer><p data-copy="disclaimer"></p></footer>
+    </div>
     <dialog id="birth-picker" aria-labelledby="birth-picker-title">
       <h2 id="birth-picker-title"></h2>
       <div id="birth-picker-wheels" class="birth-picker-wheels"></div>
       <button id="birth-picker-confirm" type="button"></button>
       <button id="birth-picker-close" type="button"></button>
     </dialog>
-    <footer><p data-copy="disclaimer"></p></footer>
     <section id="birth-generation" hidden aria-labelledby="birth-generation-title" tabindex="-1">
       <h1 id="birth-generation-title"></h1>
       <div class="birth-generation-visual" aria-hidden="true"></div>

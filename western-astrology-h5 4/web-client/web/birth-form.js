@@ -345,26 +345,31 @@
     }
   }
 
-  function keepLocationVisible() {
-    if (!window.fateH5.embedded || document.activeElement !== byId('birth-city')) return;
+  function locationViewport(content) {
+    const frame = content.getBoundingClientRect();
     const viewport = window.visualViewport;
     const viewportTop = viewport?.offsetTop || 0;
     const viewportBottom = viewportTop + (viewport?.height || innerHeight);
+    return {top:Math.max(frame.top,viewportTop),bottom:Math.min(frame.bottom,viewportBottom)};
+  }
+
+  function keepLocationVisible() {
+    if (!window.fateH5.embedded || document.activeElement !== byId('birth-city')) return;
+    const content = byId('birth-content');
+    const viewport = locationViewport(content);
     const location = byId('birth-city').getBoundingClientRect();
-    const top = viewportTop + 66, bottom = viewportBottom - 8;
-    if (location.bottom > bottom) main.scrollTop += location.bottom - bottom;
-    else if (location.top < top) main.scrollTop += location.top - top;
+    const top = viewport.top + 8, bottom = viewport.bottom - 8;
+    if (location.bottom > bottom) content.scrollTop += location.bottom - bottom;
+    else if (location.top < top) content.scrollTop += location.top - top;
     positionLocationOptions();
   }
 
   function positionLocationOptions() {
     const menu = byId('birth-options'), city = byId('birth-city');
     if (menu.hidden) return;
-    const viewport = window.visualViewport;
     const rect = city.getBoundingClientRect();
-    const viewportTop = viewport?.offsetTop || 0;
-    const viewportBottom = viewportTop + (viewport?.height || innerHeight);
-    menu.classList.toggle('open-above',viewportBottom - rect.bottom < 155 && rect.top - viewportTop > 155);
+    const {top,bottom} = locationViewport(byId('birth-content'));
+    menu.classList.toggle('open-above',bottom - rect.bottom < 155 && rect.top - top > 155);
   }
 
   async function searchPlaces(more = false) {
@@ -652,6 +657,7 @@
     byId('birth-generation-title').textContent = copy.generation.previewTitle;
     byId('birth-generation-status').textContent = copy.preparing;
     byId('birth-generation-retry').hidden = true;
+    byId('birth-content').scrollTop = 0;
     main.setAttribute('data-generating','');
     screen.hidden = false;
     show(true);
