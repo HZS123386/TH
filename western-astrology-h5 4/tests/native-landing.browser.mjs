@@ -151,6 +151,9 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     assert.equal(await page.evaluate(() => window.fateH5.embedded),true);
     assert.equal(await page.evaluate(() => window.fateBoot.embedded),true);
     assert.match(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button,'::before').animationName),/birth-submit-breathe/);
+    await page.locator('#fate-birth').evaluate(element => { element.scrollTop = 420; });
+    await expect(page.locator('.birth-header')).toBeInViewport();
+    assert.ok((await page.locator('.birth-header').boundingBox()).y >= 0);
     await page.locator('#birth-date-trigger').click();
     await page.locator('#birth-picker-confirm').click();
     await page.locator('#birth-time-trigger').click();

@@ -57,9 +57,14 @@ function fateOwnerKey() {
 }
 
 function syncFateViewport() {
-  const height = window.visualViewport?.height || window.innerHeight;
+  const viewport = window.visualViewport;
+  const height = viewport?.height || window.innerHeight;
+  const top = viewport?.offsetTop || 0;
   if (Number.isFinite(height) && height > 0) {
     document.documentElement.style?.setProperty('--fate-viewport-height', `${Math.round(height)}px`);
+  }
+  if (Number.isFinite(top) && top >= 0) {
+    document.documentElement.style?.setProperty('--fate-viewport-top', `${Math.round(top)}px`);
   }
 }
 syncFateViewport();
