@@ -89,7 +89,9 @@ Future<void> _startApp(WebBrowserPort browser) async {
     ensureReportFont: fonts.ensureCommon,
   );
   browser.setLanguage(language, controller.copy.t('jy', 'title'));
-  runApp(H5App(controller: controller));
+  runApp(
+    H5App(controller: controller, openingReportId: browser.openingReportId),
+  );
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(
       WidgetsBinding.instance.waitUntilFirstFrameRasterized

@@ -8,10 +8,10 @@ import 'theme.dart';
 class SiteHeader extends StatelessWidget {
   const SiteHeader({
     this.showLanguages = true,
-    this.showHomeArrow = true,
+    this.homeArrowLeading = false,
     super.key,
   });
-  final bool showLanguages, showHomeArrow;
+  final bool showLanguages, homeArrowLeading;
 
   Future<void> _language(
     BuildContext context,
@@ -45,7 +45,16 @@ class SiteHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          InkWell(onTap: () => _goHome(context, h5), child: const FateBrand()),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (homeArrowLeading) HomeArrow(h5: h5),
+              InkWell(
+                onTap: () => _goHome(context, h5),
+                child: const FateBrand(),
+              ),
+            ],
+          ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -124,7 +133,7 @@ class SiteHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (showHomeArrow) HomeArrow(h5: h5),
+              if (!homeArrowLeading) HomeArrow(h5: h5),
             ],
           ),
         ],

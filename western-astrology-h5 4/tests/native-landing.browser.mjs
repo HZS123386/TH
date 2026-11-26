@@ -21,7 +21,9 @@ before(async () => {
       return;
     }
     if (address.pathname === '/thai-landing/report.html') {
-      response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}).end('<!doctype html><title>Accepted report</title><p id="accepted-report">Accepted report</p>');
+      response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}).end(
+        index.replace('<div id="fate-flutter"></div>','<div id="fate-flutter"><p id="accepted-report">Accepted report</p></div>')
+      );
       return;
     }
     const source = new Map([
@@ -49,6 +51,8 @@ after(async () => { try { await browser?.close(); } finally { await new Promise(
 test('the native landing form creates a report without loading or waiting for Flutter', async () => {
   const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
   const requests = [], posts = [];
+  let releasePost;
+  const postGate = new Promise(resolve => { releasePost = resolve; });
   try {
     const page = await context.newPage();
     const errors = [];
@@ -71,6 +75,7 @@ test('the native landing form creates a report without loading or waiting for Fl
       if (address.pathname === '/api/landing/consents') return reply({accepted:true,notice_version:'h5-data-use-3'});
       if (address.pathname === '/api/life-reports') {
         posts.push({headers:request.headers(),body:request.postDataJSON(),search:address.search});
+        await postGate;
         return reply({id:'native-accepted-report',preview_state:'queued'});
       }
       return reply({ok:true});
@@ -99,17 +104,24 @@ test('the native landing form creates a report without loading or waiting for Fl
     await expect(page.locator('#birth-city')).toHaveValue('北京市');
     await page.locator('#birth-submit').click();
 
-    await expect(page.locator('#birth-generation')).toBeVisible();
+    await expect(page.locator('#birth-submit')).toBeDisabled();
+    await expect(page.locator('#birth-form')).toBeVisible();
+    await expect(page.locator('#birth-generation')).toHaveCount(0);
+    releasePost();
     await expect(page).toHaveURL(/report\.html\?id=native-accepted-report&lang=zh$/);
     await expect(page.locator('#accepted-report')).toBeVisible();
+    await expect(page.locator('#fate-startup')).toBeHidden();
     assert.equal(posts.length,1);
     assert.equal(posts[0].search,'?wait=false');
     assert.match(posts[0].headers['idempotency-key'],/^[0-9a-f-]{36}$/);
     assert.equal(posts[0].body.profile.birth_date,'1990-07-15');
     assert.equal(posts[0].body.profile.birth_time,'07:15');
     assert.equal(posts[0].body.profile.location_id,'geonames:1816670');
+    await page.goto(url + 'report.html?id=retained-report&lang=zh',{waitUntil:'domcontentloaded'});
+    await expect(page.locator('#fate-startup')).toBeVisible();
     assert.deepEqual(errors,[]);
   } finally {
+    releasePost();
     await context.close();
   }
 });
@@ -163,6 +175,9 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.locator('#birth-submit').click();
 
     await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);
+    await expect(page.locator('#accepted-report')).toBeVisible();
+    await expect(page.locator('#fate-startup')).toBeHidden();
+    assert.equal(await page.evaluate(() => window.fateBoot.openingReportId),'embedded-accepted-report');
     assert.match(owner,/^[0-9a-f]{48}$/);
     assert.equal(popups,0);
   } finally {

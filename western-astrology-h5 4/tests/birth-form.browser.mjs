@@ -105,7 +105,7 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
     const response = new Promise(resolve => { releaseResponse = resolve; });
     const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));
     const posts = [], lookups = [], errors = [], visits = visitCollector();
-    let accepted, owner, jobs = 0, showedReport = false;
+    let accepted, owner, jobs = 0;
     try {
       if (['refresh-before-delivery','refresh-with-accepted-history-receipt'].includes(scenario)) {
         await context.addInitScript(() => {
@@ -116,9 +116,23 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
           };
         });
       }
+      if (scenario === 'refresh-with-accepted-history-receipt') {
+        await context.addInitScript(() => {
+          const replace = history.replaceState.bind(history);
+          history.replaceState = (state,title,target) => {
+            const receipt = history.state?.['fate-birth-submission']?.reportId;
+            if (receipt && target && new URL(target,location.href).pathname.endsWith('/report.html') &&
+                !sessionStorage.getItem('test-reloaded-accepted-receipt')) {
+              // Reload the form once after acceptance but before the report URL is set.
+              sessionStorage.setItem('test-reloaded-accepted-receipt',receipt);
+              return;
+            }
+            return replace(state,title,target);
+          };
+        });
+      }
       const page = await context.newPage();
       page.on('pageerror',error => errors.push(error.message));
-      page.on('console',line => { if (line.text().includes('"page":"report-content"')) showedReport = true; });
       await context.route('**/*',async route => {
         const request = route.request(), address = new URL(request.url()), path = address.pathname;
         if (address.origin !== new URL(url).origin && /^https?:$/.test(address.protocol)) return route.abort();
@@ -152,7 +166,10 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
           if (first) await response;
           return reply(accepted).catch(() => {});
         }
-        if (path === '/api/life-reports/' + fixture.id) return reply(accepted);
+        if (path === '/api/life-reports/' + fixture.id) {
+          assert.equal(request.headers()['x-report-key'],owner);
+          return reply(accepted);
+        }
         return reply({recorded:true});
       });
       await page.goto(url + '?topic=career&startup=1&utm_source=example&utm_campaign=handoff',{waitUntil:'domcontentloaded'});
@@ -161,12 +178,13 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
       await page.locator('#birth-city').click();
       await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
       await page.locator('#birth-submit').click();
-      await expect(page.locator('#birth-generation')).toBeVisible();
+      await expect(page.locator('#birth-submit')).toBeDisabled();
+      await expect(page.locator('#birth-generation')).toHaveCount(0);
       await expect.poll(() => posts.length).toBe(1);
       if (scenario === 'refresh-with-accepted-history-receipt') {
         releaseResponse();
-        await page.waitForFunction(id => history.state?.['fate-birth-submission']?.reportId === id,fixture.id);
-        await page.reload({waitUntil:'commit'});
+        await page.waitForFunction(id => sessionStorage.getItem('test-reloaded-accepted-receipt') === id &&
+          window.fateBoot?.openingReportId === id,fixture.id);
         releaseEngine();
       } else {
         await page.reload({waitUntil:'domcontentloaded'});
@@ -177,7 +195,6 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
       }
       releaseResponse();
       await expect(page).toHaveURL(new RegExp('report\\.html\\?id=' + fixture.id),{timeout:30000});
-      if (scenario !== 'refresh-with-accepted-history-receipt') await expect.poll(() => showedReport).toBe(true);
       assert.equal(jobs,1);
       assert.equal(posts.length,scenario === 'refresh-before-delivery' ? 2 : 1);
       assert.equal(new Set(posts).size,1);
@@ -197,9 +214,11 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
 }
 
 test('a new visitor fills the native form with Flutter held, then submits exactly once to the existing report flow', async () => {
-  const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
-  let release;
+  const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'no-preference'});
+  let release, releasePost, releasePreview;
   const gate = new Promise(resolve => { release = resolve; });
+  const postGate = new Promise(resolve => { releasePost = resolve; });
+  const previewGate = new Promise(resolve => { releasePreview = resolve; });
   try {
     const page = await context.newPage();
     const errors = [], calls = [], directory = [], reads = [], visits = visitCollector();
@@ -242,12 +261,15 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
         assert.ok(submittedOwner && route.request().headers()['x-report-key'] === submittedOwner);
         submittedVisit = landing_visit;
         generated = {...fixture,input};
+        await postGate;
         return respond({...generated,preview:null,chart:null,preview_state:'queued'});
       }
       if (path === '/api/life-reports/' + fixture.id) {
         assert.equal(route.request().headers()['x-report-key'],submittedOwner);
         reads.push(address.search);
-        return respond(reads.length === 1 ? {...generated,preview:null,chart:null,preview_state:'generating'} : generated);
+        if (reads.length === 1) return respond({...generated,preview:null,chart:null,preview_state:'generating'});
+        await previewGate;
+        return respond(generated);
       }
       return respond({recorded:true,accepted:true});
     });
@@ -296,10 +318,15 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.equal(generated,undefined);
     rejectConsent = false;
     await page.locator('#birth-submit').click();
-    await expect(page.locator('#birth-generation')).toBeVisible();
-    await expect(page.locator('#birth-form')).toBeHidden();
+    await expect(page.locator('#birth-submit')).toBeDisabled();
+    await expect(page.locator('#birth-form')).toBeVisible();
+    await expect(page.locator('#birth-generation')).toHaveCount(0);
     await page.locator('#birth-form').evaluate(form => form.requestSubmit());
+    releasePost();
     await page.waitForFunction(id => sessionStorage.getItem('active-preview') === id,fixture.id);
+    await expect(page).toHaveURL(/report\.html\?id=/,{timeout:60000});
+    await page.waitForFunction(id => window.fateBoot?.openingReportId === id,fixture.id);
+    await expect(page.locator('#fate-startup')).toBeHidden();
     assert.equal(await page.evaluate(() => performance.getEntriesByName('fate-app-ready').length),0);
     assert.equal(reads.length,0);
     release();
@@ -311,6 +338,9 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.equal(generated.input.profile.birth_time,'09:30');
     assert.equal(submittedVisit.source,'example');
     await expect.poll(() => reads.some(query => query.includes('wait_preview=true')),{timeout:15000}).toBe(true);
+    const animation = page.locator('video[src$="report-loading-web.mp4"]:visible, img[src*="report-loading-animated.webp"]:visible');
+    await expect(animation.first()).toBeVisible({timeout:10000});
+    releasePreview();
     assert.equal(calls.filter(call => call === 'POST /api/life-reports').length,1);
     const accepted = calls.indexOf('POST /api/landing/consents');
     assert.ok(accepted >= 0 && accepted < calls.indexOf('POST /api/life-reports'));
@@ -331,5 +361,5 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.ok(actions.every(e => e.id === submittedVisit.id));
     assert.doesNotMatch(JSON.stringify(actions),/1995-08-17|My career question|北京|09:30/);
     assert.deepEqual(errors,[]);
-  } finally { release(); await context.close(); }
+  } finally { release(); releasePost(); releasePreview(); await context.close(); }
 });

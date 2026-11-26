@@ -21,6 +21,8 @@ external void _activity(JSString payload, JSString key, JSString endpoint);
 external void _failure(JSString path, JSString code, JSString method);
 @JS('fateBoot.fail')
 external void _startupFailed();
+@JS('fateBoot.openingReportId')
+external JSString? get _openingReportId;
 @JS('fateH5.trackRuntime')
 external void _runtimeError(JSString action);
 @JS('fateH5.ownerKey')
@@ -35,6 +37,7 @@ external JSBoolean get _birthFormSubmitting;
 external void _detachBirthForm();
 
 class WebBrowserPort implements BrowserPort {
+  String? get openingReportId => _openingReportId?.toDart;
   void startupFailed() => _startupFailed();
   void trackFrameworkError(String? library) {
     final action = switch (library) {

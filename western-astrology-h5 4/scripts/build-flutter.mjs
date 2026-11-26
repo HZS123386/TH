@@ -75,7 +75,7 @@ export async function buildLanding({release=false,noPub=false}={}){
       jy: pick(data.jy[lang],formKeys),
       ui: pick(data.ui[lang],['invalidDate','timeRequired','invalidPlace','network','badResult','noCity','morePlaces','confirm','close']),
       marriage: pick(data.marriage[lang],['title','form_hint']),
-      generation: pick(data.generation[lang],['previewTitle','preview','ready','storage','busy','retry']),
+      generation: pick(data.generation[lang],['storage','busy','retry']),
       preparing: data.jy[lang].interpretation.steps.basics.status,
       themes: Object.values(data.jyThemes).map(items => items.map(item => item[lang]))
     };

@@ -110,6 +110,15 @@ const fateHttpsUpgrading=(()=>{
   return false;
 })();
 const fatePerfEnabled=new URLSearchParams(location.search).get('startup')==='1';
+const fateOpeningReportId = (() => {
+  if (location.pathname !== new URL('report.html', document.baseURI).pathname) return null;
+  const query = new URLSearchParams(location.search), id = query.get('id');
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(id || '')) return null;
+  if (history.state?.openingReport === id || query.get('from_form') === '1') return id;
+  try { return sessionStorage.getItem('active-preview') === id ? id : null; }
+  catch { return null; }
+})();
+if (fateOpeningReportId) document.documentElement.dataset.openingReport = '';
 const fateBootTranslations={
   zh:{engine:'正在准备星空画面',app:'正在载入你的专属页面',slow:'网络有点慢，请稍候',retry:'连接暂时中断，正在重新加载',failed:'页面加载失败，请检查网络后重试'},
   th:{engine:'กำลังเตรียมภาพดวงดาว',app:'กำลังเปิดหน้าส่วนตัวของคุณ',slow:'เครือข่ายช้าเล็กน้อย กรุณารอสักครู่',retry:'การเชื่อมต่อขัดข้อง กำลังโหลดใหม่',failed:'โหลดไม่สำเร็จ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่'},
@@ -143,11 +152,22 @@ function finishFateBoot(appReady){
   fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);clearTimeout(fateBootRecovery);
   try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
   document.getElementById('fate-startup')?.remove();
+  if (appReady && fateOpeningReportId) {
+    try {
+      const state = {...history.state}, url = new URL(location.href);
+      if (state.openingReport === fateOpeningReportId || url.searchParams.has('from_form')) {
+        delete state.openingReport;
+        url.searchParams.delete('from_form');
+        history.replaceState(state, '', url);
+      }
+    } catch {}
+  }
   if(appReady){performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));}
 }
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
   embedded:fateEmbeddedBrowser,
+  openingReportId:fateOpeningReportId,
   compatibility:fateBootRetry?.compatibility===true,
   stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
   fail(reason = 'runtime_boot_' + fateBootPhase){

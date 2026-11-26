@@ -199,13 +199,7 @@ void main() {
             find.widgetWithText(TextButton, h5.copy.t('generation', 'cancel')),
           );
           expect(find.byType(GenerationDialog), findsNothing);
-          await click(
-            tester,
-            find.descendant(
-              of: find.byType(SiteHeader),
-              matching: find.byType(FateBrand),
-            ),
-          );
+          await click(tester, find.byType(HomeArrow));
           expect(browser.formVisible, isTrue);
           expect(browser.readSetting('active-preview', session: true), isEmpty);
           expect(methods.every((method) => method == 'GET'), isTrue);
@@ -222,7 +216,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.textContaining(label), findsNothing);
         expect(find.text(h5.copy.t('life', 'viewProgress')), findsNothing);
-        expect(find.byIcon(Icons.arrow_back), findsNothing);
+        expect(find.byIcon(Icons.arrow_back), findsOneWidget);
         expect(
           browser.activities.where((event) =>
               event['page'] == 'full_report' && event['action'] == 'report_ready'),
@@ -372,14 +366,15 @@ void main() {
         ),
         isEmpty,
       );
-      expect(find.byIcon(Icons.arrow_back), findsNothing);
-      await click(
-        tester,
-        find.descendant(
-          of: find.byType(SiteHeader),
-          matching: find.byType(FateBrand),
-        ),
+      final header = find.byType(SiteHeader);
+      final brand = find.descendant(
+        of: header,
+        matching: find.byType(FateBrand),
       );
+      final back = find.descendant(of: header, matching: find.byType(HomeArrow));
+      expect(back, findsOneWidget);
+      expect(tester.getCenter(back).dx, lessThan(tester.getCenter(brand).dx));
+      await click(tester, back);
       expect(find.byType(ReportPreview), findsNothing);
       expect(browser.formVisible, isTrue);
       await tester.pumpWidget(const SizedBox.shrink());

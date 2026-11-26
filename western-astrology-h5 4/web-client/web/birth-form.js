@@ -370,7 +370,7 @@
     byId('birth-custom').placeholder = j.questionTitle;
     byId('birth-custom').setAttribute('aria-label',j.writeQuestion);
     byId('birth-submit').textContent = outdated ? j.openLatest : j.topics[topic].action;
-    byId('birth-retry').textContent = byId('birth-generation-retry').textContent = copy.generation.retry;
+    byId('birth-retry').textContent = copy.generation.retry;
     const boards = copy.themes.map(group => {
       const board = document.createElement('div');
       board.className = 'birth-board';
@@ -450,9 +450,9 @@
     failed = true;
     if (!main.firstElementChild || main.hidden || !copy) return;
     if (creating) {
-      byId('birth-generation-status').textContent = fateBootTranslations[language].failed;
       // Let the create response arrive before offering a reload that could lose its ID.
-      byId('birth-generation-retry').hidden = !acceptedReport && !retrySubmission;
+      say(fateBootTranslations[language].failed);
+      byId('birth-retry').hidden = !acceptedReport && !retrySubmission;
       return;
     }
     pending = null;
@@ -465,11 +465,10 @@
   function engineReady() {
     if (!failed || !submitToFlutter) return;
     failed = false;
-    byId('birth-retry').hidden = true;
-    if (creating && !retrySubmission && copy) {
-      byId('birth-generation-retry').hidden = true;
-      byId('birth-generation-status').textContent = acceptedReport ? copy.generation.preview : copy.preparing;
-    } else if (!creating) say('');
+    if (!retrySubmission) {
+      byId('birth-retry').hidden = true;
+      say(creating ? copy.preparing : '');
+    }
     queueMicrotask(dispatch);
   }
 
@@ -477,21 +476,23 @@
   window.addEventListener('online',() => { if (retrySubmission) startReport(submission); });
 
   function reopenAcceptedReport(id) {
-    const url = 'report.html?' + new URLSearchParams({id,lang:language});
+    const url = new URL('report.html',document.baseURI);
+    url.search = new URLSearchParams({id,lang:language});
     try {
       // Keep the visit on this history entry when tab storage cannot carry the accepted report.
       const visit = JSON.parse(window.fateH5.visitContext());
-      history.replaceState(visit.id ? {fateVisit:visit} : null,'',url);
-    } catch { location.replace(url); return; }
+      history.replaceState({openingReport:id,...(visit.id ? {fateVisit:visit} : {})},'',url);
+    } catch {
+      url.searchParams.set('from_form','1');
+      location.replace(url);
+      return;
+    }
     location.reload();
   }
 
   function retry() {
     if (retrySubmission) { startReport(submission); return; }
     if (acceptedReport) {
-      try {
-        if (sessionStorage.getItem('active-preview') === acceptedReport.id) { location.reload(); return; }
-      } catch {}
       reopenAcceptedReport(acceptedReport.id);
       return;
     }
@@ -547,20 +548,25 @@
     } finally { clearTimeout(timer); }
   }
 
+  function setFormWaiting(busy) {
+    const form = byId('birth-form');
+    for (const child of form.children) {
+      if (child.id !== 'birth-message' && child.id !== 'birth-retry') child.inert = busy;
+    }
+    byId('birth-submit').disabled = byId('birth-language').disabled = busy;
+  }
+
   function returnToForm(message) {
-    creating = waiting = false;
-    const screen = byId('birth-generation');
-    if (!screen.hidden) {
-      screen.hidden = true;
+    if (creating) {
       track('view');
       track('form_progress_' + progress());
     }
-    main.removeAttribute('data-generating');
-    byId('birth-submit').disabled = byId('birth-language').disabled = false;
+    creating = waiting = false;
+    setFormWaiting(false);
     if (outdated) byId('birth-submit').textContent = copy.jy.openLatest;
     say(message);
     byId('birth-submit').focus();
-    if (failed) byId('birth-retry').hidden = false;
+    byId('birth-retry').hidden = !failed;
   }
 
   async function ownerDigest(owner) {
@@ -633,21 +639,15 @@
   }
 
   async function startReport(saved) {
+    const first = !creating;
+    const form = byId('birth-form');
     retrySubmission = false;
     creating = waiting = true;
-    byId('birth-submit').disabled = byId('birth-language').disabled = true;
-    const screen = byId('birth-generation');
-    byId('birth-generation-title').textContent = copy.generation.previewTitle;
-    byId('birth-generation-status').textContent = copy.preparing;
-    byId('birth-generation-retry').hidden = true;
-    main.setAttribute('data-generating','');
-    if (screen.hidden) {
-      screen.hidden = false;
-      show(true);
-      track('view','generating_preview');
-    }
-    main.scrollTop = 0;
-    screen.focus();
+    setFormWaiting(true);
+    byId('birth-retry').hidden = true;
+    say(copy.preparing);
+    if (main.hidden) show(true);
+    if (first) track('view','generating_preview');
     let consentAccepted = false;
     try {
       const owner = window.fateH5.ownerKey();
@@ -657,14 +657,14 @@
       await saveSubmission(record);
       const {input,visit} = record;
       let report = record.sent ? await findSubmission(record) : null;
-      if (!screen.isConnected) return;
+      if (!form.isConnected) return;
       if (!report) {
         const config = await reportRequest('/api/landing/config',owner,visit);
         if (!config?.notice_version) throw Error('consentError');
         if (config.notice_version !== noticeVersion || record.notice !== noticeVersion) throw Error('noticeOutdated');
         const consent = await reportRequest('/api/landing/consents',owner,visit,{notice_version:noticeVersion,granted:true});
         if (consent?.accepted !== true || consent.notice_version !== noticeVersion) throw Error('consentError');
-        if (!screen.isConnected) return;
+        if (!form.isConnected) return;
         consentAccepted = true;
         try { localStorage.setItem('fate-data-use-version',noticeVersion); } catch {}
         if (!record.sent) {
@@ -678,7 +678,7 @@
         },record.id);
       }
       if (typeof report?.id !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(report.id)) throw Error('badResult');
-      if (!screen.isConnected) return;
+      if (!form.isConnected) return;
       acceptedReport = report;
       try {
         sessionStorage.setItem('active-preview',report.id);
@@ -688,18 +688,17 @@
       }
       if (history.state?.[submissionKey]?.reportId !== report.id) await saveSubmission(null);
       else submission = null;
-      byId('birth-generation-status').textContent = report.preview_state === 'ready' ? copy.generation.ready : copy.generation.preview;
       // The landing page owns report creation. Opening the accepted report must
       // never wait for Flutter to initialize or for the Dart bridge to attach.
       reopenAcceptedReport(report.id);
       return;
     } catch (error) {
-      if (!screen.isConnected) return;
+      if (!form.isConnected) return;
       if (submission?.sent && ![400,401,403,409,422].includes(error.status) &&
           !['badResult','noticeOutdated','consentError','storage'].includes(error.message)) {
         retrySubmission = true;
-        byId('birth-generation-status').textContent = copy.generation[error.message] || copy.ui.network;
-        byId('birth-generation-retry').hidden = false;
+        say(copy.generation[error.message] || copy.ui.network);
+        byId('birth-retry').hidden = false;
         return;
       }
       await saveSubmission(null);
@@ -725,8 +724,8 @@
     } catch (error) {
       if (send !== submitToFlutter) return;
       if (acceptedReport && error.message !== 'badResult') {
-        byId('birth-generation-status').textContent = copy.ui.network;
-        byId('birth-generation-retry').hidden = false;
+        say(copy.ui.network);
+        byId('birth-retry').hidden = false;
         return;
       }
       if (acceptedReport) {
@@ -822,7 +821,6 @@
       } catch { await localize(previous); say(copy.ui.network); }
     });
     byId('birth-retry').addEventListener('click',retry);
-    byId('birth-generation-retry').addEventListener('click',retry);
     localize(language).then(async () => {
       if (!form.isConnected) return;
       try {
@@ -833,7 +831,7 @@
           restore(saved.form); edited = true;
         }
       } catch {}
-      // A refresh can open the generating screen directly without displaying the birth form.
+      // A refresh can resume an in-flight submission with the original ID.
       if (!await restoreSubmission() && form.isConnected && !creating) {
         show(true);
         track('view');
@@ -879,7 +877,6 @@
       show(false);
       submitToFlutter = pending = place = copy = acceptedReport = originalPlace = originalProfile = null;
       waiting = creating = edited = outdated = retrySubmission = false;
-      main.removeAttribute('data-generating');
       // Remove event listeners together with the controls before the router returns home.
       main.replaceChildren();
     }

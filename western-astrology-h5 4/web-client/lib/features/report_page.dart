@@ -19,11 +19,12 @@ class ReportPage extends StatefulWidget {
     required this.h5,
     required this.id,
     this.paymentReturn = false,
+    this.openedFromForm = false,
     super.key,
   });
   final H5Controller h5;
   final String id;
-  final bool paymentReturn;
+  final bool paymentReturn, openedFromForm;
   @override
   State<ReportPage> createState() => _ReportPageState();
 }
@@ -1073,6 +1074,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       final r = _model.report,
           c = r == null ? widget.h5.copy : widget.h5.reportCopy(r);
       if (r == null) {
+        if (widget.openedFromForm && _model.loading) {
+          return const SizedBox.shrink();
+        }
         return Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(25),

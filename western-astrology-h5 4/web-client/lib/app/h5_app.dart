@@ -12,9 +12,14 @@ import 'localizations.dart';
 import 'languages.dart';
 
 class H5App extends StatefulWidget {
-  const H5App({required this.controller, this.initialLocation, super.key});
+  const H5App({
+    required this.controller,
+    this.initialLocation,
+    this.openingReportId,
+    super.key,
+  });
   final H5Controller controller;
-  final String? initialLocation;
+  final String? initialLocation, openingReportId;
 
   @visibleForTesting
   static Future<void> loadRoutesForWidgetTests() async {
@@ -36,8 +41,7 @@ class _H5AppState extends State<H5App> {
             // The outgoing report still needs a Material ancestor while the HTML form takes over.
             ? Material(type: MaterialType.transparency, child: child)
             : _Shell(
-                showLanguages: state.uri.path != '/report.html',
-                showHomeArrow: state.uri.path != '/report.html',
+                isReport: state.uri.path == '/report.html',
                 child: child,
               ),
         routes: [
@@ -73,16 +77,22 @@ class _H5AppState extends State<H5App> {
           ),
           GoRoute(
             path: '/report.html',
-            builder: (context, state) => _DeferredPage(
-              load: reports.loadLibrary,
-              page: () => reports.ReportPage(
-                key: ValueKey(state.uri.queryParameters['id']),
-                h5: widget.controller,
-                id: state.uri.queryParameters['id'] ?? '',
-                paymentReturn:
-                    state.uri.queryParameters['payment_return'] == '1',
-              ),
-            ),
+            builder: (context, state) {
+              final id = state.uri.queryParameters['id'] ?? '';
+              final openedFromForm = id == widget.openingReportId;
+              return _DeferredPage(
+                load: reports.loadLibrary,
+                showLoading: !openedFromForm,
+                page: () => reports.ReportPage(
+                  key: ValueKey(state.uri.queryParameters['id']),
+                  h5: widget.controller,
+                  id: id,
+                  openedFromForm: openedFromForm,
+                  paymentReturn:
+                      state.uri.queryParameters['payment_return'] == '1',
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -140,10 +150,15 @@ class _H5AppState extends State<H5App> {
 }
 
 class _DeferredPage extends StatefulWidget {
-  const _DeferredPage({required this.load, required this.page});
+  const _DeferredPage({
+    required this.load,
+    required this.page,
+    this.showLoading = true,
+  });
 
   final Future<void> Function() load;
   final Widget Function() page;
+  final bool showLoading;
 
   @override
   State<_DeferredPage> createState() => _DeferredPageState();
@@ -157,7 +172,9 @@ class _DeferredPageState extends State<_DeferredPage> {
     future: _library,
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
-        return const Center(child: CircularProgressIndicator());
+        return widget.showLoading
+            ? const Center(child: CircularProgressIndicator())
+            : const SizedBox.shrink();
       }
       if (!snapshot.hasError) return widget.page();
       final copy = H5Scope.of(context).copy;
@@ -178,13 +195,9 @@ class _DeferredPageState extends State<_DeferredPage> {
 }
 
 class _Shell extends StatelessWidget {
-  const _Shell({
-    required this.child,
-    required this.showLanguages,
-    required this.showHomeArrow,
-  });
+  const _Shell({required this.child, required this.isReport});
   final Widget child;
-  final bool showLanguages, showHomeArrow;
+  final bool isReport;
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
@@ -204,8 +217,8 @@ class _Shell extends StatelessWidget {
                 body: Column(
                   children: [
                     SiteHeader(
-                      showLanguages: showLanguages,
-                      showHomeArrow: showHomeArrow,
+                      showLanguages: !isReport,
+                      homeArrowLeading: isReport,
                     ),
                     Expanded(child: child),
                   ],

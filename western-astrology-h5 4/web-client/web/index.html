@@ -49,6 +49,8 @@
     #fate-startup-status{margin:0;color:#c6b7d3;font-size:13px}
     .fate-startup-track{width:132px;height:3px;background:#463655;overflow:hidden;border-radius:4px}
     .fate-startup-track:after{content:"";display:block;width:40%;height:100%;background:#e4bc78;border-radius:4px;animation:fate-startup-motion 1.3s ease-in-out infinite alternate}
+    html[data-opening-report] #fate-startup:not([data-state=slow],[data-state=retry],[data-state=failed]),
+    html[data-opening-report] #fate-startup .fate-startup-track{display:none}
     #fate-startup-retry{padding:8px 22px;border:1px solid #806548;border-radius:8px;background:transparent;color:#f4d399;font:inherit;cursor:pointer}
     .fate-startup-zh,.fate-startup-th,.fate-startup-en,.fate-startup-vi,.fate-startup-my,.fate-startup-km,.fate-startup-lo,.fate-startup-ms,.fate-startup-id{display:none}
     html:lang(zh) .fate-startup-zh,html:lang(th) .fate-startup-th,html:lang(en) .fate-startup-en,html:lang(vi) .fate-startup-vi,html:lang(my) .fate-startup-my,html:lang(km) .fate-startup-km,html:lang(lo) .fate-startup-lo,html:lang(ms) .fate-startup-ms,html:lang(id) .fate-startup-id{display:inline}
@@ -110,12 +112,6 @@
       <button id="birth-picker-close" type="button"></button>
     </dialog>
     <footer><p data-copy="disclaimer"></p></footer>
-    <section id="birth-generation" hidden aria-labelledby="birth-generation-title" tabindex="-1">
-      <h1 id="birth-generation-title"></h1>
-      <div class="fate-startup-track" aria-hidden="true"></div>
-      <p id="birth-generation-status" role="status"></p>
-      <button id="birth-generation-retry" type="button" hidden></button>
-    </section>
   </template>
   <div id="fate-startup" role="status" aria-live="polite">
     <img src="assets/assets/images/fate-brand-gold.png" alt="FATE" width="112" height="26">
