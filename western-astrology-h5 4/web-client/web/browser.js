@@ -2,9 +2,15 @@ const fateOwnerName = 'astro-life-report-key';
 const fateOwnerCookieName = 'fate-report-owner';
 const fateValidOwner = value => typeof value === 'string' && /^[A-Za-z0-9_-]{32,128}$/.test(value);
 const fateHex = bytes => Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
-const fateEmbeddedBrowser = /(?:\bFBAN\b|\bFBAV\b|\bFB_IAB\b|\bFB4A\b|Instagram)/i.test(window.navigator?.userAgent || '');
+const fateUserAgent = window.navigator?.userAgent || '';
+const fateMetaBrowser = /Instagram/i.test(fateUserAgent) ? 'instagram'
+  : /(?:\bFBAN\b|\bFBAV\b|\bFB_IAB\b|\bFB4A\b)/i.test(fateUserAgent) ? 'facebook' : null;
+const fateEmbeddedBrowser = fateMetaBrowser !== null;
 try {
-  if (fateEmbeddedBrowser) document.documentElement.dataset.embeddedBrowser = 'meta';
+  if (fateEmbeddedBrowser) {
+    document.documentElement.dataset.embeddedBrowser = 'meta';
+    document.documentElement.dataset.metaBrowser = fateMetaBrowser;
+  }
 } catch {}
 function fateCookieOwner() {
   try {
@@ -56,10 +62,22 @@ function fateOwnerKey() {
   return key;
 }
 
+let fateViewportBaseline = Math.max(window.innerHeight || 0, window.visualViewport?.height || 0);
+function fateKeyboardTarget() {
+  const target = document.activeElement;
+  if (!target?.matches?.('input,textarea,[contenteditable="true"]')) return false;
+  return target.tagName !== 'INPUT' || !['checkbox','radio','button','submit','date','time'].includes(target.type);
+}
 function syncFateViewport() {
   const viewport = window.visualViewport;
   const height = viewport?.height || window.innerHeight;
-  const top = viewport?.offsetTop || 0;
+  const keyboardTarget = fateKeyboardTarget();
+  if (!keyboardTarget && Number.isFinite(height) && height > 0) fateViewportBaseline = height;
+  else if (Number.isFinite(height) && height > fateViewportBaseline) fateViewportBaseline = height;
+  const keyboardOpen = keyboardTarget && height < fateViewportBaseline - Math.max(110,fateViewportBaseline * .18);
+  // Meta WebViews sometimes report the browser toolbar as visualViewport.offsetTop.
+  // Applying that value without a keyboard leaves a transparent strip above the form.
+  const top = keyboardOpen ? viewport?.offsetTop || 0 : 0;
   if (Number.isFinite(height) && height > 0) {
     document.documentElement.style?.setProperty('--fate-viewport-height', `${Math.round(height)}px`);
   }
@@ -71,6 +89,8 @@ syncFateViewport();
 window.addEventListener('resize', syncFateViewport);
 window.visualViewport?.addEventListener('resize', syncFateViewport);
 window.visualViewport?.addEventListener('scroll', syncFateViewport);
+document.addEventListener('focusin',syncFateViewport);
+document.addEventListener('focusout',() => setTimeout(syncFateViewport,0));
 
 // Upgrade only the deployed IP site; local previews keep their existing origin.
 // The short-lived host cookie avoids putting report credentials in URLs or logs.
@@ -548,6 +568,7 @@ try { fateVisitContext(); } catch {}
 window.fateH5 = {
   ownerKey: fateOwnerKey,
   embedded: fateEmbeddedBrowser,
+  metaBrowser: fateMetaBrowser,
   trackRuntime: recordFateRuntime,
   trackViewReadingClick: trackFateViewReadingClick,
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },

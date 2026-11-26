@@ -184,7 +184,14 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
 
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
     assert.equal(await page.evaluate(() => window.fateH5.embedded),true);
+    assert.equal(await page.evaluate(() => window.fateH5.metaBrowser),'instagram');
     assert.equal(await page.evaluate(() => window.fateBoot.embedded),true);
+    await page.evaluate(() => {
+      Object.defineProperty(window.visualViewport,'offsetTop',{configurable:true,value:44});
+      window.visualViewport.dispatchEvent(new Event('scroll'));
+    });
+    assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).top),'0px');
+    assert.equal((await page.locator('#fate-birth').boundingBox()).y,0);
     assert.match(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button,'::before').animationName),/birth-submit-breathe/);
     await page.locator('#fate-birth').evaluate(element => { element.scrollTop = 420; });
     await expect(page.locator('.birth-header')).toBeInViewport();
@@ -207,6 +214,55 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     assert.equal(await page.evaluate(() => window.fateBoot.openingReportId),'embedded-accepted-report');
     assert.match(owner,/^[0-9a-f]{48}$/);
     assert.equal(popups,0);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Facebook embedded browser can scroll and select the city list', async () => {
+  const context = await browser.newContext({
+    viewport:{width:390,height:844},
+    userAgent:'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Mobile Safari/537.36 [FBAN/FB4A;FBAV/540.0.0.0]'
+  });
+  try {
+    const page = await context.newPage();
+    await page.route('**/*',async route => {
+      const request = route.request(), address = new URL(request.url());
+      if (address.origin !== new URL(url).origin) return route.abort();
+      if (!address.pathname.startsWith('/api/')) return route.continue();
+      if (address.pathname === '/api/landing/visits') return route.fulfill({json:{ok:true,accepted_sequences:[]}});
+      if (address.pathname === '/api/thai-locations') return route.fulfill({json:{
+        items:Array.from({length:12},(_,index) => ({
+          id:'geonames:' + (1816670 + index),nameChinese:index ? `测试城市${index}` : '北京市',
+          nameEnglish:index ? `Test City ${index}` : 'Beijing',countryCode:'CN',timeZone:'Asia/Shanghai'
+        })),total:12
+      }});
+      return route.fulfill({json:{ok:true}});
+    });
+
+    await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
+    assert.equal(await page.evaluate(() => window.fateH5.metaBrowser),'facebook');
+    const city = page.locator('#birth-city'), menu = page.locator('#birth-options');
+    await city.click();
+    const option = page.getByRole('option',{name:'北京市',exact:false});
+    await expect(option).toBeVisible();
+    await page.evaluate(() => {
+      Object.defineProperties(window.visualViewport,{
+        offsetTop:{configurable:true,value:32},
+        height:{configurable:true,value:500}
+      });
+      window.visualViewport.dispatchEvent(new Event('resize'));
+    });
+    assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).top),'32px');
+    await expect(menu).toBeVisible();
+    await option.dispatchEvent('pointerdown',{pointerType:'touch',pointerId:7,isPrimary:true,buttons:1,clientX:100,clientY:160});
+    await option.dispatchEvent('pointermove',{pointerType:'touch',pointerId:7,isPrimary:true,buttons:1,clientX:100,clientY:70});
+    await option.dispatchEvent('pointerup',{pointerType:'touch',pointerId:7,isPrimary:true,buttons:0,clientX:100,clientY:70});
+    assert.ok(await menu.evaluate(element => element.scrollTop >= 80));
+    await expect(city).toHaveValue('');
+    await option.dispatchEvent('pointerdown',{pointerType:'touch',pointerId:8,isPrimary:true,buttons:1,clientX:100,clientY:100});
+    await option.dispatchEvent('pointerup',{pointerType:'touch',pointerId:8,isPrimary:true,buttons:0,clientX:100,clientY:100});
+    await expect(city).toHaveValue('北京市');
   } finally {
     await context.close();
   }

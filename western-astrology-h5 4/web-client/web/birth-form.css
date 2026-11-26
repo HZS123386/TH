@@ -84,6 +84,8 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
 #birth-options.open-above { top:auto; bottom:100%; margin:0 0 3px; }
 #birth-options button,#birth-options p { display:block; width:100%; margin:0; padding:9px 12px; border:0;
   color:inherit; background:transparent; font:inherit; text-align:start; touch-action:pan-y; }
+html[data-meta-browser=facebook] #birth-options,
+html[data-meta-browser=facebook] #birth-options button { touch-action:none; }
 #birth-options button:focus,#birth-options button:hover { background:#3a2a47; }
 #birth-options small { display:block; color:#ccb9d0; }
 #birth-custom { margin-top:8px; }
