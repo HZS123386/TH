@@ -78,7 +78,7 @@ test('the native landing form creates a report without loading or waiting for Fl
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
     await expect(page.locator('#birth-form')).toBeVisible();
     await expect(page.locator('#fate-flutter')).toBeHidden();
-    assert.equal(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button).animationName),'none');
+    assert.equal(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button,'::before').animationName),'none');
     assert.equal(requests.some(path => /main\.dart|skwasm|canvaskit/.test(path)),false);
 
     await page.locator('#birth-date-trigger').click();
@@ -140,7 +140,7 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
     assert.equal(await page.evaluate(() => window.fateH5.embedded),true);
     assert.equal(await page.evaluate(() => window.fateBoot.embedded),true);
-    assert.match(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button).animationName),/birth-submit-shimmer/);
+    assert.match(await page.locator('#birth-submit').evaluate(button => getComputedStyle(button,'::before').animationName),/birth-submit-breathe/);
     await page.locator('#birth-date-trigger').click();
     await page.locator('#birth-picker-confirm').click();
     await page.locator('#birth-time-trigger').click();
