@@ -246,7 +246,20 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
-    button.addEventListener('click',action);
+    let touchActivation = 0;
+    // Facebook's iOS WebView can blur the search field and remove the menu
+    // before it dispatches the delayed compatibility click. Activate touch
+    // choices on the initial press while retaining click for mouse/keyboard.
+    button.addEventListener(window.PointerEvent ? 'pointerdown' : 'touchstart',event => {
+      if (event.pointerType === 'mouse') return;
+      event.preventDefault();
+      touchActivation = Date.now();
+      action();
+    },{passive:false});
+    button.addEventListener('click',event => {
+      if (Date.now() - touchActivation < 1000) { event.preventDefault(); return; }
+      action();
+    });
     return button;
   }
 
@@ -756,7 +769,12 @@
       }
     });
     form.addEventListener('focusout',event => {
-      if (event.target.closest('.birth-location') && !event.relatedTarget?.closest('.birth-location')) closeOptions();
+      if (!event.target.closest('.birth-location') || event.relatedTarget?.closest('.birth-location')) return;
+      // WebKit embedded browsers often omit relatedTarget. Let the pending
+      // pointer/click finish before deciding whether the menu really lost focus.
+      setTimeout(() => {
+        if (!document.activeElement?.closest('.birth-location')) closeOptions();
+      },0);
     });
     byId('birth-language').addEventListener('change',async event => {
       const lang = event.target.value, previous = language;

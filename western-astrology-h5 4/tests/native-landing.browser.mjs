@@ -86,7 +86,8 @@ test('the native landing form creates a report without loading or waiting for Fl
     await page.locator('#birth-time-trigger').click();
     await page.locator('#birth-picker-confirm').click();
     await page.locator('#birth-city').fill('北京');
-    await page.getByRole('option',{name:'北京市',exact:false}).click();
+    await page.getByRole('option',{name:'北京市',exact:false}).dispatchEvent('pointerdown',{pointerType:'touch',pointerId:1,isPrimary:true,buttons:1});
+    await expect(page.locator('#birth-city')).toHaveValue('北京市');
     await page.locator('#birth-submit').click();
 
     await expect(page.locator('#birth-generation')).toBeVisible();
