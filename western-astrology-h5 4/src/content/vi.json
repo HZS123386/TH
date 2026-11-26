@@ -1,19 +1,16 @@
 {
   "jy": {
-    "lineContact": {
-      "action": "Thêm LINE để nhận báo cáo",
-      "title": "Thêm bạn trên LINE",
-      "scan": "Quét mã QR hoặc mở LINE, rồi gửi mã nhận báo cáo cho bộ phận hỗ trợ.",
-      "claimNumber": "Mã nhận báo cáo",
-      "claimHint": "Gửi mã này qua LINE để nhận báo cáo đầy đủ.",
-      "copyReportId": "Sao chép mã nhận",
-      "open": "Mở LINE"
+    "portrait": {
+      "name": "Ajarn Yada",
+      "role": "Chuyên gia chiêm tinh tình yêu",
+      "headline": "Ai đang ảnh hưởng đến chuyện tình cảm của bạn?",
+      "note": "Tìm hiểu những người và hành vi ảnh hưởng đến mối quan hệ qua những điều bạn đã trải qua."
     },
+    "submitConsent": "Khi tạo báo cáo, bạn đồng ý cho phép sử dụng dữ liệu sinh để lập và luận giải lá số theo chính sách quyền riêng tư.",
+    "lineContact": {"action": "Liên hệ qua LINE", "title": "Nhận báo cáo qua LINE", "scan": "Quét mã QR hoặc mở LINE và gửi mã nhận báo cáo cho chúng tôi.", "claimNumber": "Mã nhận báo cáo", "claimHint": "Lưu mã này để yêu cầu báo cáo qua LINE.", "copyReportId": "Sao chép mã", "open": "Mở LINE"},
     "appLogin": {"title": "Mã đăng nhập", "copy": "Sao chép", "copied": "Đã sao chép", "get": "Lấy mã", "refresh": "Lấy mã mới", "loading": "Đang lấy mã…", "failed": "Chưa lấy được mã đăng nhập.", "expired": "Mã đã hết hạn."},
     "language": "Ngôn ngữ", "dateParts": {"year": "Năm dương lịch", "month": "Tháng", "day": "Ngày", "placeholder": "Năm / Tháng / Ngày"}, "pointFields": {"example": "Ví dụ trong cuộc sống", "pitfall": "Điều nên tránh", "check": "Cách xem lại kết quả"}, "house": "Nhà {number}",
     "home": "Trang chủ FATE", "title": "FATE — Luận giải chiêm tinh cá nhân",
-    "welcome": {"first": "Rất vui khi bạn đến đây", "returning": "Chào mừng bạn trở lại", "firstNote": "Khám phá bản đồ sao của riêng bạn", "returningNote": "Rất vui được gặp lại bạn", "start": "Bắt đầu khám phá", "swipe": "Vuốt lên để bắt đầu", "headline": "Ai đang ảnh hưởng đến chuyện tình cảm của bạn?", "note": "Tìm hiểu những người và hành vi ảnh hưởng đến mối quan hệ qua những điều bạn đã trải qua.", "name": "Ajarn Yada", "role": "Chuyên gia chiêm tinh tình yêu"},
-    "persona": "Nhà chiêm tinh AI của bạn",
       "personal": {"relationshipUnlock": "Mở khóa báo cáo đầy đủ để nhận lời khuyên riêng về tình cảm", "relationshipTitle": "Nút thắt trong tình cảm", "relationshipAction": "Một bước nên thử", "title": "Luận giải chiêm tinh phương Tây dành cho bạn", "freeTitle": "Luận giải miễn phí", "freeHint": "Khám phá tính cách tự nhiên và cách bạn thể hiện bản thân.", "paidHint": "Tài năng cá nhân và ba tháng đáng chú ý", "talent": "Tài năng cá nhân", "node-1": "Cơ hội thứ nhất", "node-2": "Cơ hội thứ hai", "node-3": "Cơ hội thứ ba", "benefit": "Điểm thuận lợi", "caution": "Điều nên lưu ý", "action": "Một bước nhỏ", "timeUnknown": "Bổ sung giờ sinh chính xác để xem luận giải cá nhân đầy đủ.", "unavailable": "Dữ liệu theo tháng chưa đầy đủ nên chưa thể mở bản luận giải đầy đủ.", "nodesTitle": "Ba tháng đáng chú ý", "keywords": "Từ khóa bản đồ sao của bạn", "traits": "Đặc điểm cá nhân", "opportunity": "Cơ hội sắp tới"}, "formTitle": "Khám phá bản thân qua dữ liệu sinh", "formCaption": "Đọc miễn phí trước, rồi khám phá tài năng cá nhân và ba tháng cụ thể.", "topicLabel": "Nội dung bạn sẽ nhận được",
     "date": "Ngày sinh", "calendar": "Dương lịch", "time": "Giờ sinh", "unknown": "Tôi không nhớ chính xác giờ sinh", "unknownNote": "Bạn vẫn có thể tiếp tục với giờ ước tính 12:00 tại nơi sinh. Cung Mọc, các nhà và thời điểm sự kiện sẽ không được dùng; luận giải có thể kém chính xác hơn khi thiếu giờ sinh.",
     "country": "Quốc gia nơi sinh", "countryPrompt": "Nhập Trung Quốc hoặc Thái Lan", "countryFirst": "Chọn quốc gia trước", "china": "Trung Quốc", "thailand": "Thái Lan", "globalCities": "Tìm thành phố trên thế giới", "region": "Tỉnh / khu vực", "regionPrompt": "Ví dụ: Hebei", "thaiRegionPrompt": "Ví dụ: Chiang Mai", "regionFirst": "Chọn tỉnh / khu vực trước", "regionPending": "Đang tải…", "regionRetry": "Tải lại danh sách", "city": "Thành phố / quận huyện", "cityExample": "Ví dụ: Handan", "citySearch": "Tìm hoặc chọn thành phố tại Việt Nam", "cityHint": "Nhập tên thành phố hoặc chọn địa điểm gợi ý", "cityError": "Tạm thời không thể tìm kiếm", "placeHint": "Chọn quốc gia, rồi chọn tỉnh và thành phố / quận huyện. Hỗ trợ tìm bằng tiếng Trung, Thái hoặc Anh.",

@@ -70,8 +70,13 @@ class AppDependencies {
   late final PurchaseRepository purchaseRepository;
   late final PurchaseViewModel purchases;
   final demoCart = ValueNotifier<Map<String, int>>(const {});
+  final demoShopOrders = ValueNotifier<List<Map<String, int>>>(const []);
+  final demoLiveBookings = ValueNotifier<Set<String>>(const {});
+  final demoLiveDate = DateTime.now();
   void dispose() {
     demoCart.dispose();
+    demoShopOrders.dispose();
+    demoLiveBookings.dispose();
     actions.dispose();
     companion.dispose();
     dailyHoroscope.dispose();

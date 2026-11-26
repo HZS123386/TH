@@ -133,8 +133,8 @@
             <p id="line-applied-range" class="stat-hint"></p>
             <div id="line-report-counts" class="line-report-counts" aria-live="polite">
               <dl class="line-report-count-pair">
-                <div><dt>首次弹码 <small>未去重</small></dt><dd data-line-count="total">—</dd></div>
-                <div class="line-report-count-dedup"><dt>首次弹码 <small>去重</small></dt><dd data-line-count="total" data-line-dedup>—</dd></div>
+                <div><dt>首次领取记录 <small>未去重</small></dt><dd data-line-count="total">—</dd></div>
+                <div class="line-report-count-dedup"><dt>首次领取记录 <small>去重</small></dt><dd data-line-count="total" data-line-dedup>—</dd></div>
               </dl>
               <dl class="line-report-count-pair">
                 <div><dt>待确认加好友 <small>未去重</small></dt><dd data-line-count="unconfirmed">—</dd></div>
@@ -149,7 +149,7 @@
                 <div class="line-report-count-dedup"><dt>其中已发送 <small>去重</small></dt><dd data-line-count="sent" data-line-dedup>—</dd></div>
               </dl>
             </div>
-            <p class="stat-hint">未去重按报告计数。去重按浏览器访客的最早一次弹码计数，显示对应报告的当前发放状态。</p>
+            <p class="stat-hint">首次领取记录取服务器收到领取入口操作的时间，缺记录时以客服首次确认时间补记。未去重按报告计数，去重按匿名浏览器的首份领取记录计数。状态取对应报告的当前状态。</p>
           </section>
           <div id="content" aria-live="polite"></div>
           <footer class="page-footer">

@@ -39,6 +39,7 @@ class CompanionPage extends StatefulWidget {
 
 class _CompanionPageState extends State<CompanionPage> {
   final _input = TextEditingController();
+  final _inputFocus = FocusNode();
   final _scroll = ScrollController();
   CompanionViewModel? _model;
   late ReadingHandoff? _reading = widget.reading;
@@ -212,9 +213,8 @@ class _CompanionPageState extends State<CompanionPage> {
                                   top: Radius.circular(100),
                                   bottom: Radius.circular(20),
                                 ),
-                                child: Image.asset(
-                                  guardian.image,
-                                  fit: BoxFit.cover,
+                                child: GuardianPortrait(
+                                  guardian,
                                   alignment: const Alignment(0, -.6),
                                   cacheWidth: 480,
                                 ),
@@ -362,7 +362,17 @@ class _CompanionPageState extends State<CompanionPage> {
                               softWrap: true,
                               style: const TextStyle(fontSize: 12),
                             ),
-                            onPressed: () => _input.text = guardian.prompt(s),
+                            onPressed: () {
+                              final prompt = guardian.prompt(s);
+                              FateMotion.selectionFeedback();
+                              _input.value = TextEditingValue(
+                                text: prompt,
+                                selection: TextSelection.collapsed(
+                                  offset: prompt.length,
+                                ),
+                              );
+                              _inputFocus.requestFocus();
+                            },
                           ),
                         ),
                       ),
@@ -377,6 +387,7 @@ class _CompanionPageState extends State<CompanionPage> {
                     Expanded(
                       child: TextField(
                         controller: _input,
+                        focusNode: _inputFocus,
                         enabled: !model.sending,
                         minLines: 1,
                         maxLines: 4,
@@ -395,30 +406,35 @@ class _CompanionPageState extends State<CompanionPage> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    IconButton.filled(
-                      tooltip: s.sendMessage,
-                      onPressed: enabled ? _send : null,
-                      style: IconButton.styleFrom(
-                        minimumSize: const Size(48, 48),
-                      ),
-                      icon: AnimatedSwitcher(
-                        duration: FateMotion.duration(
-                          context,
-                          FateMotion.settle,
+                    ValueListenableBuilder(
+                      valueListenable: _input,
+                      builder: (context, value, _) => IconButton.filled(
+                        tooltip: s.sendMessage,
+                        onPressed: enabled && value.text.trim().isNotEmpty
+                            ? _send
+                            : null,
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size(48, 48),
                         ),
-                        child: listening
-                            ? const SizedBox(
-                                key: ValueKey('sending'),
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                        icon: AnimatedSwitcher(
+                          duration: FateMotion.duration(
+                            context,
+                            FateMotion.settle,
+                          ),
+                          child: listening
+                              ? const SizedBox(
+                                  key: ValueKey('sending'),
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.arrow_upward_rounded,
+                                  key: ValueKey('send'),
                                 ),
-                              )
-                            : const Icon(
-                                Icons.arrow_upward_rounded,
-                                key: ValueKey('send'),
-                              ),
+                        ),
                       ),
                     ),
                   ],
@@ -433,6 +449,7 @@ class _CompanionPageState extends State<CompanionPage> {
 
   @override
   void dispose() {
+    _inputFocus.dispose();
     _input.dispose();
     _scroll.dispose();
     super.dispose();

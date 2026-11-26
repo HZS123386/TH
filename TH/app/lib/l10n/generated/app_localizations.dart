@@ -282,6 +282,24 @@ abstract class AppLocalizations {
   /// **'Today'**
   String get todayTab;
 
+  /// No description provided for @quickAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick access'**
+  String get quickAccess;
+
+  /// No description provided for @luckyRevealHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the number for today’s insight'**
+  String get luckyRevealHint;
+
+  /// No description provided for @readingBackToContents.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to contents'**
+  String get readingBackToContents;
+
   /// No description provided for @actionTab.
   ///
   /// In en, this message translates to:
@@ -390,6 +408,12 @@ abstract class AppLocalizations {
   /// **'Enter birth details to begin'**
   String get startThaiGuide;
 
+  /// No description provided for @homeChartExample.
+  ///
+  /// In en, this message translates to:
+  /// **'View a sample Western chart'**
+  String get homeChartExample;
+
   /// No description provided for @viewThaiGuide.
   ///
   /// In en, this message translates to:
@@ -399,8 +423,20 @@ abstract class AppLocalizations {
   /// No description provided for @startSevenGuide.
   ///
   /// In en, this message translates to:
-  /// **'Preview seven-character readings'**
+  /// **'Try Arun’s sample chat'**
   String get startSevenGuide;
+
+  /// No description provided for @arunSampleHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Arun’s sample chat'**
+  String get arunSampleHeading;
+
+  /// No description provided for @arunSampleReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick one thing you can finish in ten minutes. You could set out what you need tomorrow morning or write down the first thing you’ll do tomorrow. Then see what still needs adjusting.'**
+  String get arunSampleReply;
 
   /// No description provided for @startTarotGuide.
   ///
@@ -419,18 +455,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ask and keep talking'**
   String get textReadingNote;
-
-  /// No description provided for @voiceReading.
-  ///
-  /// In en, this message translates to:
-  /// **'Voice chat'**
-  String get voiceReading;
-
-  /// No description provided for @voiceReadingNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Talk through your question'**
-  String get voiceReadingNote;
 
   /// No description provided for @textChat.
   ///
@@ -534,6 +558,12 @@ abstract class AppLocalizations {
   /// **'My reports'**
   String get recoverReports;
 
+  /// No description provided for @recoverReportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Find reports'**
+  String get recoverReportAction;
+
   /// No description provided for @recentReadings.
   ///
   /// In en, this message translates to:
@@ -563,6 +593,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Example not found. Try FATE-THAI-001.'**
   String get reportCodeMissing;
+
+  /// No description provided for @reportCodeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a report number first.'**
+  String get reportCodeRequired;
 
   /// No description provided for @newVisitor.
   ///
@@ -672,6 +708,78 @@ abstract class AppLocalizations {
   /// **'Live preview · Illustrative scenes'**
   String get liveDemoNotice;
 
+  /// No description provided for @livePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Live preview'**
+  String get livePreview;
+
+  /// No description provided for @liveWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch preview'**
+  String get liveWatch;
+
+  /// No description provided for @liveUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming shows'**
+  String get liveUpcoming;
+
+  /// No description provided for @liveMyReservations.
+  ///
+  /// In en, this message translates to:
+  /// **'My bookings'**
+  String get liveMyReservations;
+
+  /// No description provided for @liveNoReservations.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven’t booked a show yet.'**
+  String get liveNoReservations;
+
+  /// No description provided for @liveReserve.
+  ///
+  /// In en, this message translates to:
+  /// **'Book'**
+  String get liveReserve;
+
+  /// No description provided for @liveReserved.
+  ///
+  /// In en, this message translates to:
+  /// **'Booked'**
+  String get liveReserved;
+
+  /// No description provided for @liveCancelReservation.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel booking'**
+  String get liveCancelReservation;
+
+  /// No description provided for @liveReservationDemo.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo bookings last for this session and don’t send notifications.'**
+  String get liveReservationDemo;
+
+  /// No description provided for @liveTempleUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Temple blessings · A wish ceremony'**
+  String get liveTempleUpcoming;
+
+  /// No description provided for @liveObjectsUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Unboxing · Evening fragrances'**
+  String get liveObjectsUpcoming;
+
+  /// No description provided for @liveAboutShow.
+  ///
+  /// In en, this message translates to:
+  /// **'About this show'**
+  String get liveAboutShow;
+
   /// No description provided for @livestreamPause.
   ///
   /// In en, this message translates to:
@@ -696,29 +804,11 @@ abstract class AppLocalizations {
   /// **'Bring your wish to the temple'**
   String get templeRoomHeading;
 
-  /// No description provided for @templeService.
-  ///
-  /// In en, this message translates to:
-  /// **'Personal blessing'**
-  String get templeService;
-
   /// No description provided for @samplePrice.
   ///
   /// In en, this message translates to:
   /// **'Sample price'**
   String get samplePrice;
-
-  /// No description provided for @bookingInfo.
-  ///
-  /// In en, this message translates to:
-  /// **'Booking information'**
-  String get bookingInfo;
-
-  /// No description provided for @bookingDemoNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Preview the ceremony and booking steps. Actual dates are pending.'**
-  String get bookingDemoNotice;
 
   /// No description provided for @roomChat.
   ///
@@ -1191,8 +1281,44 @@ abstract class AppLocalizations {
   /// No description provided for @shopDemoNotice.
   ///
   /// In en, this message translates to:
-  /// **'This sample shop is browsing-only. Orders are unavailable.'**
+  /// **'Demo orders won’t charge you or ship items.'**
   String get shopDemoNotice;
+
+  /// No description provided for @shopSubtotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get shopSubtotal;
+
+  /// No description provided for @shopReviewOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Review order'**
+  String get shopReviewOrder;
+
+  /// No description provided for @shopPlaceDemoOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Place demo order'**
+  String get shopPlaceDemoOrder;
+
+  /// No description provided for @shopOrderPlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo order placed'**
+  String get shopOrderPlaced;
+
+  /// No description provided for @shopOrderNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo order'**
+  String get shopOrderNumber;
+
+  /// No description provided for @shopIncreaseQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase quantity'**
+  String get shopIncreaseQuantity;
 
   /// No description provided for @mySpace.
   ///
@@ -1229,12 +1355,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'See the Thai chart for your birth date, time, and place.'**
   String get thaiChartIntro;
-
-  /// No description provided for @sevenPreviewNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Seven-character calculations are unavailable in this preview. Try a demo conversation with Arun.'**
-  String get sevenPreviewNote;
 
   /// No description provided for @country.
   ///
@@ -2952,41 +3072,11 @@ abstract class AppLocalizations {
   /// **'Turning over your card…'**
   String get tarotRevealing;
 
-  /// No description provided for @tarotSeerReading.
-  ///
-  /// In en, this message translates to:
-  /// **'All three cards are ready. The astrologer is reading them.'**
-  String get tarotSeerReading;
-
   /// No description provided for @tarotReadingComplete.
   ///
   /// In en, this message translates to:
   /// **'Reading complete'**
   String get tarotReadingComplete;
-
-  /// No description provided for @tarotReadingStepOne.
-  ///
-  /// In en, this message translates to:
-  /// **'Listening to the stars…'**
-  String get tarotReadingStepOne;
-
-  /// No description provided for @tarotReadingStepTwo.
-  ///
-  /// In en, this message translates to:
-  /// **'The astrologer touches the glowing chart…'**
-  String get tarotReadingStepTwo;
-
-  /// No description provided for @tarotReadingStepThree.
-  ///
-  /// In en, this message translates to:
-  /// **'Exploring the three cards…'**
-  String get tarotReadingStepThree;
-
-  /// No description provided for @tarotReadingStepFour.
-  ///
-  /// In en, this message translates to:
-  /// **'Writing your reading…'**
-  String get tarotReadingStepFour;
 
   /// No description provided for @tarotMinorName.
   ///

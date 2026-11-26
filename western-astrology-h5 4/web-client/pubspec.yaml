@@ -4,7 +4,6 @@ publish_to: none
 version: 1.0.0+1
 environment:
   sdk: '>=3.8.0 <4.0.0'
-  flutter: '>=3.50.0'
 dependencies:
   flutter:
     sdk: flutter
@@ -26,13 +25,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/copy.json
     - assets/copy/
     - assets/privacy/
     - assets/support/
     - assets/images/
     - assets/images/badges/
-    - assets/licenses/welcome-strokes.txt
     - assets/fonts/OFL.txt
     - assets/fonts/OFL-CJK.txt
     - assets/fonts/OFL-Symbols.txt
@@ -45,8 +42,6 @@ flutter:
     - assets/fonts/NotoSansSC-Regular.otf
     - assets/fonts/FateChineseUI.otf
     - assets/fonts/FateChineseCommon.otf
-    - assets/fonts/FateWelcomeThai.ttf
-    - assets/fonts/FateWelcomeChinese.otf
   fonts:
     - family: FateMyanmarLabel
       fonts:
@@ -62,7 +57,7 @@ flutter:
         - asset: assets/fonts/FateLatin.otf
     - family: NotoSansThai
       fonts:
-        - asset: assets/fonts/FateThaiUI.ttf
+        - asset: assets/fonts/NotoSansThai.ttf
     - family: FateLanguageLabel
       fonts:
         - asset: assets/fonts/FateLanguageLabel.otf

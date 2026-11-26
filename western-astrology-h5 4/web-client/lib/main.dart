@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-
 import 'app/controller.dart';
 import 'app/h5_app.dart';
 import 'app/languages.dart';
@@ -17,6 +15,11 @@ import 'ui/language_fonts.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final browser = WebBrowserPort();
+  final previousHandler = FlutterError.onError;
+  FlutterError.onError = (details) {
+    browser.trackFrameworkError(details.library);
+    previousHandler?.call(details);
+  };
   try {
     await _startApp(browser);
   } catch (error, stack) {
@@ -29,11 +32,10 @@ Future<Json> _loadTranslations(String language) async {
   for (var attempt = 0; ; attempt++) {
     try {
       // Do not reuse a failed loadString future from the asset bundle cache.
-      final asset = attempt == 2
-          ? 'assets/copy.json'
-          : 'assets/copy/$language.json';
       final translations = object(
-        jsonDecode(await rootBundle.loadString(asset, cache: false)),
+        jsonDecode(
+          await rootBundle.loadString('assets/copy/$language.json', cache: false),
+        ),
       );
       if (object(translations['jy'])[language] is! Map) {
         throw const FormatException('Missing H5 translations');
@@ -48,29 +50,14 @@ Future<Json> _loadTranslations(String language) async {
 
 Future<void> _startApp(WebBrowserPort browser) async {
   usePathUrlStrategy();
-  var language = h5Language(browser.startupLanguage);
+  final language = h5Language(Uri.base.queryParameters['lang']);
   final fonts = LanguageFonts();
-  late Json translations;
-  while (true) {
-    final (copy, _) = await (
-      _loadTranslations(language),
-      fonts.ensure(language),
-    ).wait;
-    // The browser picker can change the language while the assets load.
-    final selected = h5Language(browser.startupLanguage);
-    if (selected == language) {
-      translations = copy;
-      break;
-    }
-    language = selected;
-  }
+  // Both are required before runApp, but neither depends on the other's result.
+  final (translations, _) = await (
+    _loadTranslations(language),
+    fonts.ensure(language),
+  ).wait;
   LicenseRegistry.addLicense(() async* {
-    yield LicenseEntryWithLineBreaks([
-      'libphonenumber',
-      'libphonenumber-js',
-      'Unicode CLDR',
-      'flag-icons',
-    ], await rootBundle.loadString('assets/licenses/phone-countries.txt'));
     yield LicenseEntryWithLineBreaks([
       'Noto Sans Thai',
     ], await rootBundle.loadString('assets/fonts/OFL.txt'));
@@ -102,14 +89,7 @@ Future<void> _startApp(WebBrowserPort browser) async {
     ensureReportFont: fonts.ensureCommon,
   );
   browser.setLanguage(language, controller.copy.t('jy', 'title'));
-  browser.connectWelcome(
-    controller.enterLanding,
-    controller.changeLanguage,
-    language,
-  );
-  runApp(
-    H5App(controller: controller, browserWelcome: browser.hasBrowserWelcome),
-  );
+  runApp(H5App(controller: controller));
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(
       WidgetsBinding.instance.waitUntilFirstFrameRasterized

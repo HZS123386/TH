@@ -112,6 +112,7 @@ class _BirthPageState extends State<BirthPage> {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.all(20),
       child: Form(
         key: formKey,

@@ -117,7 +117,7 @@
         "fate-welcome-seen và dấu phục hồi tải phục vụ giao diện. Dữ liệu phiên thường kết thúc theo phiên, dữ liệu cục bộ có thể còn tới khi xóa dữ liệu trang.",
         "Luồng chuyển HTTP sang HTTPS có thể dùng cookie bên thứ nhất fate-https-owner chứa mã ngẫu nhiên tối đa khoảng 60 giây; không phải cookie quảng cáo.",
         "Thống kê bên thứ nhất dùng mã phiên fate-visit, nhãn nguồn/chiến dịch và thời gian truy cập, gửi, hiển thị liên kết mã báo cáo. Điểm thống kê không nhận trường ngày sinh/câu hỏi; dữ liệu không hoàn toàn vô danh. Hiện dừng sự kiện này khi trình duyệt bật Do Not Track hoặc Global Privacy Control, nhưng yêu cầu, lưu trữ và log bảo mật cần thiết vẫn tiếp tục.",
-        "Trang đích ipplay.top sử dụng Meta Pixel để đo lường hiệu quả quảng cáo, gồm lượt truy cập và lượt nhấp vào nút xem luận giải. Meta có thể nhận sự kiện, URL trang và thông tin trình duyệt, đồng thời có thể dùng cookie. H5 tôn trọng Do Not Track và Global Privacy Control. H5 lưu dấu trong trình duyệt này để chỉ tính lần nhấp đầu tiên của mỗi mã trình duyệt.",
+        "H5 sử dụng Meta Pixel để đo lường hiệu quả quảng cáo, gồm lượt truy cập trang đích và lượt nhấp nút thêm bạn LINE trong báo cáo hôn nhân. Meta có thể nhận sự kiện, URL trang và thông tin trình duyệt, đồng thời có thể dùng cookie. H5 tôn trọng Do Not Track và Global Privacy Control. H5 lưu dấu trong trình duyệt này để chỉ tính lần nhấp đầu tiên của mỗi mã trình duyệt.",
         "Chặn/xóa lưu trữ có thể mất quyền xem lại. Mã còn trong phiên mở có thể khôi phục vào localStorage; để xóa hết mã trên trình duyệt, xóa mọi lưu trữ của trang và đóng các thẻ liên quan."
       ]
     },

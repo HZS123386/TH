@@ -31,6 +31,10 @@ sudo docker compose logs --tail 80 app
 
 在统一仓库总目录执行 `pnpm deploy:prepare`，或在落地页目录执行同名命令。已有最新构建时，可在落地页目录执行 `node ../TH/scripts/python.mjs -X utf8 deploy/prepare_release.py` 仅打包。生成结果固定为总目录的 `output/deploy/latest/`，上一份保留在 `output/deploy/previous/`；不在桌面创建项目副本。发布版本号仍写入 manifest，服务器端的版本和回滚流程保持原样。普通本地构建可使用 `pnpm build`。
 
+准备发布包时，可将 `FATE_H5_WASM_BASE_URL` 设为对象存储或 CDN 的公开 HTTPS 目录。启用后，发布包中的 `main.dart.wasm` 和当前引擎的 `skwasm.wasm` 会改为跳转到该目录下的内容哈希地址。其余 Dart 分包和兼容引擎继续由原站点提供。本地 `site` 可继续独立预览。
+
+切换前，按发布清单 `manifest.json` 中的 `wasm_objects` 上传文件。`path` 是本地文件，`object_key` 是上传到桶内的完整路径，已包含 `FATE_H5_WASM_BASE_URL` 的目录前缀。上传时设置清单里的 `Content-Type`、`Content-Encoding` 和缓存设置。允许实际 H5 域名跨域 `GET` 和 `HEAD`，再验证两份 Wasm 能下载并启动 H5。火山 TOS 的配置见[跨域规则](https://docs.volcengine.com/docs/TorchObjectStorage/CORSrules?lang=zh)与[对象元数据](https://docs.volcengine.com/docs/torch-object-storage/managing-object-metadata?lang=zh)。
+
 发布包包含后端、排盘脚本及库、`TH/src/content`、`TH/src/locales`、`TH/src/data` 中的运行资源，以及落地页 `site` 构建目录。报告校验代码会读取这些语言资源，不能只复制 Python 文件。
 
 `runtime.env` 与应用压缩包分开生成和上传，不进入 Docker 构建上下文。打包程序会检查构建文件中是否包含本机已配置的密钥，并排除原有用户数据库。地点索引单独复制，后续版本复用服务器已有文件。

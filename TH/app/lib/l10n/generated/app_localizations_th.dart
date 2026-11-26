@@ -103,6 +103,15 @@ class AppLocalizationsTh extends AppLocalizations {
   String get todayTab => 'วันนี้';
 
   @override
+  String get quickAccess => 'ทางลัด';
+
+  @override
+  String get luckyRevealHint => 'แตะตัวเลขเพื่อดูคำแนะนำวันนี้';
+
+  @override
+  String get readingBackToContents => 'กลับไปที่สารบัญ';
+
+  @override
   String get actionTab => 'ลงมือทำ';
 
   @override
@@ -157,10 +166,20 @@ class AppLocalizationsTh extends AppLocalizations {
   String get startThaiGuide => 'กรอกข้อมูลเพื่อเริ่มดูดวงไทย';
 
   @override
+  String get homeChartExample => 'ดูตัวอย่างดวงแบบตะวันตก';
+
+  @override
   String get viewThaiGuide => 'ดูผังดวงไทยของฉัน';
 
   @override
-  String get startSevenGuide => 'ดูตัวอย่างเลข 7 ตัว';
+  String get startSevenGuide => 'ลองดูแชตตัวอย่างกับอรุณ';
+
+  @override
+  String get arunSampleHeading => 'แชตตัวอย่างกับอรุณ';
+
+  @override
+  String get arunSampleReply =>
+      'ลองเลือกทำสักอย่างที่เสร็จได้ในสิบนาที เช่น เตรียมของที่ต้องใช้พรุ่งนี้เช้า หรือจดสิ่งแรกที่จะทำพรุ่งนี้ พอทำเสร็จค่อยดูว่ายังมีอะไรต้องปรับอีกบ้าง';
 
   @override
   String get startTarotGuide => 'เริ่มดูไพ่ทาโรต์';
@@ -170,12 +189,6 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get textReadingNote => 'พิมพ์ถามและคุยต่อ';
-
-  @override
-  String get voiceReading => 'คุยด้วยเสียง';
-
-  @override
-  String get voiceReadingNote => 'เล่าเรื่องที่ค้างใจ';
 
   @override
   String get textChat => 'แชตข้อความ';
@@ -237,6 +250,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get recoverReports => 'รายงานของฉัน';
 
   @override
+  String get recoverReportAction => 'ค้นหารายงานเดิม';
+
+  @override
   String get recentReadings => 'คำทำนายล่าสุด';
 
   @override
@@ -251,6 +267,9 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get reportCodeMissing => 'ไม่พบตัวอย่างนี้ ลอง FATE-THAI-001';
+
+  @override
+  String get reportCodeRequired => 'กรุณากรอกรหัสรายงานก่อน';
 
   @override
   String get newVisitor => 'ฉันเป็นผู้ใช้ใหม่';
@@ -307,6 +326,43 @@ class AppLocalizationsTh extends AppLocalizations {
   String get liveDemoNotice => 'ตัวอย่างไลฟ์ · ไม่ได้ถ่ายทอดสด';
 
   @override
+  String get livePreview => 'ตัวอย่างไลฟ์';
+
+  @override
+  String get liveWatch => 'เข้าชมไลฟ์';
+
+  @override
+  String get liveUpcoming => 'ไลฟ์ที่กำลังจะมาถึง';
+
+  @override
+  String get liveMyReservations => 'การจองของฉัน';
+
+  @override
+  String get liveNoReservations => 'คุณยังไม่ได้จองไลฟ์';
+
+  @override
+  String get liveReserve => 'จอง';
+
+  @override
+  String get liveReserved => 'จองแล้ว';
+
+  @override
+  String get liveCancelReservation => 'ยกเลิกการจอง';
+
+  @override
+  String get liveReservationDemo =>
+      'การจองตัวอย่างจะเก็บไว้ระหว่างการใช้งานครั้งนี้และจะไม่ส่งการแจ้งเตือน';
+
+  @override
+  String get liveTempleUpcoming => 'ขอพรที่วัด · พิธีอธิษฐาน';
+
+  @override
+  String get liveObjectsUpcoming => 'เปิดกล่อง · กลิ่นหอมยามค่ำ';
+
+  @override
+  String get liveAboutShow => 'เกี่ยวกับไลฟ์นี้';
+
+  @override
   String get livestreamPause => 'หยุดตัวอย่าง';
 
   @override
@@ -319,17 +375,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get templeRoomHeading => 'นำคำอธิษฐานไปที่วัด';
 
   @override
-  String get templeService => 'พิธีขอพรส่วนตัว';
-
-  @override
   String get samplePrice => 'ราคาตัวอย่าง';
-
-  @override
-  String get bookingInfo => 'ข้อมูลการจอง';
-
-  @override
-  String get bookingDemoNotice =>
-      'ดูรายละเอียดพิธีและขั้นตอนการจองตัวอย่าง รอบจริงยังไม่เปิด';
 
   @override
   String get roomChat => 'พูดคุยในห้อง';
@@ -573,7 +619,26 @@ class AppLocalizationsTh extends AppLocalizations {
   String get shopOrdersEmpty => 'ยังไม่มีคำสั่งซื้อ';
 
   @override
-  String get shopDemoNotice => 'ร้านนี้เป็นตัวอย่าง ยังไม่เปิดสั่งซื้อ';
+  String get shopDemoNotice =>
+      'คำสั่งซื้อตัวอย่างไม่มีการเรียกเก็บเงินหรือจัดส่งสินค้า';
+
+  @override
+  String get shopSubtotal => 'ยอดรวมสินค้า';
+
+  @override
+  String get shopReviewOrder => 'ตรวจสอบคำสั่งซื้อ';
+
+  @override
+  String get shopPlaceDemoOrder => 'ส่งคำสั่งซื้อตัวอย่าง';
+
+  @override
+  String get shopOrderPlaced => 'สร้างคำสั่งซื้อตัวอย่างแล้ว';
+
+  @override
+  String get shopOrderNumber => 'คำสั่งซื้อตัวอย่าง';
+
+  @override
+  String get shopIncreaseQuantity => 'เพิ่มจำนวน';
 
   @override
   String get mySpace => 'พื้นที่ของฉัน';
@@ -592,10 +657,6 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get thaiChartIntro => 'ดูผังดวงไทยจากวัน เวลา และสถานที่เกิด';
-
-  @override
-  String get sevenPreviewNote =>
-      'ตัวอย่างนี้ยังคำนวณเลข 7 ตัวไม่ได้ ลองคุยกับอรุณได้';
 
   @override
   String get country => 'ประเทศ / ภูมิภาค';
@@ -1537,22 +1598,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get tarotRevealing => 'กำลังเปิดไพ่…';
 
   @override
-  String get tarotSeerReading => 'ครบสามใบแล้ว นักโหราศาสตร์กำลังอ่านไพ่';
-
-  @override
   String get tarotReadingComplete => 'อ่านไพ่เสร็จแล้ว';
-
-  @override
-  String get tarotReadingStepOne => 'กำลังฟังเสียงกระซิบจากดวงดาว…';
-
-  @override
-  String get tarotReadingStepTwo => 'นักโหราศาสตร์กำลังแตะวงดาวที่ส่องแสง…';
-
-  @override
-  String get tarotReadingStepThree => 'กำลังพิจารณาไพ่ทั้งสามใบ…';
-
-  @override
-  String get tarotReadingStepFour => 'กำลังเขียนคำอ่านไพ่ให้คุณ…';
 
   @override
   String tarotMinorName(String suit, String rank) {

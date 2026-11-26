@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../app/dependencies.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/asset_tile.dart';
 import '../../ui/theme.dart';
-import '../home/live_page.dart' show objectsArtwork;
+
+const objectsArtwork = 'assets/images/live-shop-objects.webp';
+
+String _baht(AppLocalizations s, int amount) => NumberFormat.currency(
+  locale: s.localeName,
+  symbol: '฿',
+  decimalDigits: 0,
+).format(amount);
 
 enum _ObjectCategory {
   all,
@@ -58,11 +66,18 @@ class ShopPage extends StatefulWidget {
 
 class _ShopPageState extends State<ShopPage> {
   _ObjectCategory _category = _ObjectCategory.all;
-  String _query = '';
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final query = _search.text.trim().toLowerCase();
     final items = _ShopObject.values
         .where(
           (item) =>
@@ -70,7 +85,7 @@ class _ShopPageState extends State<ShopPage> {
                   item.category == _category) &&
               '${item.title(s)} ${item.category.title(s)} ${item.note(s)} ${item.name}'
                   .toLowerCase()
-                  .contains(_query),
+                  .contains(query),
         )
         .toList();
     return ListView(
@@ -83,15 +98,6 @@ class _ShopPageState extends State<ShopPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'FATE OBJECTS',
-                    style: TextStyle(
-                      color: goldColor,
-                      fontSize: 9,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
                   Text(
                     s.storeTitle,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -115,12 +121,19 @@ class _ShopPageState extends State<ShopPage> {
         ),
         const SizedBox(height: 20),
         TextField(
+          controller: _search,
           textInputAction: TextInputAction.search,
-          onChanged: (value) =>
-              setState(() => _query = value.trim().toLowerCase()),
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: s.storeSearch,
             prefixIcon: const Icon(Icons.search, size: 19),
+            suffixIcon: _search.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: s.clearSearch,
+                    onPressed: () => setState(_search.clear),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
           ),
         ),
         const SizedBox(height: 10),
@@ -138,7 +151,11 @@ class _ShopPageState extends State<ShopPage> {
                     ),
                     selected: _category == category,
                     showCheckmark: false,
-                    onSelected: (_) => setState(() => _category = category),
+                    onSelected: (_) {
+                      if (category == _category) return;
+                      FateMotion.selectionFeedback();
+                      setState(() => _category = category);
+                    },
                   ),
                 ),
             ],
@@ -151,7 +168,22 @@ class _ShopPageState extends State<ShopPage> {
         ),
         const SizedBox(height: 12),
         if (items.isEmpty)
-          FateCard(child: Text(s.shopEmpty))
+          FateCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(s.shopEmpty),
+                TextButton.icon(
+                  icon: const Icon(Icons.clear_all),
+                  label: Text(s.allItems),
+                  onPressed: () => setState(() {
+                    _search.clear();
+                    _category = _ObjectCategory.all;
+                  }),
+                ),
+              ],
+            ),
+          )
         else
           LayoutBuilder(
             builder: (context, box) => Wrap(
@@ -201,13 +233,6 @@ class _ObjectCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.note(s),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 10, color: mutedColor),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
                         item.title(s),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -216,12 +241,18 @@ class _ObjectCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      Text(
+                        item.note(s),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, color: mutedColor),
+                      ),
                       Wrap(
                         crossAxisAlignment: WrapCrossAlignment.center,
                         spacing: 5,
                         children: [
                           Text(
-                            '฿${item.price}',
+                            _baht(s, item.price),
                             style: const TextStyle(
                               fontSize: 22,
                               color: goldColor,
@@ -263,10 +294,55 @@ class _ObjectCard extends StatelessWidget {
   }
 }
 
+class LiveShopProduct extends StatelessWidget {
+  const LiveShopProduct.journal({super.key}) : _item = _ShopObject.journal;
+  const LiveShopProduct.candle({super.key}) : _item = _ShopObject.candle;
+
+  final _ShopObject _item;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    return FateCard(
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox.square(dimension: 48, child: _item.art),
+        ),
+        title: Text(_item.title(s)),
+        subtitle: Text(
+          '${_baht(s, _item.price)} · ${s.samplePrice}',
+          style: const TextStyle(color: goldColor),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: goldColor),
+        onTap: () => _showObject(context, _item),
+      ),
+    );
+  }
+}
+
+void _changeQuantity(
+  ValueNotifier<Map<String, int>> cart,
+  _ShopObject item,
+  int delta,
+) {
+  final items = {...cart.value};
+  final quantity = (items[item.name] ?? 0) + delta;
+  if (quantity <= 0) {
+    items.remove(item.name);
+  } else {
+    items[item.name] = quantity;
+  }
+  cart.value = Map.unmodifiable(items);
+}
+
 void _add(BuildContext context, _ShopObject item) {
   final s = AppLocalizations.of(context);
   final cart = DependencyScope.of(context).demoCart;
-  cart.value = {...cart.value, item.name: (cart.value[item.name] ?? 0) + 1};
+  _changeQuantity(cart, item, 1);
+  FateMotion.selectionFeedback();
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
@@ -277,9 +353,11 @@ void _add(BuildContext context, _ShopObject item) {
     );
 }
 
-Future<void> _showObject(BuildContext context, _ShopObject item) {
+Future<void> _showObject(BuildContext context, _ShopObject item) async {
   final s = AppLocalizations.of(context);
-  return _shopSheet(
+  final cart = DependencyScope.of(context).demoCart;
+  var viewCart = false;
+  await _shopSheet(
     context,
     item.title(s),
     (sheet) => Column(
@@ -292,7 +370,7 @@ Future<void> _showObject(BuildContext context, _ShopObject item) {
         const SizedBox(height: 12),
         Text(item.note(s)),
         Text(
-          '฿${item.price} · ${s.samplePrice}',
+          '${_baht(s, item.price)} · ${s.samplePrice}',
           style: const TextStyle(color: goldColor),
         ),
         const SizedBox(height: 10),
@@ -308,66 +386,203 @@ Future<void> _showObject(BuildContext context, _ShopObject item) {
           },
           child: Text(s.addToCart),
         ),
+        if (cart.value.isNotEmpty)
+          TextButton.icon(
+            icon: const Icon(Icons.shopping_bag_outlined),
+            label: Text(s.shopCart),
+            onPressed: () {
+              viewCart = true;
+              Navigator.pop(sheet);
+            },
+          ),
       ],
     ),
   );
+  if (context.mounted && viewCart) await showShopCart(context);
 }
 
-Future<void> showShopCart(BuildContext context) {
+int _shopTotal(Map<String, int> items) => _ShopObject.values.fold(
+  0,
+  (total, item) => total + item.price * (items[item.name] ?? 0),
+);
+
+Future<void> showShopCart(BuildContext context) async {
   final s = AppLocalizations.of(context);
-  final cart = DependencyScope.of(context).demoCart;
-  return _shopSheet(
+  final dependencies = DependencyScope.of(context);
+  final cart = dependencies.demoCart;
+  final orders = dependencies.demoShopOrders;
+  var review = false;
+  int? orderNumber;
+  var openOrders = false;
+  await _shopSheet(
     context,
     s.shopCart,
-    (_) => ValueListenableBuilder(
-      valueListenable: cart,
-      builder: (context, items, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (items.isEmpty) Text(s.cartEmpty),
-          for (final item in _ShopObject.values)
-            if ((items[item.name] ?? 0) > 0)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox.square(dimension: 44, child: item.art),
-                ),
-                title: Text(item.title(s)),
-                subtitle: Text('฿${item.price} × ${items[item.name]}'),
-                trailing: IconButton(
-                  tooltip: s.remove,
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: () {
-                    final current = cart.value[item.name] ?? 0;
-                    cart.value =
-                        {...cart.value, if (current > 1) item.name: current - 1}
-                          ..removeWhere(
-                            (key, value) => key == item.name && current <= 1,
-                          );
-                  },
-                ),
+    (sheet) => StatefulBuilder(
+      builder: (context, setState) => ValueListenableBuilder(
+        valueListenable: cart,
+        builder: (context, items, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (orderNumber != null) ...[
+              const Icon(
+                Icons.check_circle_outline,
+                color: goldColor,
+                size: 36,
               ),
-          const SizedBox(height: 12),
-          Text(
-            s.shopDemoNotice,
-            style: const TextStyle(color: mutedColor, fontSize: 12),
-          ),
-        ],
+              const SizedBox(height: 8),
+              Text(
+                s.shopOrderPlaced,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Text(
+                '${s.shopOrderNumber} #$orderNumber',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () {
+                  openOrders = true;
+                  Navigator.pop(sheet);
+                },
+                child: Text(s.shopOrders),
+              ),
+            ] else if (items.isEmpty) ...[
+              Text(s.cartEmpty),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(sheet),
+                child: Text(s.close),
+              ),
+            ] else ...[
+              if (review) ...[
+                Text(
+                  s.shopReviewOrder,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Text(
+                  s.shopDemoNotice,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+              ],
+              for (final item in _ShopObject.values)
+                if (items[item.name] case final int quantity)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox.square(
+                            dimension: 44,
+                            child: item.art,
+                          ),
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.title(s)),
+                              Text(
+                                '${_baht(s, item.price)} × $quantity',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!review) ...[
+                          IconButton(
+                            tooltip: s.remove,
+                            onPressed: () => _changeQuantity(cart, item, -1),
+                            icon: const Icon(Icons.remove_circle_outline),
+                          ),
+                          IconButton(
+                            tooltip: s.shopIncreaseQuantity,
+                            onPressed: () => _changeQuantity(cart, item, 1),
+                            icon: const Icon(Icons.add_circle_outline),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+              const Divider(height: 24),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 8,
+                children: [
+                  Text(s.shopSubtotal),
+                  Text(
+                    _baht(s, _shopTotal(items)),
+                    style: const TextStyle(
+                      color: goldColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              FilledButton(
+                onPressed: review
+                    ? () {
+                        if (cart.value.isEmpty || orderNumber != null) return;
+                        orders.value = [...orders.value, cart.value];
+                        setState(() => orderNumber = orders.value.length);
+                        cart.value = const {};
+                      }
+                    : () => setState(() => review = true),
+                child: Text(review ? s.shopPlaceDemoOrder : s.shopReviewOrder),
+              ),
+              if (review)
+                TextButton(
+                  onPressed: () => setState(() => review = false),
+                  child: Text(s.shopCart),
+                ),
+            ],
+          ],
+        ),
       ),
     ),
   );
+  if (context.mounted && openOrders) await showShopOrders(context);
 }
 
 Future<void> showShopOrders(BuildContext context) {
   final s = AppLocalizations.of(context);
+  final orders = DependencyScope.of(context).demoShopOrders.value;
   return _shopSheet(
     context,
     s.shopOrders,
     (_) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(s.shopOrdersEmpty),
+        if (orders.isEmpty) Text(s.shopOrdersEmpty),
+        for (final (index, items) in orders.indexed.toList().reversed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FateCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${s.shopOrderNumber} #${index + 1}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  for (final item in _ShopObject.values)
+                    if (items[item.name] case final int quantity)
+                      Text(
+                        '${item.title(s)} × $quantity',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  Text(
+                    _baht(s, _shopTotal(items)),
+                    style: const TextStyle(color: goldColor),
+                  ),
+                ],
+              ),
+            ),
+          ),
         const SizedBox(height: 6),
         Text(
           s.shopDemoNotice,

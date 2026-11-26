@@ -1,108 +1,72 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-
 import '../app/controller.dart';
 import '../core/models.dart';
 import '../core/repository.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
 
-class ReportCheckout extends StatefulWidget {
-  const ReportCheckout({
+class ReportPreview extends StatelessWidget {
+  const ReportPreview({
     required this.h5,
-    required this.report,
+    required this.reportId,
+    required this.claimCode,
     required this.freePreview,
-    required this.onBack,
     required this.onErase,
-    this.onExportPdf,
-    this.onPay,
-    this.exportStatus = '',
     this.busy = false,
     this.error = '',
-    this.showAppDownload = false,
+    this.onBack,
+    this.onExportPdf,
+    this.onPay,
+    this.priceLabel = '',
+    this.relationshipOffer = false,
+    this.exportStatus = '',
+    this.marriage = false,
     super.key,
   });
   final H5Controller h5;
-  final LifeReport report;
-  final VoidCallback onBack, onErase;
-  final VoidCallback? onExportPdf, onPay;
+  final String reportId;
+  final String claimCode;
+  final VoidCallback onErase;
+  final VoidCallback? onBack, onExportPdf, onPay;
+  final String priceLabel;
   final String exportStatus;
+  final bool marriage, relationshipOffer;
   final Widget freePreview;
   final bool busy;
   final String error;
-  // Keep the download flow available for when the APP is ready to be shown again.
-  final bool showAppDownload;
 
-  Future<void> _showAppTestingNotice(BuildContext context) {
-    final c = h5.copy;
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        key: const ValueKey('app-testing-dialog'),
-        backgroundColor: panel,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: line),
-        ),
-        title: Text(
-          c.t('jy', 'checkout.appTestingTitle'),
-          style: const TextStyle(
-            color: cream,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Text(
-          c.t('jy', 'checkout.appTestingMessage'),
-          style: const TextStyle(color: lavender, fontSize: 14, height: 1.7),
-        ),
-        actions: [
-          FilledButton(
-            key: const ValueKey('app-testing-close'),
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(c.t('jy', 'checkout.appTestingClose')),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  State<ReportCheckout> createState() => _ReportCheckoutState();
-}
-
-class _ReportCheckoutState extends State<ReportCheckout> {
-  Widget _claimNumber(BuildContext context) {
-    final copy = widget.h5.copy;
-    final code = widget.report.claimCode;
+  Widget _claimNumber(BuildContext context, {required bool desktop}) {
+    final copy = h5.copy;
+    final number = claimCode.isEmpty ? reportId : claimCode;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(copy.t('jy', 'lineContact.claimNumber')),
+        Text(
+          copy.t('jy', 'lineContact.claimNumber'),
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 4),
         SelectableText(
-          code,
+          number,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 22,
-            letterSpacing: 3,
-            fontWeight: FontWeight.w700,
-            color: gold,
-          ),
+          style: const TextStyle(fontSize: 13),
         ),
         TextButton(
           onPressed: () async {
             try {
-              await Clipboard.setData(ClipboardData(text: code));
+              await Clipboard.setData(ClipboardData(text: number));
+              if (desktop) _trackLineContact();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(copy.t('jy', 'appLogin.copied'))),
                 );
               }
-            } on PlatformException {
-              // The number remains selectable when clipboard access fails.
+            } catch (_) {
+              // The claim number can still be selected manually.
             }
           },
           child: Text(copy.t('jy', 'lineContact.copyReportId')),
@@ -111,84 +75,77 @@ class _ReportCheckoutState extends State<ReportCheckout> {
     );
   }
 
-  void _showLineContact() {
-    final h5 = widget.h5;
-    final reportId = widget.report.id;
-    final copy = h5.copy;
-    h5.trackActivity('preview_report', 'open_line_contact');
-    var qrRecorded = false;
-    unawaited(
-      showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(copy.t('jy', 'lineContact.title')),
-          scrollable: true,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/line-contact-qr-956ed148.jpg',
-                width: 232,
-                height: 232,
-                fit: BoxFit.contain,
-                excludeFromSemantics: true,
-                frameBuilder: (context, child, frame, synchronous) {
-                  if (!qrRecorded && (frame != null || synchronous)) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (qrRecorded ||
-                          !dialogContext.mounted ||
-                          ModalRoute.isCurrentOf(dialogContext) != true) {
-                        return;
-                      }
-                      qrRecorded = true;
-                      h5.trackActivity('preview_report', 'line_qr_shown');
-                      unawaited(h5.trackReport(reportId, 'line_contact'));
-                    });
-                  }
-                  return child;
-                },
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                copy.t('jy', 'lineContact.scan'),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              _claimNumber(dialogContext),
-            ],
+  void _trackLineContact([String action = 'open_line_contact']) {
+    h5.trackActivity('preview_report', action);
+    unawaited(h5.trackReport(reportId, 'line_contact'));
+  }
+
+  Future<void> _openLine() async {
+    _trackLineContact('click_line');
+    if (marriage) {
+      try {
+        await h5.browser.trackLineClaimClick();
+      } catch (_) {
+        // Ads tracking must not stop the user from opening LINE.
+      }
+    }
+    h5.browser.openPage('https://line.me/ti/p/SmujXXCH9v', sameTab: true);
+  }
+
+  Widget _lineContact(BuildContext context) {
+    final c = h5.copy;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (marriage) ...[
+          Text(
+            c.t('marriage', 'line_hook.title'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: gold,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(copy.t('jy', 'close')),
-            ),
-            FilledButton(
-              onPressed: () {
-                unawaited(h5.trackReport(reportId, 'line_contact'));
-                h5.browser.openPage('https://line.me/ti/p/SmujXXCH9v');
-              },
-              child: Text(copy.t('jy', 'lineContact.open')),
-            ),
-          ],
+          const SizedBox(height: 8),
+          Text(
+            c.t('marriage', 'line_hook.body'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: cream, fontSize: 14, height: 1.6),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Center(
+          child: _ReportLineQr(
+            key: ValueKey(reportId),
+            label: c.t('jy', 'lineContact.title'),
+            onShown: () => h5.trackActivity('preview_report', 'line_qr_shown'),
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Text(c.t('jy', 'lineContact.scan'), textAlign: TextAlign.center),
+        const SizedBox(height: 12),
+        _claimNumber(context, desktop: !h5.browser.supportsLineApp),
+        Text(
+          c.t('jy', 'lineContact.claimHint'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13),
+        ),
+        const SizedBox(height: 12),
+        JYButton(
+          key: const ValueKey('jy-line-contact'),
+          label: marriage
+              ? c.t('marriage', 'line_hook.action')
+              : c.t('jy', 'lineContact.open'),
+          onPressed: busy ? null : _openLine,
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final c = widget.h5.copy;
-    final marriage = widget.report.marriageReport;
-    final relationship = widget.report.sectionedReport;
-    final themeHeading = c.t('jy', 'checkout.contents');
-    final compactHeading = MediaQuery.sizeOf(context).width < 380;
-    final hasRelationshipPreview = relationship
-        ? widget.report.hasPreview
-        : widget.report.relationshipPreview.isNotEmpty;
-    final about = widget.report.sixPersonalThemes && hasRelationshipPreview
-        ? 'checkout.relationshipAbout'
-        : 'checkout.about';
+    final c = h5.copy;
     return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: RadialGradient(
@@ -199,7 +156,7 @@ class _ReportCheckoutState extends State<ReportCheckout> {
         ),
       ),
       child: SingleChildScrollView(
-        key: const ValueKey('report-checkout'),
+        key: const ValueKey('report-preview'),
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: SafeArea(
           child: Column(
@@ -207,196 +164,95 @@ class _ReportCheckoutState extends State<ReportCheckout> {
             children: [
               Row(
                 children: [
-                  IconButton(
-                    key: const ValueKey('report-back-home'),
-                    tooltip: c.t('jy', 'checkout.back'),
-                    onPressed: widget.busy ? null : widget.onBack,
-                    icon: const Icon(Icons.arrow_back, color: gold, size: 20),
-                  ),
-                  const SizedBox(width: 8),
+                  if (onBack != null)
+                    IconButton(
+                      key: const ValueKey('report-back-home'),
+                      tooltip: c.t('jy', 'checkout.back'),
+                      onPressed: busy ? null : onBack,
+                      icon: const Icon(Icons.arrow_back, color: gold, size: 20),
+                    ),
+                  if (onBack != null) const SizedBox(width: 8),
                   const FateBrand(compact: true),
                 ],
               ),
               const SizedBox(height: 20),
-              widget.freePreview,
-              if (widget.report.relationshipReport) ...[
+              freePreview,
+              if (marriage) ...[
+                const SizedBox(height: 18),
+                JYCard(
+                  radius: 18,
+                  borderColor: gold,
+                  child: _lineContact(context),
+                ),
+              ],
+              if (onExportPdf != null || exportStatus.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  onPressed: widget.onExportPdf,
+                  onPressed: onExportPdf,
                   icon: const Icon(Icons.picture_as_pdf_outlined, size: 17),
                   label: Text(c.t('life', 'exportPdf')),
                 ),
-                if (widget.exportStatus.isNotEmpty)
-                  Text(
-                    widget.exportStatus,
-                    style: const TextStyle(color: gold, fontSize: 12),
-                  ),
+                if (exportStatus.isNotEmpty) Text(exportStatus),
               ],
-              const SizedBox(height: 28),
-              if (RegExp(
-                r'^[1-9][0-9]{4}$',
-              ).hasMatch(widget.report.claimCode)) ...[
-                const SizedBox(height: 14),
-                JYCard(
-                  padding: const EdgeInsets.all(15),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _claimNumber(context),
-                      Text(
-                        c.t('jy', 'lineContact.claimHint'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 13, color: lavender),
-                      ),
-                      const SizedBox(height: 12),
-                      JYButton(
-                        key: const ValueKey('jy-line-contact'),
-                        label: c.t('jy', 'lineContact.action'),
-                        onPressed: widget.busy ? null : _showLineContact,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              if (!relationship) ...[
-                Text(
-                  c.t('jy', 'checkout.eyebrow'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: gold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  c.t('jy', 'checkout.title'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    height: 1.25,
-                    color: Color(0xFFFFEDCC),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
+              const SizedBox(height: 18),
               JYCard(
-                padding: EdgeInsets.symmetric(
-                  horizontal: marriage ? 15 : 12,
-                  vertical: marriage ? 20 : 16,
-                ),
-                radius: marriage ? 22 : 18,
+                padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+                radius: 18,
                 borderColor: const Color(0xFFDFB675),
                 colors: const [Color(0xFF4C3263), Color(0xFF241732)],
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (!relationship || marriage) ...[
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: marriage ? 12 : 8,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0x70E4BC78)),
-                          borderRadius: BorderRadius.circular(24),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF67435C), Color(0xFF51335D)],
-                          ),
-                        ),
-                        child: DefaultTextStyle.merge(
-                          style: TextStyle(
-                            fontSize: marriage
-                                ? (compactHeading ? 17 : 19)
-                                : 15,
-                            height: marriage ? 1.4 : null,
-                            color: const Color(0xFFFFE3AA),
-                            fontWeight: FontWeight.w700,
-                          ),
-                          child: marriage
-                              ? Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const ExcludeSemantics(child: Text('✧')),
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(
-                                        themeHeading,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const ExcludeSemantics(child: Text('✧')),
-                                  ],
-                                )
-                              : Text(
-                                  '✧  $themeHeading  ✧',
-                                  textAlign: TextAlign.center,
-                                ),
-                        ),
+                    Text(
+                      c.t(
+                        'jy',
+                        priceLabel.isEmpty
+                            ? 'report.contents'
+                            : 'checkout.contents',
                       ),
-                      SizedBox(height: marriage ? 20 : 16),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 12,
-                        runSpacing: 6,
-                        children: [
-                          for (final detail in c.list('jy', 'checkout.details'))
-                            Text(
-                              detail,
-                              style: TextStyle(
-                                color: gold,
-                                fontSize: marriage ? 14 : 12,
-                              ),
-                            ),
-                        ],
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFFFFE3AA),
+                        fontWeight: FontWeight.w700,
                       ),
-                      SizedBox(height: marriage ? 14 : 12),
-                      ReportBadges(
-                        key: const ValueKey('checkout-theme-badges'),
-                        copy: c,
-                        labelsInside: marriage,
-                      ),
-                    ],
-                    if (widget.onPay != null) ...[
+                    ),
+                    const SizedBox(height: 16),
+                    ReportBadges(
+                      key: const ValueKey('checkout-theme-badges'),
+                      copy: c,
+                      labelsInside: marriage,
+                    ),
+                    if (!marriage) ...[
                       const SizedBox(height: 16),
                       const Divider(height: 1, color: Color(0x40E4BC78)),
                       const SizedBox(height: 14),
-                      Text(
-                        widget.report.priceLabel,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        c.t('jy', 'checkout.preview'),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      JYButton(
-                        key: const ValueKey('jy-payment-preview'),
-                        label: c.t(
-                          'jy',
-                          hasRelationshipPreview &&
-                                  widget.report.sixPersonalThemes
-                              ? 'personal.relationshipUnlock'
-                              : 'checkout.pay',
+                      if (priceLabel.isNotEmpty) ...[
+                        Text(priceLabel, textAlign: TextAlign.center),
+                        const SizedBox(height: 8),
+                        Text(
+                          c.t('jy', 'checkout.preview'),
+                          textAlign: TextAlign.center,
                         ),
-                        onPressed: widget.busy ? null : widget.onPay,
-                      ),
-                    ],
-                    if (widget.showAppDownload) ...[
-                      const SizedBox(height: 14),
-                      JYButton(
-                        key: const ValueKey('jy-app-download'),
-                        label: c.t('jy', 'checkout.download'),
-                        icon: 'download',
-                        pulse: true,
-                        onPressed: widget.busy
-                            ? null
-                            : () => widget._showAppTestingNotice(context),
-                      ),
+                        const SizedBox(height: 8),
+                        JYButton(
+                          key: const ValueKey('jy-payment-preview'),
+                          label: c.t(
+                            'jy',
+                            relationshipOffer
+                                ? 'personal.relationshipUnlock'
+                                : 'checkout.pay',
+                          ),
+                          onPressed: busy ? null : onPay,
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      _lineContact(context),
                     ],
                   ],
                 ),
               ),
-              if (!relationship) ...[
+              if (!marriage) ...[
                 const SizedBox(height: 18),
                 JYCard(
                   padding: const EdgeInsets.fromLTRB(13, 17, 13, 15),
@@ -406,7 +262,12 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final line in c.list('jy', '${about}Title'))
+                      for (final line in c.list(
+                        'jy',
+                        relationshipOffer
+                            ? 'checkout.relationshipAboutTitle'
+                            : 'checkout.aboutTitle',
+                      ))
                         Text(
                           line,
                           textAlign: TextAlign.center,
@@ -431,7 +292,12 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                           ),
                         ),
                         child: Text(
-                          c.t('jy', about),
+                          c.t(
+                            'jy',
+                            relationshipOffer
+                                ? 'checkout.relationshipAbout'
+                                : 'checkout.about',
+                          ),
                           style: const TextStyle(
                             color: Color(0xFF44283E),
                             fontSize: 14,
@@ -450,22 +316,80 @@ class _ReportCheckoutState extends State<ReportCheckout> {
                 runSpacing: 8,
                 children: [
                   OutlinedButton(
-                    onPressed: widget.busy ? null : widget.onBack,
-                    child: Text(c.t('jy', 'checkout.back')),
-                  ),
-                  OutlinedButton(
-                    onPressed: widget.busy ? null : widget.onErase,
+                    onPressed: busy ? null : onErase,
                     child: Text(c.t('jy', 'erase')),
                   ),
                 ],
               ),
-              errorMessage(widget.error),
+              errorMessage(error),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+class _ReportLineQr extends StatefulWidget {
+  const _ReportLineQr({required this.label, required this.onShown, super.key});
+
+  final String label;
+  final VoidCallback onShown;
+
+  @override
+  State<_ReportLineQr> createState() => _ReportLineQrState();
+}
+
+class _ReportLineQrState extends State<_ReportLineQr> {
+  ScrollPosition? _position;
+  bool _loaded = false, _shown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = Scrollable.of(context).position;
+    if (position == _position) return;
+    _position?.removeListener(_checkAfterFrame);
+    _position = position..addListener(_checkAfterFrame);
+  }
+
+  @override
+  void dispose() {
+    _position?.removeListener(_checkAfterFrame);
+    super.dispose();
+  }
+
+  void _checkAfterFrame() {
+    if (!_loaded || _shown) return;
+    // The report builds its full contents, including parts below the fold.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _shown || ModalRoute.isCurrentOf(context) != true) return;
+      final image = context.findRenderObject();
+      if (image == null) return;
+      final viewport = RenderAbstractViewport.maybeOf(image);
+      if (viewport == null) return;
+      final bounds = MatrixUtils.transformRect(
+        image.getTransformTo(viewport),
+        image.paintBounds,
+      );
+      if (!viewport.paintBounds.overlaps(bounds)) return;
+      _shown = true;
+      widget.onShown();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    'assets/images/line-contact-qr-956ed148.jpg',
+    width: 232,
+    fit: BoxFit.contain,
+    semanticLabel: widget.label,
+    frameBuilder: (context, child, frame, _) {
+      _loaded = frame != null;
+      _checkAfterFrame();
+      return child;
+    },
+  );
 }
 
 const _paymentOptions = {

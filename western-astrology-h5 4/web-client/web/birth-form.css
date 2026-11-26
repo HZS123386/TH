@@ -1,0 +1,73 @@
+#fate-flutter { position:fixed; inset:0; }
+html[data-birth-visible] #fate-flutter { visibility:hidden; pointer-events:none; }
+html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden] { display:none !important; }
+#fate-birth {
+  position:fixed; inset:0; overflow:auto; overscroll-behavior:contain; box-sizing:border-box;
+  font:15px/1.5 system-ui,sans-serif; color:#f6ecdf; background:#100b1b; color-scheme:dark;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+#fate-birth * { box-sizing:border-box; }
+#fate-birth .birth-header { max-width:900px; height:58px; margin:auto; padding:0 21px;
+  display:flex; align-items:center; justify-content:space-between; background:#110b1f; }
+#birth-language { max-width:55%; border:0; color:#eac788; background:#110b1f; font:inherit; }
+.birth-portrait { position:relative; overflow:hidden; margin:auto; width:min(100%,560px);
+  height:clamp(276px,78vw,420px); text-align:center; }
+.birth-portrait>img { position:absolute; top:-11px; left:0; width:100%; height:auto; }
+.birth-portrait:after { content:""; position:absolute; inset:42% 0 0; background:linear-gradient(transparent,#100b1b); }
+.birth-name,.birth-caption { position:absolute; z-index:1; color:#ffdb94; }
+.birth-name { left:68%; width:28%; top:23%; line-height:1.25; }
+.birth-name small { display:block; }
+.birth-caption { inset:auto 4% 7px; }
+.birth-caption h1 { font-size:clamp(17px,4.4vw,22px); margin:0; }
+.birth-caption p,.birth-hint,.birth-consent,#fate-birth footer { font-size:12px; color:#d0bdd7; }
+.birth-caption p { white-space:pre-line; margin:4px 0; }
+#birth-form { max-width:836px; margin:0 auto; padding:20px; width:calc(100% - 32px); border-radius:20px;
+  border:1px solid #796143; background:linear-gradient(145deg,#32203f,#171023 70%,#211330); }
+#birth-form h2,.birth-themes h3 { color:#f1cb83; font-size:18px; text-align:center; margin:0; }
+.birth-hint,.birth-consent { text-align:center; margin:6px 0 14px; }
+#birth-form label { display:flex; align-items:center; justify-content:space-between; margin:12px 0 5px; font-size:13px; }
+#birth-form label small,.birth-check { color:#d0bdd7; }
+#birth-form input:not([type=checkbox]),#birth-question {
+  display:block; width:100%; min-width:0; height:46px; padding:8px 10px; border:1px solid #746179;
+  border-radius:9px; background:#171023; color:#fff6e8; font:inherit; }
+#birth-form input:disabled { opacity:.55; }
+#birth-form :focus-visible,#fate-birth select:focus-visible { outline:2px solid #efc886; outline-offset:1px; }
+.birth-row { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+.birth-check { gap:5px; }
+.birth-check input { accent-color:#edc178; }
+.birth-location { position:relative; }
+#birth-options { position:absolute; z-index:2; top:100%; margin-top:3px; width:100%; overflow:auto;
+  max-height:min(185px,30dvh); border:1px solid #816a82; border-radius:9px; background:#20162d; }
+#birth-options.open-above { top:auto; bottom:100%; margin:0 0 3px; }
+#birth-options button,#birth-options p { display:block; width:100%; margin:0; padding:9px 12px; border:0;
+  color:inherit; background:transparent; font:inherit; text-align:start; }
+#birth-options button:focus,#birth-options button:hover { background:#3a2a47; }
+#birth-options small { display:block; color:#ccb9d0; }
+#birth-custom { margin-top:8px; }
+#birth-message { color:#ffd7b3; text-align:center; }
+#birth-message:empty { display:none; }
+#birth-submit,#birth-retry { width:100%; min-height:46px; padding:8px; border:0; border-radius:12px;
+  background:linear-gradient(100deg,#d9a45d,#ffe2a4,#dea65d); color:#28172c; font:600 16px/1.4 system-ui,sans-serif; cursor:pointer; }
+#birth-submit:disabled { opacity:.7; }
+.birth-consent { margin:18px 0 7px; }
+.birth-themes { margin:22px auto 0; max-width:580px; padding:12px; border:1px solid #ad8958; border-radius:12px; }
+#birth-boards { display:grid; gap:8px; margin-top:8px; }
+.birth-board { display:flex; align-items:center; gap:9px; background:#39244b; padding:8px; border-radius:8px; }
+.birth-board:nth-child(2) { flex-direction:row-reverse; }
+.birth-art { width:49%; aspect-ratio:517/389; border-radius:6px; background-image:url(assets/assets/images/theme-thai-artwork.jpg);
+  background-size:254.35% 307.71%; background-position:15.16% 24.26%; }
+.birth-board:nth-child(2) .birth-art { aspect-ratio:517/443; background-size:254.35% 270.2%; background-position:82.21% 85.41%; }
+#birth-boards ul { flex:1; padding:0; margin:0; list-style:none; }
+#birth-boards li { margin:5px 0; padding:5px; background:#3b2a45; border-radius:12px; font-size:12px; text-align:center; }
+#fate-birth footer { text-align:center; padding:10px 17px 28px; }
+#fate-birth footer a { color:#e0c58e; margin:0 8px; }
+#fate-birth[data-generating] > :not(#birth-generation) { display:none; }
+#birth-generation { min-height:100%; padding:24px; display:grid; align-content:center; justify-items:center;
+  gap:18px; text-align:center; background:radial-gradient(ellipse at 50% 22%,#392353,#100b1b 70%); }
+#birth-generation h1 { color:#ffedcc; font-size:clamp(22px,5vw,28px); margin:0; }
+#birth-generation p { margin:0; color:#d0bdd7; }
+#birth-generation::after { content:""; width:min(70vw,280px); aspect-ratio:16/9;
+  background:url(assets/assets/images/report-loading-poster.webp) center/contain no-repeat;
+  mask-image:radial-gradient(ellipse,#000 40%,transparent 72%); }
+#birth-generation-retry { min-height:44px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
+  background:transparent; color:#f4d399; font:inherit; cursor:pointer; }

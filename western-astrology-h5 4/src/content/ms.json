@@ -1,14 +1,13 @@
 {
   "jy": {
-    "lineContact": {
-      "action": "Tambah kami di LINE untuk menerima laporan",
-      "title": "Tambah rakan di LINE",
-      "scan": "Imbas kod QR atau buka LINE, kemudian hantar kod tuntutan kepada pasukan sokongan.",
-      "claimNumber": "Kod tuntutan laporan",
-      "claimHint": "Hantar kod ini di LINE untuk menerima laporan penuh.",
-      "copyReportId": "Salin kod tuntutan",
-      "open": "Buka LINE"
+    "portrait": {
+      "name": "Ajarn Yada",
+      "role": "Ahli astrologi hubungan",
+      "headline": "Siapa yang mempengaruhi hubungan anda?",
+      "note": "Lihat orang dan tingkah laku yang mempengaruhi hubungan melalui pengalaman anda sendiri."
     },
+    "submitConsent": "Dengan menjana laporan, anda bersetuju maklumat kelahiran digunakan untuk mengira dan mentafsir carta mengikut dasar privasi.",
+    "lineContact": {"action": "Hubungi kami di LINE", "title": "Dapatkan laporan melalui LINE", "scan": "Imbas kod QR atau buka LINE dan hantarkan kod tuntutan anda kepada kami.", "claimNumber": "Kod tuntutan", "claimHint": "Simpan kod ini untuk meminta laporan melalui LINE.", "copyReportId": "Salin kod tuntutan", "open": "Buka LINE"},
     "appLogin": {"title": "Kod log masuk", "copy": "Salin", "copied": "Disalin", "get": "Dapatkan kod", "refresh": "Dapatkan kod baharu", "loading": "Sedang mendapatkan kod…", "failed": "Kod log masuk belum dapat diperoleh.", "expired": "Kod ini telah tamat tempoh."},
     "language": "Bahasa",
     "dateParts": {
@@ -25,8 +24,6 @@
     "house": "Rumah {number}",
     "home": "Laman utama FATE",
     "title": "FATE · Bacaan astrologi peribadi",
-    "welcome": {"first": "Selamat datang", "returning": "Selamat kembali", "firstNote": "Terokai peta bintang anda", "returningNote": "Gembira bertemu anda lagi", "start": "Mula meneroka", "swipe": "Leret ke atas untuk bermula", "headline": "Siapa yang mempengaruhi hubungan anda?", "note": "Lihat orang dan tingkah laku yang mempengaruhi hubungan melalui pengalaman anda sendiri.", "name": "Ajarn Yada", "role": "Ahli astrologi hubungan"},
-    "persona": "Ahli astrologi AI peribadi anda",
       "personal": {"relationshipUnlock": "Buka laporan penuh untuk panduan hubungan peribadi", "relationshipTitle": "Halangan dalam hubungan", "relationshipAction": "Satu langkah untuk dicuba", "title": "Bacaan astrologi Barat peribadi anda", "freeTitle": "Bacaan percuma", "freeHint": "Kenali personaliti semula jadi dan cara anda mengekspresikan diri.", "paidHint": "Bakat peribadi dan tiga bulan penting", "talent": "Bakat peribadi", "node-1": "Peluang pertama", "node-2": "Peluang kedua", "node-3": "Peluang ketiga", "benefit": "Faktor membantu", "caution": "Peringatan ringan", "action": "Langkah kecil", "timeUnknown": "Tambahkan waktu lahir yang tepat untuk membaca bacaan peribadi penuh.", "unavailable": "Maklumat bulanan belum lengkap, jadi bacaan penuh belum tersedia.", "nodesTitle": "Tiga bulan penting", "keywords": "Kata kunci carta anda", "traits": "Ciri peribadi", "opportunity": "Peluang terdekat"},
     "formTitle": "Kenali corak diri melalui carta kelahiran",
     "formCaption": "Mulakan dengan bacaan percuma, kemudian terokai bakat anda dan tiga bulan tertentu.",

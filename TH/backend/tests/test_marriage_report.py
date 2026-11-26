@@ -3,6 +3,7 @@ import asyncio
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 import json
 
@@ -11,8 +12,10 @@ import httpx
 import pytest
 
 from backend.app import marriage_report, thai
+from backend.app.accounts import password_hash
 from backend.app.bazi_reports import InvalidBaziReport, preview_review_deadline_context
 from backend.app.config import ProviderConfig
+from backend.app.landing_features import owner_for
 from backend.app.life_report_content import LifeWriter
 from backend.app.life_reports import LifeInput, LifeReports
 from backend.app.main import create_app
@@ -234,7 +237,7 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         assert ("field_sources" in prompt) == is_free
         assert ("rhetorical questions" in prompt) == is_free
         assert ("揪出搅局的人" in prompt) == is_free
-        assert ("你习惯……" if is_free else "值得认真对待的人，会……") in prompt
+        assert ("对方每次都说想见你" if is_free else "值得认真对待的人，会……") in prompt
         contract = self.response_format(bundle)["json_schema"]["schema"]
         paragraphs = FREE_TEXT if is_free else FULL_TEXT
         draft = {"language": "zh", "reading": bundle["reading"]}
@@ -255,20 +258,23 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
             model_input = self.model_input(bundle)
             assert model_input["field_sources"]["needs"] == ("N0" if known else "P_sun")
             assert model_input["field_sources"]["current"] == bundle["allowed_evidence"]["current"]
-            assert model_input["current_states"] == (list(marriage_report.STATES[:3]) if known else ["observe"])
-            current_schema = contract["properties"]["current"]["properties"]
+            current_properties = contract["properties"]["current"]["properties"]
             if known:
-                assert current_schema["state"]["enum"] == list(marriage_report.STATES[:3])
+                assert current_properties["state"]["enum"] == model_input["current_states"] == list(marriage_report.STATES[:3])
                 draft["current"]["state"] = "ready_to_assess"
                 draft["trap"]["evidence_ids"] = ["P_venus"]
-            else:
-                assert "state" not in current_schema
+                wrong_state = deepcopy(draft)
+                wrong_state["current"]["state"] = "observe"
+                with pytest.raises(InvalidBaziReport, match=r"current\.state") as error:
+                    self.validate(json.dumps(wrong_state, ensure_ascii=False), bundle)
+                assert error.value.repair_fields == {"current": ["current"]}
                 draft["field_sources"] = model_input["field_sources"]
-            illegal_state = deepcopy(draft)
-            illegal_state["current"]["state"] = "observe" if known else "ready_to_assess"
-            with pytest.raises(InvalidBaziReport, match="birth-time precision") as error:
-                self.validate(json.dumps(illegal_state, ensure_ascii=False), bundle)
-            assert error.value.repair_fields == {"current": ["current"]}
+            else:
+                assert "current_states" not in model_input
+                assert "state" not in current_properties
+                unexpected = {**draft, "unexpected_key": True}
+                with pytest.raises(InvalidBaziReport, match="extra_field"):
+                    self.validate(json.dumps(unexpected, ensure_ascii=False), bundle)
         invalid = deepcopy(draft)
         invalid["needs" if is_free else "period_two"]["evidence_ids"] = ["invented"]
         with pytest.raises(InvalidBaziReport, match="supplied evidence"):
@@ -281,6 +287,8 @@ def test_marriage_report_uses_calculated_evidence_and_unlocks_only_full_edition(
         story = self.validate(json.dumps(draft, ensure_ascii=False), bundle)
         if is_free:
             assert story["needs"]["evidence_ids"] == (["N0"] if known else ["P_sun"])
+            assert story["current"]["state"] == ("ready_to_assess" if known else "observe")
+            assert "field_sources" not in story
         return story
 
     async def unexpected_western(*args, **kwargs):
@@ -426,13 +434,10 @@ def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch, known
                 "reading": "marriage-preview",
                 **{key: {"text": value} for key, value in FREE_TEXT.items()},
             }
-            draft["field_sources"] = context["field_sources"]
-            for name, identifiers in context["field_sources"].items():
-                if isinstance(identifiers, list):
-                    draft[name]["evidence_ids"] = identifiers[:1]
-            if known:
-                draft["current"]["state"] = "observe"
-            else:
+            for key, sources in context["field_sources"].items():
+                if isinstance(sources, list):
+                    draft[key]["evidence_ids"] = sources[:1]
+            if not known:
                 draft["needs"]["text"] = "你的星盘显示你需要对方说一句能兑现的承诺。"
         else:
             assert requests == ["life_marriage_preview", "life_marriage_preview_repair"]
@@ -463,6 +468,81 @@ def test_preview_retries_only_one_invalid_point(postgres_url, monkeypatch, known
         assert requests == ["life_marriage_preview", "life_marriage_preview_repair"]
         assert report["marriage"]["preview"][1]["paragraphs"][0].endswith(FREE_TEXT["needs"])
         assert report["marriage"]["full"] is None
+
+
+def test_admin_retries_stored_failed_marriage_preview(postgres_url, monkeypatch):
+    calls = []
+    client_class = httpx.AsyncClient
+
+    def respond(request):
+        assert str(request.url) == "https://preview-model.example/v1/chat/completions"
+        payload = json.loads(request.content)
+        context = json.loads(payload["messages"][1]["content"])
+        calls.append(payload["response_format"]["json_schema"]["name"])
+        if correction := context.get("correction"):
+            assert correction["fields"] == {"current": ["current"]}
+            assert "state" not in payload["response_format"]["json_schema"]["schema"]["properties"]["current"]["properties"]
+            draft = {"current": {"text": FREE_TEXT["current"], "evidence_ids": context["field_sources"]["current"][:1]}}
+        else:
+            draft = {"language": "zh", "reading": "marriage-preview",
+                     **{key: {"text": value} for key, value in FREE_TEXT.items()}}
+            for key, sources in context["field_sources"].items():
+                if isinstance(sources, list):
+                    draft[key]["evidence_ids"] = sources[:1]
+            # Echo the input evidence map and supply a verdict the unknown-time schema forbids.
+            draft["field_sources"] = context["field_sources"]
+            draft["current"]["state"] = "reset"
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": json.dumps(draft, ensure_ascii=False)}, "finish_reason": "stop"}],
+        })
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: client_class(transport=httpx.MockTransport(respond), **kwargs))
+    password = "synthetic-preview-admin"
+    config = replace(settings(postgres_url), fortune_provider="openai",
+                     providers={"openai": ProviderConfig("test-key", "https://preview-model.example/v1", "test-model")},
+                     admin_username="preview-test", admin_password_hash=password_hash(password))
+    app = create_app(config)
+    report_id = "previously-failed-marriage"
+    snapshot = LifeInput.model_validate({
+        "report_kind": "marriage", "profile": {**PROFILE, "birth_time": None}, "year": 2026,
+    }).model_dump(mode="json")
+    created = datetime(2026, 11, 21, 12, tzinfo=ZoneInfo("Asia/Bangkok"))
+    chart = thai.marriage_preview_chart(snapshot["profile"], created.date())
+    with app.state.store.connect() as db:
+        db.execute("""
+            INSERT INTO life_reports(id,owner,fingerprint,input,chart,created,preview_state)
+            VALUES(%s,%s,%s,%s,%s,%s,'unavailable')
+        """, (report_id, owner_for(HEADERS["X-Report-Key"]), "historical-marriage-fixture",
+              json.dumps(snapshot), json.dumps(chart), created.timestamp()))
+
+    with TestClient(app) as client:
+        login = client.post("/api/admin/login", headers={"X-Admin-Request": "1"},
+                            json={"username": "preview-test", "password": password})
+        assert login.status_code == 200, login.text
+        retry = client.post(f"/api/admin/reports/{report_id}/actions",
+                            headers={"X-CSRF-Token": login.json()["csrf"]},
+                            json={"request_id": str(uuid4()), "action": "retry_report", "note": "隔离重试验证"})
+        assert retry.status_code == 200, retry.text
+
+        async def wait_for_preview():
+            async with asyncio.timeout(8):
+                while True:
+                    with app.state.store.connect() as db:
+                        row = db.execute("SELECT preview_state,preview,unlocked FROM life_reports WHERE id=%s",
+                                         (report_id,)).fetchone()
+                    if row["preview_state"] not in ("queued", "generating"):
+                        return row
+                    await asyncio.sleep(0.05)
+
+        row = client.portal.call(wait_for_preview)
+        assert row["preview_state"] == "ready"
+        assert not row["unlocked"]
+        story = json.loads(row["preview"])["story"]
+        assert story["current"]["state"] == "observe"
+        assert "field_sources" not in story
+        assert calls == ["life_marriage_preview", "life_marriage_preview_repair"]
+        result = client.get(f"/api/life-reports/{report_id}", headers=HEADERS).json()
+        assert result["id"] == report_id and result["marriage"]["preview"]
 
 
 @pytest.mark.parametrize("mixed", [False, True])

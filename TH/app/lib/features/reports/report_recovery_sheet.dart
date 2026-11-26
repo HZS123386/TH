@@ -24,15 +24,21 @@ class _ReportRecoverySheet extends StatefulWidget {
   State<_ReportRecoverySheet> createState() => _ReportRecoverySheetState();
 }
 
+enum _ReportLookupError { empty, notFound }
+
 class _ReportRecoverySheetState extends State<_ReportRecoverySheet> {
   final _code = TextEditingController();
-  bool _missing = false;
+  _ReportLookupError? _lookupError;
 
   void _select(ReadingGuide guide) =>
       Navigator.pop(context, '/reading/${guide.name}?sample=1');
 
   void _find() {
     final code = _code.text.trim();
+    if (code.isEmpty) {
+      setState(() => _lookupError = _ReportLookupError.empty);
+      return;
+    }
     final uri = Uri.tryParse(code);
     final input = uri?.hasScheme == true
         ? (Uri.tryParse(uri!.fragment)?.pathSegments.lastOrNull ??
@@ -43,7 +49,7 @@ class _ReportRecoverySheetState extends State<_ReportRecoverySheet> {
         .where((guide) => guide.sampleCode == input.toUpperCase())
         .firstOrNull;
     if (match == null) {
-      setState(() => _missing = true);
+      setState(() => _lookupError = _ReportLookupError.notFound);
     } else {
       _select(match);
     }
@@ -52,6 +58,11 @@ class _ReportRecoverySheetState extends State<_ReportRecoverySheet> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final errorMessage = switch (_lookupError) {
+      _ReportLookupError.empty => s.reportCodeRequired,
+      _ReportLookupError.notFound => s.reportCodeMissing,
+      null => null,
+    };
     return SafeArea(
       top: false,
       child: Padding(
@@ -67,7 +78,7 @@ class _ReportRecoverySheetState extends State<_ReportRecoverySheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      s.recoverReports,
+                      s.recoverReportAction,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
@@ -79,6 +90,60 @@ class _ReportRecoverySheetState extends State<_ReportRecoverySheet> {
                 ],
               ),
               const SizedBox(height: 12),
+              Text(s.reportLookup, style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _code,
+                      maxLength: 240,
+                      textInputAction: TextInputAction.search,
+                      autocorrect: false,
+                      onChanged: (_) {
+                        if (_lookupError != null) {
+                          setState(() => _lookupError = null);
+                        }
+                      },
+                      onSubmitted: (_) => _find(),
+                      decoration: const InputDecoration(
+                        hintText: 'FATE-THAI-001',
+                        counterText: '',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(55, 46),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    onPressed: _find,
+                    child: Text(s.findReport),
+                  ),
+                ],
+              ),
+              if (errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 7),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      errorMessage,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              Text(
+                s.reportLookupDemo,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
               FateCard(
                 padding: EdgeInsets.zero,
                 child: ListTile(
@@ -130,57 +195,6 @@ class _ReportRecoverySheetState extends State<_ReportRecoverySheet> {
                         size: 18,
                       ),
                       onTap: () => _select(guide),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 6),
-              Text(
-                s.reportLookupDemo,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 14),
-              Text(s.reportLookup, style: const TextStyle(fontSize: 12)),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _code,
-                      maxLength: 240,
-                      textInputAction: TextInputAction.search,
-                      autocorrect: false,
-                      onChanged: (_) =>
-                          _missing ? setState(() => _missing = false) : null,
-                      onSubmitted: (_) => _find(),
-                      decoration: const InputDecoration(
-                        hintText: 'FATE-THAI-001',
-                        counterText: '',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(55, 46),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                    ),
-                    onPressed: _find,
-                    child: Text(s.findReport),
-                  ),
-                ],
-              ),
-              if (_missing)
-                Padding(
-                  padding: const EdgeInsets.only(top: 7),
-                  child: Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      s.reportCodeMissing,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        fontSize: 12,
-                      ),
                     ),
                   ),
                 ),

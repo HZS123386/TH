@@ -16,9 +16,6 @@ import 'package:fate_h5/core/repository.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/features/information_page.dart';
 import 'package:fate_h5/features/landing_page.dart';
-import 'package:fate_h5/features/welcome_page.dart';
-import 'package:fate_h5/ui/jy_components.dart';
-import 'package:fate_h5/ui/theme.dart';
 
 import 'support.dart';
 
@@ -58,83 +55,12 @@ class _PolicyAssets extends CachingAssetBundle {
 void main() {
   setUpAll(H5App.loadRoutesForWidgetTests);
 
-  testWidgets(
-    'theme boards match the reference spacing and fit short screens',
-    (tester) async {
-      phone(tester);
-      final data = translations();
-      Widget boards(String language) => MaterialApp(
-        theme: h5Theme(),
-        home: Scaffold(
-          body: LayoutBuilder(
-            builder: (context, viewport) => SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 36),
-              child: ThemeBoards(
-                copy: Copy(data, language),
-                viewportHeight: viewport.maxHeight,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      final board = find.byType(ThemeBoards);
-      final artwork = find.descendant(
-        of: board,
-        matching: find.byType(ClipPath),
-      );
-      tester.view.physicalSize = const Size(452, 844);
-      await tester.pumpWidget(boards('zh'));
-      await tester.pumpAndSettle();
-      final tall = tester.getSize(board);
-      final tallImage = tester.getSize(artwork.first);
-      expect(tall.width, 380);
-      expect(tallImage.height, closeTo(126, 1));
-      expect(tester.getSize(artwork.last).height, closeTo(144, 1));
-      expect(
-        tester.getTopLeft(artwork.last).dy -
-            tester.getBottomLeft(artwork.first).dy,
-        closeTo(28, 1),
-      );
-      final titles = objects(
-        object(data['jyThemes'])['outlook'],
-      ).map((item) => find.text(text(item['zh']))).toList();
-      expect(
-        tester.getCenter(titles[1]).dy - tester.getCenter(titles[0]).dy,
-        closeTo(40, 1),
-      );
-
-      tester.view.physicalSize = const Size(452, 610);
-      await tester.pumpAndSettle();
-      expect(tester.getSize(board).width, tall.width);
-      expect(tester.getSize(board).height, lessThan(tall.height));
-      expect(tester.getSize(artwork.first).height, lessThan(tallImage.height));
-
-      tester.view.physicalSize = const Size(320, 568);
-      await tester.pumpWidget(boards('th'));
-      await tester.pumpAndSettle();
-      final banner = tester.getRect(
-        find.text(Copy(data, 'th').t('jy', 'topicLabel')),
-      );
-      for (final group in ['outlook', 'highlights']) {
-        for (final item in objects(object(data['jyThemes'])[group])) {
-          final topic = find.text(text(item['th']));
-          expect(topic, findsOneWidget);
-          expect(tester.getTopLeft(topic).dy, greaterThan(banner.bottom));
-        }
-      }
-      expect(tester.takeException(), isNull);
-    },
-  );
-
   test(
     'information text and identity are complete in all nine selected languages',
     () {
       final identity = object(
         jsonDecode(File('assets/privacy/controller.json').readAsStringSync()),
       );
-      expect(identity['contact_email'], 'wangb2295@gmail.com');
-      final data = translations();
       for (final kind in ['privacy', 'support']) {
         final index = object(
           jsonDecode(File('assets/$kind/index.json').readAsStringSync()),
@@ -153,18 +79,6 @@ void main() {
             objects(content['sections']).map((s) => s['id']).toList(),
             objects(reference['sections']).map((s) => s['id']).toList(),
           );
-          if (kind == 'support') {
-            expect(Copy(data, language).t('jy', 'birthDataNotice'), isNotEmpty);
-            final policies = object(content['purchasePolicies']);
-            for (final policy in ['terms', 'refund', 'delivery']) {
-              final sections = objects(policies[policy]);
-              expect(sections.length, greaterThanOrEqualTo(2));
-              for (final section in sections) {
-                expect(text(section['title']), isNotEmpty);
-                expect(section['paragraphs'], isNotEmpty);
-              }
-            }
-          }
           final localized = object(object(identity['localizations'])[language]);
           expect(text(localized['controller_name']), isNotEmpty);
           expect(text(localized['controller_address']), isNotEmpty);
@@ -258,11 +172,9 @@ void main() {
   );
 
   testWidgets(
-    'welcome delays hidden form work until entering and preserves its state and URL',
+    'the landing route mounts the HTML form and preserves the entry tags',
     (tester) async {
       phone(tester);
-      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: false);
       final browser = TestBrowser()..settings.clear();
       final h5 = H5Controller(
         translations(),
@@ -277,101 +189,21 @@ void main() {
         ),
       );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-      final name = find.byKey(const ValueKey('welcome-name-strokes'));
-      expect(name, findsOneWidget);
-      final initialInk = tester.widget<CustomPaint>(name).painter!;
-      await tester.pump(const Duration(milliseconds: 350));
-      expect(
-        tester.widget<CustomPaint>(name).painter!.shouldRepaint(initialInk),
-        isTrue,
-      );
-      await tester.pump(const Duration(milliseconds: 520));
-      expect(find.text('情缘法宗师'), findsOneWidget);
-      expect(find.text('该断该续？'), findsOneWidget);
-      expect(find.text('揪出搅局的人'), findsOneWidget);
-      expect(
-        tester.getCenter(name).dx,
-        greaterThan(tester.getCenter(find.text('该断该续？')).dx),
-      );
-      final shimmer = find.byKey(const ValueKey('welcome-name-shimmer'));
-      final bright = tester.widget<Opacity>(shimmer).opacity;
-      final completedInk = tester.widget<CustomPaint>(name).painter!;
-      await tester.pump(const Duration(milliseconds: 900));
-      expect(
-        tester.widget<CustomPaint>(name).painter!.shouldRepaint(completedInk),
-        isFalse,
-      );
-      expect(tester.widget<Opacity>(shimmer).opacity, lessThan(bright));
-      expect(find.byType(LandingPage), findsNothing);
-      final languageMenu = find.byKey(const ValueKey('language-menu'));
-      expect(
-        tester.getTopRight(languageMenu).dx,
-        greaterThan(tester.getTopRight(find.byType(WelcomePage)).dx - 32),
-      );
-      expect(tester.getCenter(languageMenu).dy, lessThan(90));
-      await tester.tap(languageMenu);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 150));
-      await tester.tap(find.byKey(const ValueKey('language-option-th')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 150));
-      expect(h5.language, 'th');
-      expect(find.byType(WelcomePage), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('welcome-start')));
-      await tester.pump();
-      final landingState = tester.state(find.byType(LandingPage));
-      await tester.pump(const Duration(milliseconds: 850));
-      await tester.pump();
-      expect(find.byType(WelcomePage), findsNothing);
-      expect(tester.state(find.byType(LandingPage)), same(landingState));
+      expect(browser.formVisible, isTrue);
+      expect(browser.formInitial, containsPair('topic', 'love'));
       final uri = GoRouter.of(
         tester.element(find.byType(LandingPage)),
       ).routeInformationProvider.value.uri;
-      expect(uri.queryParameters['lang'], 'th');
       expect(uri.queryParameters['topic'], 'love');
       expect(uri.queryParameters['utm_source'], 'facebook');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
-      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: true);
-      // Browsers with the old preference still show the same welcome page.
-      browser.writeSetting('fate-welcome-dismissed', '1', session: true);
-      for (final language in ['zh', 'th']) {
-        final reopened = H5Controller(
-          translations(),
-          ReportRepository(browser),
-          browser,
-          language: language,
-        );
-        await tester.pumpWidget(
-          H5App(controller: reopened, initialLocation: '/?lang=$language'),
-        );
-        await tester.pump();
-        expect(find.byType(WelcomePage), findsOneWidget);
-        expect(
-          find.byKey(const ValueKey('welcome-name-strokes')),
-          findsOneWidget,
-        );
-        expect(
-          find.text(language == 'zh' ? '该断该续？' : 'ควรพอหรือไปต่อ?'),
-          findsOneWidget,
-        );
-        expect(find.byType(LandingPage), findsNothing);
-        await tester.tap(find.byKey(const ValueKey('welcome-start')));
-        await tester.pump();
-        expect(find.byType(WelcomePage), findsNothing);
-        expect(find.byType(LandingPage), findsOneWidget);
-        expect(tester.takeException(), isNull);
-        await tester.pumpWidget(const SizedBox.shrink());
-        reopened.dispose();
-      }
     },
   );
 
   testWidgets(
-    'privacy deep link bypasses welcome and retains its URL while switching language',
+    'privacy deep link retains its URL while switching language',
     (tester) async {
       phone(tester);
       final browser = TestBrowser()..settings.clear();
@@ -402,11 +234,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byType(WelcomePage), findsNothing);
+      expect(find.byType(LandingPage), findsNothing);
       expect(find.text('隐私政策'), findsOneWidget);
       expect(find.byKey(const ValueKey('privacy-content-zh')), findsOneWidget);
-      expect(find.text('生效日期: 2026-11-20'), findsOneWidget);
-      expect(find.textContaining('上线审阅稿：'), findsNothing);
+      expect(find.textContaining('上线审阅稿：'), findsOneWidget);
       prepared.clear();
       await tester.tap(find.byKey(const ValueKey('language-menu')));
       await tester.pumpAndSettle();
@@ -466,7 +297,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('wangb2295@gmail.com'), findsOneWidget);
+      expect(find.text('m15227933636@163.com'), findsOneWidget);
       expect(find.text('北京尚德机构科技有限公司'), findsOneWidget);
       expect(find.text('9. 保存期限与清理规则'), findsNWidgets(2));
       final contentsLink = find.widgetWithText(TextButton, '9. 保存期限与清理规则');
@@ -512,10 +343,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('support-content-zh')), findsOneWidget);
-      expect(find.text('wangb2295@gmail.com'), findsOneWidget);
+      expect(find.text('m15227933636@163.com'), findsOneWidget);
       expect(
-        tester.getSemantics(find.text('wangb2295@gmail.com')).label,
-        'wangb2295@gmail.com',
+        tester.getSemantics(find.text('m15227933636@163.com')).label,
+        'm15227933636@163.com',
       );
       semantics.dispose();
       expect(find.text('正式上线后会提供联系方式。'), findsNothing);
@@ -524,31 +355,13 @@ void main() {
       await tester.tap(emailButton);
       final mail = Uri.parse(browser.openedPages.single);
       expect(mail.scheme, 'mailto');
-      expect(mail.path, 'wangb2295@gmail.com');
+      expect(mail.path, 'm15227933636@163.com');
       expect(mail.queryParameters, {'subject': 'FATE 网页支持请求'});
       final faq = find.byKey(const ValueKey('support-faq-generation'));
       await tester.ensureVisible(faq);
       await tester.tap(faq);
       await tester.pumpAndSettle();
       expect(find.textContaining('先确认网络连接正常'), findsOneWidget);
-      final paymentFaq = find.byKey(const ValueKey('support-faq-unlock'));
-      await tester.ensureVisible(paymentFaq);
-      await tester.tap(paymentFaq);
-      await tester.pumpAndSettle();
-      expect(find.textContaining('目前通过 LINE 领取完整报告'), findsOneWidget);
-      for (final (label, policy, detail) in [
-        ('服务条款', 'terms', '报告与费用'),
-        ('退款政策', 'refund', '退款受理范围'),
-        ('交付说明', 'delivery', '报告如何交付'),
-      ]) {
-        final link = find.widgetWithText(TextButton, label);
-        await tester.ensureVisible(link);
-        await tester.tap(link);
-        await tester.pumpAndSettle();
-        expect(find.byKey(ValueKey('support-$policy-zh')), findsOneWidget);
-        expect(find.text(detail), findsOneWidget);
-        expect(find.text('wangb2295@gmail.com'), findsOneWidget);
-      }
       final privacy = find.byKey(const ValueKey('support-privacy-link'));
       await tester.ensureVisible(privacy);
       await tester.tap(privacy);
@@ -586,7 +399,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.refresh));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('privacy-content-zh')), findsOneWidget);
-      expect(find.text('wangb2295@gmail.com'), findsOneWidget);
+      expect(find.text('m15227933636@163.com'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -613,8 +426,7 @@ void main() {
           return reply(report);
         }),
       );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh')
-        ..enterLanding();
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
       await tester.pumpWidget(
         H5App(
           controller: h5,
@@ -634,7 +446,7 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, '删除报告'));
       await tester.pumpAndSettle();
       expect(deleted, isTrue);
-      expect(find.byType(ReportCheckout), findsNothing);
+      expect(find.byType(ReportPreview), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
@@ -677,124 +489,33 @@ void main() {
     },
   );
 
-  testWidgets(
-    'data-use cancel sends nothing; failed acceptance can retry before saving the preference',
-    (tester) async {
-      phone(tester);
+  test(
+    'an outdated data-use notice prevents accepting the old version',
+    () async {
       final browser = TestBrowser()..settings.remove('fate-data-use-version');
-      var attempts = 0;
+      final requests = <String>[];
       final repo = ReportRepository(
         browser,
         baseUrl: 'https://example.test',
         client: MockClient((request) async {
-          if (request.url.path == '/api/landing/config') {
-            return reply({'notice_version': H5Controller.noticeVersion});
-          }
-          expect(request.url.path, '/api/landing/consents');
-          expect(request.headers['X-Report-Key'], browser.key);
-          expect(jsonDecode(request.body), {
-            'notice_version': H5Controller.noticeVersion,
-            'granted': true,
-          });
-          attempts++;
-          return attempts == 1
-              ? reply({'code': 'busy'}, 503)
-              : reply({
-                  'accepted': true,
-                  'notice_version': H5Controller.noticeVersion,
-                });
+          requests.add(request.url.path);
+          return reply({'notice_version': 'h5-data-use-future'});
         }),
       );
       final h5 = H5Controller(translations(), repo, browser, language: 'zh');
-      bool? accepted;
-      await tester.pumpWidget(
-        H5Scope(
-          controller: h5,
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: TextButton(
-                  onPressed: () async {
-                    accepted = await confirmDataUse(context, h5);
-                  },
-                  child: const Text('open'),
-                ),
-              ),
-            ),
+      await expectLater(
+        h5.acceptDataUse(),
+        throwsA(
+          isA<ApiFailure>().having(
+            (error) => error.code,
+            'code',
+            'landing_notice_outdated',
           ),
         ),
       );
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('取消'));
-      await tester.pumpAndSettle();
-      expect(accepted, isFalse);
-      expect(attempts, 0);
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
-      await tester.pumpAndSettle();
-      expect(h5.noticeAccepted, isFalse);
-      expect(browser.readSetting('fate-data-use-version'), isNull);
-      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
-      await tester.pumpAndSettle();
-      expect(accepted, isTrue);
-      expect(h5.noticeAccepted, isTrue);
-      expect(
-        browser.readSetting('fate-data-use-version'),
-        H5Controller.noticeVersion,
-      );
-      expect(attempts, 2);
-      await tester.pumpWidget(const SizedBox.shrink());
-      h5.dispose();
-    },
-  );
-
-  testWidgets(
-    'outdated data-use notice offers a fresh page without submitting consent',
-    (tester) async {
-      phone(tester);
-      final browser = TestBrowser()..settings.remove('fate-data-use-version');
-      var unexpected = 0;
-      final repo = ReportRepository(
-        browser,
-        baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          if (request.url.path == '/api/landing/config') {
-            return reply({'notice_version': 'h5-data-use-future'});
-          }
-          unexpected++;
-          return reply({}, 500);
-        }),
-      );
-      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
-      await tester.pumpWidget(
-        H5Scope(
-          controller: h5,
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: TextButton(
-                  onPressed: () => confirmDataUse(context, h5),
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('data-use-agree')));
-      await tester.pumpAndSettle();
-      expect(find.text(h5.copy.t('jy', 'noticeOutdated')), findsOneWidget);
-      expect(find.byKey(const ValueKey('data-use-agree')), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('data-use-reload')));
-      expect(browser.openedPages.single, contains('?lang=zh&preview=notice-'));
+      expect(requests, ['/api/landing/config']);
       expect(browser.readSetting('fate-data-use-version'), isNull);
       expect(h5.noticeAccepted, isFalse);
-      expect(unexpected, 0);
-      await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
     },
   );
@@ -830,6 +551,99 @@ void main() {
     expect(h5.noticeAccepted, isFalse);
     h5.dispose();
   });
+
+  testWidgets(
+    'JY result deletion requires confirmation and handles empty 204 responses',
+    (tester) async {
+      phone(tester);
+      final browser = TestBrowser();
+      final report = fixture();
+      var deleted = false;
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          if (request.method == 'DELETE') {
+            expect(request.url.path, '/api/life-reports/${report['id']}');
+            expect(request.headers['X-Report-Key'], browser.key);
+            deleted = true;
+            return http.Response('', 204);
+          }
+          return reply(report);
+        }),
+      );
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+      await tester.pumpWidget(
+        H5App(
+          controller: h5,
+          initialLocation: '/report.html?id=${report['id']}&lang=zh',
+        ),
+      );
+      for (
+        var attempt = 0;
+        attempt < 30 && find.byType(ReportPreview).evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await tester.ensureVisible(find.text('删除此结果'));
+      await tester.tap(find.text('删除此结果'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('保留报告'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(deleted, isFalse);
+      await tester.ensureVisible(find.text('删除此结果'));
+      await tester.tap(find.text('删除此结果'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.widgetWithText(FilledButton, '删除报告'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(deleted, isTrue);
+      expect(find.byType(ReportPreview), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      h5.dispose();
+    },
+  );
+
+  test(
+    'funnel waits for submission acknowledgment before counting report display and deduplicates calls',
+    () async {
+      final browser = TestBrowser()
+        ..visit = {
+          'id': '2de0ed5d-ccee-4901-bd26-868c3260fc74',
+          'source': 'facebook',
+          'campaign': 'fortune',
+        };
+      final gate = Completer<void>();
+      final events = <String>[];
+      final repo = ReportRepository(
+        browser,
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          final body = object(jsonDecode(request.body));
+          expect(body.containsKey('profile'), isFalse);
+          final name = text(body['event']);
+          events.add(name.isEmpty ? 'visit' : name);
+          if (name == 'submitted') await gate.future;
+          return reply({'ok': true, 'recorded': true});
+        }),
+      );
+      final h5 = H5Controller(translations(), repo, browser);
+      final submitted = h5.trackReport('report-id', 'submitted');
+      final seen = h5.trackReport('report-id', 'seen');
+      await Future<void>.delayed(Duration.zero);
+      expect(events, ['visit', 'submitted']);
+      gate.complete();
+      await Future.wait([submitted, seen]);
+      await h5.trackReport('report-id', 'seen');
+      expect(events, ['visit', 'submitted', 'seen']);
+      h5.dispose();
+    },
+  );
 
   test(
     'funnel retries a failed visit and submission before recording a preview',

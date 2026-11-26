@@ -19,7 +19,7 @@ def owner_for(key):
 
 
 class VisitActivity(Input):
-    page: Literal["welcome", "birth_form", "consent", "history", "privacy", "support",
+    page: Literal["welcome", "birth_form", "consent", "history", "privacy", "support", "unobserved",
                   "generating_preview", "generating_full", "report_loading", "preview_report", "full_report", "payment"]
     action: Literal["view", "enter_form", "edit_form", "invalid_form", "consent_accept", "consent_cancel",
                     "generate", "generation_failed", "retry_generation", "cancel_generation", "report_ready",
@@ -28,7 +28,11 @@ class VisitActivity(Input):
                     "payment_result", "close_history", "leave_page", "request_failed", "select_birth_date",
                     "select_birth_time", "select_birthplace", "form_progress_empty", "form_progress_date",
                     "form_progress_time", "form_progress_place", "form_progress_complete",
-                    "open_line_contact", "line_qr_shown"]
+                    "open_line_contact", "line_qr_shown", "click_welcome_start", "click_generate_report", "click_line",
+                    "runtime_boot_html", "runtime_boot_timeout", "runtime_boot_entry", "runtime_boot_engine",
+                    "runtime_boot_app", "runtime_script_load", "runtime_js_type", "runtime_js_reference",
+                    "runtime_js_syntax", "runtime_js_range", "runtime_js_error", "runtime_rejection",
+                    "runtime_flutter_widgets", "runtime_flutter_rendering", "runtime_flutter_framework"]
     state: Literal["visible", "hidden", "pagehide"]
     sequence: int = Field(strict=True, ge=1, le=9007199254740991)
 
@@ -50,6 +54,7 @@ class ActivityEvent(VisitActivity):
     visible_ms: int = Field(strict=True, ge=0, le=30 * 86400 * 1000)
     failure_code: Literal["network", "badResult"] | None = None
     failure_path: Literal["/api/life-reports", "/api/life-reports/{report_id}",
+                          "/api/life-reports/submissions/{submission_id}",
                           "/api/life-reports/{report_id}/unlock", "/api/life-reports/{report_id}/payment",
                           "/api/life-reports/{report_id}/payment/check", "/api/life-reports/{report_id}/payment/simulate",
                           "/api/thai-locations", "/api/landing/config", "/api/landing/consents",

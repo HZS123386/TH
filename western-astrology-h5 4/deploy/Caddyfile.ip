@@ -16,7 +16,10 @@
     redir / /thai-landing/?lang=zh 302
 
     @landing path /thai-landing /thai-landing/*
-    @engineAssets path_regexp engine ^/thai-landing/engine/[a-f0-9]{40}/
+    @engineAssets {
+        path_regexp engine ^/thai-landing/engine/[a-f0-9]{40}/
+        not path /thai-landing/engine/*/skwasm.wasm
+    }
     @unversionedAssets {
         not path /thai-landing/engine/*
     }

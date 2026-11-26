@@ -2,18 +2,21 @@ import 'models.dart';
 import 'repository.dart';
 
 abstract interface class BrowserPort implements DeviceStore {
+  bool get supportsLineApp;
   void openPage(String path, {bool sameTab = false});
   String today(String zone);
   bool get visible;
-  Duration get welcomeAge;
   void setLanguage(String language, String title);
   Future<String> exportDocument(LifeReport report, String format);
   void postPayment(String action, Map<String, String> fields);
   void pageReady(String page);
+  void attachBirthForm(Json initial, Future<String> Function(Json) submit);
+  bool get birthFormSubmitting;
+  void detachBirthForm();
   String? readSetting(String key, {bool session = false});
   void writeSetting(String key, String value, {bool session = false});
   Json visitContext();
-  void trackViewReadingClick();
+  Future<void> trackLineClaimClick();
   void trackActivity(String page, String action);
   void trackFailure(String path, String code, String method);
 }

@@ -97,24 +97,23 @@ class MarriagePreview(MarriageDraft):
     @model_validator(mode="before")
     @classmethod
     def bind_preview_evidence(cls, draft, info: ValidationInfo):
-        if isinstance(draft, dict) and info.context:
-            # The input citation map is server-owned, even if a writer echoes it.
-            draft.pop("field_sources", None)
-            current = draft.get("current")
-            if not info.context["birth_time_known"] and isinstance(current, dict):
-                current.setdefault("state", "observe")
-            for key, identifiers in info.context["allowed_evidence"].items():
-                point = draft.get(key)
-                if not isinstance(point, dict):
-                    continue
-                citations = point.get("evidence_ids")
-                # Normalize the representation without changing which facts the draft cites.
-                if isinstance(citations, str) and citations.strip() in identifiers:
-                    point["evidence_ids"] = [citations.strip()]
-                elif isinstance(citations, list) and all(isinstance(item, str) for item in citations):
-                    point["evidence_ids"] = list(dict.fromkeys(item.strip() for item in citations))
-                if len(identifiers) == 1 and point.get("evidence_ids") in (None, []):
-                    point["evidence_ids"] = identifiers
+        if not isinstance(draft, dict) or not info.context:
+            return draft
+        draft.pop("field_sources", None)
+        for key, identifiers in info.context["allowed_evidence"].items():
+            point = draft.get(key)
+            if not isinstance(point, dict):
+                continue
+            citations = point.get("evidence_ids")
+            if isinstance(citations, str) and citations.strip() in identifiers:
+                point["evidence_ids"] = [citations.strip()]
+            elif isinstance(citations, list) and all(isinstance(item, str) for item in citations):
+                point["evidence_ids"] = list(dict.fromkeys(item.strip() for item in citations))
+            if len(identifiers) == 1 and point.get("evidence_ids") in (None, []):
+                point["evidence_ids"] = identifiers
+        # An unknown birth time fixes the verdict while the writer supplies the observation text.
+        if not info.context["birth_time_known"] and isinstance(draft.get("current"), dict):
+            draft["current"].setdefault("state", "observe")
         return draft
 
 
@@ -243,10 +242,6 @@ def bundle(body, chart, *, full=False, free_story=None):
     }
 
 
-def preview_states(bundle):
-    return list(STATES[:3] if bundle["birth_time_known"] else STATES[3:])
-
-
 def preview_input(bundle):
     return {
         "language": bundle["language"],
@@ -256,7 +251,7 @@ def preview_input(bundle):
             key: identifiers[0] if len(identifiers) == 1 else identifiers
             for key, identifiers in bundle["allowed_evidence"].items()
         },
-        "current_states": preview_states(bundle),
+        **({"current_states": list(STATES[:3])} if bundle["birth_time_known"] else {}),
     }
 
 
@@ -264,7 +259,7 @@ def bind_preview_schema(bundle, contract):
     definitions = contract.pop("$defs")
     for key, identifiers in bundle["allowed_evidence"].items():
         # This field's available citations can be narrower than those for other points.
-        definition = "CurrentRelationship" if key == "current" else "MarriagePoint"
+        definition = "CurrentRelationship" if key == "current" and bundle["birth_time_known"] else "MarriagePoint"
         point = deepcopy(definitions[definition])
         properties = point["properties"]
         if len(identifiers) == 1:
@@ -273,11 +268,8 @@ def bind_preview_schema(bundle, contract):
             properties["evidence_ids"].update(
                 minItems=1, maxItems=2, items={"type": "string", "enum": identifiers},
             )
-        if key == "current":
-            if bundle["birth_time_known"]:
-                properties["state"]["enum"] = preview_states(bundle)
-            else:
-                properties.pop("state")
+        if "state" in properties:
+            properties["state"]["enum"] = list(STATES[:3])
         point["required"] = list(properties)
         contract["properties"][key] = point
 
@@ -303,32 +295,30 @@ def bind_full_schema(bundle, contract):
 
 
 def preview_prompt(bundle):
-    current_instruction = (
-        "For current.state, copy exactly one of the three codes in current_states. Use reset to address lingering issues, "
-        "old_pattern when a familiar pattern could recur, or ready_to_assess for a window to assess compatibility. "
-        "Base both the code and its text on the same cited recent positions. "
-        if bundle["birth_time_known"]
-        else "The app sets current.state to observe. Give an observable check and infer no personal timing. "
+    state_instruction = (
+        "Set current.state to one of current_states based on the cited recent positions. "
+        if bundle["birth_time_known"] else
+        "In current.text give an observable check. Omit current.state and infer no personal timing. "
     )
     prompt = (
         f"Write {bundle['writing_version']}, a free Thai Suriyayatra marriage preview. "
         "Sign indexes are zero-based, Aries through Pisces. H7 is partnership. "
-        "Return one JSON object with exactly language, reading, needs, reaction, trap, current, attracts and drains. "
-        "Use field_sources as an input lookup for evidence. Keep it and all other inputs out of the output. "
-        "Each of the six reading points has text. A single source ID binds that point and needs no evidence_ids in the response. "
-        "For a list, cite one or two distinct IDs from that field in evidence_ids. "
-        f"{_PUBLIC_TEXT_RULE}"
-        f"{current_instruction}Use only the supplied facts. "
+        "Return one JSON object with only these top-level keys: language, reading, "
+        "needs, reaction, trap, current, attracts, drains. "
+        "field_sources is input guidance. Never include field_sources in the response. "
+        "Each of the six report sections has text. A single source ID is assigned by the app. "
+        "When a section has a list of sources, return one or two distinct IDs from that list in evidence_ids. "
+        f"{state_instruction}Use only the supplied facts. "
         "The app adds exact chart placements and dates to the prose. Use short, direct second-person statements "
         "without technical terms, dates, rhetorical questions or assumed real events, partners or outcomes. "
         "Open the first paragraph with the main mistake in how the reader tries to get a relationship need met. "
         "Name the need in everyday words, based on the bound Ascendant or Sun. "
-        "In the second paragraph say what the reader does when unsure and what the other person sees or hears as a result. "
-        "In the third paragraph describe one distinct pattern the reader can recognize and say where it leaves the relationship. "
-        "In current.text give the one concrete "
+        "reaction: say what the reader does when unsure and what the other person sees or hears as a result. "
+        "trap: describe one distinct pattern the reader can recognize and say where it leaves the relationship. "
+        "In current.text give one concrete "
         "condition for taking someone seriously, changing the pattern, or holding back. The app prints the verdict first. "
-        "In the fifth paragraph describe an observable quality of people the reader tends to draw in. "
-        "In the sixth paragraph show the behavior that costs the reader time or effort. "
+        "attracts: describe an observable quality that draws them in. "
+        "drains: show the behavior that costs them time or effort. "
         "Give each point a distinct idea in one or two sentences, around 30–72 Chinese characters "
         "or the natural equivalent. Keep paid analysis and future timing out of this preview."
     )
@@ -339,13 +329,13 @@ def preview_prompt(bundle):
         )
     if bundle["language"] == "zh":
         prompt += (
-            "免费正文承接首页「该断该续？」和「揪出搅局的人」。"
-            "needs、reaction、trap 连起来写成一段直接对你说的话，各用一句短句。"
-            "先写你习惯用什么实际动作确认关系，再写遇到哪个变化时你会怎么回应，最后用「搅局」点出哪类人的一个具体行为会拖住关系。"
-            "例如「每次都说想见你、一谈具体哪天就说再看看的人，最容易搅局，把关系拖在聊天里」。"
-            "可以用「你习惯……」开头，直接写生活情境，页面会单独展示盘面依据。current.text 给一个该断该续的可核对标准， "
-            "例如「再改约时，先看对方会不会主动定个新时间。反复只说改天，就该放慢投入」。"
-            "例句只示范语气。人物类型、行为和判断以各段引用的实际盘面为依据。"
+            "免费正文要接住首页「该断该续？」和「揪出搅局的人」的话术。"
+            "needs 直接点出关系卡在哪。trap 用「搅局」点题，点出哪类人容易拖住关系，写清一个可辨认的行为和具体后果。"
+            "语气示例「你最容易在这类搅局者身上耗时间。对方每次都说想见你，一谈具体哪天就说再看看，关系就一直停在聊天」。"
+            "current 给一个现实中能核对的断续标准。"
+            "比如「再改约时，先看对方会不会主动定个新时间。反复只说改天，就该放慢投入」。"
+            "drains 说清另一种投入代价，同一种行为警示只讲一次。"
+            "例句只示范语气。人物类型、行为和判断都以各段引用的实际盘面为依据。"
         )
     return prompt
 
@@ -440,19 +430,21 @@ def validate(raw, bundle, validate_text, validate_distinct):
         record = schema(stage).model_validate_json(raw, context=bundle)
     except ValidationError as error:
         issues = error.errors(include_input=False, include_url=False)
-        if stage == "marriage_full" and all(item["loc"] and item["loc"][0] in keys for item in issues):
-            errors = {(item["loc"][0],): item["msg"] for item in issues}
-            raise repair_failure(errors) from None
-        paths = [".".join(map(str, item["loc"])) for item in issues[:8]]
+        repairable = all(item["loc"] and item["loc"][0] in keys for item in issues)
+        if not preview and repairable:
+            raise repair_failure({(item["loc"][0],): item["msg"] for item in issues}) from None
+        allowed = {*keys, "language", "reading", "translations", "text", "state", "evidence_ids"}
+        paths = [".".join(str(key) if key in allowed or isinstance(key, int) else "extra_field"
+                          for key in item["loc"]) or "response" for item in issues[:8]]
         message = "Marriage report is missing or has malformed fields: " + ", ".join(paths)
         failure = InvalidBaziReport(f"{PREVIEW_SCHEMA_FAILURE}: {message}" if preview else message)
-        if preview and all(item["loc"] and item["loc"][0] in keys for item in issues):
+        if preview and repairable:
             failure.repair_fields = {item["loc"][0]: [item["loc"][0]] for item in issues}
         raise failure from None
     if record.language != bundle["language"] or record.reading != bundle["reading"] or record.translations:
         raise InvalidBaziReport("Use the requested marriage report stage and language")
     if isinstance(record, MarriagePreview) and (record.current.state == "observe") == bundle["birth_time_known"]:
-        failure = InvalidBaziReport(f"{PREVIEW_SCHEMA_FAILURE}: Match the current relationship state to the birth-time precision")
+        failure = InvalidBaziReport(f"{PREVIEW_SCHEMA_FAILURE}: current.state must match the birth-time precision")
         failure.repair_fields = {"current": ["current"]}
         raise failure
     review_deadline = preview_review_deadline_context.get() if preview else None

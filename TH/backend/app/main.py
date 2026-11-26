@@ -5,11 +5,13 @@ import mimetypes
 import re
 import time
 from collections import defaultdict, deque
+from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import datetime, timedelta
 from math import ceil
 from zoneinfo import ZoneInfo
 
+import psycopg
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -41,6 +43,19 @@ from .static_assets import LandingStaticFiles
 from h5_admin.service import H5Admin, admin_page_router, admin_router
 
 logger = logging.getLogger(__name__)
+H5_LOGIN_CODE_CLEANUP_INTERVAL = 60
+
+
+async def prune_h5_login_codes(store: Storage, stop: asyncio.Event):
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(store.prune_h5_login_codes)
+        except psycopg.Error:
+            logger.exception("H5 login code cleanup failed")
+        try:
+            await asyncio.wait_for(stop.wait(), H5_LOGIN_CODE_CLEANUP_INTERVAL)
+        except TimeoutError:
+            pass
 
 
 def event(name: str, data: dict) -> str:
@@ -56,9 +71,20 @@ def create_app(settings: Settings | None = None):
         raise RuntimeError("APP_ENV must be development or production")
     if settings.bazi_provider not in ("github", "roxy"):
         raise RuntimeError("BAZI_PROVIDER must be github or roxy")
-    app = FastAPI(title="Sabai API", version="0.1.0")
     store, registry = Storage(settings.database_url), ProviderRegistry(settings)
     store.verify_schema()
+
+    @asynccontextmanager
+    async def lifespan(_app):
+        stop = asyncio.Event()
+        cleanup = asyncio.create_task(prune_h5_login_codes(store, stop))
+        try:
+            yield
+        finally:
+            stop.set()
+            await cleanup
+
+    app = FastAPI(title="Sabai API", version="0.1.0", lifespan=lifespan)
     models = CompanionModels(registry)
     roxy = RoxyBazi(settings, store)
     app.state.roxy = roxy
@@ -187,8 +213,10 @@ def create_app(settings: Settings | None = None):
             bucket.append(now)
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception as error:
             if h5_request:
+                # Keep the exception class for diagnosis without persisting its message or request data.
+                request.state.failure_code = "server_" + type(error).__name__
                 app.state.h5_admin.record_failure(request, 500, round((time.monotonic() - started) * 1000))
             raise
         if h5_request and response.status_code >= 400:
@@ -661,6 +689,7 @@ def create_app(settings: Settings | None = None):
     # Serve the landing build alongside its existing calculation API, on one origin.
     if settings.thai_landing_dir and Path(settings.thai_landing_dir).is_dir():
         app.mount("/thai-landing", LandingStaticFiles(directory=settings.thai_landing_dir, html=True), name="thai-landing")
+
     dist = Path(__file__).resolve().parents[2] / "dist"
     if dist.is_dir():
         app.mount("/", StaticFiles(directory=dist, html=True), name="web")
