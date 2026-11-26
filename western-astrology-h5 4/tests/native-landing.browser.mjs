@@ -222,6 +222,8 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
 test('Facebook embedded browser can scroll and select the city list', async () => {
   const context = await browser.newContext({
     viewport:{width:390,height:844},
+    isMobile:true,
+    hasTouch:true,
     userAgent:'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Mobile Safari/537.36 [FBAN/FB4A;FBAV/540.0.0.0]'
   });
   try {
@@ -263,6 +265,18 @@ test('Facebook embedded browser can scroll and select the city list', async () =
     await option.dispatchEvent('pointerdown',{pointerType:'touch',pointerId:8,isPrimary:true,buttons:1,clientX:100,clientY:100});
     await option.dispatchEvent('pointerup',{pointerType:'touch',pointerId:8,isPrimary:true,buttons:0,clientX:100,clientY:100});
     await expect(city).toHaveValue('北京市');
+
+    await page.locator('#birth-submit').tap();
+    await expect(page.locator('#birth-date-trigger')).toBeFocused();
+    assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).top),'32px');
+    await page.evaluate(() => {
+      Object.defineProperties(window.visualViewport,{
+        offsetTop:{configurable:true,value:0},
+        height:{configurable:true,value:844}
+      });
+      window.visualViewport.dispatchEvent(new Event('resize'));
+    });
+    assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).top),'0px');
   } finally {
     await context.close();
   }

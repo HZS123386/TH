@@ -63,6 +63,7 @@ function fateOwnerKey() {
 }
 
 let fateViewportBaseline = Math.max(window.innerHeight || 0, window.visualViewport?.height || 0);
+let fateKeyboardOpen = false;
 function fateKeyboardTarget() {
   const target = document.activeElement;
   if (!target?.matches?.('input,textarea,[contenteditable="true"]')) return false;
@@ -72,15 +73,15 @@ function syncFateViewport() {
   const viewport = window.visualViewport;
   const height = viewport?.height || window.innerHeight;
   const keyboardTarget = fateKeyboardTarget();
-  if (!keyboardTarget && Number.isFinite(height) && height > 0) fateViewportBaseline = height;
-  else if (Number.isFinite(height) && height > fateViewportBaseline) fateViewportBaseline = height;
-  const keyboardOpen = keyboardTarget && height < fateViewportBaseline - Math.max(110,fateViewportBaseline * .18);
-  // Meta WebViews sometimes report the browser toolbar as visualViewport.offsetTop.
-  // Applying that value without a keyboard leaves a transparent strip above the form.
-  const top = keyboardOpen ? viewport?.offsetTop || 0 : 0;
   if (Number.isFinite(height) && height > 0) {
+    if ((!keyboardTarget && !fateKeyboardOpen) || height > fateViewportBaseline) fateViewportBaseline = height;
+    // Keep the form in place during a button tap until the keyboard actually closes.
+    fateKeyboardOpen = (keyboardTarget || fateKeyboardOpen)
+      && height < fateViewportBaseline - Math.max(110,fateViewportBaseline * .18);
     document.documentElement.style?.setProperty('--fate-viewport-height', `${Math.round(height)}px`);
   }
+  // A toolbar offset alone should not leave a gap above the form.
+  const top = fateKeyboardOpen ? viewport?.offsetTop || 0 : 0;
   if (Number.isFinite(top) && top >= 0) {
     document.documentElement.style?.setProperty('--fate-viewport-top', `${Math.round(top)}px`);
   }
