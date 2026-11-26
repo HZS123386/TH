@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import time
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
 import httpx
@@ -127,8 +128,8 @@ def test_visit_funnels_count_form_and_historical_welcome_entries(admin):
         return visit_id
 
     visit("a", [welcome, welcome_click, welcome_click, birth_form, ("birth_form", "view", "state", "visible"),
-                ("history", "view", "action", "visible"), birth_form, generate_click, generate_click])
-    visit("a", [("welcome", "view", "state", "visible"), birth_form, line_click, line_click])
+                ("history", "view", "action", "visible"), birth_form, generate_click, generate_click, line_click])
+    visit("a", [("welcome", "view", "state", "visible"), birth_form, generate_click, line_click, line_click])
     visit("b", [welcome, birth_form, ("generating_preview", "generate", "action", "visible"),
                 ("preview_report", "click_line", "state", "visible"),
                 ("preview_report", "open_line_contact", "action", "visible")])
@@ -156,16 +157,45 @@ def test_visit_funnels_count_form_and_historical_welcome_entries(admin):
 
     path = "/api/admin/visit-funnel"
     week = {"entry_people": 6, "entry_visits": 7,
-            "welcome_people": 4, "welcome_visits": 5, "birth_form_people": 5, "birth_form_views": 7,
-            "generate_click_people": 3, "generate_clicks": 4, "line_click_people": 4, "line_clicks": 5}
+            "welcome_people": 4, "welcome_visits": 5,
+            "birth_form_people": 5, "birth_form_visits": 6, "birth_form_views": 7,
+            "generate_click_people": 3, "generate_click_visits": 4, "generate_clicks": 5,
+            "line_click_people": 4, "line_click_visits": 5, "line_clicks": 6}
     assert http.get(path, params={"days": 7}).json() == week
     assert http.get(path, params={"days": 0}).json() == {
         **week, "entry_people": 7, "entry_visits": 8,
-        "welcome_people": 5, "welcome_visits": 6, "line_click_people": 5, "line_clicks": 6,
+        "welcome_people": 5, "welcome_visits": 6, "line_click_people": 5, "line_click_visits": 6, "line_clicks": 7,
     }
 
     login(http, "support-test")
     assert http.get(path).status_code == 403
+
+
+def test_visit_funnel_filters_inclusive_beijing_dates(admin):
+    http, app = admin
+    zone = ZoneInfo("Asia/Shanghai")
+    previous_day = datetime.now(zone).date() - timedelta(days=1)
+    start = datetime.combine(previous_day, datetime.min.time(), zone).timestamp()
+    midnight = datetime.combine(previous_day + timedelta(days=1), datetime.min.time(), zone).timestamp()
+    with app.state.store.connect() as db:
+        for index, stamp in enumerate((start - 1, start, midnight - 1, midnight)):
+            identifier = f"range-{index}"
+            db.execute("INSERT INTO landing_visits(id,owner,source,campaign,visited_at) VALUES(%s,%s,'','',%s)",
+                       (identifier, "range-owner", stamp))
+            db.execute("""
+                INSERT INTO landing_visit_activity(visit_id,sequence,page_view_id,page,action,state,kind,occurred_at,received_at,visible_ms)
+                VALUES(%s,1,%s,'birth_form','view','visible','action',%s,%s,0)
+            """, (identifier, uuid4(), midnight, midnight))
+    login(http)
+    path = "/api/admin/visit-funnel"
+    chosen = previous_day.isoformat()
+    response = http.get(path, params={"start_date": chosen, "end_date": chosen})
+    assert response.status_code == 200
+    metrics = response.json()
+    assert (metrics["birth_form_people"], metrics["birth_form_visits"], metrics["birth_form_views"]) == (1, 2, 2)
+    assert http.get(path, params={"start_date": chosen}).status_code == 422
+    invalid = http.get(path, params={"start_date": (previous_day + timedelta(days=1)).isoformat(), "end_date": chosen})
+    assert invalid.status_code == 422 and invalid.json()["code"] == "admin_visit_range_invalid"
 
 
 def test_line_metrics_count_each_popup_and_dedupe_clicks_across_visits(admin):
@@ -750,7 +780,7 @@ def test_visitor_lookup_and_active_report_links_cover_the_h5_chain(admin):
     with app.state.store.connect() as db:
         db.execute("INSERT INTO landing_visits VALUES(%s,%s,%s,%s,%s,%s,%s)",
                    ("expired", "life:" + "a" * 64, "old-source", "old", time.time() - 31 * 86400, None, None))
-        db.execute("INSERT INTO landing_visit_reports VALUES(%s,%s)", ("first", "deleted-report"))
+        db.execute("INSERT INTO landing_visit_report_removals(visit_id,report_id) VALUES(%s,%s)", ("first", "deleted-report"))
         for report_id in ("report-1", "deleted-report"):
             db.execute("INSERT INTO admin_audit(id,report_id,created,actor,action,status,note) VALUES(%s,%s,%s,%s,%s,%s,%s)",
                        (report_id, report_id, time.time(), "admin-test", "note", "succeeded", "隔离测试"))

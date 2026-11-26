@@ -219,12 +219,14 @@ const errors = {
   admin_retry_limited: '生成请求触发限额，请稍后再试。',
   life_report_not_found: '这份报告已不存在。',
   too_many_requests: '刷新过于频繁，请稍后再试。',
+  admin_visit_range_invalid: '请选择有效的开始和结束日期。',
   request_failed: '请求失败，请稍后重试。',
 };
 const verifiedOrdersRoute = 'orders?time_basis=verified';
 const lineSentRoute = 'line-contacts?delivery=sent';
 const firstReportsRoute = 'reports?report_scope=first';
 const lineSentTitle = '已登记发送';
+const visitFunnelStartDate = '2026-11-20';
 const reportEditionNames = { preview: '免费报告', full: '完整报告' };
 const loadReportRuntime = () => import('/thai-landing/runtime/report-pdf.js').catch(() => {
   throw new Error('PDF_runtime_unavailable');
@@ -244,6 +246,9 @@ const state = {
   caseStatus: '',
   lineDelivery: 'pending',
   lineRange: { preset: 'today' },
+  visitRange: null,
+  funnelMeasure: 'people',
+  funnelMetrics: null,
   overview: null,
   overviewDays: null,
   records: null,
@@ -332,6 +337,8 @@ function showLogin() {
   state.detail = null;
   state.detailRequest = null;
   state.lineRange = { preset: 'today' };
+  state.visitRange = null;
+  state.funnelMetrics = null;
   $('#content').replaceChildren();
   $('#detail-content').replaceChildren();
   $('#detail-dialog').close();
@@ -380,12 +387,13 @@ function showPageError(error) {
   $('#page-error').textContent = error.message;
   $('#page-error').hidden = false;
 }
+const beijingDay = () => new Date(Date.now() + 8 * 3_600_000);
 function lineRangeValues() {
   if (!state.lineRange.preset) return state.lineRange;
-  const beijingDay = new Date(Date.now() + 8 * 3_600_000);
-  const today = beijingDay.toISOString().slice(0, 10);
-  beijingDay.setUTCDate(beijingDay.getUTCDate() + 1);
-  const tomorrow = beijingDay.toISOString().slice(0, 10);
+  const day = beijingDay();
+  const today = day.toISOString().slice(0, 10);
+  day.setUTCDate(day.getUTCDate() + 1);
+  const tomorrow = day.toISOString().slice(0, 10);
   return {
     start: today + 'T00:00',
     end: state.lineRange.preset === 'morning' ? today + 'T12:00' : tomorrow + 'T00:00',
@@ -411,6 +419,25 @@ async function loadView({ refresh = false } = {}) {
   $('#page-title').textContent = title;
   $('#breadcrumb-title').textContent = title;
   $('#page-description').textContent = description;
+  const isVisitFunnel = view === 'visit-funnel';
+  $('#visit-funnel-controls').hidden = !isVisitFunnel;
+  $('#days').hidden = isVisitFunnel;
+  let visitRange;
+  if (isVisitFunnel) {
+    const today = beijingDay().toISOString().slice(0, 10);
+    visitRange = state.visitRange ?? {
+      start_date: today < visitFunnelStartDate ? today : visitFunnelStartDate,
+      end_date: today,
+    };
+    const from = $('#visit-range-start');
+    const through = $('#visit-range-end');
+    from.max = through.max = today;
+    from.value = visitRange.start_date;
+    through.value = visitRange.end_date;
+    $('#visit-applied-range').textContent = `${visitRange.start_date} 至 ${visitRange.end_date}（北京时间）`;
+    $('#visit-range-error').hidden = true;
+    state.funnelMetrics = null;
+  }
   const lineRange = view === 'line-contacts' ? lineRangeValues() : null;
   $('#line-stats').hidden = !lineRange;
   if (lineRange) {
@@ -441,7 +468,8 @@ async function loadView({ refresh = false } = {}) {
     if (view === 'overview') {
       const params = new URLSearchParams({ days, page_size: 5 });
       data = await api('/records/reports?' + params);
-    } else if (['visit-funnel', 'ad-funnel', 'page-diagnostics'].includes(view)) data = await api(`/${view}?days=${days}`);
+    } else if (visitRange) data = await api('/visit-funnel?' + new URLSearchParams(visitRange));
+    else if (['ad-funnel', 'page-diagnostics'].includes(view)) data = await api(`/${view}?days=${days}`);
     else if (view === 'sources') data = await api('/sources');
     else if (view === 'line-contacts') {
       const params = new URLSearchParams({
@@ -467,7 +495,10 @@ async function loadView({ refresh = false } = {}) {
       );
     if (revision !== state.revision || !state.session) return;
     if (view === 'overview') renderOverview(data.items);
-    else if (view === 'visit-funnel') renderVisitFunnel(data);
+    else if (view === 'visit-funnel') {
+      state.funnelMetrics = data;
+      renderVisitFunnel(data);
+    }
     else if (view === 'ad-funnel') renderAdFunnel(data);
     else if (view === 'page-diagnostics') renderPageDiagnostics(data);
     else if (view === 'sources') renderSources(data.items);
@@ -700,20 +731,21 @@ function renderPageDiagnostics(data) {
     <p class="data-note">最多显示最近 30 天。浏览器关闭前未送达的记录可能缺失。<a href="#sources">查看统计口径 ↗</a></p>`;
 }
 function renderVisitFunnel(metrics) {
+  const measure = state.funnelMeasure;
   const steps = [
-    ['进入资料填写页', metrics.birth_form_people, metrics.birth_form_views, '次打开'],
-    ['点击生成报告', metrics.generate_click_people, metrics.generate_clicks, '次点击'],
-    ['点击 LINE 按钮', metrics.line_click_people, metrics.line_clicks, '次点击'],
+    ['进入资料填写页', { people: metrics.birth_form_people, visits: metrics.birth_form_visits, events: metrics.birth_form_views }, '次打开'],
+    ['点击生成报告', { people: metrics.generate_click_people, visits: metrics.generate_click_visits, events: metrics.generate_clicks }, '次点击'],
+    ['点击 LINE 按钮', { people: metrics.line_click_people, visits: metrics.line_click_visits, events: metrics.line_clicks }, '次点击'],
   ];
   $('#content').innerHTML = `
     <section class="panel" aria-label="H5 访问步骤"><div class="panel-body">
-      <dl class="visit-funnel">${steps.map(([name, people, count, unit]) => `
+      <dl class="visit-funnel">${steps.map(([name, counts, eventUnit]) => `
         <div class="visit-funnel-step">
           <dt>${name}</dt>
-          <dd><strong>${number(people)}</strong> 人<span>${number(count)} ${unit}</span></dd>
+          <dd><strong>${number(counts[measure])}</strong> ${{ people: '人', visits: '人次', events: eventUnit }[measure]}</dd>
         </div>`).join('')}</dl>
     </div></section>
-    <p class="data-note">按访问开始时间筛选，最多查看最近 30 天。各步人数按浏览器去重。<a href="#sources">统计口径 ↗</a></p>`;
+    <p class="data-note">按北京时间的访问开始日期筛选，包含起止当天。人数按浏览器去重，人次按访问去重，次数按打开或点击累计。访问记录保留最近 30 天。<a href="#sources">统计口径 ↗</a></p>`;
 }
 function renderAdFunnel(metrics) {
   const steps = [
@@ -1200,6 +1232,31 @@ $('#days').addEventListener('change', () => {
   state.days = Number($('#days').value);
   state.page = 1;
   loadView();
+});
+$('#visit-funnel-range').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const start = $('#visit-range-start').value;
+  const end = $('#visit-range-end').value;
+  if (start > end) {
+    const error = $('#visit-range-error');
+    error.textContent = '开始日期不能晚于结束日期。';
+    error.hidden = false;
+    return;
+  }
+  state.visitRange = { start_date: start, end_date: end };
+  loadView();
+});
+$('#visit-range-reset').addEventListener('click', () => {
+  state.visitRange = null;
+  loadView();
+});
+const funnelMeasureButtons = document.querySelectorAll('[data-funnel-measure]');
+funnelMeasureButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    state.funnelMeasure = button.dataset.funnelMeasure;
+    funnelMeasureButtons.forEach((option) => option.setAttribute('aria-pressed', String(option === button)));
+    if (state.funnelMetrics) renderVisitFunnel(state.funnelMetrics);
+  });
 });
 document.querySelectorAll('[data-line-range]').forEach((button) => {
   button.addEventListener('click', () => {

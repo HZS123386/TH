@@ -1,4 +1,5 @@
 """Authenticated operations on the existing H5 records and services."""
+from datetime import date, datetime, timedelta
 import hashlib
 import hmac
 import json
@@ -10,6 +11,7 @@ import time
 from typing import Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -29,6 +31,7 @@ FAILURES = "('unavailable','unconfigured','limited')"
 VERIFIED_LIVE = "environment='live' AND status='paid'"
 LINE_SENT_REPORTS = "preview IS NOT NULL AND line_sent_at >= %s"
 LINE_PAGE_SIZE = 25
+BEIJING = ZoneInfo("Asia/Shanghai")
 # Report attribution comes from the snapshot stored at creation.
 BASE = f"""WITH active_visits AS (
  SELECT * FROM landing_visits
@@ -143,7 +146,8 @@ SOURCES = [
     {"name": "访问与渠道", "table": "landing_visits / landing_visitors / landing_visit_reports", "origin": "H5 资料填写页访问埋点及提交、查看预览事件",
      "rule": "进入填写页时开始上报。重新打开入口按本次链接标签记为新访问，刷新和返回恢复原访问。访客按匿名浏览器去重，首次日期按北京时间。访问记录保留最近 30 天，编号在 30 天未访问后过期。"},
     {"name": "H5 访问漏斗", "table": "landing_visits / landing_visit_activity", "origin": "欢迎页、资料填写页及报告按钮的 H5 事件",
-     "rule": "包含所有来源。从欢迎页或填写页可见的访问开始，按访问开始时间筛选，最多保留 30 天。每一步独立按匿名浏览器去重。"
+     "rule": "包含所有来源。从欢迎页或填写页可见的访问开始，按北京时间的访问开始日期筛选，包含起止当天，最多保留 30 天。"
+             "每一步的人数按匿名浏览器去重，人次按访问编号去重，次数按页面打开或按钮点击累计。"
              "进入 H5 按访问编号计次，填写页按同一次访问中的页面打开计次，生成报告和 LINE 按按钮事件计次。生成报告按钮包含表单校验未通过的点击。按钮埋点启用前的点击无法回溯。"},
     {"name": "广告转化", "table": "landing_visits / landing_visit_activity", "origin": "带来源和活动标签的 H5 访问及同一次访问的操作事件",
      "rule": "按访问开始时间筛选，最多保留最近 30 天。同一步按浏览器去重。新访问从填写页开始，历史欢迎页访问和按钮点击仍可回看。广告平台链接点击数尚未接入。"},
@@ -344,7 +348,8 @@ class H5Admin:
                 error["description"] = MESSAGES[error["code"]][0]
         return {"pages": pages, "errors": errors}
 
-    def visit_funnel(self, days, *, tagged_only=False):
+    def visit_funnel(self, days, *, tagged_only=False, visit_range=None):
+        start, end = visit_range if visit_range else (self.cutoff(days), None)
         metrics = self.rows("""
             , funnel_visits AS (
                 SELECT v.id, v.owner,
@@ -359,7 +364,8 @@ class H5Admin:
                     ) AS generate_clicks,
                     COUNT(*) FILTER (WHERE a.page='preview_report' AND a.kind='action' AND a.action='click_line') AS line_clicks
                 FROM active_visits v JOIN landing_visit_activity a ON a.visit_id=v.id
-                WHERE v.visited_at>=%s AND (NOT %s OR (v.source<>'' AND v.campaign<>''))
+                WHERE v.visited_at>=%s AND (%s::double precision IS NULL OR v.visited_at<%s)
+                  AND (NOT %s OR (v.source<>'' AND v.campaign<>''))
                   AND a.kind IN ('action','state')
                   AND (a.action IN ('view','click_welcome_start','click_generate_report','click_line')
                        OR (a.page='birth_form' AND a.kind='state' AND a.state='visible' AND a.action<>'leave_page'))
@@ -370,15 +376,19 @@ class H5Admin:
                 COUNT(DISTINCT owner) FILTER (WHERE welcome) AS welcome_people,
                 COUNT(DISTINCT owner) FILTER (WHERE welcome AND welcome_click) AS welcome_click_people,
                 COUNT(DISTINCT owner) FILTER (WHERE birth_form_views > 0) AS birth_form_people,
+                COUNT(*) FILTER (WHERE birth_form_views > 0) AS birth_form_visits,
                 COALESCE(SUM(birth_form_views), 0)::bigint AS birth_form_views,
                 COUNT(DISTINCT owner) FILTER (WHERE generate_clicks > 0) AS generate_click_people,
+                COUNT(*) FILTER (WHERE generate_clicks > 0) AS generate_click_visits,
                 COALESCE(SUM(generate_clicks), 0)::bigint AS generate_clicks,
                 COUNT(DISTINCT owner) FILTER (WHERE line_clicks > 0) AS line_click_people,
+                COUNT(*) FILTER (WHERE line_clicks > 0) AS line_click_visits,
                 COALESCE(SUM(line_clicks), 0)::bigint AS line_clicks
             FROM funnel_visits WHERE welcome OR birth_form_views > 0
-        """, (self.cutoff(days), tagged_only))[0]
+        """, (start, end, end, tagged_only))[0]
         if tagged_only:
             del metrics["birth_form_views"], metrics["generate_clicks"], metrics["line_clicks"]
+            del metrics["birth_form_visits"], metrics["generate_click_visits"], metrics["line_click_visits"]
         else:
             del metrics["welcome_click_people"]
         return metrics
@@ -826,8 +836,16 @@ def admin_router(service):
         return service.overview(days)
 
     @router.get("/visit-funnel")
-    def visit_funnel(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
-        return service.visit_funnel(days)
+    def visit_funnel(days: int = Query(30, ge=0, le=365), start_date: date | None = None,
+                     end_date: date | None = None, current=Depends(only_admin)):
+        if start_date is None and end_date is None:
+            return service.visit_funnel(days)
+        if start_date is None or end_date is None or not start_date <= end_date <= datetime.now(BEIJING).date():
+            raise HTTPException(422, "admin_visit_range_invalid")
+        midnight = datetime.min.time()
+        start = datetime.combine(start_date, midnight, BEIJING).timestamp()
+        end = datetime.combine(end_date + timedelta(days=1), midnight, BEIJING).timestamp()
+        return service.visit_funnel(days, visit_range=(start, end))
 
     @router.get("/page-diagnostics")
     def page_diagnostics(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
