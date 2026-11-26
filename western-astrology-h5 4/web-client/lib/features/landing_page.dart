@@ -55,12 +55,7 @@ class _LandingPageState extends State<LandingPage> {
       return 'network';
     }
     if (!mounted) return '';
-    final page = values['page'];
-    if (page == 'privacy' || page == 'support') {
-      context.go('/$page.html?lang=$language');
-      return '';
-    }
-    if (page != 'report') return 'badResult';
+    if (values['page'] != 'report') return 'badResult';
     final LifeReport report;
     try {
       report = LifeReport.parse(

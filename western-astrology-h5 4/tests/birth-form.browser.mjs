@@ -390,10 +390,7 @@ test('an interrupted startup keeps the edited form and a manual retry restores i
     const restoredId = restoredEvents.filter(e => e.action === 'view' && e.page === 'birth_form').at(-1).page_view_id;
     assert.deepEqual(restoredEvents.filter(e => e.page_view_id === restoredId && e.kind === 'action' && e.action.startsWith('form_progress')).map(e => e.action),['form_progress_place']);
     assert.equal(await page.evaluate(() => sessionStorage.getItem('fate-birth-reload')),null);
-    await page.locator('#birth-privacy').click();
-    await expect(page).toHaveURL(/privacy\.html/,{timeout:30000});
-    await expect(page.locator('#fate-birth')).toBeHidden();
-    await page.goBack();
+    await expect(page.locator('#fate-birth footer a')).toHaveCount(0);
     await expect(page.locator('#birth-date')).toHaveValue('2001-02-03');
     await page.locator('#birth-city').click();
     await page.getByRole('option',{name:beijing.nameChinese,exact:false}).click();

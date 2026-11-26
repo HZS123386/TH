@@ -14,6 +14,8 @@ import 'package:fate_h5/features/generation_dialog.dart';
 import 'package:fate_h5/features/generation_video.dart';
 import 'package:fate_h5/features/report_view_model.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
+import 'package:fate_h5/ui/jy_components.dart';
+import 'package:fate_h5/ui/site_header.dart';
 
 import 'support.dart';
 
@@ -93,6 +95,7 @@ void main() {
         );
         await waitForDeferredView(tester, find.byType(GenerationDialog));
         expect(find.byType(GenerationDialog), findsOneWidget);
+        expect(find.byIcon(Icons.arrow_back), findsNothing);
         expect(
           find.text(h5.copy.t('jy', 'interpretation.queued')),
           findsOneWidget,
@@ -184,14 +187,25 @@ void main() {
           find.text(h5.copy.t('jy', 'interpretation.queued')),
           findsOneWidget,
         );
+        expect(find.byIcon(Icons.arrow_back), findsNothing);
         if (language == 'th') {
           browser.writeSetting(
             'active-preview',
             text(done['id']),
             session: true,
           );
-          await click(tester, find.byTooltip(h5.copy.t('jy', 'checkout.back')));
+          await click(
+            tester,
+            find.widgetWithText(TextButton, h5.copy.t('generation', 'cancel')),
+          );
           expect(find.byType(GenerationDialog), findsNothing);
+          await click(
+            tester,
+            find.descendant(
+              of: find.byType(SiteHeader),
+              matching: find.byType(FateBrand),
+            ),
+          );
           expect(browser.formVisible, isTrue);
           expect(browser.readSetting('active-preview', session: true), isEmpty);
           expect(methods.every((method) => method == 'GET'), isTrue);
@@ -208,6 +222,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.textContaining(label), findsNothing);
         expect(find.text(h5.copy.t('life', 'viewProgress')), findsNothing);
+        expect(find.byIcon(Icons.arrow_back), findsNothing);
         expect(
           browser.activities.where((event) =>
               event['page'] == 'full_report' && event['action'] == 'report_ready'),
@@ -357,7 +372,14 @@ void main() {
         ),
         isEmpty,
       );
-      await click(tester, find.byTooltip(h5.copy.t('jy', 'checkout.back')));
+      expect(find.byIcon(Icons.arrow_back), findsNothing);
+      await click(
+        tester,
+        find.descendant(
+          of: find.byType(SiteHeader),
+          matching: find.byType(FateBrand),
+        ),
+      );
       expect(find.byType(ReportPreview), findsNothing);
       expect(browser.formVisible, isTrue);
       await tester.pumpWidget(const SizedBox.shrink());

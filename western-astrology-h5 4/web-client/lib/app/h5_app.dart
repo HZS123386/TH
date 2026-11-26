@@ -37,7 +37,7 @@ class _H5AppState extends State<H5App> {
             ? Material(type: MaterialType.transparency, child: child)
             : _Shell(
                 showLanguages: state.uri.path != '/report.html',
-                showHomeArrow: state.uri.path != '/',
+                showHomeArrow: state.uri.path != '/report.html',
                 child: child,
               ),
         routes: [

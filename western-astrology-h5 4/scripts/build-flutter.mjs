@@ -65,7 +65,7 @@ export async function buildLanding({release=false,noPub=false}={}){
   index=index.replace('<script src="browser.js"></script>',()=>`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`);
   // Keep the editable form and just its labels in the first response, ahead of Flutter.
   const copies = {};
-  const formKeys = 'title language portrait formTitle formCaption date dateParts calendar time unknown city citySearch questionTitle questions writeQuestion topics topicLabel disclaimer privacy support submitConsent regionPending regionRetry noticeOutdated consentError openLatest'.split(' ');
+  const formKeys = 'title language portrait formTitle formCaption date dateParts calendar time unknown city citySearch questionTitle questions writeQuestion topics topicLabel disclaimer submitConsent regionPending regionRetry noticeOutdated consentError openLatest'.split(' ');
   for (const file of await readdir(path.join(flutterRoot,'assets','copy'))) {
     if (!file.endsWith('.json')) continue;
     const lang = path.basename(file,'.json');

@@ -103,7 +103,6 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
   color:#ffe0a1; font-size:clamp(12px,3.5vw,16px); font-weight:700; line-height:1.2; text-align:center; overflow-wrap:anywhere; }
 #birth-boards .birth-board:nth-child(2) li { border-color:#9876ab; background:linear-gradient(#523860,#362347); }
 #fate-birth footer { text-align:center; padding:10px 17px 28px; }
-#fate-birth footer a { color:#e0c58e; margin:0 8px; }
 #fate-birth[data-generating] > :not(#birth-generation) { display:none; }
 #birth-generation { min-height:100%; padding:24px; display:grid; align-content:center; justify-items:center;
   gap:18px; text-align:center; background:radial-gradient(ellipse at 50% 22%,#392353,#100b1b 70%); }

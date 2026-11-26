@@ -18,7 +18,6 @@ class ReportPreview extends StatelessWidget {
     required this.onErase,
     this.busy = false,
     this.error = '',
-    this.onBack,
     this.onExportPdf,
     this.onPay,
     this.priceLabel = '',
@@ -31,7 +30,7 @@ class ReportPreview extends StatelessWidget {
   final String reportId;
   final String claimCode;
   final VoidCallback onErase;
-  final VoidCallback? onBack, onExportPdf, onPay;
+  final VoidCallback? onExportPdf, onPay;
   final String priceLabel;
   final String exportStatus;
   final bool marriage, relationshipOffer;
@@ -162,18 +161,9 @@ class ReportPreview extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  if (onBack != null)
-                    IconButton(
-                      key: const ValueKey('report-back-home'),
-                      tooltip: c.t('jy', 'checkout.back'),
-                      onPressed: busy ? null : onBack,
-                      icon: const Icon(Icons.arrow_back, color: gold, size: 20),
-                    ),
-                  if (onBack != null) const SizedBox(width: 8),
-                  const FateBrand(compact: true),
-                ],
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: FateBrand(compact: true),
               ),
               const SizedBox(height: 20),
               freePreview,

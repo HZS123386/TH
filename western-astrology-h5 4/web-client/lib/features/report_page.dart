@@ -1107,7 +1107,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               r.sixPersonalThemes && r.relationshipPreview.isNotEmpty,
           onPay: _usesCheckout(r) && r.canPay ? _pay : null,
           priceLabel: _usesCheckout(r) && r.canPay ? r.priceLabel : '',
-          onBack: _usesCheckout(r) ? _backHome : null,
           freePreview: _freePreview(r, c),
           onExportPdf: r.relationshipReport && !_model.exporting
               ? () => _model.export('pdf')
@@ -1167,14 +1166,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           children: [
             Row(
               children: [
-                if (_usesCheckout(r))
-                  IconButton(
-                    key: const ValueKey('report-back-home'),
-                    tooltip: c.t('jy', 'checkout.back'),
-                    onPressed: _backHome,
-                    icon: const Icon(Icons.arrow_back, color: gold, size: 19),
-                  ),
-                if (_usesCheckout(r)) const SizedBox(width: 8),
                 const FateBrand(),
                 const Spacer(),
                 IconButton(

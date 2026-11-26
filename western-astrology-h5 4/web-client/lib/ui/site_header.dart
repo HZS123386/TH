@@ -133,23 +133,21 @@ class SiteHeader extends StatelessWidget {
   }
 }
 
-void _goHome(BuildContext context, H5Controller h5, [VoidCallback? onLeaving]) {
+void _goHome(BuildContext context, H5Controller h5) {
   final router = GoRouter.of(context);
-  onLeaving?.call();
   h5.browser.writeSetting('active-preview', '', session: true);
   router.go('/?lang=${h5.language}');
 }
 
 class HomeArrow extends StatelessWidget {
-  const HomeArrow({required this.h5, this.onLeaving, super.key});
+  const HomeArrow({required this.h5, super.key});
 
   final H5Controller h5;
-  final VoidCallback? onLeaving;
 
   @override
   Widget build(BuildContext context) => IconButton(
     tooltip: h5.copy.t('jy', 'checkout.back'),
-    onPressed: () => _goHome(context, h5, onLeaving),
+    onPressed: () => _goHome(context, h5),
     icon: const Icon(Icons.arrow_back, color: gold, size: 20),
   );
 }

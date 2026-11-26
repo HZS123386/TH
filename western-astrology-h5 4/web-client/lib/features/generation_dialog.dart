@@ -4,7 +4,6 @@ import 'generation_video.dart'
     if (dart.library.js_interop) 'generation_video_web.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
-import '../ui/site_header.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
 import 'report_chart.dart';
@@ -495,11 +494,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                               ),
                             ),
                           ),
-                        ),
-                        Positioned(
-                          top: MediaQuery.paddingOf(context).top,
-                          right: 8,
-                          child: HomeArrow(h5: widget.h5, onLeaving: widget.onCancel),
                         ),
                         if (!_finishing)
                           Positioned(

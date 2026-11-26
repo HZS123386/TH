@@ -14,7 +14,7 @@
     : params.get('topic') === 'career' ? 'career' : 'life';
   let career = topic === 'career';
   let copy, place, submitToFlutter, pending, waiting = false, failed = false, outdated = false;
-  let edited = false, searchTimer, locationRequest, returnDraft, offset = 0, total = 0;
+  let edited = false, searchTimer, locationRequest, offset = 0, total = 0;
   let originalProfile, originalPlace, creating = false, acceptedReport;
   let submission, retrySubmission = false;
   let checkedSubmission = false, activePicker;
@@ -329,7 +329,6 @@
     byId('birth-custom').setAttribute('aria-label',j.writeQuestion);
     byId('birth-submit').textContent = outdated ? j.openLatest : j.topics[topic].action;
     byId('birth-retry').textContent = byId('birth-generation-retry').textContent = copy.generation.retry;
-    for (const name of ['privacy','support']) byId('birth-' + name).href = name + '.html?lang=' + language;
     const boards = copy.themes.map(group => {
       const board = document.createElement('div');
       board.className = 'birth-board';
@@ -398,7 +397,7 @@
   function markEdited() {
     edited = true;
     if (pending && !creating) {
-      pending = returnDraft = null;
+      pending = null;
       waiting = false;
       byId('birth-submit').disabled = byId('birth-language').disabled = false;
     }
@@ -591,7 +590,6 @@
   async function startReport(saved) {
     retrySubmission = false;
     creating = waiting = true;
-    returnDraft = null;
     byId('birth-submit').disabled = byId('birth-language').disabled = true;
     const screen = byId('birth-generation');
     byId('birth-generation-title').textContent = copy.generation.previewTitle;
@@ -691,7 +689,6 @@
         await saveSubmission(null);
         try { sessionStorage.removeItem('active-preview'); } catch {}
       }
-      returnDraft = null;
       returnToForm(copy.ui[error.message] || copy.ui.network);
     }
   }
@@ -776,18 +773,6 @@
     });
     byId('birth-retry').addEventListener('click',retry);
     byId('birth-generation-retry').addEventListener('click',retry);
-    for (const name of ['privacy','support']) {
-      byId('birth-' + name).addEventListener('click',event => {
-        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || failed) return;
-        event.preventDefault();
-        if (waiting || !copy) return;
-        returnDraft = values();
-        pending = {page:name,language};
-        waiting = true;
-        say(fateBootTranslations[language].app);
-        dispatch();
-      });
-    }
     localize(language).then(async () => {
       if (!form.isConnected) return;
       try {
@@ -834,11 +819,6 @@
         restore({date:profile.birth_date,time:profile.birth_time,unknown:!profile.birth_time,place:initial.place,
           question:input.career_question?.stage,customQuestion:input.user_question});
         if (!main.hidden) track('form_progress_' + progress());
-      }
-      if (returnDraft) {
-        restore(returnDraft);
-        returnDraft = null;
-        edited = true;
       }
       submitToFlutter = send;
       engineReady();
