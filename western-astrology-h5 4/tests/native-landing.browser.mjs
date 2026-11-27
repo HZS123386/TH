@@ -158,7 +158,7 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
   const context = await browser.newContext({
     viewport:{width:390,height:844},
     reducedMotion:'no-preference',
-    userAgent:'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Instagram 410.0.0.0 Mobile'
+    userAgent:'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Mobile [FBAN/FBIOS;FBAV/500.0.0.0]'
   });
   let owner, popups = 0;
   const requested = [];
@@ -191,7 +191,7 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
 
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
     assert.equal(await page.evaluate(() => window.fateH5.embedded),true);
-    assert.equal(await page.evaluate(() => window.fateH5.metaBrowser),'instagram');
+    assert.equal(await page.evaluate(() => window.fateH5.metaBrowser),'facebook');
     assert.equal(await page.evaluate(() => window.fateH5.metaPlatform),'ios');
     await page.addStyleTag({content:':root{--fate-safe-area-top:70px}'});
     assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).paddingTop),'70px');
@@ -216,15 +216,13 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
 
     await expect(page.locator('#birth-generation')).toBeVisible();
     const generationBackground = await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).backgroundImage);
-    assert.match(generationBackground,/report-loading-poster\.webp/);
-    assert.doesNotMatch(generationBackground,/report-loading-animated\.webp/);
+    assert.match(generationBackground,/report-loading-animated\.webp/);
     assert.match(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),/birth-generation-pulse/);
     await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);
     await expect(page.locator('#fate-startup')).toBeVisible();
     const startupBackground = await page.locator('#fate-startup').evaluate(element => getComputedStyle(element,'::before').backgroundImage);
-    assert.match(startupBackground,/report-loading-poster\.webp/);
-    assert.doesNotMatch(startupBackground,/report-loading-animated\.webp/);
-    assert.equal(requested.some(path => path.endsWith('/report-loading-animated.webp')),false);
+    assert.match(startupBackground,/report-loading-animated\.webp/);
+    assert.equal(requested.some(path => path.endsWith('/report-loading-animated.webp')),true);
     await page.evaluate(() => window.fateBoot.ready());
     await expect(page.locator('#accepted-report')).toBeVisible();
     await expect(page.locator('#fate-startup')).toBeHidden();
@@ -258,7 +256,10 @@ test('Instagram on Android keeps the header above the form while scrolling and c
     assert.equal(await page.evaluate(() => window.fateH5.metaPlatform),'android');
     await page.addStyleTag({content:':root{--fate-safe-area-top:70px}'});
     assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).paddingTop),'0px');
-    assert.equal(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),'none');
+    assert.equal(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),'birth-generation-lite');
+    const generationBackground = await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).backgroundImage);
+    assert.match(generationBackground,/report-loading-poster\.webp/);
+    assert.doesNotMatch(generationBackground,/report-loading-animated\.webp/);
 
     const checkPosition = async () => {
       const bar = await header.boundingBox();

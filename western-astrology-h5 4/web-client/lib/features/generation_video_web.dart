@@ -6,6 +6,14 @@ import 'package:web/web.dart' as web;
 
 import 'generation_video.dart' show GenerationPoster;
 
+@JS('fateH5.metaBrowser')
+external JSString? get _metaBrowser;
+@JS('fateH5.metaPlatform')
+external JSString? get _metaPlatform;
+
+bool get _instagramAndroid =>
+    _metaBrowser?.toDart == 'instagram' && _metaPlatform?.toDart == 'android';
+
 /// Own the web video element so JY's CSS mask applies to its video surface.
 class GenerationVideo extends StatefulWidget {
   const GenerationVideo({
@@ -225,7 +233,12 @@ class _GenerationVideoState extends State<GenerationVideo>
   }
 
   @override
-  Widget build(BuildContext context) => widget.reduced || _imageFailed
+  Widget build(BuildContext context) => _instagramAndroid
+      ? Opacity(
+          opacity: widget.active ? 1 : 0,
+          child: GenerationPoster(lightweight: true, animate: !widget.reduced),
+        )
+      : widget.reduced || _imageFailed
       ? Opacity(opacity: widget.active ? 1 : 0, child: const GenerationPoster())
       : _failed
       ? Opacity(

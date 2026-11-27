@@ -203,7 +203,7 @@ it("keeps report ownership usable when embedded-browser storage is blocked", () 
   expect(fullyBlocked.h5.ownerKey()).toBe(fullyBlocked.h5.ownerKey());
 });
 
-it("uses a low-memory CanvasKit configuration for Instagram Android report pages", async () => {
+it("uses accelerated low-surface CanvasKit for Instagram Android report pages", async () => {
   const page = openDocument(new Map(), false, { userAgent: "Mozilla/5.0 Android 16 Instagram 417.0.0.54.77" });
   const initializeEngine = vi.fn(async (_config: any) => ({ runApp: vi.fn(async () => {}) }));
   const load = page.startFlutter(vi.fn(async (options: any) => {
@@ -212,12 +212,13 @@ it("uses a low-memory CanvasKit configuration for Instagram Android report pages
   await Promise.resolve();
   const expected = {
     renderer: "canvaskit",
-    canvasKitForceCpuOnly: true,
     canvasKitMaximumSurfaces: 2,
     canvasKitVariant: "chromium",
   };
   expect(load.mock.calls[0][0].config).toMatchObject(expected);
   expect(initializeEngine.mock.calls[0][0]).toMatchObject(expected);
+  expect(load.mock.calls[0][0].config.canvasKitForceCpuOnly).toBeUndefined();
+  expect(initializeEngine.mock.calls[0][0].canvasKitForceCpuOnly).toBeUndefined();
 });
 
 it("keeps accelerated CanvasKit for Facebook Android report pages", async () => {

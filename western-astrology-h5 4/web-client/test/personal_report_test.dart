@@ -179,7 +179,7 @@ void main() {
       browser.activities.where((event) => event['action'] == 'click_line'),
       hasLength(1),
     );
-    expect(browser.sameTabPages, ['https://line.me/ti/p/SmujXXCH9v']);
+    expect(browser.sameTabPages, ['https://line.me/R/ti/p/SmujXXCH9v']);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

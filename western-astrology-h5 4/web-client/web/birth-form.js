@@ -944,7 +944,8 @@
     const warmGenerationVisual = () => {
       generationVisual = new Image();
       generationVisual.decoding = 'async';
-      const image = window.fateH5.embedded ? 'report-loading-poster.webp' : 'report-loading-animated.webp';
+      const lowMemory = window.fateH5.metaBrowser === 'instagram' && window.fateH5.metaPlatform === 'android';
+      const image = lowMemory ? 'report-loading-poster.webp' : 'report-loading-animated.webp';
       generationVisual.src = new URL('assets/assets/images/' + image,document.baseURI).href;
     };
     if ('requestIdleCallback' in window) requestIdleCallback(warmGenerationVisual,{timeout:2500});

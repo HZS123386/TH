@@ -80,8 +80,11 @@ class ReportPreview extends StatelessWidget {
   }
 
   void _openLine() {
+    // Keep the supported LINE URL scheme directly inside the tap activation.
+    // Meta in-app browsers otherwise spend several seconds on their generic
+    // web hand-off page before they offer the installed LINE app.
+    h5.browser.openPage('https://line.me/R/ti/p/SmujXXCH9v', sameTab: true);
     _trackLineContact('click_line');
-    h5.browser.openPage('https://line.me/ti/p/SmujXXCH9v', sameTab: true);
   }
 
   Widget _lineContact(BuildContext context) {

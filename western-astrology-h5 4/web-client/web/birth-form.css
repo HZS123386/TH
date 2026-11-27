@@ -137,12 +137,13 @@ html[data-meta-browser=facebook] #birth-options button { touch-action:none; }
     url(assets/assets/images/report-loading-poster.webp) center/contain no-repeat;
   -webkit-mask-image:radial-gradient(ellipse,#000 40%,transparent 73%); mask-image:radial-gradient(ellipse,#000 40%,transparent 73%);
   animation:birth-generation-pulse 1.8s ease-in-out infinite; }
-html[data-embedded-browser=meta] .birth-generation-visual {
+html[data-meta-browser=instagram][data-meta-platform=android] .birth-generation-visual {
   background-image:url(assets/assets/images/report-loading-poster.webp); }
 html[data-meta-browser=instagram][data-meta-platform=android] .birth-generation-visual {
-  animation:none; filter:none; }
+  animation:birth-generation-lite 1.8s ease-in-out infinite alternate; filter:none; }
 #birth-generation-retry { min-height:44px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
   background:transparent; color:#f4d399; font:inherit; cursor:pointer; }
 @keyframes birth-generation-pulse { 50% { transform:scale(1.035); filter:brightness(1.12); } }
+@keyframes birth-generation-lite { to { transform:scale(1.025); } }
 @media (prefers-reduced-motion:reduce) { .birth-generation-visual { animation:none;
   background-image:url(assets/assets/images/report-loading-poster.webp); } }

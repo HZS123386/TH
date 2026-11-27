@@ -10,13 +10,13 @@ const fateBasePath = new URL('.', document.baseURI).pathname;
 const fateLandingPath = location.pathname === fateBasePath || location.pathname === fateBasePath + 'index.html';
 // The official loader selects the shipped JavaScript build for this one recovery document.
 if(window.fateBoot.compatibility||window.fateBoot.embedded)fateFlutterConfig.renderer='canvaskit';
-// Instagram's Android WebView can terminate its renderer while CanvasKit and
-// the GPU-backed Flutter surface start together. Keep this compatibility path
-// on CPU rendering and cap overlay surfaces; Facebook and full browsers retain
-// their normal accelerated configuration.
+// Instagram's Android WebView is sensitive to the number of GPU/platform-view
+// surfaces. Keep the Chromium-compatible CanvasKit build and cap overlays, but
+// retain GPU rendering: forcing the whole report onto the CPU makes long pages
+// and their scrolling unusably slow. The generation view separately avoids its
+// video platform view on this browser.
 if(document.documentElement.dataset.metaBrowser==='instagram'&&
    document.documentElement.dataset.metaPlatform==='android'){
-  fateFlutterConfig.canvasKitForceCpuOnly=true;
   fateFlutterConfig.canvasKitMaximumSurfaces=2;
   fateFlutterConfig.canvasKitVariant='chromium';
 }
