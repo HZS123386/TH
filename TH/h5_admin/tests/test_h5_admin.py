@@ -93,7 +93,8 @@ def admin(postgres_url):
 
 def test_admin_data_requires_separate_login_and_static_page_has_no_business_data(admin):
     http, _ = admin
-    for path in ("/overview", "/visit-funnel", "/ad-funnel", "/page-diagnostics", "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
+    for path in ("/overview", "/visit-funnel", "/ad-funnel", "/page-diagnostics", "/tarot-activity",
+                 "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
         assert http.get("/api/admin" + path).status_code == 401
     html = http.get("/admin/")
     assert html.status_code == 200 and "report-1" not in html.text
@@ -102,6 +103,35 @@ def test_admin_data_requires_separate_login_and_static_page_has_no_business_data
     assert http.get("/admin/config.py").status_code == 404
     login(http, "support-test")
     assert http.get("/api/admin/page-diagnostics").status_code == 403
+    assert http.get("/api/admin/tarot-activity").status_code == 403
+
+
+def test_tarot_activity_counts_browser_visits_and_checkpoints_separately_from_astrology(admin):
+    http, _ = admin
+    login(http)
+    astrology_before = http.get("/api/admin/visit-funnel").json()
+    view = {"id": str(uuid4()), "event": "draw", "visible_ms": 2400}
+    card = {"id": str(uuid4()), "event": "card_selected"}
+
+    def post(visitor, *observations, origin="https://testserver"):
+        return http.post("/api/tarot/activity", headers={"X-Tarot-Visitor": visitor * 32, "Origin": origin},
+                         json={"observations": observations}).status_code
+
+    assert post("a", view, card) == 204
+    assert post("a", {**view, "visible_ms": 3600}, card) == 204
+    assert post("a", view, card) == 204
+    assert post("a", {**view, "id": str(uuid4()), "visible_ms": 1200}, {**card, "id": str(uuid4())}) == 204
+    assert post("b", {**view, "id": str(uuid4()), "visible_ms": 2400}) == 204
+    assert post("b", view, origin="https://outside.invalid") == 403
+    assert post("a", {**view, "question": "private"}) == 422
+
+    stats = http.get("/api/admin/tarot-activity").json()
+    pages = {row["event"]: row for row in stats["pages"]}
+    assert pages["draw"] == {"event": "draw", "people": 2, "times": 3, "total_ms": 7200, "average_ms": 2400}
+    assert pages["report"]["times"] == 0 and pages["report"]["total_ms"] is None
+    action = next(row for row in stats["actions"] if row["event"] == "card_selected")
+    assert (action["people"], action["times"]) == (1, 2)
+    assert http.get("/api/admin/visit-funnel").json() == astrology_before
 
 
 def test_visit_funnels_count_form_and_historical_welcome_entries(admin):

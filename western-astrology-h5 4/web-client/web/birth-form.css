@@ -27,7 +27,7 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
 .birth-hint,.birth-consent { text-align:center; margin:6px 0 14px; }
 #birth-form label { display:flex; align-items:center; justify-content:space-between; margin:12px 0 5px; font-size:13px; }
 #birth-form label small,.birth-check { color:#d0bdd7; }
-#birth-form input:not([type=checkbox]),#birth-question,.birth-picker-trigger {
+#birth-form input:not([type=checkbox]),.birth-picker-trigger {
   display:block; width:100%; min-width:0; height:46px; padding:8px 10px; border:1px solid #746179;
   border-radius:9px; background:#171023; color:#fff6e8; font:inherit; }
 #birth-form :disabled { opacity:.55; }
@@ -75,6 +75,12 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
   #birth-picker { margin:auto auto 0; max-height:calc(100dvh - 8px); padding-bottom:max(9px,env(safe-area-inset-bottom)); }
 }
 .birth-location { position:relative; }
+#birth-form #birth-city { padding-inline-end:46px; }
+#birth-city-toggle { position:absolute; inset-block-start:1px; inset-inline-end:1px; width:44px; height:44px;
+  display:grid; place-items:center; border:0; border-radius:8px; background:transparent; color:inherit; cursor:pointer; }
+#birth-city-toggle::before { content:""; width:8px; height:8px; border-right:2px solid; border-bottom:2px solid;
+  transform:translateY(-2px) rotate(45deg); }
+#birth-city-toggle[aria-expanded="true"]::before { transform:translateY(2px) rotate(225deg); }
 #birth-options { position:absolute; z-index:2; top:100%; margin-top:3px; width:100%; overflow:auto;
   max-height:min(185px,30dvh); border:1px solid #816a82; border-radius:9px; background:#20162d; }
 #birth-options.open-above { top:auto; bottom:100%; margin:0 0 3px; }
@@ -82,7 +88,6 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
   color:inherit; background:transparent; font:inherit; text-align:start; }
 #birth-options button:focus,#birth-options button:hover { background:#3a2a47; }
 #birth-options small { display:block; color:#ccb9d0; }
-#birth-custom { margin-top:8px; }
 #birth-message { color:#ffd7b3; text-align:center; }
 #birth-message:empty { display:none; }
 #birth-submit,#birth-retry { width:100%; min-height:46px; padding:8px; border:0; border-radius:12px;
@@ -104,12 +109,65 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
 #birth-boards .birth-board:nth-child(2) li { border-color:#9876ab; background:linear-gradient(#523860,#362347); }
 #fate-birth footer { text-align:center; padding:10px 17px 28px; }
 #fate-birth[data-generating] > :not(#birth-generation) { display:none; }
-#birth-generation { min-height:100%; padding:24px; display:grid; align-content:center; justify-items:center;
-  gap:18px; text-align:center; background:radial-gradient(ellipse at 50% 22%,#392353,#100b1b 70%); }
-#birth-generation h1 { color:#ffedcc; font-size:clamp(22px,5vw,28px); margin:0; }
-#birth-generation p { margin:0; color:#d0bdd7; }
-#birth-generation::after { content:""; width:min(70vw,280px); aspect-ratio:16/9;
+#birth-generation { min-height:100%; padding:44px max(14px,5vw) 24px;
+  background:radial-gradient(ellipse 130% 82% at 50% 0%,#392353,#160d29 68%,#0c0816); }
+.birth-generation-content { width:min(100%,540px); margin:0 auto; }
+.birth-generation-brand { display:block; width:auto; height:18px; max-width:100%; object-fit:contain; }
+#birth-generation h1 { margin:10px 0 15px; color:#ffedcc; text-align:center; font-size:clamp(20px,6vw,28px); line-height:1.3; }
+.birth-generation-card { position:relative; padding:15px 16px; margin:0 0 16px; border:1px solid #725746;
+  border-radius:16px; background:linear-gradient(145deg,#2c203b,#21172d); }
+.birth-generation-card h2 { margin:0 0 8px; font-size:15px; color:#f4d399; }
+.birth-generation-card>dl,#birth-generation-placements,#birth-generation-reading { animation:birth-stage-enter .32s ease-out; }
+@keyframes birth-stage-enter { from { opacity:0; transform:translateY(5px); } }
+.birth-generation-card p { margin:0; }
+.birth-generation-note { color:#c8bad9; font-size:12px; }
+.birth-generation-details,.birth-generation-planets,.birth-generation-factors { margin:0; }
+.birth-generation-details { display:grid; align-content:center; gap:6px; min-height:96px; }
+.birth-generation-details>div { display:grid; grid-template-columns:minmax(76px,max-content) minmax(0,1fr); gap:12px; }
+.birth-generation-details dt { color:#f4d399; font-size:13px; }
+.birth-generation-content dd { margin:0; overflow-wrap:anywhere; color:#fff1d9; }
+.birth-generation-planets { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.birth-generation-planets>div,.birth-generation-factors>div { padding:8px 10px; border-radius:9px; background:#170e28aa; }
+.birth-generation-planets dt { color:#c8bad9; font-size:12px; }
+.birth-generation-planets dd { font-size:14px; font-weight:700; }
+#birth-generation-metrics { margin:0 0 8px; font-size:12px; color:#f4d399; }
+#birth-generation-estimated { margin-top:8px; }
+.birth-generation-factors { display:grid; gap:8px; }
+.birth-generation-factors>div { border:1px solid #dcbd8c35; }
+.birth-generation-factors dt { color:#f5d69c; font-size:13px; font-weight:700; }
+.birth-generation-factors>div:nth-child(2) dt { color:#ffc0bd; }
+.birth-generation-factors dd { margin-top:4px; font-size:12px; }
+#birth-generation-basis { margin:8px 0 0; }
+.birth-generation-stages { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; list-style:none;
+  padding:0 0 10px; margin:0 0 12px; border-bottom:1px solid #e4bc7833; }
+.birth-generation-stages li { display:flex; align-items:flex-start; gap:5px; color:#c1b2d4; font-size:11.5px;
+  line-height:1.4; overflow-wrap:anywhere; }
+.birth-generation-stages li[aria-current],.birth-generation-stages li[data-done] { color:#f4d399; }
+.birth-generation-stages .birth-stage-index { display:grid; place-content:center; flex:0 0 19px; height:19px;
+  color:#e4bc78; background:#150d25; border-radius:50%; font-size:10px; font-weight:700; }
+.birth-generation-stages li[aria-current] .birth-stage-index { color:#281733; background:#f4d399; }
+#birth-generation-status { color:#fff1d9; font-size:13px; }
+#birth-generation-progress { --report-progress:0%; display:flex; align-items:center; gap:13px; min-height:26px; margin-top:9px; }
+.birth-generation-track { flex:1; position:relative; height:4px; margin-inline:6px; border-radius:4px; background:#55435c; }
+.birth-generation-track::before { content:""; position:absolute; inset:0 auto 0 0; width:var(--report-progress);
+  border-radius:inherit; background:linear-gradient(90deg,#976234,#ffda91); box-shadow:0 0 12px #ffd17e9c;
+  transition:width .6s ease-out; }
+.birth-generation-track>span { position:absolute; top:50%; left:var(--report-progress); transform:translate(-50%,-53%);
+  color:#fff2cb; font-size:26px; line-height:1; text-shadow:0 0 6px #ffd17e,0 0 15px #ffb96f; transition:left .6s ease-out; }
+#birth-generation-percent { min-width:4ch; color:#f5d69c; font-size:13px; font-weight:700; text-align:right; }
+#birth-generation-next { margin-top:6px; }
+#birth-generation .birth-generation-art { width:min(100%,380px); aspect-ratio:3/2; margin:0 auto;
   background:url(assets/assets/images/report-loading-poster.webp) center/contain no-repeat;
   mask-image:radial-gradient(ellipse,#000 40%,transparent 72%); }
-#birth-generation-retry { min-height:44px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
+#birth-generation-video { display:block; width:100%; height:100%; object-fit:contain; opacity:0; }
+#birth-generation-video[data-playing] { opacity:1; }
+#birth-generation-retry { min-height:44px; margin-top:10px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
   background:transparent; color:#f4d399; font:inherit; cursor:pointer; }
+@media(max-height:740px) {
+  #birth-generation { padding-top:26px; }
+  .birth-generation-card { margin-bottom:12px; padding-block:12px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .birth-generation-card>dl,#birth-generation-placements,#birth-generation-reading { animation:none; }
+  .birth-generation-track::before,.birth-generation-track>span { transition:none; }
+}

@@ -1,0 +1,227 @@
+/* V18 · A mysterious moonlit companion, with three aligned suggestion rows. */
+body:is([data-view="home"], [data-view="draw"]) {
+  background: #100b1b;
+  background-image: radial-gradient(ellipse at 24% 5%, #6e4b843c, transparent 49%), radial-gradient(ellipse at 100% 82%, #5a3e6722, transparent 54%);
+  color: #f4eefa;
+}
+body[data-view="home"]::before { opacity: .38; }
+body:is([data-view="home"], [data-view="draw"]) #site-header { max-width: 640px; height: 56px; padding: 0 24px; background: transparent; border: 0; }
+body:is([data-view="home"], [data-view="draw"]) #site-header .brand { font-size: 21px; color: #e7d4b5; }
+body:is([data-view="home"], [data-view="draw"]) #site-header .icon-button,
+body:is([data-view="home"], [data-view="draw"]) #site-header .lang-switch { border-color: transparent; background: #e0caef08; color: #d5c6de; }
+body:is([data-view="home"], [data-view="draw"]) button:focus-visible { outline: 2px solid #e3c4f0; outline-offset: 4px; }
+
+body[data-view="home"] .studio-shell {
+  --portrait-size: 194px;
+  width: min(100%, 640px); min-height: calc(100svh - 56px); padding: 8px 28px max(20px, env(safe-area-inset-bottom));
+  gap: 18px; justify-content: flex-start;
+}
+body[data-view="home"] .studio-welcome { flex: 0 0 auto; }
+body[data-view="home"] .studio-hero { min-height: 0; padding: 0; gap: 25px; }
+body[data-view="home"] .studio-portrait { flex: 0 0 var(--portrait-size); height: var(--portrait-size); }
+body[data-view="home"] .studio-portrait::before { inset: 15% -9% 3%; background: radial-gradient(ellipse, #8b66df4d, #61439018 60%, transparent 75%); filter: blur(22px); }
+body[data-view="home"] .studio-portrait::after { content: none; }
+body[data-view="home"] .studio-portrait img { object-fit: contain; object-position: center; border-radius: 0; filter: none; mask-image: none; -webkit-mask-image: none; }
+body[data-view="home"] .studio-intro small { display: block; margin: 0 0 10px; color: #cdb7dc; font: 400 14px/1.5 var(--sans); letter-spacing: .04em; }
+body[data-view="home"] .studio-intro h1,
+html[lang="th"] body[data-view="home"] .studio-intro h1 { font: 400 27px/1.55 var(--sans); letter-spacing: 0; color: #f5eefb; }
+body[data-view="home"] .studio-intro h1 em { display: block; font-style: normal; color: #dac4e9; }
+body[data-view="home"] .studio-utility { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; margin-top: 6px; }
+body:is([data-view="home"], [data-view="draw"]) .draw-presence {
+  min-width: 0; margin: 0;
+  color: #decbe7; font-size: 14px; line-height: 1.4;
+}
+body[data-view="draw"] .compact-draw > .draw-presence { text-align: center; margin-bottom: 4px; }
+body[data-view="home"] .studio-utility .small-info { min-height: 32px; flex: 0 0 auto; padding: 3px 0 3px 7px; color: #bda9cc; font-size: 14px; }
+body[data-view="home"] .studio-utility .small-info > span { display: none; }
+body[data-view="home"] .studio-suggestions { margin: 0; }
+body[data-view="home"] .studio-section-heading { min-height: 32px; margin: 0 2px 8px; }
+body[data-view="home"] .studio-section-heading h2 { font-size: 14px; color: #b7a7c4; }
+body[data-view="home"] .suggestion-swap { min-height: 32px; padding: 4px 0 4px 9px; color: #baa5cc; font-size: 14px; }
+body[data-view="home"] .suggestion-swap .icon { width: 15px; height: 15px; }
+body[data-view="home"] .suggestion-list { gap: 10px; }
+body[data-view="home"] .suggestion-row { min-height: 48px; padding: 10px 18px; border: 0; border-radius: 18px 18px 5px 18px; background: linear-gradient(110deg, #aa82c51b, #ceb3e00c); color: #eee3f5; font-size: 16px; line-height: 1.5; box-shadow: none; }
+body[data-view="home"] .suggestion-row { width: 100%; justify-self: stretch; }
+body[data-view="home"] .suggestion-row > i { display: none; }
+body[data-view="home"] .suggestion-row:hover { background: #b999d22c; border-color: transparent; transform: none; }
+body[data-view="home"] .studio-entry { display: flex; flex-direction: column; gap: 12px; }
+body[data-view="home"] .studio-quick-actions { min-height: 44px; margin: 0; padding: 0; gap: 15px; }
+body[data-view="home"] .draw-first-entry { min-height: 44px; padding: 8px 15px; gap: 10px; border-color: #ccb5de2a; background: #c3a3dc09; border-radius: 16px; color: #e4d6ed; }
+body[data-view="home"] .draw-first-entry strong { font-size: 16px; line-height: 1.4; font-weight: 400; }
+body[data-view="home"] .draw-first-icon { width: 16px; height: 23px; color: #c4a7d4; }
+body[data-view="home"] .studio-quick-actions > p { max-width: none; font-size: 14px; line-height: 1.45; color: #ab98b9; }
+body[data-view="home"] .studio-compose.campaign-panel { margin: 0; padding: 0; }
+body[data-view="home"] .composer-box { min-height: 66px; padding: 9px 9px 9px 16px; gap: 8px; border: 1px solid #bca5ce40; border-radius: 22px; background: #3c2c494f; box-shadow: 0 8px 28px #05020b1c; }
+body[data-view="home"] .composer-box:focus-within { border-color: #d1b9e3; box-shadow: 0 0 0 3px #bea0d112; }
+body[data-view="home"] #question-text { height: 44px; min-height: 44px; font-size: 16px; line-height: 1.4; color: #f3eaf8; }
+body[data-view="home"] #question-text::placeholder { font-size: 16px; line-height: 1.4; color: #af9cbe; }
+body[data-view="home"] .composer-submit { min-height: 44px; padding: 9px 13px; border: 0; border-radius: 15px; background: linear-gradient(115deg, #ecd2a5, #dcb881); color: #33243b; font-size: 16px; line-height: 1.4; box-shadow: none; }
+body[data-view="home"] .composer-submit:hover { background: #efd9b5; }
+body[data-view="home"] .studio-compose .payment-note { margin: 8px 0 0; color: #aa98b8; font-size: 14px; line-height: 1.4; }
+body[data-view="home"] .studio-footnote { display: none; }
+
+/* Moonlit velvet, with the gold stitching and the cards sharing one surface. */
+body[data-view="draw"] .compact-draw { gap: 7px; }
+body[data-view="draw"] .draw-topbar h1,
+html[lang="th"] body[data-view="draw"] .draw-topbar h1 { font-weight: 400; color: #f2e4ef; }
+body[data-view="draw"] .draw-details-button { border-color: #c5a27738; background: #301f3980; color: #e0c9df; }
+body[data-view="draw"] .draw-stage {
+  position: relative;
+  isolation: isolate;
+  margin-block: 0;
+  padding: 11px clamp(11px, 4vw, 28px) 4px;
+  border: 1px solid #b5905f9c;
+  border-radius: 26px;
+  background:
+    repeating-linear-gradient(124deg, #efc6f207 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(34deg, #140b1c19 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse at 50% 44%, #624070 0%, #42284f 43%, #24182f 82%, #1b1426 100%);
+  box-shadow: 0 14px 32px #07041080, inset 0 0 28px #10061772, inset 0 0 0 3px #2b1c34, inset 0 0 0 4px #c2a17442;
+}
+body[data-view="draw"] .draw-stage::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  z-index: -1;
+  pointer-events: none;
+  border: 1px solid #ddbd892a;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 14px 14px, #deb981a0 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 14px) 14px, #deb981a0 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 14px calc(100% - 14px), #deb981a0 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 14px) calc(100% - 14px), #deb981a0 0 1.5px, transparent 2.5px);
+}
+body[data-view="draw"] .draw-stage::after {
+  content: "";
+  position: absolute;
+  inset: 27% 10% 5%;
+  z-index: -1;
+  pointer-events: none;
+  border: 1px solid #e5be9b1c;
+  border-radius: 50%;
+  box-shadow: 0 0 0 5px #e5be9b0d;
+}
+body[data-view="draw"] .compact-draw .card-slot {
+  border: 1px dashed #e0bd8c67;
+  border-radius: 8px;
+  background: radial-gradient(ellipse at 50% 74%, #4c30485c, #1d112a73);
+}
+body[data-view="draw"] .compact-draw .slot-label { color: #e2d0e5; }
+body[data-view="draw"] .compact-draw .slot-empty { color: #e1ba896b; font: 400 27px/1 var(--serif); }
+body[data-view="draw"] .compact-draw .card-slot.filled { border-style: solid; border-color: #e8c38d9c; }
+body[data-view="draw"] .compact-draw .card-slot:nth-child(1 of :not(.filled)) {
+  border-color: #edc78a;
+  box-shadow: 0 0 16px #e3b88429, inset 0 0 14px #e3b88417;
+}
+body[data-view="draw"] .compact-draw .card-slot:nth-child(1 of :not(.filled)) :is(.slot-label, .slot-empty) { color: #f5d5a0; }
+body[data-view="draw"] .compact-draw .deck-toolbar { border-top: 1px solid #d9b37c31; }
+body[data-view="draw"] .compact-draw .deck-toolbar > strong { color: #e3cde8; font-weight: 400; }
+body[data-view="draw"] .compact-draw .deck-toolbar > strong b { color: #ffdaa0; font-weight: 600; }
+body[data-view="draw"] .compact-draw .deck-tools .text-button { color: #e0c8df; }
+body[data-view="draw"] .compact-draw .draw-motion-status { margin-bottom: 6px; color: #dfc5df; }
+body[data-view="draw"] .compact-draw .tarot-back,
+body[data-view="draw"] .tarot-flight > .tarot-back {
+  border: 1px solid #bd9a7196;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(130deg, #f7d2ea0a 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse at 50% 52%, #5a3d6a, #34243f 60%, #21172e);
+  box-shadow: inset 0 0 0 2px #201527, inset 0 0 0 3px #d5ac6b68, 0 4px 9px #10081785;
+}
+body[data-view="draw"] .compact-draw .tarot-back::before,
+body[data-view="draw"] .tarot-flight > .tarot-back::before { inset: 21% 23%; border: 1px solid #dcb48385; border-radius: 50%; transform: rotate(-25deg); }
+body[data-view="draw"] .compact-draw .tarot-back::after,
+body[data-view="draw"] .tarot-flight > .tarot-back::after { inset: 21% 23%; border: 1px solid #dcb48363; border-radius: 50%; transform: rotate(25deg); }
+body[data-view="draw"] .compact-draw .tarot-back .back-moon,
+body[data-view="draw"] .tarot-flight .tarot-back .back-moon { font-size: 10px; color: #dfb980; top: 8%; }
+body[data-view="draw"] .compact-draw .tarot-back .back-corner,
+body[data-view="draw"] .tarot-flight .tarot-back .back-corner { display: block; bottom: 7%; font-size: 9px; color: #dfb980; }
+body[data-view="draw"] .compact-draw .tarot-back > small,
+body[data-view="draw"] .tarot-flight > .tarot-back > small { display: none; }
+body[data-view="draw"] .compact-draw .tarot-back .back-star,
+body[data-view="draw"] .tarot-flight .back-star { font-size: 24px; color: #f4d7a6; text-shadow: 0 0 10px #f2cc8659; }
+@media (hover: hover) and (pointer: fine) {
+  body[data-view="draw"] .compact-draw .deck-card:hover:not(:disabled) { z-index: 2; }
+  body[data-view="draw"] .compact-draw .deck-card:hover:not(:disabled) > .tarot-back { border-color: #f0cc98; }
+}
+body[data-view="draw"] .compact-draw .deck-card:focus-visible { z-index: 2; }
+body[data-view="draw"] .compact-draw .slot-remove > .tarot-back { border-radius: 7px; border-color: #d9b684af; }
+body[data-view="draw"] .compact-draw .draw-footer { margin: 0; padding-top: 6px; }
+body[data-view="draw"] .compact-draw .draw-footer .primary { border: 0; border-radius: 16px; background: linear-gradient(115deg, #ecd2a5, #dcb881); }
+body[data-view="draw"] .compact-draw .draw-footer .payment-note { color: #aa98b8; }
+body[data-view="report"] .report-mira-note img,
+body[data-view="chat"] .chat-heading > img { object-fit: cover; object-position: center 43%; border-radius: 8px; }
+
+@media (max-width: 760px) {
+  body:is([data-view="home"], [data-view="draw"]) #site-header { height: 52px; padding: 0 20px; }
+  body[data-view="home"] .studio-shell {
+    --portrait-size: clamp(116px, 40vw, 184px);
+    min-height: calc(100svh - 52px); width: min(100%, 600px);
+    padding: clamp(12px, 4svh, 36px) 20px max(12px, env(safe-area-inset-bottom));
+    gap: clamp(16px, 3svh, 26px);
+  }
+  body[data-view="home"] .studio-hero { gap: 14px; }
+  body[data-view="home"] .studio-intro small { margin-bottom: 8px; font-size: 14px; }
+  body[data-view="home"] .studio-intro h1,
+  html[lang="th"] body[data-view="home"] .studio-intro h1 { font-size: 22px; line-height: 1.48; }
+  body[data-view="home"] .studio-utility { min-height: 32px; margin-top: 8px; }
+  body[data-view="home"] .studio-section-heading { min-height: 30px; margin-bottom: 8px; }
+  body[data-view="home"] .suggestion-swap { min-height: 30px; }
+  body[data-view="home"] .suggestion-row { min-height: 50px; padding: 10px 16px; }
+  body[data-view="home"] .studio-entry { gap: 10px; }
+  body[data-view="home"] .composer-box { min-height: 64px; padding: 8px 8px 8px 14px; flex-wrap: nowrap; }
+  body[data-view="home"] .studio-quick-actions { margin: 0; gap: 13px; }
+  body[data-view="draw"] .compact-draw { min-height: calc(100svh - 52px); gap: 5px; }
+  body[data-view="draw"] .compact-draw .draw-topbar h1 { font-size: 22px; }
+}
+
+@media (max-width: 760px) and (max-height: 700px) {
+  body[data-view="home"] .studio-shell { --portrait-size: clamp(112px, 37vw, 144px); padding-top: 14px; gap: 16px; }
+  body[data-view="home"] .studio-intro h1,
+  html[lang="th"] body[data-view="home"] .studio-intro h1 { font-size: 21px; }
+  body[data-view="home"] .studio-intro small { display: block; margin-bottom: 6px; }
+  body[data-view="home"] .suggestion-list { gap: 8px; }
+  body[data-view="home"] .suggestion-row { min-height: 46px; padding: 8px 15px; }
+  body[data-view="home"] .studio-compose .payment-note { margin-top: 6px; }
+  body[data-view="draw"] .compact-draw { gap: 4px; }
+}
+
+/* 568px tall phones keep the content readable; only artwork and breathing space shrink. */
+@media (max-width: 760px) and (max-height: 620px) {
+  body:is([data-view="home"], [data-view="draw"]) #site-header { height: 44px; }
+  body[data-view="home"] .studio-shell { --portrait-size: 100px; min-height: calc(100svh - 44px); padding-top: 8px; padding-bottom: max(6px, env(safe-area-inset-bottom)); gap: 8px; }
+  body[data-view="home"] .studio-hero { gap: 12px; }
+  body[data-view="home"] .studio-intro small { margin-bottom: 4px; line-height: 1.35; }
+  body[data-view="home"] .studio-intro h1,
+  html[lang="th"] body[data-view="home"] .studio-intro h1 { font-size: 20px; line-height: 1.4; }
+  body[data-view="home"] .studio-utility { min-height: 28px; margin-top: 4px; }
+  body[data-view="home"] .studio-utility .small-info { min-height: 28px; padding-top: 0; padding-bottom: 0; }
+  body[data-view="home"] .studio-section-heading { min-height: 26px; margin-bottom: 5px; }
+  body[data-view="home"] .suggestion-swap { min-height: 26px; padding-top: 1px; padding-bottom: 1px; }
+  body[data-view="home"] .suggestion-list { gap: 6px; }
+  body[data-view="home"] .suggestion-row { min-height: 44px; padding: 6px 14px; line-height: 1.4; }
+  body[data-view="home"] .studio-entry { gap: 6px; }
+  body[data-view="home"] .studio-quick-actions { min-height: 44px; }
+  body[data-view="home"] .composer-box { min-height: 56px; padding: 5px 6px 5px 12px; }
+  body[data-view="home"] #question-text { height: 42px; min-height: 42px; line-height: 1.3; }
+  body[data-view="home"] .composer-submit { padding: 8px 10px; min-height: 44px; }
+  body[data-view="home"] .studio-compose .payment-note { margin-top: 4px; line-height: 1.35; }
+  body[data-view="draw"] .compact-draw { min-height: calc(100svh - 44px); gap: 3px; }
+  body[data-view="draw"] .compact-draw .draw-footer { padding-top: 2px; }
+}
+
+@media (max-width: 359px) {
+  body:is([data-view="home"], [data-view="draw"]) #site-header { padding-left: 14px; padding-right: 14px; }
+  body[data-view="home"] .studio-shell { padding-left: 14px; padding-right: 14px; }
+  body[data-view="home"] .studio-utility .small-info { padding-left: 3px; }
+  body[data-view="home"] .studio-quick-actions { gap: 10px; }
+  body[data-view="home"] .draw-first-entry { padding-left: 12px; padding-right: 12px; }
+  body[data-view="home"] .studio-intro h1,
+  html[lang="th"] body[data-view="home"] .studio-intro h1 { font-size: 19px; }
+  body[data-view="draw"] .compact-draw .draw-topbar h1 { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-view="home"] .suggestion-row,
+  body[data-view="home"] .composer-box { transition: none; }
+}

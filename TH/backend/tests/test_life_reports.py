@@ -1237,7 +1237,7 @@ def test_line_migration_preserves_reports_from_supported_revisions(postgres_url)
     store.verify_schema()
     with store.connect() as db:
         assert db.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            {"version_num": "20261126_merge_h5_integrity"}
+            {"version_num": "20261126_tarot_activity"}
         ]
         saved = db.execute("SELECT claim_code,unlocked FROM life_reports WHERE id='existing-report'").fetchone()
         assert saved["unlocked"] == 0 and 10000 <= saved["claim_code"] <= 99999

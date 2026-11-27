@@ -29,6 +29,8 @@ external JSString? _ownerKey();
 external JSString _visitContext();
 @JS('fateBirthForm.attach')
 external void _attachBirthForm(JSString initial, JSFunction submit);
+@JS('fateBirthForm.updateGeneration')
+external void _updateBirthGeneration(JSString progress);
 @JS('fateBirthForm.submitting')
 external JSBoolean get _birthFormSubmitting;
 @JS('fateBirthForm.detach')
@@ -48,6 +50,7 @@ class WebBrowserPort implements BrowserPort {
       // Flutter still handles the error when diagnostics are unavailable.
     }
   }
+
   @override
   bool get supportsLineApp {
     final navigator = web.window.navigator;
@@ -106,6 +109,10 @@ class WebBrowserPort implements BrowserPort {
 
   @override
   bool get birthFormSubmitting => _birthFormSubmitting.toDart;
+
+  @override
+  void updateBirthGeneration(Json progress) =>
+      _updateBirthGeneration(jsonEncode(progress).toJS);
 
   @override
   void detachBirthForm() => _detachBirthForm();

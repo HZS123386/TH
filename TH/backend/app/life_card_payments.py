@@ -32,7 +32,8 @@ SUNLANDS_QUERY_ORDER = "/tradeApi/trade/queryOrderDetailInfo"
 SUNLANDS_LOAD_CHECKOUT = "/tradeApi/trade/loadCheckout"
 SUNLANDS_PAY_SINGLE = "/tradeApi/trade/paySingle"
 SUNLANDS_METHODS = (
-    "FM_ANTOM_LINEPAY", "FM_PAYPAL", "FM_ANTOM_PIX", "FM_ANTOM_PAGALEVE", "FM_ANTOM_MERCADOPAGO_BR",
+    "FM_ANTOM_LINEPAY", "FM_PAYPAL", "FM_ANTOM_TRUEMONEY",
+    "FM_ANTOM_PIX", "FM_ANTOM_PAGALEVE", "FM_ANTOM_MERCADOPAGO_BR",
 )
 SUNLANDS_CASHIER_ENTRIES = {
     ("trade.sunlands.com", "/trade/web/trade/payDirect.action"),

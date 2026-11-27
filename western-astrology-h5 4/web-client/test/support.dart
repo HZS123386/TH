@@ -257,4 +257,7 @@ class TestBrowser implements BrowserPort {
   void postPayment(String action, Map<String, String> fields) {}
   @override
   void pageReady(String page) {}
+
+  @override
+  void updateBirthGeneration(Json progress) {}
 }

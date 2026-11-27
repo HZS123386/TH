@@ -213,17 +213,12 @@ class ReportPreview extends StatelessWidget {
                       copy: c,
                       labelsInside: marriage,
                     ),
-                    if (!marriage) ...[
+                    if (!marriage || onPay != null) ...[
                       const SizedBox(height: 16),
                       const Divider(height: 1, color: Color(0x40E4BC78)),
                       const SizedBox(height: 14),
-                      if (priceLabel.isNotEmpty) ...[
+                      if (onPay != null) ...[
                         Text(priceLabel, textAlign: TextAlign.center),
-                        const SizedBox(height: 8),
-                        Text(
-                          c.t('jy', 'checkout.preview'),
-                          textAlign: TextAlign.center,
-                        ),
                         const SizedBox(height: 8),
                         JYButton(
                           key: const ValueKey('jy-payment-preview'),
@@ -237,7 +232,7 @@ class ReportPreview extends StatelessWidget {
                         ),
                         const SizedBox(height: 14),
                       ],
-                      _lineContact(context),
+                      if (!marriage) _lineContact(context),
                     ],
                   ],
                 ),
@@ -382,17 +377,6 @@ class _ReportLineQrState extends State<_ReportLineQr> {
   );
 }
 
-const _paymentOptions = {
-  'FM_ANTOM_LINEPAY': (name: 'LINE Pay', icon: 'payment-line-pay.webp'),
-  'FM_PAYPAL': (name: 'PayPal', icon: 'payment-paypal.webp'),
-  'FM_ANTOM_PIX': (name: 'Pix', icon: 'payment-pix.webp'),
-  'FM_ANTOM_PAGALEVE': (name: 'Pagaleve', icon: 'payment-pagaleve.webp'),
-  'FM_ANTOM_MERCADOPAGO_BR': (
-    name: 'Mercado Pago',
-    icon: 'payment-mercado-pago.webp',
-  ),
-};
-
 class ReportPaymentDialog extends StatefulWidget {
   const ReportPaymentDialog({
     required this.h5,
@@ -418,10 +402,6 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
   PaymentOrder? _order;
   bool _preparing = false, _waiting = false, _paid = false;
   bool _canRetry = true;
-  bool _loadingMethods = false, _openingMethod = false, _launchFailed = false;
-  List<String>? _methods;
-  String? _selectedMethod;
-  String? _paypalUrl;
   String _error = '';
 
   Copy get _copy => widget.h5.reportCopy(widget.report);
@@ -460,7 +440,7 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
           if (returning) {
             _startWaiting(immediately: true);
           } else {
-            await _loadMethods();
+            _openSunlands();
           }
         }
       } on ApiFailure catch (error) {
@@ -501,79 +481,12 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
     }
   }
 
-  Future<void> _loadMethods() async {
-    if (_loadingMethods || _request.cancelled) return;
-    setState(() {
-      _loadingMethods = true;
-      _methods = null;
-      _selectedMethod = null;
-      _launchFailed = false;
-      _error = '';
-    });
-    try {
-      final checkout = await widget.h5.repository.paymentMethods(
-        widget.report,
-        _request,
-      );
-      if (!mounted || _request.cancelled) return;
-      setState(() {
-        _methods = checkout.methods.where(_paymentOptions.containsKey).toList();
-      });
-      if (checkout.checkPayment) _startWaiting(immediately: true);
-    } catch (error) {
-      if (mounted && !_request.cancelled) {
-        setState(() => _error = widget.h5.message(error, labels: _copy));
-      }
-    } finally {
-      if (mounted && !_request.cancelled) {
-        setState(() => _loadingMethods = false);
-      }
+  void _openSunlands() {
+    final url = _order?.checkoutUrl;
+    if (url == null) {
+      setState(() => _error = _copy.t('checkout', 'cashierUnavailable'));
+      return;
     }
-  }
-
-  Future<void> _startSelectedMethod() async {
-    final method = _selectedMethod;
-    if (method == null || _openingMethod || _waiting || _paid) return;
-    setState(() {
-      _openingMethod = true;
-      _error = '';
-    });
-    try {
-      final url = await widget.h5.repository.startPayment(
-        widget.report,
-        method,
-        _request,
-      );
-      if (!mounted || _request.cancelled) return;
-      if (url == null) {
-        _startWaiting(immediately: true);
-      } else if (method == 'FM_PAYPAL') {
-        // Open the new tab from a direct tap so browsers allow it.
-        setState(() => _paypalUrl = url);
-      } else {
-        _openSunlands(url);
-      }
-    } catch (error) {
-      if (mounted && !_request.cancelled) {
-        widget.h5.trackActivity('payment', 'cashier_failed');
-        final code = error is ApiFailure ? error.code : '';
-        setState(() {
-          _launchFailed =
-              code != 'life_checkout_channel_link_missing' &&
-              code != 'life_checkout_return_unavailable';
-          if (code == 'life_checkout_unavailable') _methods = null;
-          if (!_launchFailed) _selectedMethod = null;
-          _error = widget.h5.message(error, labels: _copy);
-        });
-      }
-    } finally {
-      if (mounted && !_request.cancelled) {
-        setState(() => _openingMethod = false);
-      }
-    }
-  }
-
-  void _openSunlands(String url, {bool sameTab = true}) {
     try {
       final browser = widget.h5.browser;
       browser.writeSetting(
@@ -582,13 +495,10 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
         session: true,
       );
       widget.h5.trackActivity('payment', 'open_cashier');
-      browser.openPage(url, sameTab: sameTab);
+      browser.openPage(url, sameTab: true);
     } catch (error) {
       widget.h5.trackActivity('payment', 'cashier_failed');
-      setState(() {
-        _launchFailed = true;
-        _error = widget.h5.message(error, labels: _copy);
-      });
+      setState(() => _error = widget.h5.message(error, labels: _copy));
       return;
     }
     _startWaiting();
@@ -723,305 +633,55 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
     Navigator.of(context).pop(paid);
   }
 
-  void _selectMethod(String? method) {
-    if (method == null || _openingMethod) return;
-    setState(() {
-      _selectedMethod = method;
-      if (!_launchFailed) _error = '';
-    });
-  }
-
-  Widget _methodTile(String code) {
-    final option = _paymentOptions[code]!;
-    final selected = code == _selectedMethod;
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(11),
-      side: BorderSide(color: selected ? gold : const Color(0xFF665073)),
-    );
-    return MergeSemantics(
-      child: Material(
-        color: selected ? const Color(0xFF493752) : const Color(0xFF241732),
-        shape: shape,
-        child: InkWell(
-          key: ValueKey('payment-method-$code'),
-          customBorder: shape,
-          canRequestFocus: false,
-          excludeFromSemantics: true,
-          onTap: _openingMethod ? null : () => _selectMethod(code),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 50),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(4, 5, 8, 5),
-              child: Row(
-                children: [
-                  Radio<String>(
-                    value: code,
-                    enabled: !_openingMethod,
-                    activeColor: gold,
-                    visualDensity: const VisualDensity(horizontal: -4),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  Container(
-                    width: 28,
-                    height: 28,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Image.asset(
-                      'assets/images/${option.icon}',
-                      excludeFromSemantics: true,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      option.name,
-                      style: const TextStyle(fontSize: 13, height: 1.25),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _sunlandsPage() {
+  Widget _sunlandsDialog() {
     final c = _copy;
     final order = _order;
-    final paypalUrl = _paypalUrl;
-    final methods = _methods ?? const <String>[];
-    final busy = _preparing || _loadingMethods || _openingMethod || _waiting;
-    final showMethods =
-        paypalUrl == null && methods.isNotEmpty && !_waiting && !_paid;
-    final amount = widget.report.price['amount'] as num;
-    String? status;
-    if (_waiting) {
-      status = c.t('checkout', 'sunlandsWaiting');
-    } else if (_openingMethod) {
-      status = c.t('checkout', 'openingMethod');
-    } else if (_loadingMethods) {
-      status = c.t('checkout', 'loadingMethods');
-    } else if (_preparing) {
-      status = c.t('checkout', widget.returning ? 'loadingOrder' : 'preparing');
-    }
-    return Scaffold(
-      key: const ValueKey('sunlands-payment-page'),
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: c.t('checkout', 'close'),
-          icon: const Icon(Icons.arrow_back_rounded),
+    final status = _paid
+        ? c.t('checkout', 'successHint')
+        : _preparing
+        ? c.t('checkout', widget.returning ? 'loadingOrder' : 'preparing')
+        : _waiting
+        ? c.t('checkout', 'sunlandsWaiting')
+        : '';
+    return AlertDialog(
+      key: const ValueKey('sunlands-checkout-status'),
+      title: Text(c.t('checkout', _paid ? 'success' : 'title')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (status.isNotEmpty)
+            Semantics(liveRegion: true, child: Text(status)),
+          if (order != null && !_paid) ...[
+            Text(c.t('checkout', 'pendingOrder')),
+            SelectableText(order.gatewayOrder),
+          ],
+          errorMessage(_error),
+        ],
+      ),
+      actions: [
+        TextButton(
           onPressed: () => _close(_paid),
+          child: Text(c.t('checkout', 'close')),
         ),
-        title: const FateBrand(compact: true),
-      ),
-      body: SizedBox.expand(
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment(-.65, -.85),
-              radius: 1.45,
-              colors: [Color(0xFF392353), Color(0xFF160D29), Color(0xFF0C0816)],
+        if (!_preparing && !_waiting && !_paid) ...[
+          if (order == null && _canRetry)
+            TextButton(
+              onPressed: _prepare,
+              child: Text(c.t('checkout', 'retry')),
             ),
-          ),
-          child: SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: h5PortraitMaxWidth),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(14, 20, 14, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      JYCard(
-                        padding: const EdgeInsets.all(14),
-                        radius: 14,
-                        borderColor: const Color(0xFF876B86),
-                        colors: const [Color(0xFF4C3263), Color(0xFF241732)],
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    c.t('checkout', 'reportProduct'),
-                                    style: const TextStyle(
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  c.t('checkout', 'once'),
-                                  style: const TextStyle(color: lavender),
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 22, color: Color(0xFF8C6E89)),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    c.t('checkout', 'totalDue'),
-                                    style: const TextStyle(color: lavender),
-                                  ),
-                                ),
-                                Text(
-                                  '฿${(amount / 100).toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    color: gold,
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 19),
-                      if (paypalUrl == null || _paid)
-                        Semantics(
-                          header: true,
-                          child: Text(
-                            c.t('checkout', _paid ? 'success' : 'openCashier'),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 10),
-                      if (_paid) ...[
-                        Text(c.t('checkout', 'successHint')),
-                        const SizedBox(height: 12),
-                        FilledButton(
-                          onPressed: () => _close(true),
-                          child: Text(c.t('checkout', 'openReport')),
-                        ),
-                      ],
-                      if (showMethods) ...[
-                        RadioGroup<String>(
-                          groupValue: _selectedMethod,
-                          onChanged: _selectMethod,
-                          child: LayoutBuilder(
-                            builder: (_, constraints) => Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                for (final method in methods)
-                                  SizedBox(
-                                    width: (constraints.maxWidth - 8) / 2,
-                                    child: _methodTile(method),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 13),
-                        FilledButton(
-                          key: const ValueKey('continue-payment'),
-                          onPressed:
-                              busy || _selectedMethod == null || _launchFailed
-                              ? null
-                              : _startSelectedMethod,
-                          child: Text(c.t('checkout', 'continuePayment')),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          c.t('checkout', 'entryHint'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12, color: lavender),
-                        ),
-                      ],
-                      if (paypalUrl != null && !_paid) ...[
-                        FilledButton(
-                          key: const ValueKey('open-paypal'),
-                          onPressed: _waiting
-                              ? null
-                              : () => _openSunlands(paypalUrl, sameTab: false),
-                          child: Text(c.t('checkout', 'openPayPal')),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(c.t('checkout', 'payPalReturnHint')),
-                        TextButton(
-                          onPressed: () => _openSunlands(paypalUrl),
-                          child: Text(c.t('checkout', 'openPayPalHere')),
-                        ),
-                      ],
-                      if (status != null && !_paid)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Semantics(
-                            liveRegion: true,
-                            child: Text(status),
-                          ),
-                        ),
-                      if ((widget.returning || paypalUrl != null) &&
-                          order != null &&
-                          !_paid) ...[
-                        Text(c.t('checkout', 'pendingOrder')),
-                        SelectableText(
-                          '${c.t('checkout', 'gatewayOrder')} · ${order.gatewayOrder}',
-                          style: const TextStyle(color: lavender, fontSize: 12),
-                        ),
-                      ],
-                      if (!widget.returning &&
-                          paypalUrl == null &&
-                          !busy &&
-                          !_paid &&
-                          _error.isEmpty &&
-                          !showMethods)
-                        Text(c.t('checkout', 'noMethods')),
-                      errorMessage(_error),
-                      if (!busy && !_paid)
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 8,
-                          children: [
-                            if (order == null && _canRetry && _error.isNotEmpty)
-                              TextButton(
-                                onPressed: _prepare,
-                                child: Text(c.t('checkout', 'retry')),
-                              ),
-                            if (order != null &&
-                                !widget.returning &&
-                                paypalUrl == null &&
-                                (!showMethods || _launchFailed))
-                              TextButton(
-                                onPressed: _loadMethods,
-                                child: Text(c.t('checkout', 'retry')),
-                              ),
-                            if (order != null &&
-                                (widget.returning ||
-                                    !showMethods ||
-                                    _launchFailed))
-                              TextButton(
-                                onPressed: () {
-                                  widget.h5.trackActivity(
-                                    'payment',
-                                    'check_payment',
-                                  );
-                                  _startWaiting(immediately: true);
-                                },
-                                child: Text(c.t('checkout', 'checkPayment')),
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+          if (order != null && !widget.returning && order.checkoutUrl != null)
+            TextButton(
+              onPressed: _openSunlands,
+              child: Text(c.t('checkout', 'openCashier')),
             ),
-          ),
-        ),
-      ),
+          if (order != null)
+            TextButton(
+              onPressed: () => _startWaiting(immediately: true),
+              child: Text(c.t('checkout', 'checkPayment')),
+            ),
+        ],
+      ],
     );
   }
 
@@ -1098,7 +758,7 @@ class _ReportPaymentDialogState extends State<ReportPaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.report.orderOnly) return _sunlandsPage();
+    if (widget.report.orderOnly) return _sunlandsDialog();
     final c = _copy;
     final payso = widget.report.paysoTest;
     return AlertDialog(

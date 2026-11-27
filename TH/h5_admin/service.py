@@ -23,6 +23,8 @@ from backend.app.i18n import MESSAGES
 from backend.app.landing_features import VISIT_RETENTION_SECONDS, owner_for
 from backend.app.life_reports import LifeInput
 from backend.app.schemas import H5AppLoginInput, Input
+from backend.app.tarot_analytics import TAROT_ACTIONS, TAROT_PAGES
+from backend.app.tarot_receipts import TarotReceiptLookup
 
 COOKIE = "fate_admin"
 ASSETS = Path(__file__).resolve().parent / "web"
@@ -143,6 +145,9 @@ BASE = f"""WITH active_visits AS (
 ) """
 
 SOURCES = [
+    {"name": "塔罗访问统计", "table": "tarot_activity", "origin": "塔罗 H5 页面可见记录、操作事件和停留时长上报",
+     "rule": "按服务器首次收到记录的时间筛选。每行人数按匿名浏览器去重，次数按每次进入或操作累计。"
+             "同一次进入只累计前台可见时长，重复上报不累加。旧数据没有回填。"},
     {"name": "访问与渠道", "table": "landing_visits / landing_visitors / landing_visit_reports", "origin": "H5 资料填写页访问埋点及提交、查看预览事件",
      "rule": "进入填写页时开始上报。重新打开入口按本次链接标签记为新访问，刷新和返回恢复原访问。访客按匿名浏览器去重，首次日期按北京时间。访问记录保留最近 30 天，编号在 30 天未访问后过期。"},
     {"name": "H5 访问漏斗", "table": "landing_visits / landing_visit_activity", "origin": "欢迎页、资料填写页及报告按钮的 H5 事件",
@@ -348,6 +353,21 @@ class H5Admin:
                 error["description"] = MESSAGES[error["code"]][0]
         return {"pages": pages, "errors": errors}
 
+    def tarot_activity(self, days):
+        with self.store.connect() as db:
+            rows = db.execute("""
+                SELECT event, COUNT(DISTINCT visitor_hash) AS people, COUNT(*) AS times,
+                    SUM(visible_ms) AS total_ms, ROUND(AVG(visible_ms))::bigint AS average_ms
+                FROM tarot_activity WHERE recorded_at >= to_timestamp(%s)
+                GROUP BY event
+            """, (self.cutoff(days),)).fetchall()
+        events = {row["event"]: row for row in rows}
+        return {
+            "pages": [events.get(page, {"event": page, "people": 0, "times": 0,
+                                       "total_ms": None, "average_ms": None}) for page in TAROT_PAGES],
+            "actions": [events.get(action, {"event": action, "people": 0, "times": 0}) for action in TAROT_ACTIONS],
+        }
+
     def visit_funnel(self, days, *, tagged_only=False, visit_range=None):
         start, end = visit_range if visit_range else (self.cutoff(days), None)
         metrics = self.rows("""
@@ -503,6 +523,22 @@ class H5Admin:
                  "succeeded" if match else "failed", "回查已过期的 App 登录码"),
             )
         return result
+
+    def lookup_tarot_receipt(self, code, actor):
+        with self.store.connect() as db:
+            row = db.execute(
+                """
+                SELECT claim_code, report_id, question, topic, spread_id, language, cards, created_at
+                FROM tarot_receipts WHERE claim_code=%s
+                """,
+                (code,),
+            ).fetchone()
+            db.execute(
+                """INSERT INTO admin_audit(id,report_id,created,actor,action,status,note)
+                   VALUES(%s,%s,%s,%s,'tarot_receipt_lookup',%s,'查阅塔罗领取登记')""",
+                (str(uuid4()), code if row else "", time.time(), actor, "succeeded" if row else "failed"),
+            )
+        return row
 
     def line_contact_report(self, report_id):
         with self.store.connect() as db:
@@ -851,6 +887,10 @@ def admin_router(service):
     def page_diagnostics(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
         return service.page_diagnostics(days)
 
+    @router.get("/tarot-activity")
+    def tarot_activity(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
+        return service.tarot_activity(days)
+
     @router.get("/ad-funnel")
     def ad_funnel(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
         return service.visit_funnel(days, tagged_only=True)
@@ -911,6 +951,13 @@ def admin_router(service):
         result = service.lookup_expired_h5_code(body.code, current["username"])
         if result is None:
             raise HTTPException(404, "admin_expired_code_not_found")
+        return result
+
+    @router.post("/line-contacts/tarot-lookup")
+    def lookup_tarot_receipt(body: TarotReceiptLookup, current=Depends(service.write_session)):
+        result = service.lookup_tarot_receipt(body.code, current["username"])
+        if result is None:
+            raise HTTPException(404, "admin_tarot_receipt_not_found")
         return result
 
     return router

@@ -162,6 +162,7 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','flutte
       await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
       await page.locator('#birth-submit').click();
       await expect(page.locator('#birth-generation')).toBeVisible();
+      await expect(page.locator('#birth-generation-video')).not.toHaveAttribute('src',/./);
       await expect.poll(() => posts.length).toBe(1);
       if (scenario === 'flutter-recovers-first') {
         // Trigger the existing watchdog callback while the engine download is stalled.
@@ -207,19 +208,22 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','flutte
 }
 
 test('a new visitor fills the native form with Flutter held, then submits exactly once to the existing report flow', async () => {
-  const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
-  let release;
+  const context = await browser.newContext({viewport:{width:390,height:844},hasTouch:true,reducedMotion:'no-preference'});
+  let release, finishReport;
   const gate = new Promise(resolve => { release = resolve; });
+  const ready = new Promise(resolve => { finishReport = resolve; });
   try {
     const page = await context.newPage();
-    const errors = [], calls = [], directory = [], reads = [], visits = visitCollector();
+    const errors = [], calls = [], directory = [], reads = [], media = [], visits = visitCollector();
     let generated, submittedOwner, submittedVisit, rejectConsent = true;
     let finishCancelled;
     page.on('pageerror',error => errors.push(error.message));
     const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));
+    const thaiCopy = JSON.parse(await readFile(new URL('../web-client/assets/copy/th.json',import.meta.url),'utf8'));
     await page.route('**/*',async route => {
       const address = new URL(route.request().url()), path = address.pathname;
       if (address.origin !== new URL(url).origin && /^https?:$/.test(address.protocol)) return route.abort();
+      if (/report-loading-(?:inline|web)\.mp4$|report-loading-animated\.webp$/.test(path)) media.push(path);
       if (path.endsWith('/main.dart.wasm') || path.endsWith('/main.dart.js')) await gate;
       if (!path.startsWith('/api/')) return route.continue();
       calls.push(route.request().method() + ' ' + path);
@@ -257,13 +261,22 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
       if (path === '/api/life-reports/' + fixture.id) {
         assert.equal(route.request().headers()['x-report-key'],submittedOwner);
         reads.push(address.search);
-        return respond(reads.length === 1 ? {...generated,preview:null,chart:null,preview_state:'generating'} : generated);
+        if (reads.length === 1) return respond({...generated,preview:null,preview_state:'generating'});
+        if (reads.length === 2) return respond({...generated,preview:null,preview_state:'generating',
+          preview_generation_progress:{percent:37,
+            sections:['preview_summary','preview_strength','preview_decisions','preview_relationships']
+              .map(key => ({key,percent:37}))}});
+        await ready;
+        return respond(generated);
       }
       return respond({recorded:true,accepted:true});
     });
     await page.goto(url + '?topic=career&utm_source=example',{waitUntil:'domcontentloaded'});
     const date = page.locator('#birth-date-trigger'), city = page.locator('#birth-city'), time = page.locator('#birth-time-trigger');
+    const cityToggle = page.locator('#birth-city-toggle');
     await expect(date).toBeVisible();
+    await expect(page.locator('#birth-question, #birth-custom')).toHaveCount(0);
+    assert.deepEqual(media,[]);
     await expect(page.locator('#fate-flutter')).toBeHidden();
     const language = page.locator('#birth-language');
     assert.equal(await language.locator('option').count(),9);
@@ -277,8 +290,18 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     await selectBirthValue(page,'date','1995-08-17');
     await page.locator('#birth-unknown').check();
     await expect(time).toBeDisabled();
-    await city.click();
-    await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
+    await cityToggle.tap();
+    await expect(cityToggle).toHaveAttribute('aria-expanded','true');
+    await expect(city).not.toBeFocused();
+    const firstCity = page.getByRole('option',{name:bangkok.nameThai,exact:false});
+    await expect(firstCity).toBeVisible();
+    await cityToggle.tap();
+    await expect(firstCity).toBeHidden();
+    await cityToggle.tap();
+    await firstCity.tap();
+    await expect(city).toHaveValue(bangkok.nameThai);
+    await expect(city).not.toBeFocused();
+    await expect(cityToggle).toHaveAttribute('aria-expanded','false');
     await language.selectOption('zh');
     await expect(date).toContainText('1995年8月17日');
     await expect(city).toHaveValue('');
@@ -299,8 +322,6 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     await selectBirthValue(page,'time','09:30');
     await city.click();
     await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
-    await page.locator('#birth-question').selectOption('custom');
-    await page.locator('#birth-custom').fill('My career question');
     await page.locator('#birth-submit').click();
     await expect(page.locator('#birth-message')).toHaveText(/\S/);
     assert.equal(generated,undefined);
@@ -308,13 +329,45 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     await page.locator('#birth-submit').click();
     await expect(page.locator('#birth-generation')).toBeVisible();
     await expect(page.locator('#birth-form')).toBeHidden();
+    await expect(page.locator('#birth-generation-title')).toHaveText(thaiCopy.generation.th.previewTitle);
+    const phoneViewport = page.viewportSize();
+    for (const viewport of [phoneViewport, {width:1624,height:805}]) {
+      await page.setViewportSize(viewport);
+      const {left,right} = await page.locator('.birth-generation-content').evaluate(content => {
+        const section = content.parentElement.getBoundingClientRect();
+        const bounds = content.getBoundingClientRect();
+        return {left:bounds.left - section.left,right:section.right - bounds.right};
+      });
+      assert.ok(Math.abs(left - right) <= 1, `Generation content is centered at ${viewport.width}px`);
+      assert.ok(Math.min(left,right) >= 14, `Generation content has side padding at ${viewport.width}px`);
+    }
+    await page.setViewportSize(phoneViewport);
+    const status = page.locator('#birth-generation-status');
+    const meter = page.locator('#birth-generation-progress');
+    await expect(meter).toHaveAttribute('aria-valuenow','0');
+    await expect(page.locator('#birth-generation-details')).toContainText('09:30');
+    await expect(meter).toContainText('✦');
+    const video = page.locator('#birth-generation-video');
+    await expect.poll(() => video.evaluate(el => el.currentTime)).toBeGreaterThan(0);
     await page.locator('#birth-form').evaluate(form => form.requestSubmit());
     await page.waitForFunction(id => sessionStorage.getItem('active-preview') === id,fixture.id);
+    await expect(status).toHaveText(thaiCopy.generation.th.preview);
     assert.equal(await page.evaluate(() => performance.getEntriesByName('fate-app-ready').length),0);
     assert.equal(reads.length,0);
     release();
+    await expect(page.locator('#birth-generation-placements')).toBeVisible();
+    await expect(page.locator('#birth-generation-planets dt').first()).toBeVisible();
+    await expect(meter).toHaveAttribute('aria-valuenow','37');
+    await expect(page.locator('#birth-generation-reading')).toBeVisible();
+    await expect(status).toHaveText(thaiCopy.jy.th.interpretation.steps.reading.status);
+    await expect(page.locator('#birth-generation')).toBeVisible();
+    await expect(video).toHaveAttribute('data-playing','');
+    finishReport();
     await expect(page).toHaveURL(/report\.html\?id=/,{timeout:60000});
-    assert.equal(generated.input.user_question,'My career question');
+    await expect(video).toHaveCount(0);
+    assert.ok(media.length && media.every(path => path.endsWith('/report-loading-inline.mp4')));
+    assert.equal(Object.hasOwn(generated.input,'user_question'),false);
+    assert.equal(Object.hasOwn(generated.input,'career_question'),false);
     assert.equal(generated.input.report_kind,'fortune');
     assert.equal(generated.input.profile.location_id,bangkok.id);
     assert.equal(generated.input.profile.birth_date,'1995-08-17');
@@ -339,9 +392,9 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.equal(actions.filter(e => e.action === 'generate').length,1);
     assert.equal(actions.filter(e => e.action === 'report_ready').length,1);
     assert.ok(actions.every(e => e.id === submittedVisit.id));
-    assert.doesNotMatch(JSON.stringify(actions),/1995-08-17|My career question|北京|09:30/);
+    assert.doesNotMatch(JSON.stringify(actions),/1995-08-17|北京|09:30/);
     assert.deepEqual(errors,[]);
-  } finally { release(); await context.close(); }
+  } finally { release(); finishReport(); await context.close(); }
 });
 
 test('an interrupted startup keeps the edited form and a manual retry restores it', async () => {
@@ -377,7 +430,6 @@ test('an interrupted startup keeps the edited form and a manual retry restores i
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
     await selectBirthValue(page,'date','2001-02-03');
     await page.locator('#birth-unknown').check();
-    await expect(page.locator('#birth-career')).toBeHidden();
     release();
     await expect(page.locator('#birth-retry')).toBeVisible({timeout:15000});
     await expect(page.locator('#birth-date')).toHaveValue('2001-02-03');

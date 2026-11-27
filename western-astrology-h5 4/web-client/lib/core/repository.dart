@@ -47,6 +47,7 @@ class ApiFailure implements Exception {
 typedef PaymentOrder = ({
   String reference,
   String gatewayOrder,
+  String? checkoutUrl,
   String action,
   Map<String, String> fields,
 });
@@ -253,52 +254,6 @@ class ReportRepository {
     return order == null ? null : _paymentOrder(report, object(order));
   }
 
-  Future<({List<String> methods, bool checkPayment})> paymentMethods(
-    LifeReport report,
-    CancelToken token,
-  ) async {
-    final result = object(
-      await request(
-        '/api/life-reports/${report.id}/payment/methods',
-        token,
-        timeout: const Duration(seconds: 35),
-      ),
-    );
-    final methods = result['methods'];
-    final checkPayment = result['check_payment'];
-    if (methods is! List ||
-        methods.any((method) => method is! String) ||
-        checkPayment is! bool) {
-      throw const ApiFailure('badResult');
-    }
-    return (methods: methods.cast<String>(), checkPayment: checkPayment);
-  }
-
-  Future<String?> startPayment(
-    LifeReport report,
-    String method,
-    CancelToken token,
-  ) async {
-    final result = object(
-      await request(
-        '/api/life-reports/${report.id}/payment/start',
-        token,
-        body: {'method': method},
-        timeout: const Duration(seconds: 55),
-      ),
-    );
-    final value = result['redirect_url'];
-    if (value == null && result.containsKey('redirect_url')) return null;
-    final url = value is String ? Uri.tryParse(value) : null;
-    if (url == null ||
-        url.scheme != 'https' ||
-        url.host.isEmpty ||
-        url.userInfo.isNotEmpty) {
-      throw const ApiFailure('badResult');
-    }
-    return value as String;
-  }
-
   PaymentOrder _paymentOrder(LifeReport report, Json order) {
     if (!report.paysoTest) {
       final reference = text(order['reference']);
@@ -314,9 +269,25 @@ class ReportRepository {
               !RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(gatewayOrder))) {
         throw const ApiFailure('badResult');
       }
+      final url = Uri.tryParse(text(order['checkout_url']));
+      final checkoutUrl =
+          report.orderOnly &&
+              url != null &&
+              url.scheme == 'https' &&
+              url.userInfo.isEmpty &&
+              url.port == 443 &&
+              const {
+                'epay.sunlands.com',
+                'trade.sunlands.com',
+              }.contains(url.host) &&
+              url.queryParametersAll['orderNumber']?.length == 1 &&
+              url.queryParameters['orderNumber'] == gatewayOrder
+          ? url.toString()
+          : null;
       return (
         reference: reference,
         gatewayOrder: gatewayOrder,
+        checkoutUrl: checkoutUrl,
         action: '',
         fields: const <String, String>{},
       );
@@ -331,6 +302,7 @@ class ReportRepository {
     return (
       reference: reference,
       gatewayOrder: '',
+      checkoutUrl: null,
       action: action,
       fields: Map<String, String>.from(fields),
     );

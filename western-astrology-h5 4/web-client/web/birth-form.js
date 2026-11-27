@@ -4,7 +4,7 @@
   const host = document.getElementById('fate-flutter');
   const byId = id => document.getElementById(id);
   const countries = {th:'TH', en:'SG', zh:'CN', vi:'VN', my:'MM', km:'KH', lo:'LA', ms:'MY', id:'ID'};
-  const stages = ['unspecified','considering','searching','offer'];
+  const generationStages = ['basics','placements','reading'];
   const retryKey = 'fate-birth-reload';
   const submissionKey = 'fate-birth-submission';
   const noticeVersion = 'h5-data-use-3';
@@ -18,6 +18,7 @@
   let originalProfile, originalPlace, creating = false, acceptedReport;
   let submission, retrySubmission = false;
   let checkedSubmission = false, activePicker;
+  let generationStep = 0;
   const labels = window.fateBirthCopies || {};
   const firstPages = new Map();
 
@@ -228,18 +229,32 @@
   function closeOptions() {
     clearTimeout(searchTimer);
     locationRequest?.abort();
-    byId('birth-options').hidden = true;
-    byId('birth-city').setAttribute('aria-expanded','false');
+    showOptions(false);
+  }
+
+  function showOptions(visible) {
+    const expanded = String(visible);
+    byId('birth-options').hidden = !visible;
+    byId('birth-city').setAttribute('aria-expanded',expanded);
+    byId('birth-city-toggle').setAttribute('aria-expanded',expanded);
+  }
+
+  function openCityOptions() {
+    track('select_birthplace');
+    searchPlaces();
   }
 
   function choosePlace(item) {
+    const city = byId('birth-city');
+    const optionHadFocus = byId('birth-options').contains(document.activeElement);
     markEdited();
     place = item;
-    byId('birth-city').value = placeName(item);
+    city.value = placeName(item);
     byId('birth-date').max = latestBirthDate();
     closeOptions();
     track('form_progress_' + progress());
-    byId('birth-city').focus();
+    if (optionHadFocus) city.focus();
+    else if (document.activeElement === city) city.blur();
   }
 
   function optionButton(label, action) {
@@ -261,8 +276,7 @@
     const status = document.createElement('p');
     status.textContent = copy.jy.regionPending;
     menu.append(status);
-    menu.hidden = false;
-    city.setAttribute('aria-expanded','true');
+    showOptions(true);
     const viewport = window.visualViewport;
     const rect = city.getBoundingClientRect();
     menu.classList.toggle('open-above',(viewport ? viewport.height + viewport.offsetTop : innerHeight) - rect.bottom < 155 && rect.top > 155);
@@ -319,14 +333,6 @@
     byId('birth-picker-close').textContent = copy.ui.close;
     updatePickerField('date');
     updatePickerField('time');
-    byId('birth-career').hidden = !career;
-    const question = byId('birth-question'), selected = question.value;
-    question.replaceChildren(new Option(j.questionTitle,''),
-      ...j.questions.map((item,i) => new Option(item.join('  '),stages[i])), new Option(j.writeQuestion,'custom'));
-    question.value = selected || '';
-    byId('birth-custom').hidden = question.value !== 'custom';
-    byId('birth-custom').placeholder = j.questionTitle;
-    byId('birth-custom').setAttribute('aria-label',j.writeQuestion);
     byId('birth-submit').textContent = outdated ? j.openLatest : j.topics[topic].action;
     byId('birth-retry').textContent = byId('birth-generation-retry').textContent = copy.generation.retry;
     const boards = copy.themes.map(group => {
@@ -350,8 +356,10 @@
       const response = await fetch('assets/assets/copy/' + lang + '.json');
       if (!response.ok) throw Error('copy');
       const data = await response.json();
-      labels[lang] = {jy:data.jy[lang],ui:data.ui[lang],marriage:data.marriage[lang],generation:data.generation[lang],
-        preparing:data.jy[lang].interpretation.steps.basics.status,
+      const jy = data.jy[lang];
+      labels[lang] = {jy,ui:data.ui[lang],marriage:data.marriage[lang],generation:data.generation[lang],
+        generationPage:{...jy.interpretation,factors:jy.chart.factors,progress:jy.progress,
+          birthplace:jy.generation.birthplace,freeTitle:jy.report.freeTitle,unknownNote:jy.unknownNote},
         themes:Object.values(data.jyThemes).map(group => group.map(item => item[lang]))};
     }
     if (lang !== language || !main.firstElementChild) return;
@@ -360,10 +368,8 @@
   }
 
   function values() {
-    const question = byId('birth-question').value;
     return {language,date:byId('birth-date').value,time:byId('birth-time').value,
-      unknown:byId('birth-unknown').checked,place,question:career ? question : '',
-      customQuestion:career && question === 'custom' ? byId('birth-custom').value : ''};
+      unknown:byId('birth-unknown').checked,place};
   }
 
   function restore(data) {
@@ -375,9 +381,6 @@
     byId('birth-date').max = latestBirthDate();
     updatePickerField('date');
     updatePickerField('time');
-    byId('birth-question').value = data.customQuestion ? 'custom' : data.question || '';
-    byId('birth-custom').hidden = byId('birth-question').value !== 'custom';
-    byId('birth-custom').value = data.customQuestion || '';
     if (place?.id && !place.placeType) {
       const initial = place;
       const args = new URLSearchParams({country:initial.countryCode,level:'detail',query:initial.id});
@@ -408,6 +411,7 @@
     failed = true;
     if (!main.firstElementChild || main.hidden || !copy) return;
     if (creating) {
+      stopGenerationAnimation();
       byId('birth-generation-status').textContent = fateBootTranslations[language].failed;
       // Let the create response arrive before offering a reload that could lose its ID.
       byId('birth-generation-retry').hidden = !acceptedReport && !retrySubmission;
@@ -426,7 +430,9 @@
     byId('birth-retry').hidden = true;
     if (creating && !retrySubmission && copy) {
       byId('birth-generation-retry').hidden = true;
-      byId('birth-generation-status').textContent = acceptedReport ? copy.generation.preview : copy.preparing;
+      byId('birth-generation-status').textContent = acceptedReport?.preview_state === 'ready' ? copy.generation.ready
+        : acceptedReport ? copy.generation.preview : copy.generationPage.steps.basics.status;
+      startGenerationAnimation();
     } else if (!creating) say('');
     queueMicrotask(dispatch);
   }
@@ -461,9 +467,6 @@
   function reportInput() {
     const form = values();
     const samePlace = originalPlace && place.id === originalPlace.id && place.timeZone === originalPlace.timeZone;
-    const start = window.fateH5.today('Asia/Bangkok');
-    const question = form.customQuestion.trim();
-    const preset = career && stages.includes(form.question) && !question;
     return {
       report_kind: career ? 'fortune' : 'marriage',
       profile: {
@@ -473,9 +476,7 @@
         latitude:samePlace ? originalProfile?.latitude ?? null : null,
         longitude:samePlace ? originalProfile?.longitude ?? null : null
       },
-      year:preset ? Number(start.slice(0,4)) : new Date().getFullYear(),
-      ...(preset ? {career_question:{stage:form.question,start}} : {}),
-      ...(question ? {user_question:question} : {})
+      year:new Date().getFullYear()
     };
   }
 
@@ -505,8 +506,113 @@
     } finally { clearTimeout(timer); }
   }
 
+  function renderGenerationRows(id, rows) {
+    const elements = rows.map(([label, entries]) => {
+      const row = document.createElement('div');
+      const heading = document.createElement('dt');
+      heading.textContent = label;
+      row.append(heading);
+      for (const entry of entries) {
+        const value = document.createElement('dd');
+        value.textContent = entry;
+        row.append(value);
+      }
+      return row;
+    });
+    byId(id).replaceChildren(...elements);
+  }
+
+  function resetGenerationDisplay() {
+    const view = copy.generationPage, fields = values();
+    renderGenerationRows('birth-generation-details',[
+      [copy.jy.date,[byId('birth-date-value').textContent]],
+      [copy.jy.time,[fields.unknown ? copy.jy.unknown : fields.time]],
+      [view.birthplace,[byId('birth-city').value]],
+    ]);
+    const steps = generationStages.map(key => {
+      const item = document.createElement('li');
+      const number = document.createElement('span');
+      number.className = 'birth-stage-index';
+      number.setAttribute('aria-hidden','true');
+      item.append(number,document.createTextNode(view.steps[key].title));
+      return item;
+    });
+    byId('birth-generation-stages').replaceChildren(...steps);
+    byId('birth-generation-title').textContent = copy.generation.previewTitle;
+    byId('birth-generation-progress').setAttribute('aria-label',view.progress);
+    byId('birth-generation-basis').textContent = view.factors.basis;
+    renderGenerationProgress('preparing');
+  }
+
+  function renderGenerationProgress(phase, percent = 0, details = {}) {
+    const view = copy.generationPage;
+    const ready = percent === 100;
+    if (ready) generationStep = 2;
+    else if (['preparing','queued','calculating'].includes(phase)) generationStep = 0;
+    else if (phase === 'preview') generationStep = percent > 0 && generationStep > 0 ? 2 : Math.max(1,generationStep);
+    const key = generationStages[generationStep];
+    byId('birth-generation-step-title').textContent = view.steps[key].title;
+    for (const [index, panel] of ['details','placements','reading'].entries()) {
+      byId('birth-generation-' + panel).hidden = index !== generationStep;
+      const item = byId('birth-generation-stages').children[index];
+      const done = ready || index < generationStep;
+      item.firstChild.textContent = done ? '✓' : index + 1;
+      item.toggleAttribute('data-done',done);
+      if (index === generationStep && !ready) item.setAttribute('aria-current','step');
+      else item.removeAttribute('aria-current');
+    }
+    if (key === 'placements') {
+      const {planets = [], planetCount = 0, houseCount = 0, estimated} = details;
+      byId('birth-generation-metrics').textContent = planetCount
+        ? view.planets + ' ' + planetCount + ' · ' + view.houses + ' ' + houseCount
+        : estimated ? view.dateOnlyPlacements : view.awaitingContent;
+      renderGenerationRows('birth-generation-planets',planets.map(({name,sign}) => [name,[sign]]));
+      byId('birth-generation-estimated').hidden = !estimated || !planetCount;
+      byId('birth-generation-estimated').textContent = view.unknownNote;
+    }
+    if (key === 'reading') {
+      const {strengths = [], warnings = []} = details;
+      renderGenerationRows('birth-generation-factors',[
+        [view.factors.favorable,strengths.length ? strengths : ['—']],
+        [view.factors.unfavorable,warnings.length ? warnings : ['—']],
+      ]);
+    }
+    const status = ready ? copy.generation.ready
+      : phase === 'preparing' ? view.steps.basics.status
+      : phase === 'queued' || phase === 'calculating' || (phase === 'preview' && percent === 0) ? copy.generation.preview
+      : phase === 'preview' && percent >= 99 ? view.validating
+      : view[phase] || view.steps[key].status;
+    byId('birth-generation-status').textContent = status;
+    const meter = byId('birth-generation-progress');
+    meter.setAttribute('aria-valuenow',String(percent));
+    meter.style.setProperty('--report-progress',percent + '%');
+    byId('birth-generation-percent').textContent = percent + '%';
+    const next = byId('birth-generation-next');
+    next.hidden = ready;
+    next.textContent = view.next + ' · ' + (view.steps[generationStages[generationStep + 1]]?.title || view.freeTitle);
+  }
+
+  function startGenerationAnimation() {
+    const video = byId('birth-generation-video');
+    if (video.hasAttribute('src') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    video.muted = true;
+    video.src = new URL('media/report-loading-inline.mp4',document.baseURI).href;
+    // Keep the poster visible if the browser declines autoplay or the video is unavailable.
+    void video.play().catch(() => {});
+  }
+
+  function stopGenerationAnimation() {
+    const video = byId('birth-generation-video');
+    if (!video?.hasAttribute('src')) return;
+    video.removeAttribute('data-playing');
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+
   function returnToForm(message) {
     creating = waiting = false;
+    stopGenerationAnimation();
     const screen = byId('birth-generation');
     if (!screen.hidden) {
       screen.hidden = true;
@@ -571,8 +677,7 @@
     career = saved.input.report_kind === 'fortune';
     originalProfile = profile;
     originalPlace = saved.place;
-    restore({date:profile.birth_date,time:profile.birth_time,unknown:!profile.birth_time,place:saved.place,
-      question:saved.input.career_question?.stage,customQuestion:saved.input.user_question});
+    restore({date:profile.birth_date,time:profile.birth_time,unknown:!profile.birth_time,place:saved.place});
     edited = true;
     startReport(saved);
     return true;
@@ -592,8 +697,7 @@
     creating = waiting = true;
     byId('birth-submit').disabled = byId('birth-language').disabled = true;
     const screen = byId('birth-generation');
-    byId('birth-generation-title').textContent = copy.generation.previewTitle;
-    byId('birth-generation-status').textContent = copy.preparing;
+    resetGenerationDisplay();
     byId('birth-generation-retry').hidden = true;
     main.setAttribute('data-generating','');
     if (screen.hidden) {
@@ -603,6 +707,7 @@
     }
     main.scrollTop = 0;
     screen.focus();
+    startGenerationAnimation();
     let consentAccepted = false;
     try {
       const owner = window.fateH5.ownerKey();
@@ -645,7 +750,8 @@
       if (history.state?.[submissionKey]?.reportId !== report.id) await saveSubmission(null);
       else submission = null;
       pending = {page:'report',language,report,input};
-      byId('birth-generation-status').textContent = report.preview_state === 'ready' ? copy.generation.ready : copy.generation.preview;
+      if (report.preview_state === 'queued') renderGenerationProgress('queued');
+      else byId('birth-generation-status').textContent = report.preview_state === 'ready' ? copy.generation.ready : copy.generation.preview;
       if (failed) engineFailed();
       else dispatch();
     } catch (error) {
@@ -653,6 +759,7 @@
       if (submission?.sent && ![400,401,403,409,422].includes(error.status) &&
           !['badResult','noticeOutdated','consentError','storage'].includes(error.message)) {
         retrySubmission = true;
+        stopGenerationAnimation();
         byId('birth-generation-status').textContent = copy.generation[error.message] || copy.ui.network;
         byId('birth-generation-retry').hidden = false;
         return;
@@ -680,6 +787,7 @@
     } catch (error) {
       if (send !== submitToFlutter) return;
       if (acceptedReport && error.message !== 'badResult') {
+        stopGenerationAnimation();
         byId('birth-generation-status').textContent = copy.ui.network;
         byId('birth-generation-retry').hidden = false;
         return;
@@ -714,6 +822,10 @@
     if (main.firstElementChild) return;
     main.append(byId('fate-birth-template').content.cloneNode(true));
     const form = byId('birth-form'), city = byId('birth-city');
+    const cityField = city.closest('.birth-location'), options = byId('birth-options');
+    const video = byId('birth-generation-video');
+    video.addEventListener('playing',() => video.setAttribute('data-playing',''));
+    video.addEventListener('error',stopGenerationAnimation);
     form.addEventListener('submit',submit);
     form.addEventListener('input',markEdited);
     for (const field of ['date','time']) {
@@ -731,11 +843,13 @@
       updatePickerField('time');
       track('form_progress_' + progress());
     });
-    byId('birth-question').addEventListener('change',event => {
-      byId('birth-custom').hidden = event.target.value !== 'custom';
-      byId('birth-custom').value = '';
+    // Pointer selection keeps the city list open until its button handles the click.
+    cityField.addEventListener('mousedown',event => { if (event.target.closest('button')) event.preventDefault(); });
+    byId('birth-city-toggle').addEventListener('click',() => {
+      if (options.hidden) openCityOptions();
+      else closeOptions();
     });
-    city.addEventListener('click',() => { if (byId('birth-options').hidden) { track('select_birthplace'); searchPlaces(); } });
+    city.addEventListener('click',() => { if (options.hidden) openCityOptions(); });
     city.addEventListener('input',() => {
       place = null;
       closeOptions();
@@ -743,17 +857,25 @@
       track('form_progress_' + progress());
     });
     form.addEventListener('keydown',event => {
-      if (event.key === 'Escape') { closeOptions(); return; }
-      if (!event.target.closest('.birth-location')) return;
-      const buttons = [...byId('birth-options').querySelectorAll('button')];
+      if (event.key === 'Escape' && !options.hidden) {
+        event.preventDefault();
+        if (options.contains(event.target)) city.focus();
+        closeOptions();
+        return;
+      }
+      if (!cityField.contains(event.target)) return;
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
-        if (byId('birth-options').hidden) { track('select_birthplace'); searchPlaces(); return; }
+        if (options.hidden) { openCityOptions(); return; }
+        const buttons = [...options.querySelectorAll('button')];
         buttons[Math.max(0,Math.min(buttons.length-1,buttons.indexOf(event.target)+(event.key === 'ArrowDown' ? 1 : -1)))]?.focus();
       }
     });
     form.addEventListener('focusout',event => {
-      if (event.target.closest('.birth-location') && !event.relatedTarget?.closest('.birth-location')) closeOptions();
+      if (cityField.contains(event.target) && !cityField.contains(event.relatedTarget)) closeOptions();
+    });
+    main.addEventListener('pointerdown',event => {
+      if (!options.hidden && !cityField.contains(event.target)) closeOptions();
     });
     byId('birth-language').addEventListener('change',async event => {
       const lang = event.target.value, previous = language;
@@ -802,6 +924,11 @@
 
   window.fateBirthForm = {
     engineFailed,
+    updateGeneration(raw) {
+      const {id,phase,percent,...details} = JSON.parse(raw);
+      if (!creating || failed || retrySubmission || acceptedReport?.id !== id) return;
+      renderGenerationProgress(phase,Math.round(percent),details);
+    },
     get submitting() { return creating; },
     get editing() { return !main.hidden && (edited || creating); },
     attach(raw, send) {
@@ -816,8 +943,7 @@
       originalPlace = initial.place;
       if (initial.input && !edited && !creating) {
         const input = initial.input, profile = input.profile || {};
-        restore({date:profile.birth_date,time:profile.birth_time,unknown:!profile.birth_time,place:initial.place,
-          question:input.career_question?.stage,customQuestion:input.user_question});
+        restore({date:profile.birth_date,time:profile.birth_time,unknown:!profile.birth_time,place:initial.place});
         if (!main.hidden) track('form_progress_' + progress());
       }
       submitToFlutter = send;
@@ -826,6 +952,7 @@
     },
     detach() {
       if (main.firstElementChild) closeOptions();
+      stopGenerationAnimation();
       show(false);
       submitToFlutter = pending = place = copy = acceptedReport = originalPlace = originalProfile = null;
       waiting = creating = edited = outdated = retrySubmission = false;

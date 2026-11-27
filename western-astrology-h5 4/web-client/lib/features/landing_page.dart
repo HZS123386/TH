@@ -6,9 +6,16 @@ import '../app/controller.dart';
 import '../app/languages.dart';
 import '../core/browser_port.dart';
 import '../core/models.dart';
+import '../core/repository.dart';
+import 'report_chart.dart';
 
 class LandingPage extends StatefulWidget {
-  const LandingPage({this.topic = 'life', super.key});
+  const LandingPage({
+    required this.loadReportPage,
+    this.topic = 'life',
+    super.key,
+  });
+  final Future<void> Function() loadReportPage;
   final String topic;
 
   @override
@@ -18,6 +25,7 @@ class LandingPage extends StatefulWidget {
 class _LandingPageState extends State<LandingPage> {
   static const _stages = ['unspecified', 'considering', 'searching', 'offer'];
   BrowserPort? _browser;
+  CancelToken? _previewRequest;
 
   @override
   void didChangeDependencies() {
@@ -56,7 +64,7 @@ class _LandingPageState extends State<LandingPage> {
     }
     if (!mounted) return '';
     if (values['page'] != 'report') return 'badResult';
-    final LifeReport report;
+    LifeReport report;
     try {
       report = LifeReport.parse(
         values['report'],
@@ -67,18 +75,80 @@ class _LandingPageState extends State<LandingPage> {
     }
     h5.warmReportFont();
     unawaited(h5.trackReport(report.id, 'submitted'));
+    // Load the page while its existing repository waits for the accepted report.
+    final library = widget.loadReportPage().then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    if (!report.hasPreview && report.previewInProgress) {
+      final token = _previewRequest = CancelToken();
+      try {
+        report = await h5.repository.resumeGeneration(report, token, (
+          latest,
+          percent,
+          phase,
+        ) {
+          report = latest;
+          _showGenerationProgress(h5, latest, percent, phase);
+        }, full: false);
+      } on ApiFailure {
+        if (!mounted) return '';
+        h5.trackActivity('generating_preview', 'generation_failed');
+        // A terminal state can use the report page's existing retry controls.
+        if (report.previewInProgress) return 'network';
+      } finally {
+        _previewRequest = null;
+      }
+    } else if (report.hasPreview) {
+      _showGenerationProgress(h5, report, report.percent(false), 'preview');
+    }
+    if (!mounted) return '';
     if (report.hasPreview) {
-      await h5.prepareText(jsonEncode(report.json), language: report.language);
+      await Future.wait([
+        h5.prepareText(jsonEncode(report.json), language: report.language),
+        library,
+      ]);
       if (!mounted) return '';
       h5.stageGeneratedPreview(report);
     }
-    // A queued acknowledgement may already be ready by the time Flutter opens it.
     context.go('/report.html?id=${report.id}&lang=${report.language}');
     return '';
   }
 
+  void _showGenerationProgress(
+    H5Controller h5,
+    LifeReport report,
+    double percent,
+    String phase,
+  ) {
+    final copy = h5.copy;
+    final placements = placementDetails(report);
+    final factors = reportFactors(report);
+    h5.browser.updateBirthGeneration({
+      'id': report.id,
+      'phase': phase,
+      'percent': percent,
+      'estimated': report.estimated,
+      'planetCount': placements.planetCount,
+      'houseCount': placements.houseCount,
+      'planets': [
+        for (final planet in placements.planets)
+          {'name': planetName(planet, copy), 'sign': planetSign(planet, copy)},
+      ],
+      'strengths': factors.strengths
+          .take(2)
+          .map((p) => text(p['title']))
+          .toList(),
+      'warnings': factors.warnings
+          .take(2)
+          .map((p) => text(p['title']))
+          .toList(),
+    });
+  }
+
   @override
   void dispose() {
+    _previewRequest?.cancel();
     _browser?.detachBirthForm();
     super.dispose();
   }

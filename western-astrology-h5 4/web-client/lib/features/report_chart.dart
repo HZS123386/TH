@@ -44,30 +44,40 @@ String planetSign(Json p, Copy c) {
       : text(p['sign_name']);
 }
 
+({int planetCount, int houseCount, List<Json> planets}) placementDetails(
+  LifeReport report,
+) {
+  final chart = object(report.json['chart']), all = objects(chart['planets']);
+  final preferred = all
+      .where((p) => ['sun', 'moon', 'ascendant'].contains(p['id']))
+      .take(3)
+      .toList();
+  return (
+    planetCount: all.length,
+    houseCount: objects(chart['houses']).length,
+    planets: preferred.isEmpty ? all.take(3).toList() : preferred,
+  );
+}
+
 class PlacementMetrics extends StatelessWidget {
   const PlacementMetrics({required this.report, required this.copy, super.key});
   final LifeReport report;
   final Copy copy;
   @override
   Widget build(BuildContext context) {
-    final chart = object(report.json['chart']), all = objects(chart['planets']);
-    final preferred = all
-        .where((p) => ['sun', 'moon', 'ascendant'].contains(p['id']))
-        .take(3)
-        .toList();
-    final planets = preferred.isEmpty ? all.take(3).toList() : preferred;
+    final details = placementDetails(report);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          '${copy.t('jy', 'interpretation.planets')} ${all.length} · ${copy.t('jy', 'interpretation.houses')} ${objects(chart['houses']).length}',
+          '${copy.t('jy', 'interpretation.planets')} ${details.planetCount} · ${copy.t('jy', 'interpretation.houses')} ${details.houseCount}',
           style: const TextStyle(color: gold, fontSize: 12),
         ),
         const SizedBox(height: 10),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final p in planets)
+            for (final p in details.planets)
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.only(right: 6),
@@ -113,22 +123,29 @@ class PlacementMetrics extends StatelessWidget {
   }
 }
 
+({List<Json> strengths, List<Json> warnings}) reportFactors(
+  LifeReport? report,
+) {
+  final strengths = <Json>[], warnings = <Json>[];
+  if (report != null) {
+    for (final chapter in report.chapters) {
+      strengths.addAll(objects(chapter['insights']));
+      warnings.addAll(objects(chapter['watchpoints']));
+    }
+    if (strengths.isEmpty) {
+      strengths.addAll(objects(report.preview['traits']));
+    }
+  }
+  return (strengths: strengths, warnings: warnings);
+}
+
 class ReportFactors extends StatelessWidget {
   const ReportFactors({required this.report, required this.copy, super.key});
   final LifeReport? report;
   final Copy copy;
   @override
   Widget build(BuildContext context) {
-    final strengths = <Json>[], warnings = <Json>[];
-    if (report != null) {
-      for (final chapter in report!.chapters) {
-        strengths.addAll(objects(chapter['insights']));
-        warnings.addAll(objects(chapter['watchpoints']));
-      }
-      if (strengths.isEmpty) {
-        strengths.addAll(objects(report!.preview['traits']));
-      }
-    }
+    final factors = reportFactors(report);
     Widget factor(String name, List<Json> entries, bool warning) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -163,9 +180,9 @@ class ReportFactors extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        factor('favorable', strengths, false),
+        factor('favorable', factors.strengths, false),
         const SizedBox(height: 9),
-        factor('unfavorable', warnings, true),
+        factor('unfavorable', factors.warnings, true),
         const SizedBox(height: 9),
         Text(
           copy.t('jy', 'chart.factors.basis'),

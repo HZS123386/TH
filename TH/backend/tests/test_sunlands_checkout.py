@@ -68,7 +68,7 @@ def sunlands_settlement(client, monkeypatch, sunlands_phone_response, request):
     state = {"response": {"retCode": "0", "data": [row]}, "status": 200, "error": None, "checkout_total": amount,
              "start_method": "FM_ANTOM_LINEPAY", "pay_url": "https://checkout.example.test/synthetic",
              "cashier_url": f"https://epay.sunlands.com/epay-h5/index.html?orderNumber={number}&sign=fixture#/",
-             "pix_limit": price - 1}
+             "pix_limit": price - 1, "true_money_limit": None}
     def upstream(request):
         calls.append(request.url.path)
         if request.url.path == SUNLANDS_CREATE_ORDER:
@@ -91,14 +91,17 @@ def sunlands_settlement(client, monkeypatch, sunlands_phone_response, request):
             assert form["orderNumber"] == [number] and "payNumber" not in form
             assert form["termType"] == ["mobile"] and form["sign"] == ["fixture_signature"]
             if request.url.path == SUNLANDS_LOAD_CHECKOUT:
+                banks = [
+                    {"payMethodCode": "FM_PAYPAL", "payMaxLimitAmount": amount},
+                    {"payMethodCode": "FM_ANTOM_LINEPAY", "payMaxLimitAmount": amount},
+                    {"payMethodCode": "FM_ANTOM_PIX", "payMaxLimitAmount": state["pix_limit"]},
+                ]
+                if state["true_money_limit"] is not None:
+                    banks.append({"payMethodCode": "FM_ANTOM_TRUEMONEY", "payMaxLimitAmount": state["true_money_limit"]})
                 return httpx.Response(200, json={"flag": "1", "data": {"code": "1", "data": {
                     "orderNumber": number, "currency": "THB", "totalAmount": state["checkout_total"],
                     "waitPaidAmount": state["response"]["data"][0]["unpaidAmount"],
-                    "payBankList": [
-                        {"payMethodCode": "FM_PAYPAL", "payMaxLimitAmount": amount},
-                        {"payMethodCode": "FM_ANTOM_LINEPAY", "payMaxLimitAmount": amount},
-                        {"payMethodCode": "FM_ANTOM_PIX", "payMaxLimitAmount": state["pix_limit"]},
-                    ],
+                    "payBankList": banks,
                 }}})
             assert form["payMethodCode"] == [state["start_method"]] and form["payAmountInput"] == [amount]
             if state["start_method"] in {"FM_PAYPAL", "FM_ANTOM_PIX"}:
@@ -164,6 +167,37 @@ def test_sunlands_method_selection_uses_the_saved_order_and_requires_verified_pa
     assert payments.order_for(report["id"])["provider_order"] is None
     state["response"] = receipt
     assert http.post(payment_path + "/check", headers=HEADERS).json() == {"paid": True}
+    assert http.get(path, headers=HEADERS).json()["access"] == "full"
+
+
+def test_truemoney_uses_the_sunlands_quote_and_verified_callback(sunlands_settlement):
+    from backend.app.life_card_payments import SUNLANDS_CREATE_ORDER, SUNLANDS_PAY_SINGLE
+
+    http, _, _, _, path, state, calls, notice = sunlands_settlement
+    method = "FM_ANTOM_TRUEMONEY"
+    endpoint = path + "/payment"
+    callback = "/api/life-reports/payment/sunlands/notify"
+    notice = {**notice, "payMethodCode": method}
+    paid = deepcopy(state["response"])
+    state["response"]["data"][0].update(orderStatus="UNPAID", paidAmount="0.00", unpaidAmount=notice["amount"])
+
+    for limit in (None, "1.00"):
+        state["true_money_limit"] = limit
+        assert method not in http.get(endpoint + "/methods", headers=HEADERS).json()["methods"]
+        assert http.post(endpoint + "/start", headers=HEADERS, json={"method": method}).status_code == 409
+    assert SUNLANDS_PAY_SINGLE not in calls
+
+    state.update(start_method=method, true_money_limit=notice["amount"])
+    assert method in http.get(endpoint + "/methods", headers=HEADERS).json()["methods"]
+    assert http.post(endpoint + "/start", headers=HEADERS, json={"method": method}).json() == {
+        "redirect_url": state["pay_url"],
+    }
+    assert calls.count(SUNLANDS_CREATE_ORDER) == calls.count(SUNLANDS_PAY_SINGLE) == 1
+    assert http.post(callback, data=notice).json()["code"] == 0
+    assert http.get(path, headers=HEADERS).json()["access"] == "preview"
+
+    state["response"] = paid
+    assert http.post(callback, data=notice).json()["code"] == 1
     assert http.get(path, headers=HEADERS).json()["access"] == "full"
 
 

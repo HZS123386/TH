@@ -1,16 +1,19 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { brotliCompressSync, brotliDecompressSync, constants, gzipSync } from 'node:zlib';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as pause } from 'node:timers/promises';
+import { parseEnv } from 'node:util';
 
 export const projectRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export const flutterRoot=path.join(projectRoot,'web-client');
 const cached=path.join(homedir(),'.cache','fate-sdk','flutter','bin','flutter.bat');
-const binary=process.env.FATE_FLUTTER_BIN||(process.platform==='win32'&&existsSync(cached)?cached:'flutter');
+const localEnv=path.resolve(projectRoot,'..','TH','.env');
+const localH5Sdk=existsSync(localEnv)?parseEnv(readFileSync(localEnv,'utf8')).FATE_H5_FLUTTER_BIN:undefined;
+const binary=process.env.FATE_H5_FLUTTER_BIN||localH5Sdk||process.env.FATE_FLUTTER_BIN||(process.platform==='win32'&&existsSync(cached)?cached:'flutter');
 // Use the SDK's Dart analyzer so Unicode repository paths keep working.
 export function flutter(args){return new Promise((resolve,reject)=>{const tool=args[0]==='analyze'?path.join(path.dirname(binary),process.platform==='win32'?'dart.bat':'dart'):binary;const quote=value=>`'${String(value).replaceAll("'","''")}'`;const command=`& ${quote(tool)} ${args.map(quote).join(' ')}; exit $LASTEXITCODE`;const child=process.platform==='win32'?spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{cwd:flutterRoot,stdio:'inherit',windowsHide:true}):spawn(tool,args,{cwd:flutterRoot,stdio:'inherit'});child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(`SDK tool exited with ${code}`)));});}
 export const basePath=process.env.FATE_H5_BASE_PATH||'/thai-landing/';
@@ -23,6 +26,30 @@ async function moveBuild(source,target){
       await pause(200);
     }
   }
+}
+export async function pruneSiteBackups(temporary=path.join(projectRoot,'tmp')){
+  const root=path.resolve(temporary);
+  let entries;
+  try{
+    if(path.relative(root,await realpath(root)))throw Error('Website backup directory must not be a link');
+    entries=await readdir(root,{withFileTypes:true});
+  }catch(error){if(error.code==='ENOENT')return 0;throw error;}
+  const backups=[];
+  for(const entry of entries){
+    if(!entry.isDirectory()||entry.isSymbolicLink()||!entry.name.startsWith('site-previous-'))continue;
+    const directory=path.resolve(root,entry.name);
+    if(path.dirname(directory)!==root)throw Error('Unexpected website backup path');
+    try{
+      const info=await lstat(directory);
+      const index=await lstat(path.join(directory,'index.html'));
+      if(info.isDirectory()&&!info.isSymbolicLink()&&index.isFile())backups.push({directory,modified:info.mtimeMs});
+    }catch(error){if(error.code!=='ENOENT')throw error;}
+  }
+  backups.sort((a,b)=>b.modified-a.modified||b.directory.localeCompare(a.directory));
+  // Only completed website backups are eligible, after a successful publication.
+  const expired=backups.slice(3);
+  for(const backup of expired)await rm(backup.directory,{recursive:true,force:true,maxRetries:3});
+  return expired.length;
 }
 export async function buildLanding({release=false,noPub=false}={}){
   await import('./prepare-flutter.mjs');
@@ -65,18 +92,25 @@ export async function buildLanding({release=false,noPub=false}={}){
   index=index.replace('<script src="browser.js"></script>',()=>`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`);
   // Keep the editable form and just its labels in the first response, ahead of Flutter.
   const copies = {};
-  const formKeys = 'title language portrait formTitle formCaption date dateParts calendar time unknown city citySearch questionTitle questions writeQuestion topics topicLabel disclaimer submitConsent regionPending regionRetry noticeOutdated consentError openLatest'.split(' ');
+  const formKeys = 'title language portrait formTitle formCaption date dateParts calendar time unknown city citySearch topics topicLabel disclaimer submitConsent regionPending regionRetry noticeOutdated consentError openLatest'.split(' ');
   for (const file of await readdir(path.join(flutterRoot,'assets','copy'))) {
     if (!file.endsWith('.json')) continue;
     const lang = path.basename(file,'.json');
     const data = JSON.parse(await readFile(path.join(flutterRoot,'assets','copy',file),'utf8'));
     const pick = (object, keys) => Object.fromEntries(keys.map(key => [key,object[key]]));
+    const jy = data.jy[lang];
     copies[lang] = {
-      jy: pick(data.jy[lang],formKeys),
+      jy: pick(jy,formKeys),
       ui: pick(data.ui[lang],['invalidDate','timeRequired','invalidPlace','network','badResult','noCity','morePlaces','confirm','close']),
       marriage: pick(data.marriage[lang],['title','form_hint']),
       generation: pick(data.generation[lang],['previewTitle','preview','ready','storage','busy','retry']),
-      preparing: data.jy[lang].interpretation.steps.basics.status,
+      generationPage: {
+        ...pick(jy.interpretation,['steps','waiting','reconnecting','awaitingContent',
+          'validating','next','planets','houses','dateOnlyPlacements']),
+        factors:pick(jy.chart.factors,['favorable','unfavorable','basis']),
+        birthplace:jy.generation.birthplace,
+        progress:jy.progress, freeTitle:jy.report.freeTitle, unknownNote:jy.unknownNote
+      },
       themes: Object.values(data.jyThemes).map(items => items.map(item => item[lang]))
     };
   }
@@ -113,6 +147,7 @@ export async function buildLanding({release=false,noPub=false}={}){
   const hadPrevious=existsSync(destination);
   if(hadPrevious)await moveBuild(destination,previous);
   try{await moveBuild(generated,destination);}catch(error){if(hadPrevious)await moveBuild(previous,destination);throw error;}
+  try{await pruneSiteBackups(temporary);}catch(error){console.warn(`Website backup cleanup failed: ${error.message}`);}
   console.log(`Flutter H5 build ready: ${destination}`);
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){

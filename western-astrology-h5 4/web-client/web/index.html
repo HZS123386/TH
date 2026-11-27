@@ -87,15 +87,13 @@
       <button class="birth-picker-trigger" id="birth-time-trigger" type="button" aria-haspopup="dialog" aria-controls="birth-picker" aria-labelledby="birth-time-label birth-time-value">
         <span id="birth-time-value"></span><span class="birth-picker-icon birth-picker-clock" aria-hidden="true"></span>
       </button>
-      <label for="birth-city" data-copy="city"></label>
+      <label id="birth-city-label" for="birth-city" data-copy="city"></label>
       <div class="birth-location">
         <input id="birth-city" type="search" role="combobox" aria-autocomplete="list" aria-controls="birth-options"
                aria-expanded="false" maxlength="80" autocomplete="off" required>
+        <button id="birth-city-toggle" type="button" tabindex="-1" aria-labelledby="birth-city-label"
+                aria-controls="birth-options" aria-expanded="false"></button>
         <div id="birth-options" role="listbox" hidden></div>
-      </div>
-      <div id="birth-career" hidden>
-        <label for="birth-question" data-copy="questionTitle"></label><select id="birth-question"></select>
-        <input id="birth-custom" type="text" maxlength="120" hidden>
       </div>
       <p id="birth-message" role="status" aria-live="polite"></p>
       <p class="birth-consent" data-copy="submitConsent"></p>
@@ -111,10 +109,36 @@
     </dialog>
     <footer><p data-copy="disclaimer"></p></footer>
     <section id="birth-generation" hidden aria-labelledby="birth-generation-title" tabindex="-1">
-      <h1 id="birth-generation-title"></h1>
-      <div class="fate-startup-track" aria-hidden="true"></div>
-      <p id="birth-generation-status" role="status"></p>
-      <button id="birth-generation-retry" type="button" hidden></button>
+      <div class="birth-generation-content">
+        <img class="birth-generation-brand" src="assets/assets/images/fate-brand-gold.png" alt="FATE" height="18">
+        <h1 id="birth-generation-title"></h1>
+        <div class="birth-generation-card">
+          <h2 id="birth-generation-step-title"></h2>
+          <dl id="birth-generation-details" class="birth-generation-details"></dl>
+          <div id="birth-generation-placements" hidden>
+            <p id="birth-generation-metrics"></p>
+            <dl id="birth-generation-planets" class="birth-generation-planets"></dl>
+            <p id="birth-generation-estimated" class="birth-generation-note" hidden></p>
+          </div>
+          <div id="birth-generation-reading" hidden>
+            <dl id="birth-generation-factors" class="birth-generation-factors"></dl>
+            <p id="birth-generation-basis" class="birth-generation-note"></p>
+          </div>
+        </div>
+        <div class="birth-generation-card">
+          <ol id="birth-generation-stages" class="birth-generation-stages"></ol>
+          <p id="birth-generation-status" role="status"></p>
+          <div id="birth-generation-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="birth-generation-track" aria-hidden="true"><span>✦</span></div>
+            <span id="birth-generation-percent" aria-hidden="true">0%</span>
+          </div>
+          <p id="birth-generation-next" class="birth-generation-note"></p>
+          <button id="birth-generation-retry" type="button" hidden></button>
+        </div>
+        <div class="birth-generation-art" aria-hidden="true">
+          <video id="birth-generation-video" muted playsinline loop preload="none" disablepictureinpicture></video>
+        </div>
+      </div>
     </section>
   </template>
   <div id="fate-startup" role="status" aria-live="polite">

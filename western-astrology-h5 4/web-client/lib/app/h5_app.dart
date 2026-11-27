@@ -28,6 +28,13 @@ class H5App extends StatefulWidget {
 
 class _H5AppState extends State<H5App> {
   Timer? _timingFrame;
+  bool _reportPageLoaded = false;
+
+  Future<void> _loadReportPage() async {
+    await reports.loadLibrary();
+    _reportPageLoaded = true;
+  }
+
   late final _router = GoRouter(
     initialLocation: widget.initialLocation,
     routes: [
@@ -44,6 +51,7 @@ class _H5AppState extends State<H5App> {
           GoRoute(
             path: '/',
             builder: (context, state) => LandingPage(
+              loadReportPage: _loadReportPage,
               topic:
                   state.uri.queryParameters['reading'] == 'love' ||
                       state.uri.queryParameters['topic'] == 'love'
@@ -74,7 +82,8 @@ class _H5AppState extends State<H5App> {
           GoRoute(
             path: '/report.html',
             builder: (context, state) => _DeferredPage(
-              load: reports.loadLibrary,
+              load: _loadReportPage,
+              loadedOnEntry: _reportPageLoaded,
               page: () => reports.ReportPage(
                 key: ValueKey(state.uri.queryParameters['id']),
                 h5: widget.controller,
@@ -87,7 +96,8 @@ class _H5AppState extends State<H5App> {
         ],
       ),
     ],
-    errorBuilder: (context, state) => const LandingPage(),
+    errorBuilder: (context, state) =>
+        LandingPage(loadReportPage: _loadReportPage),
   );
   @override
   void initState() {
@@ -140,41 +150,49 @@ class _H5AppState extends State<H5App> {
 }
 
 class _DeferredPage extends StatefulWidget {
-  const _DeferredPage({required this.load, required this.page});
+  const _DeferredPage({
+    required this.load,
+    required this.page,
+    this.loadedOnEntry = false,
+  });
 
   final Future<void> Function() load;
   final Widget Function() page;
+  final bool loadedOnEntry;
 
   @override
   State<_DeferredPage> createState() => _DeferredPageState();
 }
 
 class _DeferredPageState extends State<_DeferredPage> {
+  late final bool _loadedOnEntry = widget.loadedOnEntry;
   late Future<void> _library = widget.load();
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<void>(
-    future: _library,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (!snapshot.hasError) return widget.page();
-      final copy = H5Scope.of(context).copy;
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(copy.t('ui', 'network'), textAlign: TextAlign.center),
-            TextButton(
-              onPressed: () => setState(() => _library = widget.load()),
-              child: Text(copy.t('generation', 'retry')),
-            ),
-          ],
-        ),
-      );
-    },
-  );
+  Widget build(BuildContext context) => _loadedOnEntry
+      ? widget.page()
+      : FutureBuilder<void>(
+          future: _library,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snapshot.hasError) return widget.page();
+            final copy = H5Scope.of(context).copy;
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(copy.t('ui', 'network'), textAlign: TextAlign.center),
+                  TextButton(
+                    onPressed: () => setState(() => _library = widget.load()),
+                    child: Text(copy.t('generation', 'retry')),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
 }
 
 class _Shell extends StatelessWidget {
