@@ -6,6 +6,7 @@ import '../app/controller.dart';
 import '../app/languages.dart';
 import '../core/browser_port.dart';
 import '../core/models.dart';
+import 'generation_dialog.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({this.topic = 'life', super.key});
@@ -18,12 +19,17 @@ class LandingPage extends StatefulWidget {
 class _LandingPageState extends State<LandingPage> {
   static const _stages = ['unspecified', 'considering', 'searching', 'offer'];
   BrowserPort? _browser;
+  final _generation = GenerationState();
+  late H5Controller _h5;
+  Json? _generationInput;
+  bool _showGeneration = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_browser != null) return;
     final h5 = H5Scope.of(context);
+    _h5 = h5;
     _browser = h5.browser;
     final saved = h5.browser.readSetting('active-preview', session: true) ?? '';
     if (!h5.browser.birthFormSubmitting &&
@@ -55,6 +61,23 @@ class _LandingPageState extends State<LandingPage> {
       return 'network';
     }
     if (!mounted) return '';
+    if (values['page'] == 'generating') {
+      final input = object(values['input']);
+      if (object(input['profile']).isEmpty) return 'badResult';
+      _generation.retry();
+      setState(() {
+        _generationInput = input;
+        _showGeneration = true;
+      });
+      // Keep the native form covering Flutter until this frame has painted the
+      // sole generation screen, so even a cold handoff cannot expose the body.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _showGeneration && h5.browser.birthFormSubmitting) {
+          h5.browser.setBirthFormVisible(false);
+        }
+      });
+      return '';
+    }
     if (values['page'] != 'report') return 'badResult';
     final LifeReport report;
     try {
@@ -70,6 +93,14 @@ class _LandingPageState extends State<LandingPage> {
     if (report.hasPreview) {
       await h5.prepareText(jsonEncode(report.json), language: report.language);
       if (!mounted) return '';
+      if (_showGeneration) {
+        _generation.ready(report);
+        return '';
+      }
+      h5.stageGeneratedPreview(report);
+    } else if (_showGeneration) {
+      // Queued reports continue through ReportPage's polling dialog. Staging
+      // the accepted object avoids an extra read during the seamless handoff.
       h5.stageGeneratedPreview(report);
     }
     // A queued acknowledgement may already be ready by the time Flutter opens it.
@@ -79,10 +110,29 @@ class _LandingPageState extends State<LandingPage> {
 
   @override
   void dispose() {
+    _generation.dispose();
     _browser?.detachBirthForm();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
+  Widget build(BuildContext context) {
+    if (!_showGeneration) return const SizedBox.shrink();
+    return GenerationDialog(
+      h5: _h5,
+      state: _generation,
+      full: false,
+      input: _generationInput,
+      showCancel: false,
+      embedded: true,
+      onCancel: () {},
+      onRetry: _generation.retry,
+      onComplete: (report) {
+        _h5.stageGeneratedPreview(report);
+        context.go(
+          '/report.html?id=${Uri.encodeComponent(report.id)}&lang=${report.language}&generation_presented=1',
+        );
+      },
+    );
+  }
 }

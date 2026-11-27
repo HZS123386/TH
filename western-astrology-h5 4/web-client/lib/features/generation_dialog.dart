@@ -49,11 +49,14 @@ class GenerationDialog extends StatefulWidget {
     required this.onRetry,
     required this.onComplete,
     this.input,
+    this.showCancel = true,
+    this.embedded = false,
     super.key,
   });
   final H5Controller h5;
   final GenerationState state;
   final bool full;
+  final bool showCancel, embedded;
   final Json? input;
   final VoidCallback onCancel, onRetry;
   final void Function(LifeReport) onComplete;
@@ -155,7 +158,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
   void _finish() {
     if (!mounted ||
         _navigating ||
-        ModalRoute.of(context)?.isCurrent != true ||
+        (!widget.embedded && ModalRoute.of(context)?.isCurrent != true) ||
         !widget.state.complete ||
         widget.state.error.isNotEmpty) {
       return;
@@ -163,7 +166,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
     _navigating = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted &&
-          ModalRoute.of(context)?.isCurrent == true &&
+          (widget.embedded || ModalRoute.of(context)?.isCurrent == true) &&
           widget.state.complete &&
           widget.state.error.isEmpty) {
         widget.onComplete(widget.state.report!);
@@ -515,7 +518,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                             ),
                           ),
                         ),
-                        if (!_finishing)
+                        if (!_finishing && widget.showCancel)
                           Positioned(
                             left: 0,
                             right: 0,

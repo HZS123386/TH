@@ -191,6 +191,8 @@ class TestBrowser implements BrowserPort {
   @override
   bool birthFormSubmitting = false;
   @override
+  void setBirthFormVisible(bool visible) => formVisible = visible;
+  @override
   void detachBirthForm() {
     submitBirthForm = null;
     formVisible = false;

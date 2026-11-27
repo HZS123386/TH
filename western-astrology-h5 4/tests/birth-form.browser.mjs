@@ -409,6 +409,8 @@ test('desktop form warms Flutter and opens the sole report animation without a d
   const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));
   const errors = [];
   let reportDocuments = 0;
+  let releasePost;
+  const postGate = new Promise(resolve => { releasePost = resolve; });
   try {
     const page = await context.newPage();
     page.on('pageerror',error => errors.push(error.message));
@@ -427,6 +429,7 @@ test('desktop form warms Flutter and opens the sole report animation without a d
       if (address.pathname === '/api/landing/consents') return reply({accepted:true,notice_version:'h5-data-use-3'});
       if (address.pathname === '/api/life-reports' && request.method() === 'POST') {
         const {landing_visit,...input} = request.postDataJSON();
+        await postGate;
         return reply({...fixture,input});
       }
       return reply({recorded:true});
@@ -445,12 +448,14 @@ test('desktop form warms Flutter and opens the sole report animation without a d
     const reportAnimation = page.locator('video[src$="report-loading-web.mp4"]:visible');
     await expect(reportAnimation).toHaveCount(1,{timeout:3000});
     assert.ok(Date.now() - started < 3000,'warmed handoff should expose the report animation within 3 seconds');
-    await expect(page).toHaveURL(new RegExp('report\\.html\\?id=' + fixture.id));
+    releasePost();
+    await expect(page).toHaveURL(new RegExp('report\\.html\\?id=' + fixture.id),{timeout:15000});
     assert.ok(Math.abs(await page.evaluate(() => performance.timeOrigin) - timeOrigin) <= 2);
     assert.equal(reportDocuments,0);
     await expect(page.locator('#birth-generation,.fate-startup-track')).toHaveCount(0);
     assert.deepEqual(errors,[]);
   } finally {
+    releasePost();
     await context.close();
   }
 });

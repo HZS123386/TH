@@ -89,6 +89,8 @@ class _H5AppState extends State<H5App> {
                   h5: widget.controller,
                   id: id,
                   openedFromForm: openedFromForm,
+                  generationPresented:
+                      state.uri.queryParameters['generation_presented'] == '1',
                   paymentReturn:
                       state.uri.queryParameters['payment_return'] == '1',
                 ),

@@ -31,6 +31,8 @@ external JSString _visitContext();
 external void _attachBirthForm(JSString initial, JSFunction submit);
 @JS('fateBirthForm.submitting')
 external JSBoolean get _birthFormSubmitting;
+@JS('fateBirthForm.setVisible')
+external void _setBirthFormVisible(JSBoolean visible);
 @JS('fateBirthForm.detach')
 external void _detachBirthForm();
 
@@ -49,6 +51,7 @@ class WebBrowserPort implements BrowserPort {
       // Flutter still handles the error when diagnostics are unavailable.
     }
   }
+
   @override
   bool get supportsLineApp {
     final navigator = web.window.navigator;
@@ -107,6 +110,9 @@ class WebBrowserPort implements BrowserPort {
 
   @override
   bool get birthFormSubmitting => _birthFormSubmitting.toDart;
+
+  @override
+  void setBirthFormVisible(bool visible) => _setBirthFormVisible(visible.toJS);
 
   @override
   void detachBirthForm() => _detachBirthForm();

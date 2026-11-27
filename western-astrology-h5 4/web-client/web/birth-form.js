@@ -686,19 +686,22 @@
     }
     creating = waiting = false;
     setFormWaiting(false);
+    show(true);
     if (outdated) byId('birth-submit').textContent = copy.jy.openLatest;
     say(message);
     byId('birth-submit').focus();
     byId('birth-retry').hidden = !failed && !retrySubmission;
   }
 
-  function showGeneration() {
+  async function showGeneration(input) {
     document.activeElement?.blur?.();
-    // Keep the completed, disabled form in place until the accepted report can
-    // navigate. GenerationDialog on the report route is the only loading view.
     say('');
     show(true);
-    return Promise.resolve();
+    const attached = submitToFlutter ||
+      (window.fateH5.reportExperienceStarting?.() && await waitForFlutterAttach());
+    if (!attached) return false;
+    pending = {page:'generating',language,input};
+    return dispatch();
   }
 
   async function ownerDigest(owner) {
@@ -777,13 +780,14 @@
     creating = waiting = true;
     setFormWaiting(true);
     byId('birth-retry').hidden = true;
-    const generationShown = showGeneration();
+    const requestInput = saved?.input || reportInput();
+    const generationShown = showGeneration(requestInput);
     if (first) track('view','generating_preview');
     let consentAccepted = false;
     try {
       const owner = window.fateH5.ownerKey();
       if (saved && saved.owner !== owner) throw Error('storage');
-      const record = saved || {id:fateUuid(),owner,input:reportInput(),place,visit:JSON.parse(window.fateH5.visitContext()),
+      const record = saved || {id:fateUuid(),owner,input:requestInput,place,visit:JSON.parse(window.fateH5.visitContext()),
         path:location.pathname + location.search,notice:noticeVersion,sent:false};
       await saveSubmission(record);
       const {input,visit} = record;
@@ -1010,6 +1014,9 @@
     get submitting() { return creating; },
     get editing() { return !main.hidden && (edited || creating); },
     get attached() { return !!submitToFlutter; },
+    setVisible(visible) {
+      if (main.firstElementChild) show(visible);
+    },
     attach(raw, send) {
       const initial = JSON.parse(raw);
       const first = !main.firstElementChild;

@@ -20,11 +20,12 @@ class ReportPage extends StatefulWidget {
     required this.id,
     this.paymentReturn = false,
     this.openedFromForm = false,
+    this.generationPresented = false,
     super.key,
   });
   final H5Controller h5;
   final String id;
-  final bool paymentReturn, openedFromForm;
+  final bool paymentReturn, openedFromForm, generationPresented;
   @override
   State<ReportPage> createState() => _ReportPageState();
 }
@@ -61,7 +62,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     widget.h5.trackActivity('report_loading');
     _model.addListener(_changed);
     final generated = widget.h5.takeGeneratedPreview(widget.id);
-    _presentInitialGeneration = widget.openedFromForm || generated != null;
+    _presentInitialGeneration =
+        !widget.generationPresented &&
+        (widget.openedFromForm || generated != null);
     _openingPresentation = _presentInitialGeneration;
     if (generated != null) {
       // From the form, this report was already fetched, validated, and prepared for display.
