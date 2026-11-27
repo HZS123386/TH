@@ -339,7 +339,8 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.equal(generated.input.profile.birth_time,'09:30');
     assert.equal(submittedVisit.source,'example');
     await expect.poll(() => reads.some(query => query.includes('wait_preview=true')),{timeout:15000}).toBe(true);
-    await expect(page.locator('video[src$="report-loading-web.mp4"]:visible, img[src*="report-loading-animated.webp"]:visible')).toHaveCount(0);
+    const reportAnimation = page.locator('video[src$="report-loading-web.mp4"]:visible, img[src*="report-loading-animated.webp"]:visible');
+    await expect(reportAnimation).toHaveCount(1,{timeout:10000});
     releasePreview();
     assert.equal(calls.filter(call => call === 'POST /api/life-reports').length,1);
     const accepted = calls.indexOf('POST /api/landing/consents');
@@ -362,4 +363,37 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.doesNotMatch(JSON.stringify(actions),/1995-08-17|My career question|北京|09:30/);
     assert.deepEqual(errors,[]);
   } finally { release(); releasePost(); releasePreview(); await context.close(); }
+});
+
+test('Instagram Android uses only the low-memory report animation', async () => {
+  const context = await browser.newContext({
+    viewport:{width:412,height:824},hasTouch:true,isMobile:true,
+    userAgent:'Mozilla/5.0 (Linux; Android 16; PLR110; wv) AppleWebKit/537.36 Version/4.0 Chrome/139.0.0.0 Mobile Safari/537.36 Instagram 417.0.0.54.77 Android'
+  });
+  const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));
+  const generating = {...fixture,preview:null,chart:null,preview_state:'generating'};
+  const errors = [];
+  try {
+    const page = await context.newPage();
+    page.on('pageerror',error => errors.push(error.message));
+    await page.route('**/*',async route => {
+      const address = new URL(route.request().url());
+      if (address.origin !== new URL(url).origin && /^https?:$/.test(address.protocol)) return route.abort();
+      if (!address.pathname.startsWith('/api/')) return route.continue();
+      if (address.pathname === '/api/landing/visits') {
+        const events = route.request().postDataJSON()?.events || [];
+        return route.fulfill({json:{ok:true,accepted_sequences:events.map(event => event.sequence)}});
+      }
+      if (address.pathname === '/api/life-reports/' + fixture.id) return route.fulfill({json:generating});
+      return route.fulfill({json:{recorded:true}});
+    });
+    await page.goto(url + 'report.html?id=' + fixture.id + '&lang=th',{waitUntil:'domcontentloaded'});
+    await expect(page.locator('.fate-generation-lite:visible')).toHaveCount(1,{timeout:30000});
+    await expect(page.locator('video[src$="report-loading-web.mp4"]')).toHaveCount(0);
+    await expect(page.locator('img[src*="report-loading-animated.webp"]')).toHaveCount(0);
+    assert.equal(await page.locator('.fate-generation-lite').evaluate(element => getComputedStyle(element).animationName),'fate-generation-lite');
+    assert.deepEqual(errors,[]);
+  } finally {
+    await context.close();
+  }
 });

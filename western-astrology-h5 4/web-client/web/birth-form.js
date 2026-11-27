@@ -18,6 +18,7 @@
   let originalProfile, originalPlace, creating = false, acceptedReport;
   let submission, retrySubmission = false;
   let checkedSubmission = false, activePicker, locationTouchActive = false;
+  let suppressLocationClickUntil = 0;
   const labels = window.fateBirthCopies || {};
   const firstPages = new Map();
 
@@ -229,6 +230,7 @@
     clearTimeout(searchTimer);
     locationRequest?.abort();
     byId('birth-options').hidden = true;
+    byId('birth-options-shield').hidden = true;
     byId('birth-city').setAttribute('aria-expanded','false');
     byId('birth-city').closest('.birth-location')?.classList.remove('options-open');
   }
@@ -291,9 +293,11 @@
       event.preventDefault();
       event.stopPropagation();
       if (!moved) {
+        suppressLocationClickUntil = 0;
         target?.click();
         syntheticClickAt = Date.now();
       }
+      suppressLocationClickUntil = Date.now() + 900;
     };
     const cancel = () => { gesture = null; release(); };
     if (window.PointerEvent) {
@@ -319,6 +323,38 @@
         event.stopImmediatePropagation();
       }
     },true);
+  }
+
+  function installLocationShield(shield) {
+    const stop = event => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const close = event => {
+      stop(event);
+      suppressLocationClickUntil = Date.now() + 900;
+      closeOptions();
+    };
+    if (window.PointerEvent) {
+      shield.addEventListener('pointerdown',stop,{passive:false});
+      shield.addEventListener('pointerup',close,{passive:false});
+      shield.addEventListener('pointercancel',close,{passive:false});
+    } else {
+      shield.addEventListener('touchstart',stop,{passive:false});
+      shield.addEventListener('touchend',close,{passive:false});
+      shield.addEventListener('touchcancel',close,{passive:false});
+    }
+    shield.addEventListener('click',stop);
+    document.addEventListener('click',event => {
+      if (Date.now() >= suppressLocationClickUntil) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    },true);
+    const clearForIntentionalPress = event => {
+      if (!event.target.closest('#birth-options')) suppressLocationClickUntil = 0;
+    };
+    if (window.PointerEvent) document.addEventListener('pointerdown',clearForIntentionalPress,true);
+    else document.addEventListener('touchstart',clearForIntentionalPress,true);
   }
 
   function locationViewport(content) {
@@ -360,6 +396,7 @@
     status.textContent = copy.jy.regionPending;
     menu.append(status);
     menu.hidden = false;
+    byId('birth-options-shield').hidden = false;
     city.closest('.birth-location')?.classList.add('options-open');
     city.setAttribute('aria-expanded','true');
     positionLocationOptions();
@@ -858,6 +895,7 @@
     main.append(byId('fate-birth-template').content.cloneNode(true));
     const form = byId('birth-form'), city = byId('birth-city'), menu = byId('birth-options');
     installLocationScroller(menu);
+    installLocationShield(byId('birth-options-shield'));
     form.addEventListener('submit',submit);
     form.addEventListener('input',markEdited);
     for (const field of ['date','time']) {

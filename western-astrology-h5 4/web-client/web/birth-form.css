@@ -83,8 +83,10 @@ html[data-embedded-browser=meta][data-meta-platform=android] #fate-birth { paddi
   #birth-picker { margin:auto auto 0; max-height:calc(var(--fate-viewport-height,100dvh) - 8px); padding-bottom:max(9px,env(safe-area-inset-bottom)); }
 }
 .birth-location { position:relative; }
-.birth-location.options-open { z-index:20; }
-#birth-options { position:absolute; z-index:20; top:100%; margin-top:3px; width:100%; overflow:auto;
+.birth-location.options-open { z-index:20; isolation:isolate; }
+#birth-options-shield { position:fixed; z-index:1; inset:0; background:transparent; touch-action:none; }
+#birth-city { position:relative; z-index:2; }
+#birth-options { position:absolute; z-index:3; top:100%; margin-top:3px; width:100%; overflow:auto;
   max-height:min(185px,calc(var(--fate-viewport-height,100dvh) * .3)); border:1px solid #816a82; border-radius:9px; background:#20162d;
   overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; isolation:isolate; pointer-events:auto; }
 #birth-options.open-above { top:auto; bottom:100%; margin:0 0 3px; }
@@ -113,6 +115,10 @@ html[data-embedded-browser=meta][data-meta-platform=android] #fate-birth { paddi
   50% { transform:scale(1.025); background-position:100% 50%; box-shadow:0 9px 30px #f5c35a80; }
 }
 @media (prefers-reduced-motion:reduce) { #birth-submit::before { animation:none; transform:none; will-change:auto; } }
+.fate-generation-lite { transform-origin:center; will-change:transform,opacity;
+  animation:fate-generation-lite 2.4s ease-in-out infinite alternate; }
+@keyframes fate-generation-lite { from { transform:scale(.992); opacity:.94; } to { transform:scale(1.012); opacity:1; } }
+@media (prefers-reduced-motion:reduce) { .fate-generation-lite { animation:none; transform:none; opacity:1; will-change:auto; } }
 .birth-consent { margin:18px 0 7px; }
 .birth-themes { margin:22px auto 0; max-width:580px; padding:12px; border:1px solid #ad8958; border-radius:12px; }
 #birth-boards { display:grid; gap:8px; margin-top:8px; }

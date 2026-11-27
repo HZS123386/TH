@@ -356,6 +356,7 @@ test('iOS Safari keeps the city field above the keyboard and blocks dropdown tap
     await option.dispatchEvent('pointerdown',{pointerType:'touch',pointerId:32,isPrimary:true,buttons:1,clientX:100,clientY:100});
     await option.dispatchEvent('pointerup',{pointerType:'touch',pointerId:32,isPrimary:true,buttons:0,clientX:100,clientY:100});
     await expect(city).toHaveValue('北京市');
+    await page.locator('#birth-submit').evaluate(button => button.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})));
     assert.equal(await page.evaluate(() => window.testSubmitClicks),0);
   } finally {
     await context.close();

@@ -11,6 +11,7 @@ import 'package:fate_h5/app/h5_app.dart';
 import 'package:fate_h5/core/models.dart';
 import 'package:fate_h5/core/repository.dart';
 import 'package:fate_h5/features/generation_dialog.dart';
+import 'package:fate_h5/features/generation_video.dart';
 import 'package:fate_h5/features/report_view_model.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/ui/jy_components.dart';
@@ -1351,6 +1352,9 @@ void main() {
           ),
         ),
       );
+      final animation = find.byType(GenerationVideo);
+      final animationElement = tester.element(animation);
+      expect(tester.widget<GenerationVideo>(animation).active, isTrue);
       expect(find.text('准备中'), findsOneWidget);
       expect(find.text('0%'), findsNothing);
       state.update(report, 19, 'preview');
@@ -1361,14 +1365,18 @@ void main() {
       await tester.pump(const Duration(milliseconds: 2600));
       state.update(report, 99, 'preview');
       await tester.pump(const Duration(seconds: 12));
+      expect(tester.element(animation), same(animationElement));
+      expect(tester.widget<GenerationVideo>(animation).active, isTrue);
       expect(completed, 0);
       expect(find.text('正在校验并保存解读内容'), findsOneWidget);
       expect(find.text(h5.copy.t('jy', 'appLogin.title')), findsNothing);
       state.fail('连接中断');
       await tester.pump();
       expect(find.text('本次生成暂未完成，请重试'), findsOneWidget);
+      expect(tester.widget<GenerationVideo>(animation).active, isFalse);
       state.retry();
       await tester.pump();
+      expect(tester.widget<GenerationVideo>(animation).active, isTrue);
       await tester.tap(find.widgetWithText(TextButton, '取消等待'));
       expect(cancelled, 1);
       state.ready(report);

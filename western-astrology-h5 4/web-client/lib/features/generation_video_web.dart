@@ -29,6 +29,7 @@ class GenerationVideo extends StatefulWidget {
 class _GenerationVideoState extends State<GenerationVideo>
     with WidgetsBindingObserver {
   web.HTMLVideoElement? _video;
+  web.HTMLImageElement? _lightweightImage;
   final _events = <StreamSubscription<web.Event>>[];
   Timer? _watchdog, _playRetry, _imageRetry;
   bool _failed = false, _playPending = false, _imageFailed = false;
@@ -116,6 +117,24 @@ class _GenerationVideoState extends State<GenerationVideo>
     );
   }
 
+  void _createdLightweightImage(Object element) {
+    final image = element as web.HTMLImageElement;
+    _lightweightImage = image;
+    image
+      ..src = Uri.base
+          .resolve('assets/assets/images/report-loading-poster.webp')
+          .toString()
+      ..alt = '';
+    image.setAttribute('aria-hidden', 'true');
+    image.className = 'fate-generation-lite';
+    image.style
+      ..width = '100%'
+      ..height = '100%'
+      ..objectFit = 'contain'
+      ..pointerEvents = 'none'
+      ..visibility = widget.active ? 'visible' : 'hidden';
+  }
+
   void _styleSurface(web.HTMLElement element) {
     final style = element.style;
     style
@@ -142,9 +161,11 @@ class _GenerationVideoState extends State<GenerationVideo>
     if (oldWidget.active != widget.active) {
       if (widget.active) {
         _start();
+        _lightweightImage?.style.visibility = 'visible';
       } else {
         _video?.pause();
         _video?.style.visibility = 'hidden';
+        _lightweightImage?.style.visibility = 'hidden';
         _watchdog?.cancel();
       }
     }
@@ -229,15 +250,25 @@ class _GenerationVideoState extends State<GenerationVideo>
     _video?.pause();
     _video?.removeAttribute('src');
     _video?.load();
+    _lightweightImage?.removeAttribute('src');
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => _instagramAndroid
-      ? Opacity(
-          opacity: widget.active ? 1 : 0,
-          child: GenerationPoster(lightweight: true, animate: !widget.reduced),
-        )
+      ? widget.reduced
+            ? Opacity(
+                opacity: widget.active ? 1 : 0,
+                child: const GenerationPoster(
+                  lightweight: true,
+                  animate: false,
+                ),
+              )
+            : HtmlElementView.fromTagName(
+                key: const ValueKey('generation-lite-image'),
+                tagName: 'img',
+                onElementCreated: _createdLightweightImage,
+              )
       : widget.reduced || _imageFailed
       ? Opacity(opacity: widget.active ? 1 : 0, child: const GenerationPoster())
       : _failed
