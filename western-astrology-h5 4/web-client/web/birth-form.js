@@ -18,7 +18,6 @@
   let originalProfile, originalPlace, creating = false, acceptedReport;
   let submission, retrySubmission = false;
   let checkedSubmission = false, activePicker, locationTouchActive = false;
-  let generationVisual;
   const labels = window.fateBirthCopies || {};
   const firstPages = new Map();
 
@@ -231,6 +230,7 @@
     locationRequest?.abort();
     byId('birth-options').hidden = true;
     byId('birth-city').setAttribute('aria-expanded','false');
+    byId('birth-city').closest('.birth-location')?.classList.remove('options-open');
   }
 
   function choosePlace(item) {
@@ -247,89 +247,53 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
-    if (window.fateH5.metaBrowser === 'facebook') {
-      // Facebook's WebView receives the tap through the menu-level gesture
-      // handler below, which also implements scrolling when native nested
-      // scrolling is unavailable.
-      button.addEventListener('click',action);
-      return button;
-    }
-    let gesture, touchActivation = 0;
-    const point = event => event.touches?.[0] || event.changedTouches?.[0] || event;
-    const releaseLocationTouch = () => setTimeout(() => { locationTouchActive = false; },0);
-    const start = event => {
-      if (event.pointerType === 'mouse') return;
-      const current = point(event);
-      locationTouchActive = true;
-      gesture = {x:current.clientX,y:current.clientY,moved:false};
-    };
-    const move = event => {
-      if (!gesture) return;
-      const current = point(event);
-      if (Math.abs(current.clientX - gesture.x) > 8 || Math.abs(current.clientY - gesture.y) > 8) gesture.moved = true;
-    };
-    const end = event => {
-      if (!gesture) return;
-      const activate = !gesture.moved;
-      gesture = null;
-      releaseLocationTouch();
-      if (!activate) return;
-      event.preventDefault();
-      touchActivation = Date.now();
-      action();
-    };
-    const cancel = () => { gesture = null; releaseLocationTouch(); };
-    // Facebook's iOS WebView can blur the search field and remove the menu
-    // before its delayed click. Complete a short tap on pointer-up, but leave
-    // vertical drags untouched so the native momentum scroller can run.
-    if (window.PointerEvent) {
-      button.addEventListener('pointerdown',start);
-      button.addEventListener('pointermove',move);
-      button.addEventListener('pointerup',end);
-      button.addEventListener('pointercancel',cancel);
-    } else {
-      button.addEventListener('touchstart',start,{passive:true});
-      button.addEventListener('touchmove',move,{passive:true});
-      button.addEventListener('touchend',end,{passive:false});
-      button.addEventListener('touchcancel',cancel);
-    }
     button.addEventListener('click',event => {
-      if (Date.now() - touchActivation < 1000) { event.preventDefault(); return; }
+      event.preventDefault();
+      event.stopPropagation();
       action();
     });
     return button;
   }
 
-  function installFacebookLocationScroller(menu) {
-    if (window.fateH5.metaBrowser !== 'facebook') return;
-    let gesture;
+  function installLocationScroller(menu) {
+    let gesture, syntheticClickAt = 0;
     const point = event => event.touches?.[0] || event.changedTouches?.[0] || event;
-    const release = () => setTimeout(() => { locationTouchActive = false; },0);
+    const release = () => setTimeout(() => { locationTouchActive = false; },100);
     const start = event => {
-      if (event.pointerType === 'mouse') return;
       const current = point(event);
       const target = event.target.closest('button');
+      if (!target) return;
       locationTouchActive = true;
-      gesture = {target,y:current.clientY,scrollTop:menu.scrollTop,moved:false};
-      if (event.pointerId !== undefined) {
+      const touch = event.pointerType ? event.pointerType !== 'mouse' : !!event.touches;
+      gesture = {target,y:current.clientY,scrollTop:menu.scrollTop,moved:false,touch};
+      if (touch && event.pointerId !== undefined) {
         try { menu.setPointerCapture(event.pointerId); } catch {}
       }
+      // Desktop Safari can blur the search input before dispatching the option
+      // click. Keeping focus here prevents the menu from being removed first.
+      if (!touch) event.preventDefault();
     };
     const move = event => {
       if (!gesture) return;
       const delta = gesture.y - point(event).clientY;
       if (Math.abs(delta) > 5) gesture.moved = true;
-      if (!gesture.moved) return;
+      if (!gesture.moved || !gesture.touch) return;
       event.preventDefault();
+      event.stopPropagation();
       menu.scrollTop = gesture.scrollTop + delta;
     };
     const end = event => {
       if (!gesture) return;
-      const {target,moved} = gesture;
+      const {target,moved,touch} = gesture;
       gesture = null;
-      event.preventDefault();
       release();
-      if (!moved) target?.click();
+      if (!touch) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!moved) {
+        target?.click();
+        syntheticClickAt = Date.now();
+      }
     };
     const cancel = () => { gesture = null; release(); };
     if (window.PointerEvent) {
@@ -343,6 +307,18 @@
       menu.addEventListener('touchend',end,{passive:false});
       menu.addEventListener('touchcancel',cancel);
     }
+    menu.addEventListener('mousedown',event => {
+      if (window.PointerEvent || !event.target.closest('button')) return;
+      locationTouchActive = true;
+      event.preventDefault();
+      release();
+    });
+    menu.addEventListener('click',event => {
+      if (event.isTrusted && Date.now() - syntheticClickAt < 1000) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    },true);
   }
 
   function locationViewport(content) {
@@ -354,7 +330,7 @@
   }
 
   function keepLocationVisible() {
-    if (!window.fateH5.embedded || document.activeElement !== byId('birth-city')) return;
+    if (document.activeElement !== byId('birth-city')) return;
     const content = byId('birth-content');
     const viewport = locationViewport(content);
     const location = byId('birth-city').getBoundingClientRect();
@@ -384,6 +360,7 @@
     status.textContent = copy.jy.regionPending;
     menu.append(status);
     menu.hidden = false;
+    city.closest('.birth-location')?.classList.add('options-open');
     city.setAttribute('aria-expanded','true');
     positionLocationOptions();
     let result;
@@ -607,24 +584,33 @@
     if (visit.id) headers['X-Visit-Id'] = visit.id;
     if (body) headers['Content-Type'] = 'application/json';
     if (submissionId) headers['Idempotency-Key'] = submissionId;
-    const abort = new AbortController();
-    const timer = setTimeout(() => abort.abort(),15000);
-    try {
-      const response = await fetch(path,{method,headers,cache:'no-store',signal:abort.signal,body:body && JSON.stringify(body)});
-      if (!response.ok) {
-        const detail = await response.json().catch(() => ({}));
-        if ([detail.code,detail.detail].includes('landing_notice_outdated')) throw Error('noticeOutdated');
-        const reason = response.status === 429 ? 'busy' : [409,422].includes(response.status) ? 'badResult' : 'network';
-        throw Object.assign(Error(reason),{status:response.status,code:detail.code || detail.detail});
-      }
-      return await response.json();
-    } catch (error) {
-      if (visit.id && (error instanceof TypeError || error instanceof SyntaxError || abort.signal.aborted)) {
-        const endpoint = path.split('?')[0].replace(/(\/submissions\/)\S+$/,'$1{submission_id}');
-        window.fateH5.trackFailure(endpoint,error instanceof SyntaxError ? 'badResult' : 'network',method);
-      }
-      throw error;
-    } finally { clearTimeout(timer); }
+    const payload = body && JSON.stringify(body);
+    let finalError;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const abort = new AbortController();
+      const timer = setTimeout(() => abort.abort(),15000);
+      try {
+        const response = await fetch(path,{method,headers,cache:'no-store',signal:abort.signal,body:payload});
+        if (!response.ok) {
+          const detail = await response.json().catch(() => ({}));
+          if ([detail.code,detail.detail].includes('landing_notice_outdated')) throw Error('noticeOutdated');
+          const reason = response.status === 429 ? 'busy' : [409,422].includes(response.status) ? 'badResult' : 'network';
+          throw Object.assign(Error(reason),{status:response.status,code:detail.code || detail.detail});
+        }
+        return await response.json();
+      } catch (error) {
+        finalError = error;
+        const retryable = error instanceof TypeError || error instanceof SyntaxError || abort.signal.aborted ||
+          error.status === 429 || error.status >= 500;
+        if (!retryable || attempt === 2) break;
+      } finally { clearTimeout(timer); }
+      await new Promise(resolve => setTimeout(resolve,300 * (attempt + 1)));
+    }
+    if (visit.id && (finalError instanceof TypeError || finalError instanceof SyntaxError || finalError?.name === 'AbortError')) {
+      const endpoint = path.split('?')[0].replace(/(\/submissions\/)\S+$/,'$1{submission_id}');
+      window.fateH5.trackFailure(endpoint,finalError instanceof SyntaxError ? 'badResult' : 'network',method);
+    }
+    throw finalError;
   }
 
   function setFormWaiting(busy) {
@@ -677,7 +663,7 @@
       const timer = setTimeout(finish,160);
       requestAnimationFrame(() => requestAnimationFrame(finish));
     });
-    return Promise.all([painted,new Promise(resolve => setTimeout(resolve,320))]);
+    return painted;
   }
 
   async function ownerDigest(owner) {
@@ -871,7 +857,7 @@
     if (main.firstElementChild) return;
     main.append(byId('fate-birth-template').content.cloneNode(true));
     const form = byId('birth-form'), city = byId('birth-city'), menu = byId('birth-options');
-    installFacebookLocationScroller(menu);
+    installLocationScroller(menu);
     form.addEventListener('submit',submit);
     form.addEventListener('input',markEdited);
     for (const field of ['date','time']) {
@@ -897,8 +883,10 @@
     city.addEventListener('focus',() => {
       setTimeout(keepLocationVisible,50);
       setTimeout(keepLocationVisible,250);
+      setTimeout(keepLocationVisible,500);
     });
     window.visualViewport?.addEventListener('resize',() => requestAnimationFrame(keepLocationVisible));
+    window.visualViewport?.addEventListener('scroll',() => requestAnimationFrame(keepLocationVisible));
     city.addEventListener('input',() => {
       place = null;
       closeOptions();
@@ -921,7 +909,7 @@
       // pointer/click finish before deciding whether the menu really lost focus.
       setTimeout(() => {
         if (!locationTouchActive && !document.activeElement?.closest('.birth-location')) closeOptions();
-      },0);
+      },120);
     });
     byId('birth-language').addEventListener('change',async event => {
       const lang = event.target.value, previous = language;
@@ -941,15 +929,6 @@
     });
     byId('birth-retry').addEventListener('click',retry);
     byId('birth-generation-retry').addEventListener('click',retry);
-    const warmGenerationVisual = () => {
-      generationVisual = new Image();
-      generationVisual.decoding = 'async';
-      const lowMemory = window.fateH5.metaBrowser === 'instagram' && window.fateH5.metaPlatform === 'android';
-      const image = lowMemory ? 'report-loading-poster.webp' : 'report-loading-animated.webp';
-      generationVisual.src = new URL('assets/assets/images/' + image,document.baseURI).href;
-    };
-    if ('requestIdleCallback' in window) requestIdleCallback(warmGenerationVisual,{timeout:2500});
-    else setTimeout(warmGenerationVisual,1200);
     localize(language).then(async () => {
       if (!form.isConnected) return;
       try {

@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'generation_video.dart'
-    if (dart.library.js_interop) 'generation_video_web.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
 import '../ui/theme.dart';
@@ -62,15 +60,13 @@ class GenerationDialog extends StatefulWidget {
 }
 
 class _GenerationDialogState extends State<GenerationDialog> {
-  Timer? _reviewTimer, _stageTimer, _detailsTimer, _finishTimer;
+  Timer? _reviewTimer, _stageTimer, _detailsTimer;
   int _step = 0, _detail = 0;
   bool _prepared = false,
       _reduced = false,
       _reviewDone = false,
       _finishing = false,
       _navigating = false;
-  Duration get _finishDuration =>
-      _reduced ? Duration.zero : const Duration(milliseconds: 320);
   @override
   void initState() {
     super.initState();
@@ -118,7 +114,9 @@ class _GenerationDialogState extends State<GenerationDialog> {
     _stageTimer?.cancel();
     _detailsTimer?.cancel();
     setState(() => _finishing = true);
-    _finishTimer = Timer(_finishDuration, _finish);
+    // The visual generation animation was removed, so a ready report no longer
+    // waits for a presentation fade before opening.
+    _finish();
   }
 
   void _advance() {
@@ -161,7 +159,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
   @override
   void dispose() {
     widget.state.removeListener(_changed);
-    for (final timer in [_reviewTimer, _stageTimer, _detailsTimer, _finishTimer]) {
+    for (final timer in [_reviewTimer, _stageTimer, _detailsTimer]) {
       timer?.cancel();
     }
     super.dispose();
@@ -195,19 +193,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                 child: LayoutBuilder(
                   builder: (context, box) {
                     final pad = (box.maxWidth * .05).clamp(14.0, 24.0);
-                    final shortScreen = box.maxHeight < 720;
-                    final videoTop =
-                        (box.maxHeight * (shortScreen ? .66 : .52) - 40).clamp(
-                          0.0,
-                          360.0,
-                        );
-                    final videoHeight =
-                        ((box.maxHeight * (shortScreen ? .30 : .4)).clamp(
-                                  160.0,
-                                  340.0,
-                                ) +
-                                110)
-                            .clamp(0.0, box.maxHeight - videoTop);
                     return Stack(
                       children: [
                         SingleChildScrollView(
@@ -435,7 +420,11 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                                 top: 10,
                                               ),
                                               child: Text(
-                                                '${c.t('jy', 'interpretation.next')} · ${_step < 2 ? c.t('jy', 'interpretation.steps.${keys[_step + 1]}.title') : widget.full ? c.t('checkout', 'reportProduct') : c.t('jy', 'report.freeTitle')}',
+                                                '${c.t('jy', 'interpretation.next')} · ${_step < 2
+                                                    ? c.t('jy', 'interpretation.steps.${keys[_step + 1]}.title')
+                                                    : widget.full
+                                                    ? c.t('checkout', 'reportProduct')
+                                                    : c.t('jy', 'report.freeTitle')}',
                                                 style: const TextStyle(
                                                   fontSize: 12,
                                                   color: lavender,
@@ -461,37 +450,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                   ],
                                 );
                               },
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          top: videoTop,
-                          height: videoHeight,
-                          child: IgnorePointer(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: pad,
-                                vertical: 16,
-                              ),
-                              child: Center(
-                                // The video and fallback artwork are both 768 x 512.
-                                child: AspectRatio(
-                                  aspectRatio: 3 / 2,
-                                  child: ListenableBuilder(
-                                    listenable: widget.state,
-                                    builder: (context, _) => AnimatedOpacity(
-                                      opacity: _finishing ? 0 : 1,
-                                      duration: _finishDuration,
-                                      child: GenerationVideo(
-                                        active: widget.state.error.isEmpty,
-                                        reduced: _reduced,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
                             ),
                           ),
                         ),

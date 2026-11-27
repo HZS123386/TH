@@ -11,7 +11,6 @@ import 'package:fate_h5/app/h5_app.dart';
 import 'package:fate_h5/core/models.dart';
 import 'package:fate_h5/core/repository.dart';
 import 'package:fate_h5/features/generation_dialog.dart';
-import 'package:fate_h5/features/generation_video.dart';
 import 'package:fate_h5/features/report_view_model.dart';
 import 'package:fate_h5/features/checkout_dialog.dart';
 import 'package:fate_h5/ui/jy_components.dart';
@@ -36,7 +35,6 @@ void phone(WidgetTester tester) {
     tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue,
   );
 }
-
 Future<void> click(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
   await tester.tap(finder);
@@ -1326,7 +1324,7 @@ void main() {
   );
 
   testWidgets(
-    'paid generation keeps the same visible wheel across stages until the report is ready',
+    'paid generation keeps progress visible across stages until the report is ready',
     (tester) async {
       phone(tester);
       tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
@@ -1353,10 +1351,6 @@ void main() {
           ),
         ),
       );
-      final wheel = find.byType(GenerationVideo);
-      final wheelElement = tester.element(wheel);
-      expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
-      expect(tester.getTopLeft(wheel).dy, greaterThanOrEqualTo(320));
       expect(find.text('准备中'), findsOneWidget);
       expect(find.text('0%'), findsNothing);
       state.update(report, 19, 'preview');
@@ -1367,18 +1361,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 2600));
       state.update(report, 99, 'preview');
       await tester.pump(const Duration(seconds: 12));
-      expect(tester.element(wheel), same(wheelElement));
-      expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       expect(completed, 0);
       expect(find.text('正在校验并保存解读内容'), findsOneWidget);
       expect(find.text(h5.copy.t('jy', 'appLogin.title')), findsNothing);
       state.fail('连接中断');
       await tester.pump();
       expect(find.text('本次生成暂未完成，请重试'), findsOneWidget);
-      expect(tester.widget<GenerationVideo>(wheel).active, isFalse);
       state.retry();
       await tester.pump();
-      expect(tester.widget<GenerationVideo>(wheel).active, isTrue);
       await tester.tap(find.widgetWithText(TextButton, '取消等待'));
       expect(cancelled, 1);
       state.ready(report);
@@ -1424,10 +1414,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 319));
-    expect(displayed, isEmpty);
-    state.ready(report);
-    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump();
     expect(displayed, [report]);
     await tester.pump(const Duration(seconds: 3));
     expect(displayed, [report]);
@@ -1438,7 +1425,7 @@ void main() {
 
   for (final wait in [Duration.zero, const Duration(seconds: 20)]) {
     testWidgets(
-      'free report opens on readiness without waiting for the wheel: $wait',
+      'free report opens immediately on readiness: $wait',
       (tester) async {
         phone(tester);
         tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
@@ -1470,10 +1457,6 @@ void main() {
         state.ready(report);
         await tester.pump(const Duration(milliseconds: 16));
         expect(completed, 1);
-        expect(
-          tester.widget<GenerationVideo>(find.byType(GenerationVideo)).active,
-          isFalse,
-        );
         await tester.pump(const Duration(seconds: 10));
         expect(completed, 1);
         expect(tester.takeException(), isNull);
@@ -1598,6 +1581,36 @@ void main() {
       h5.dispose();
     },
   );
+
+  test('an initial transient report read retries automatically', () async {
+    var requests = 0;
+    final browser = TestBrowser();
+    final repo = ReportRepository(
+      browser,
+      baseUrl: 'https://example.test',
+      client: MockClient((_) async {
+        requests++;
+        if (requests == 1) {
+          return http.Response(
+            jsonEncode({'detail': 'temporarily_unavailable'}),
+            503,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return response(fixture());
+      }),
+    );
+    final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+    final model = ReportViewModel(h5, fixture()['id']);
+    expect(await model.load(), isNull);
+    expect(requests, 1);
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    expect(requests, 2);
+    expect(model.report, isNotNull);
+    expect(model.error, isEmpty);
+    model.dispose();
+    h5.dispose();
+  });
 
   test(
     'latest language request wins and the downloaded copy is reused',

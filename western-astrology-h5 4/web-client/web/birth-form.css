@@ -83,14 +83,16 @@ html[data-embedded-browser=meta][data-meta-platform=android] #fate-birth { paddi
   #birth-picker { margin:auto auto 0; max-height:calc(var(--fate-viewport-height,100dvh) - 8px); padding-bottom:max(9px,env(safe-area-inset-bottom)); }
 }
 .birth-location { position:relative; }
-#birth-options { position:absolute; z-index:2; top:100%; margin-top:3px; width:100%; overflow:auto;
+.birth-location.options-open { z-index:20; }
+#birth-options { position:absolute; z-index:20; top:100%; margin-top:3px; width:100%; overflow:auto;
   max-height:min(185px,calc(var(--fate-viewport-height,100dvh) * .3)); border:1px solid #816a82; border-radius:9px; background:#20162d;
-  overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
+  overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; isolation:isolate; pointer-events:auto; }
 #birth-options.open-above { top:auto; bottom:100%; margin:0 0 3px; }
 #birth-options button,#birth-options p { display:block; width:100%; margin:0; padding:9px 12px; border:0;
   color:inherit; background:transparent; font:inherit; text-align:start; touch-action:pan-y; }
-html[data-meta-browser=facebook] #birth-options,
-html[data-meta-browser=facebook] #birth-options button { touch-action:none; }
+@media (hover:none),(pointer:coarse) {
+  #birth-options,#birth-options button { touch-action:none; }
+}
 #birth-options button:focus,#birth-options button:hover { background:#3a2a47; }
 #birth-options small { display:block; color:#ccb9d0; }
 #birth-custom { margin-top:8px; }
@@ -132,18 +134,5 @@ html[data-meta-browser=facebook] #birth-options button { touch-action:none; }
   gap:16px; text-align:center; background:radial-gradient(ellipse at 50% 22%,#392353,#100b1b 70%); }
 #birth-generation h1 { color:#ffedcc; font-size:clamp(22px,5vw,28px); margin:0; }
 #birth-generation p { min-height:1.5em; margin:0; color:#d0bdd7; }
-.birth-generation-visual { width:min(72vw,300px); aspect-ratio:16/9;
-  background:url(assets/assets/images/report-loading-animated.webp) center/contain no-repeat,
-    url(assets/assets/images/report-loading-poster.webp) center/contain no-repeat;
-  -webkit-mask-image:radial-gradient(ellipse,#000 40%,transparent 73%); mask-image:radial-gradient(ellipse,#000 40%,transparent 73%);
-  animation:birth-generation-pulse 1.8s ease-in-out infinite; }
-html[data-meta-browser=instagram][data-meta-platform=android] .birth-generation-visual {
-  background-image:url(assets/assets/images/report-loading-poster.webp); }
-html[data-meta-browser=instagram][data-meta-platform=android] .birth-generation-visual {
-  animation:birth-generation-lite 1.8s ease-in-out infinite alternate; filter:none; }
 #birth-generation-retry { min-height:44px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
   background:transparent; color:#f4d399; font:inherit; cursor:pointer; }
-@keyframes birth-generation-pulse { 50% { transform:scale(1.035); filter:brightness(1.12); } }
-@keyframes birth-generation-lite { to { transform:scale(1.025); } }
-@media (prefers-reduced-motion:reduce) { .birth-generation-visual { animation:none;
-  background-image:url(assets/assets/images/report-loading-poster.webp); } }

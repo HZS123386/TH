@@ -339,8 +339,7 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.equal(generated.input.profile.birth_time,'09:30');
     assert.equal(submittedVisit.source,'example');
     await expect.poll(() => reads.some(query => query.includes('wait_preview=true')),{timeout:15000}).toBe(true);
-    const animation = page.locator('video[src$="report-loading-web.mp4"]:visible, img[src*="report-loading-animated.webp"]:visible');
-    await expect(animation.first()).toBeVisible({timeout:10000});
+    await expect(page.locator('video[src$="report-loading-web.mp4"]:visible, img[src*="report-loading-animated.webp"]:visible')).toHaveCount(0);
     releasePreview();
     assert.equal(calls.filter(call => call === 'POST /api/life-reports').length,1);
     const accepted = calls.indexOf('POST /api/landing/consents');

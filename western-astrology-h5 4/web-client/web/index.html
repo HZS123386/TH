@@ -49,22 +49,11 @@
     #fate-startup-status{margin:0;color:#c6b7d3;font-size:13px}
     .fate-startup-track{width:132px;height:3px;background:#463655;overflow:hidden;border-radius:4px}
     .fate-startup-track:after{content:"";display:block;width:40%;height:100%;background:#e4bc78;border-radius:4px;animation:fate-startup-motion 1.3s ease-in-out infinite alternate}
-    html[data-opening-report] #fate-startup img{display:none}
-    html[data-opening-report] #fate-startup:before{content:"";width:min(72vw,300px);aspect-ratio:16/9;
-      background:url(assets/assets/images/report-loading-animated.webp) center/contain no-repeat,
-        url(assets/assets/images/report-loading-poster.webp) center/contain no-repeat;
-      -webkit-mask-image:radial-gradient(ellipse,#000 40%,transparent 73%);mask-image:radial-gradient(ellipse,#000 40%,transparent 73%);
-      animation:fate-report-pulse 1.8s ease-in-out infinite}
-    html[data-meta-browser=instagram][data-meta-platform=android][data-opening-report] #fate-startup:before{
-      background-image:url(assets/assets/images/report-loading-poster.webp)}
-    html[data-meta-browser=instagram][data-meta-platform=android][data-opening-report] #fate-startup:before{
-      animation:none;filter:none}
     #fate-startup-retry{padding:8px 22px;border:1px solid #806548;border-radius:8px;background:transparent;color:#f4d399;font:inherit;cursor:pointer}
     .fate-startup-zh,.fate-startup-th,.fate-startup-en,.fate-startup-vi,.fate-startup-my,.fate-startup-km,.fate-startup-lo,.fate-startup-ms,.fate-startup-id{display:none}
     html:lang(zh) .fate-startup-zh,html:lang(th) .fate-startup-th,html:lang(en) .fate-startup-en,html:lang(vi) .fate-startup-vi,html:lang(my) .fate-startup-my,html:lang(km) .fate-startup-km,html:lang(lo) .fate-startup-lo,html:lang(ms) .fate-startup-ms,html:lang(id) .fate-startup-id{display:inline}
     @keyframes fate-startup-motion{to{transform:translateX(150%)}}
-    @keyframes fate-report-pulse{50%{transform:scale(1.035);filter:brightness(1.12)}}
-    @media(prefers-reduced-motion:reduce){.fate-startup-track:after,html[data-opening-report] #fate-startup:before{animation:none}}
+    @media(prefers-reduced-motion:reduce){.fate-startup-track:after{animation:none}}
   </style>
 </head>
 <body>
@@ -125,7 +114,6 @@
     </dialog>
     <section id="birth-generation" hidden aria-labelledby="birth-generation-title" tabindex="-1">
       <h1 id="birth-generation-title"></h1>
-      <div class="birth-generation-visual" aria-hidden="true"></div>
       <div class="fate-startup-track" aria-hidden="true"></div>
       <p id="birth-generation-status" role="status" aria-live="polite"></p>
       <button id="birth-generation-retry" type="button" hidden></button>

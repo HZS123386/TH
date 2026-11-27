@@ -86,6 +86,7 @@ test('the native landing form creates a report without loading or waiting for Fl
       if (address.pathname === '/api/life-reports') {
         posts.push({headers:request.headers(),body:request.postDataJSON(),search:address.search});
         await postGate;
+        if (posts.length === 1) return route.fulfill({status:503,json:{detail:'temporarily_unavailable'}});
         return reply({id:'native-accepted-report',preview_state:'queued'});
       }
       return reply({ok:true});
@@ -131,7 +132,7 @@ test('the native landing form creates a report without loading or waiting for Fl
     await expect(page.locator('#birth-generation')).toBeVisible();
     await expect(page.locator('#birth-generation-status')).toHaveText(/\S/);
     await expect(page.locator('#birth-form')).toBeHidden();
-    assert.equal(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),'none');
+    await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
     releasePost();
     await expect(page).toHaveURL(/report\.html\?id=native-accepted-report&lang=zh$/);
     await expect(page.locator('#fate-startup')).toBeVisible();
@@ -139,9 +140,10 @@ test('the native landing form creates a report without loading or waiting for Fl
     await expect(page.locator('#accepted-report')).toBeVisible();
     await expect(page.locator('#fate-startup')).toBeHidden();
     assert.equal(conversions.length,1);
-    assert.equal(posts.length,1);
+    assert.equal(posts.length,2);
     assert.equal(posts[0].search,'?wait=false');
     assert.match(posts[0].headers['idempotency-key'],/^[0-9a-f-]{36}$/);
+    assert.equal(posts[1].headers['idempotency-key'],posts[0].headers['idempotency-key']);
     assert.equal(posts[0].body.profile.birth_date,'1990-07-15');
     assert.equal(posts[0].body.profile.birth_time,'07:15');
     assert.equal(posts[0].body.profile.location_id,'geonames:1816670');
@@ -215,14 +217,11 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.locator('#birth-submit').click();
 
     await expect(page.locator('#birth-generation')).toBeVisible();
-    const generationBackground = await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).backgroundImage);
-    assert.match(generationBackground,/report-loading-animated\.webp/);
-    assert.match(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),/birth-generation-pulse/);
+    await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
     await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);
     await expect(page.locator('#fate-startup')).toBeVisible();
-    const startupBackground = await page.locator('#fate-startup').evaluate(element => getComputedStyle(element,'::before').backgroundImage);
-    assert.match(startupBackground,/report-loading-animated\.webp/);
-    assert.equal(requested.some(path => path.endsWith('/report-loading-animated.webp')),true);
+    assert.equal(await page.locator('#fate-startup').evaluate(element => getComputedStyle(element,'::before').content),'none');
+    assert.equal(requested.some(path => path.endsWith('/report-loading-animated.webp')),false);
     await page.evaluate(() => window.fateBoot.ready());
     await expect(page.locator('#accepted-report')).toBeVisible();
     await expect(page.locator('#fate-startup')).toBeHidden();
@@ -256,10 +255,7 @@ test('Instagram on Android keeps the header above the form while scrolling and c
     assert.equal(await page.evaluate(() => window.fateH5.metaPlatform),'android');
     await page.addStyleTag({content:':root{--fate-safe-area-top:70px}'});
     assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).paddingTop),'0px');
-    assert.equal(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),'birth-generation-lite');
-    const generationBackground = await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).backgroundImage);
-    assert.match(generationBackground,/report-loading-poster\.webp/);
-    assert.doesNotMatch(generationBackground,/report-loading-animated\.webp/);
+    await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
 
     const checkPosition = async () => {
       const bar = await header.boundingBox();
@@ -281,6 +277,86 @@ test('Instagram on Android keeps the header above the form while scrolling and c
     await language.selectOption('en');
     await expect(page.locator('html')).toHaveAttribute('lang','en');
     await checkPosition();
+  } finally {
+    await context.close();
+  }
+});
+
+test('Safari desktop can select a city before the search field loses focus', async () => {
+  const context = await browser.newContext({
+    viewport:{width:1280,height:800},
+    userAgent:'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15'
+  });
+  try {
+    const page = await context.newPage();
+    await page.route('**/*',async route => {
+      const address = new URL(route.request().url());
+      if (address.origin !== new URL(url).origin) return route.abort();
+      if (!address.pathname.startsWith('/api/')) return route.continue();
+      if (address.pathname === '/api/thai-locations') return route.fulfill({json:{items:[{
+        id:'geonames:1816670',nameChinese:'北京市',nameEnglish:'Beijing',countryCode:'CN',timeZone:'Asia/Shanghai'
+      }],total:1}});
+      return route.fulfill({json:{ok:true,accepted_sequences:[]}});
+    });
+    await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
+    const city = page.locator('#birth-city');
+    await city.fill('北京');
+    const option = page.getByRole('option',{name:'北京市',exact:false});
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(city).toHaveValue('北京市');
+    await expect(page.locator('#birth-options')).toBeHidden();
+  } finally {
+    await context.close();
+  }
+});
+
+test('iOS Safari keeps the city field above the keyboard and blocks dropdown tap-through', async () => {
+  const context = await browser.newContext({
+    viewport:{width:390,height:844},isMobile:true,hasTouch:true,
+    userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1'
+  });
+  try {
+    const page = await context.newPage();
+    await page.route('**/*',async route => {
+      const address = new URL(route.request().url());
+      if (address.origin !== new URL(url).origin) return route.abort();
+      if (!address.pathname.startsWith('/api/')) return route.continue();
+      if (address.pathname === '/api/thai-locations') return route.fulfill({json:{
+        items:Array.from({length:12},(_,index) => ({
+          id:'geonames:' + (1816670 + index),nameChinese:index ? `测试城市${index}` : '北京市',
+          nameEnglish:index ? `Test City ${index}` : 'Beijing',countryCode:'CN',timeZone:'Asia/Shanghai'
+        })),total:12
+      }});
+      return route.fulfill({json:{ok:true,accepted_sequences:[]}});
+    });
+    await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
+    await page.evaluate(() => {
+      window.testSubmitClicks = 0;
+      document.querySelector('#birth-submit').addEventListener('click',() => window.testSubmitClicks++);
+      Object.defineProperties(window.visualViewport,{
+        offsetTop:{configurable:true,value:36},
+        height:{configurable:true,value:430}
+      });
+    });
+    const city = page.locator('#birth-city'), menu = page.locator('#birth-options');
+    await city.focus();
+    await page.evaluate(() => window.visualViewport.dispatchEvent(new Event('resize')));
+    await city.fill('北京');
+    const option = page.getByRole('option',{name:'北京市',exact:false});
+    await expect(option).toBeVisible();
+    const cityBox = await city.boundingBox();
+    assert.ok(cityBox.y >= 36 && cityBox.y + cityBox.height <= 466,'city remains inside the visual viewport');
+    await option.dispatchEvent('pointerdown',{pointerType:'touch',pointerId:31,isPrimary:true,buttons:1,clientX:100,clientY:180});
+    await option.dispatchEvent('pointermove',{pointerType:'touch',pointerId:31,isPrimary:true,buttons:1,clientX:100,clientY:80});
+    await option.dispatchEvent('pointerup',{pointerType:'touch',pointerId:31,isPrimary:true,buttons:0,clientX:100,clientY:80});
+    assert.ok(await menu.evaluate(element => element.scrollTop >= 90));
+    assert.equal(await page.evaluate(() => window.testSubmitClicks),0);
+    await expect(city).toHaveValue('北京');
+    await option.dispatchEvent('pointerdown',{pointerType:'touch',pointerId:32,isPrimary:true,buttons:1,clientX:100,clientY:100});
+    await option.dispatchEvent('pointerup',{pointerType:'touch',pointerId:32,isPrimary:true,buttons:0,clientX:100,clientY:100});
+    await expect(city).toHaveValue('北京市');
+    assert.equal(await page.evaluate(() => window.testSubmitClicks),0);
   } finally {
     await context.close();
   }
