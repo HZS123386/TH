@@ -40,10 +40,7 @@ class _H5AppState extends State<H5App> {
         builder: (context, state, child) => state.uri.path == '/'
             // The outgoing report still needs a Material ancestor while the HTML form takes over.
             ? Material(type: MaterialType.transparency, child: child)
-            : _Shell(
-                isReport: state.uri.path == '/report.html',
-                child: child,
-              ),
+            : _Shell(isReport: state.uri.path == '/report.html', child: child),
         routes: [
           GoRoute(
             path: '/',
@@ -82,6 +79,9 @@ class _H5AppState extends State<H5App> {
               final openedFromForm = id == widget.openingReportId;
               return _DeferredPage(
                 load: reports.loadLibrary,
+                // The report generation dialog is the only loading
+                // presentation. Keep deferred-library startup visually quiet.
+                showLoading: false,
                 page: () => reports.ReportPage(
                   key: ValueKey(state.uri.queryParameters['id']),
                   h5: widget.controller,

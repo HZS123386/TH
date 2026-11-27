@@ -37,7 +37,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   bool _deleting = false, _paying = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
-  bool _resumedPreview = false, _checkedPaymentReturn = false;
+  bool _resumedPreview = false,
+      _checkedPaymentReturn = false,
+      _openedPresentationScheduled = false;
+  late bool _openingPresentation;
 
   bool _usesCheckout(LifeReport report) =>
       report.sectionedReport || report.personalReport;
@@ -50,7 +53,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    if (widget.h5.browser.readSetting('active-preview', session: true) == widget.id) {
+    _openingPresentation = widget.openedFromForm;
+    if (widget.h5.browser.readSetting('active-preview', session: true) ==
+        widget.id) {
       widget.h5.browser.writeSetting('active-preview', '', session: true);
     }
     WidgetsBinding.instance.addObserver(this);
@@ -73,10 +78,26 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       }
       return;
     }
+    if (widget.openedFromForm &&
+        !_openedPresentationScheduled &&
+        r.hasPreview) {
+      _openedPresentationScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_presentReadyReport(r));
+      });
+    }
     if (!_resumedPreview && !r.hasPreview && r.previewInProgress) {
       _resumedPreview = true;
+      _openedPresentationScheduled = widget.openedFromForm;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_generating) unawaited(_generate(false));
+      });
+    } else if (widget.openedFromForm &&
+        !_openedPresentationScheduled &&
+        !r.hasPreview) {
+      _openedPresentationScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _openingPresentation = false);
       });
     }
     if (!_checkedPaymentReturn &&
@@ -248,7 +269,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
             : current.previewInProgress || current.hasPreview;
         final action = !first
             ? 'retry_generation'
-            : !full && resume ? 'view' : 'generate';
+            : !full && resume
+            ? 'view'
+            : 'generate';
         widget.h5.trackActivity(page, action);
         final result = resume
             ? await widget.h5.repository.resumeGeneration(
@@ -307,7 +330,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     _generationRequest?.cancel();
     state.dispose();
     if (mounted) {
-      setState(() => _generating = false);
+      setState(() {
+        _generating = false;
+        _openingPresentation = false;
+      });
       _model.resume();
       // The first displayed preview or full report records its own ready event.
       if (completed != true) {
@@ -320,6 +346,29 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         widget.h5.trackActivity(returnedPage, 'cancel_generation');
       }
     }
+  }
+
+  Future<void> _presentReadyReport(LifeReport report) async {
+    final state = GenerationState()..ready(report);
+    await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder<bool>(
+        opaque: true,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            GenerationDialog(
+              h5: widget.h5,
+              state: state,
+              full: false,
+              input: report.input,
+              onCancel: () =>
+                  Navigator.of(context, rootNavigator: true).pop(false),
+              onRetry: () {},
+              onComplete: (_) =>
+                  Navigator.of(context, rootNavigator: true).pop(true),
+            ),
+      ),
+    );
+    state.dispose();
+    if (mounted) setState(() => _openingPresentation = false);
   }
 
   void _navigate(String key) {
@@ -1073,6 +1122,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     builder: (context, _) {
       final r = _model.report,
           c = r == null ? widget.h5.copy : widget.h5.reportCopy(r);
+      if (_openingPresentation && _model.error.isEmpty) {
+        return const ColoredBox(color: Color(0xFF0B0715));
+      }
       if (r == null) {
         return Center(
           child: SingleChildScrollView(

@@ -36,6 +36,7 @@ void phone(WidgetTester tester) {
     tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue,
   );
 }
+
 Future<void> click(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
   await tester.tap(finder);
@@ -111,7 +112,9 @@ void main() {
           'action': 'cancel_generation',
         });
         expect(
-          browser.activities.where((event) => event['action'] == 'report_ready'),
+          browser.activities.where(
+            (event) => event['action'] == 'report_ready',
+          ),
           isEmpty,
         );
         expect(queuedLabel, isNotEmpty);
@@ -160,8 +163,9 @@ void main() {
           browser,
           baseUrl: 'https://example.test',
           client: MockClient((request) async {
-            if (request.url.path.startsWith('/api/life-reports'))
+            if (request.url.path.startsWith('/api/life-reports')) {
               methods.add(request.method);
+            }
             return response(current);
           }),
         );
@@ -217,8 +221,11 @@ void main() {
         expect(find.text(h5.copy.t('life', 'viewProgress')), findsNothing);
         expect(find.byIcon(Icons.arrow_back), findsOneWidget);
         expect(
-          browser.activities.where((event) =>
-              event['page'] == 'full_report' && event['action'] == 'report_ready'),
+          browser.activities.where(
+            (event) =>
+                event['page'] == 'full_report' &&
+                event['action'] == 'report_ready',
+          ),
           hasLength(1),
         );
         expect(methods.length, greaterThan(1));
@@ -369,7 +376,10 @@ void main() {
         of: header,
         matching: find.byType(FateBrand),
       );
-      final back = find.descendant(of: header, matching: find.byType(HomeArrow));
+      final back = find.descendant(
+        of: header,
+        matching: find.byType(HomeArrow),
+      );
       expect(back, findsOneWidget);
       expect(tester.getCenter(back).dx, lessThan(tester.getCenter(brand).dx));
       await click(tester, back);
@@ -1423,8 +1433,12 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(displayed, [report]);
-    await tester.pump(const Duration(seconds: 3));
+    expect(displayed, isEmpty);
+    expect(find.byType(GenerationVideo), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1499));
+    expect(displayed, isEmpty);
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump();
     expect(displayed, [report]);
     await tester.pumpWidget(const SizedBox.shrink());
     state.dispose();
@@ -1432,82 +1446,156 @@ void main() {
   });
 
   for (final wait in [Duration.zero, const Duration(seconds: 20)]) {
-    testWidgets(
-      'free report opens immediately on readiness: $wait',
-      (tester) async {
-        phone(tester);
-        tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
-            const FakeAccessibilityFeatures(disableAnimations: false);
-        final browser = TestBrowser();
-        final h5 = H5Controller(
-          translations(),
-          ReportRepository(browser),
-          browser,
-          language: 'zh',
-        );
-        final report = LifeReport.parse(fixture());
-        final state = GenerationState()..update(report, 99, 'preview');
-        var completed = 0;
-        await tester.pumpWidget(
-          MaterialApp(
-            home: GenerationDialog(
-              h5: h5,
-              state: state,
-              full: false,
-              onCancel: () {},
-              onRetry: () {},
-              onComplete: (_) => completed++,
-            ),
+    testWidgets('free report opens immediately on readiness: $wait', (
+      tester,
+    ) async {
+      phone(tester);
+      tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: false);
+      final browser = TestBrowser();
+      final h5 = H5Controller(
+        translations(),
+        ReportRepository(browser),
+        browser,
+        language: 'zh',
+      );
+      final report = LifeReport.parse(fixture());
+      final state = GenerationState()..update(report, 99, 'preview');
+      var completed = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GenerationDialog(
+            h5: h5,
+            state: state,
+            full: false,
+            onCancel: () {},
+            onRetry: () {},
+            onComplete: (_) => completed++,
           ),
-        );
-        await tester.pump(wait);
+        ),
+      );
+      await tester.pump(wait);
+      expect(completed, 0);
+      state.ready(report);
+      await tester.pump(const Duration(milliseconds: 16));
+      if (wait == Duration.zero) {
         expect(completed, 0);
-        state.ready(report);
-        await tester.pump(const Duration(milliseconds: 16));
-        expect(completed, 1);
-        await tester.pump(const Duration(seconds: 10));
-        expect(completed, 1);
-        expect(tester.takeException(), isNull);
-        await tester.pumpWidget(const SizedBox.shrink());
-        state.dispose();
-        h5.dispose();
-      },
-    );
+        await tester.pump(const Duration(milliseconds: 1484));
+        await tester.pump();
+      }
+      expect(completed, 1);
+      await tester.pump(const Duration(seconds: 10));
+      expect(completed, 1);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      state.dispose();
+      h5.dispose();
+    });
   }
 
-  for (final language in ['zh', 'th']) {
-    testWidgets('an accepted native report opens without a second submission ($language)', (tester) async {
+  testWidgets(
+    'an immediately ready report opened from the form still shows the sole generation view',
+    (tester) async {
       phone(tester);
-      final browser = TestBrowser()..birthFormSubmitting = true;
-      final data = fixture(language: language);
-      final input = {...object(data['input']), 'report_kind': 'marriage'};
-      final ready = marriageFixture(input: input);
-      browser.writeSetting('active-preview', text(ready['id']), session: true);
-      final calls = <String>[];
+      final data = fixture(language: 'zh');
+      final id = text(data['id']);
+      final browser = TestBrowser();
       final repo = ReportRepository(
         browser,
         baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          calls.add('${request.method} ${request.url.path}');
-          return response(ready);
-        }),
+        client: MockClient((_) async => response(data)),
       );
-      final h5 = H5Controller(translations(), repo, browser, language: language);
-      await tester.pumpWidget(H5App(controller: h5, initialLocation: '/?lang=$language'));
+      final h5 = H5Controller(translations(), repo, browser, language: 'zh');
+      await tester.pumpWidget(
+        H5App(
+          controller: h5,
+          initialLocation: '/report.html?id=$id&lang=zh',
+          openingReportId: id,
+        ),
+      );
+      for (
+        var attempt = 0;
+        attempt < 20 && find.byType(GenerationDialog).evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(find.byType(GenerationDialog), findsOneWidget);
+      expect(find.byType(GenerationVideo), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(ReportPreview), findsNothing);
+      await tester.pump(const Duration(milliseconds: 1499));
+      expect(find.byType(GenerationDialog), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1));
       await tester.pumpAndSettle();
-      expect(browser.formVisible, isTrue);
-      final open = browser.submitBirthForm!;
-      expect(await open({'page': 'report', 'language': language, 'report': ready, 'input': {...input, 'year': 1901}}), 'badResult');
-      final accepted = open({'page': 'report', 'language': language, 'report': ready, 'input': input});
-      await waitForDeferredView(tester, find.byType(ReportPreview));
-      expect(await accepted, '');
-      expect(calls, isEmpty);
-      expect(browser.readSetting('active-preview', session: true), isEmpty);
-      expect(browser.formVisible, isFalse);
+      expect(find.byType(GenerationDialog), findsNothing);
+      expect(find.byType(ReportPreview), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       h5.dispose();
-    });
+    },
+  );
+
+  for (final language in ['zh', 'th']) {
+    testWidgets(
+      'an accepted native report opens without a second submission ($language)',
+      (tester) async {
+        phone(tester);
+        final browser = TestBrowser()..birthFormSubmitting = true;
+        final data = fixture(language: language);
+        final input = {...object(data['input']), 'report_kind': 'marriage'};
+        final ready = marriageFixture(input: input);
+        browser.writeSetting(
+          'active-preview',
+          text(ready['id']),
+          session: true,
+        );
+        final calls = <String>[];
+        final repo = ReportRepository(
+          browser,
+          baseUrl: 'https://example.test',
+          client: MockClient((request) async {
+            calls.add('${request.method} ${request.url.path}');
+            return response(ready);
+          }),
+        );
+        final h5 = H5Controller(
+          translations(),
+          repo,
+          browser,
+          language: language,
+        );
+        await tester.pumpWidget(
+          H5App(controller: h5, initialLocation: '/?lang=$language'),
+        );
+        await tester.pumpAndSettle();
+        expect(browser.formVisible, isTrue);
+        final open = browser.submitBirthForm!;
+        expect(
+          await open({
+            'page': 'report',
+            'language': language,
+            'report': ready,
+            'input': {...input, 'year': 1901},
+          }),
+          'badResult',
+        );
+        final accepted = open({
+          'page': 'report',
+          'language': language,
+          'report': ready,
+          'input': input,
+        });
+        await waitForDeferredView(tester, find.byType(ReportPreview));
+        expect(await accepted, '');
+        expect(calls, isEmpty);
+        expect(browser.readSetting('active-preview', session: true), isEmpty);
+        expect(browser.formVisible, isFalse);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        h5.dispose();
+      },
+    );
   }
   testWidgets(
     'saved complete reports use JY sections and retain all original chapters, plan and PDF export',

@@ -542,9 +542,9 @@
     failed = true;
     if (!main.firstElementChild || main.hidden || !copy) return;
     if (creating) {
-      // Let the create response arrive before offering a reload that could lose its ID.
-      byId('birth-generation-status').textContent = fateBootTranslations[language].failed;
-      byId('birth-generation-retry').hidden = !acceptedReport && !retrySubmission;
+      // The form remains visible while its accepted request completes. Do not
+      // replace it with a second loading presentation when Flutter is delayed.
+      say(fateBootTranslations[language].failed);
       return;
     }
     pending = null;
@@ -671,36 +671,18 @@
     if (outdated) byId('birth-submit').textContent = copy.jy.openLatest;
     say(message);
     byId('birth-submit').focus();
-    byId('birth-retry').hidden = !failed;
+    byId('birth-retry').hidden = !failed && !retrySubmission;
   }
 
   function showGeneration() {
-    const screen = byId('birth-generation');
     document.activeElement?.blur?.();
-    byId('birth-generation-title').textContent = copy.generation.previewTitle;
-    byId('birth-generation-status').textContent = copy.preparing;
-    byId('birth-generation-retry').hidden = true;
-    byId('birth-content').scrollTop = 0;
-    main.setAttribute('data-generating','');
-    screen.hidden = false;
+    // Keep the completed, disabled form in place until the accepted report can
+    // navigate. GenerationDialog on the report route is the only loading view.
+    byId('birth-generation').hidden = true;
+    main.removeAttribute('data-generating');
+    say('');
     show(true);
-    main.scrollTop = 0;
-    screen.focus({preventScroll:true});
-
-    // Let WebKit paint the feedback before navigation. The timeout prevents a
-    // backgrounded in-app browser from waiting forever for animation frames.
-    const painted = new Promise(resolve => {
-      let complete = false;
-      const finish = () => {
-        if (complete) return;
-        complete = true;
-        clearTimeout(timer);
-        resolve();
-      };
-      const timer = setTimeout(finish,160);
-      requestAnimationFrame(() => requestAnimationFrame(finish));
-    });
-    return painted;
+    return Promise.resolve();
   }
 
   async function ownerDigest(owner) {
@@ -832,8 +814,7 @@
       if (submission?.sent && ![400,401,403,409,422].includes(error.status) &&
           !['badResult','noticeOutdated','consentError','storage'].includes(error.message)) {
         retrySubmission = true;
-        byId('birth-generation-status').textContent = copy.generation[error.message] || copy.ui.network;
-        byId('birth-generation-retry').hidden = false;
+        returnToForm(copy.generation[error.message] || copy.ui.network);
         return;
       }
       await saveSubmission(null);

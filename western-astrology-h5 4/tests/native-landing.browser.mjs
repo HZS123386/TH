@@ -5,7 +5,10 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { after, before, test } from 'node:test';
 
-const { chromium, expect } = createRequire(new URL('../../TH/package.json',import.meta.url))('@playwright/test');
+const { chromium, firefox, webkit, expect } = createRequire(new URL('../../TH/package.json',import.meta.url))('@playwright/test');
+const browserName = process.env.PLAYWRIGHT_BROWSER || 'chromium';
+const browserType = {chromium,firefox,webkit}[browserName];
+if (!browserType) throw Error('Unsupported PLAYWRIGHT_BROWSER: ' + browserName);
 const web = new URL('../web-client/web/',import.meta.url);
 const assets = new URL('../web-client/assets/',import.meta.url);
 let browser, browserProcess, server, url, index;
@@ -43,13 +46,18 @@ before(async () => {
   server.listen(0,'127.0.0.1');
   await once(server,'listening');
   url = `http://127.0.0.1:${server.address().port}/thai-landing/`;
-  browserProcess = await chromium.launchServer({host:'127.0.0.1',channel:process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'chrome' : 'chromium')});
-  browser = await chromium.connect(browserProcess.wsEndpoint());
+  if (browserName === 'chromium') {
+    browserProcess = await chromium.launchServer({host:'127.0.0.1',channel:process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'chrome' : 'chromium')});
+    browser = await chromium.connect(browserProcess.wsEndpoint());
+  } else {
+    browser = await browserType.launch();
+  }
 });
 
 after(async () => {
   server?.close();
   server?.closeAllConnections();
+  await browser?.close();
   await browserProcess?.kill();
 });
 
@@ -129,13 +137,14 @@ test('the native landing form creates a report without loading or waiting for Fl
     await expect(page.locator('#birth-city')).toHaveValue('北京市');
     await page.locator('#birth-submit').click();
 
-    await expect(page.locator('#birth-generation')).toBeVisible();
-    await expect(page.locator('#birth-generation-status')).toHaveText(/\S/);
-    await expect(page.locator('#birth-form')).toBeHidden();
+    await expect(page.locator('#birth-generation')).toBeHidden();
+    await expect(page.locator('#birth-form')).toBeVisible();
+    await expect(page.locator('#birth-submit')).toBeDisabled();
     await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
     releasePost();
     await expect(page).toHaveURL(/report\.html\?id=native-accepted-report&lang=zh$/);
-    await expect(page.locator('#fate-startup')).toBeVisible();
+    await expect(page.locator('#fate-startup')).toBeHidden();
+    await expect(page.locator('.fate-startup-track')).toHaveCount(0);
     await page.evaluate(() => window.fateBoot.ready());
     await expect(page.locator('#accepted-report')).toBeVisible();
     await expect(page.locator('#fate-startup')).toBeHidden();
@@ -148,7 +157,7 @@ test('the native landing form creates a report without loading or waiting for Fl
     assert.equal(posts[0].body.profile.birth_time,'07:15');
     assert.equal(posts[0].body.profile.location_id,'geonames:1816670');
     await page.goto(url + 'report.html?id=retained-report&lang=zh',{waitUntil:'domcontentloaded'});
-    await expect(page.locator('#fate-startup')).toBeVisible();
+    await expect(page.locator('#fate-startup')).toBeHidden();
     assert.deepEqual(errors,[]);
   } finally {
     releasePost();
@@ -216,11 +225,12 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.getByRole('option',{name:'北京市',exact:false}).click();
     await page.locator('#birth-submit').click();
 
-    await expect(page.locator('#birth-generation')).toBeVisible();
+    await expect(page.locator('#birth-generation')).toBeHidden();
+    await expect(page.locator('#birth-form')).toBeVisible();
     await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
     await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);
-    await expect(page.locator('#fate-startup')).toBeVisible();
-    assert.equal(await page.locator('#fate-startup').evaluate(element => getComputedStyle(element,'::before').content),'none');
+    await expect(page.locator('#fate-startup')).toBeHidden();
+    await expect(page.locator('.fate-startup-track')).toHaveCount(0);
     assert.equal(requested.some(path => path.endsWith('/report-loading-animated.webp')),false);
     await page.evaluate(() => window.fateBoot.ready());
     await expect(page.locator('#accepted-report')).toBeVisible();

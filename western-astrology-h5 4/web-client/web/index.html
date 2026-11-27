@@ -44,16 +44,14 @@
   <!-- FATE_WASM_RUNTIME_PRELOAD -->
   <style>
     html,body{margin:0;background:#130c24;color-scheme:dark}
-    #fate-startup{position:fixed;inset:0;z-index:1;display:grid;place-content:center;justify-items:center;gap:22px;background:radial-gradient(ellipse at 50% 28%,#352046,#130c24 65%);color:#e4bc78;font:14px/1.6 system-ui,sans-serif;text-align:center;padding:24px}
-    #fate-startup img{width:112px;height:auto}
+    /* Normal startup is intentionally silent. Report generation owns the only
+       loading presentation; this surface is exposed only after a hard failure. */
+    #fate-startup{position:fixed;inset:0;z-index:1;display:none;place-content:center;justify-items:center;gap:22px;background:#130c24;color:#e4bc78;font:14px/1.6 system-ui,sans-serif;text-align:center;padding:24px}
+    #fate-startup[data-state="failed"]{display:grid}
     #fate-startup-status{margin:0;color:#c6b7d3;font-size:13px}
-    .fate-startup-track{width:132px;height:3px;background:#463655;overflow:hidden;border-radius:4px}
-    .fate-startup-track:after{content:"";display:block;width:40%;height:100%;background:#e4bc78;border-radius:4px;animation:fate-startup-motion 1.3s ease-in-out infinite alternate}
     #fate-startup-retry{padding:8px 22px;border:1px solid #806548;border-radius:8px;background:transparent;color:#f4d399;font:inherit;cursor:pointer}
     .fate-startup-zh,.fate-startup-th,.fate-startup-en,.fate-startup-vi,.fate-startup-my,.fate-startup-km,.fate-startup-lo,.fate-startup-ms,.fate-startup-id{display:none}
     html:lang(zh) .fate-startup-zh,html:lang(th) .fate-startup-th,html:lang(en) .fate-startup-en,html:lang(vi) .fate-startup-vi,html:lang(my) .fate-startup-my,html:lang(km) .fate-startup-km,html:lang(lo) .fate-startup-lo,html:lang(ms) .fate-startup-ms,html:lang(id) .fate-startup-id{display:inline}
-    @keyframes fate-startup-motion{to{transform:translateX(150%)}}
-    @media(prefers-reduced-motion:reduce){.fate-startup-track:after{animation:none}}
   </style>
 </head>
 <body>
@@ -113,16 +111,13 @@
       <button id="birth-picker-confirm" type="button"></button>
       <button id="birth-picker-close" type="button"></button>
     </dialog>
-    <section id="birth-generation" hidden aria-labelledby="birth-generation-title" tabindex="-1">
+    <section id="birth-generation" hidden aria-hidden="true">
       <h1 id="birth-generation-title"></h1>
-      <div class="fate-startup-track" aria-hidden="true"></div>
       <p id="birth-generation-status" role="status" aria-live="polite"></p>
       <button id="birth-generation-retry" type="button" hidden></button>
     </section>
   </template>
   <div id="fate-startup" role="status" aria-live="polite">
-    <img src="assets/assets/images/fate-brand-gold.png" alt="FATE" width="112" height="26">
-    <div class="fate-startup-track" aria-hidden="true"></div>
     <p id="fate-startup-status"><span class="fate-startup-zh">正在开启你的星空</span><span class="fate-startup-th">กำลังเปิดท้องฟ้าของคุณ</span><span class="fate-startup-en">Opening your sky</span><span class="fate-startup-vi">Đang mở bầu trời của bạn</span><span class="fate-startup-my">သင့်ကြယ်ကောင်းကင်ကို ဖွင့်နေသည်</span><span class="fate-startup-km">កំពុងបើកមេឃរបស់អ្នក</span><span class="fate-startup-lo">ກຳລັງເປີດທ້ອງຟ້າຂອງທ່ານ</span><span class="fate-startup-ms">Membuka langit anda</span><span class="fate-startup-id">Membuka langit Anda</span></p>
     <button id="fate-startup-retry" type="button" hidden><span class="fate-startup-zh">重新加载</span><span class="fate-startup-th">ลองโหลดใหม่</span><span class="fate-startup-en">Reload</span><span class="fate-startup-vi">Tải lại</span><span class="fate-startup-my">ပြန်တင်မယ်</span><span class="fate-startup-km">ផ្ទុកឡើងវិញ</span><span class="fate-startup-lo">ໂຫຼດໃໝ່</span><span class="fate-startup-ms">Muat semula</span><span class="fate-startup-id">Muat ulang</span></button>
   </div>

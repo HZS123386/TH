@@ -62,16 +62,28 @@ class GenerationDialog extends StatefulWidget {
 }
 
 class _GenerationDialogState extends State<GenerationDialog> {
-  Timer? _reviewTimer, _stageTimer, _detailsTimer;
+  Timer? _reviewTimer, _stageTimer, _detailsTimer, _minimumTimer;
   int _step = 0, _detail = 0;
   bool _prepared = false,
       _reduced = false,
       _reviewDone = false,
+      _minimumElapsed = false,
+      _completionScheduled = false,
       _finishing = false,
       _navigating = false;
+  // WebKit may need several frames to attach the media platform view after the
+  // dialog itself is built, so keep the ready transition long enough to be
+  // visibly useful on desktop Safari as well as Chromium and Firefox.
+  static const _minimumVisible = Duration(milliseconds: 1500);
   @override
   void initState() {
     super.initState();
+    _minimumTimer = Timer(_minimumVisible, () {
+      _minimumElapsed = true;
+      if (widget.state.complete && widget.state.error.isEmpty) {
+        _finishCompleted();
+      }
+    });
     widget.state.addListener(_changed);
   }
 
@@ -110,24 +122,26 @@ class _GenerationDialogState extends State<GenerationDialog> {
       _advance();
       return;
     }
-    if (_finishing) return;
-    // A readable report ends the wait independently of the current animation.
+    if (_completionScheduled || _finishing) return;
+    _completionScheduled = true;
+    // Fast desktop responses used to close this route before its first useful
+    // frame. Keep the sole loading presentation visible briefly, while long
+    // generations still open immediately when their report becomes readable.
     _reviewTimer?.cancel();
     _stageTimer?.cancel();
     _detailsTimer?.cancel();
+    if (_minimumElapsed) _finishCompleted();
+  }
+
+  void _finishCompleted() {
+    if (!mounted || _finishing || !widget.state.complete) return;
     setState(() => _finishing = true);
-    // The visual generation animation was removed, so a ready report no longer
-    // waits for a presentation fade before opening.
     _finish();
   }
 
   void _advance() {
     if (!mounted || _finishing || widget.state.error.isNotEmpty) return;
-    if (!widget.full && widget.state.complete) {
-      // Validated free content is ready; the presentation must not keep the reader waiting.
-      _finish();
-      return;
-    }
+    if (widget.state.complete) return;
     if (!_reviewDone) return;
     if (!_reduced && _step == 0 && widget.state.report != null) {
       setState(() => _step = 1);
@@ -161,7 +175,12 @@ class _GenerationDialogState extends State<GenerationDialog> {
   @override
   void dispose() {
     widget.state.removeListener(_changed);
-    for (final timer in [_reviewTimer, _stageTimer, _detailsTimer]) {
+    for (final timer in [
+      _reviewTimer,
+      _stageTimer,
+      _detailsTimer,
+      _minimumTimer,
+    ]) {
       timer?.cancel();
     }
     super.dispose();

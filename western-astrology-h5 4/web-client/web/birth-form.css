@@ -134,11 +134,6 @@ html[data-embedded-browser=meta][data-meta-platform=android] #fate-birth { paddi
   color:#ffe0a1; font-size:clamp(12px,3.5vw,16px); font-weight:700; line-height:1.2; text-align:center; overflow-wrap:anywhere; }
 #birth-boards .birth-board:nth-child(2) li { border-color:#9876ab; background:linear-gradient(#523860,#362347); }
 #fate-birth footer { text-align:center; padding:10px 17px 28px; }
-#fate-birth[data-generating] { display:block; overflow:auto; overscroll-behavior:contain; }
-#fate-birth[data-generating] > :not(#birth-generation) { display:none; }
-#birth-generation { min-height:100%; padding:24px; display:grid; align-content:center; justify-items:center;
-  gap:16px; text-align:center; background:radial-gradient(ellipse at 50% 22%,#392353,#100b1b 70%); }
-#birth-generation h1 { color:#ffedcc; font-size:clamp(22px,5vw,28px); margin:0; }
-#birth-generation p { min-height:1.5em; margin:0; color:#d0bdd7; }
-#birth-generation-retry { min-height:44px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
-  background:transparent; color:#f4d399; font:inherit; cursor:pointer; }
+/* Submission remains on the completed form until the report route is ready.
+   The Flutter interpretation view is the sole generation/loading screen. */
+#birth-generation { display:none !important; }

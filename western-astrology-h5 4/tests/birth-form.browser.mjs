@@ -7,7 +7,10 @@ import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { after, before, test } from 'node:test';
 
-const { chromium, expect } = createRequire(new URL('../../TH/package.json',import.meta.url))('@playwright/test');
+const { chromium, firefox, webkit, expect } = createRequire(new URL('../../TH/package.json',import.meta.url))('@playwright/test');
+const browserName = process.env.PLAYWRIGHT_BROWSER || 'chromium';
+const browserType = {chromium,firefox,webkit}[browserName];
+if (!browserType) throw Error('Unsupported PLAYWRIGHT_BROWSER: ' + browserName);
 const project = fileURLToPath(new URL('../',import.meta.url));
 let browser, preview, url;
 before(async () => {
@@ -20,7 +23,9 @@ before(async () => {
     env:{...process.env,FATE_H5_PORT:String(port),FATE_API_UPSTREAM:'http://127.0.0.1:1'}});
   await once(preview.stdout,'data');
   url = 'http://127.0.0.1:' + port + '/thai-landing/';
-  browser = await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'chrome' : 'chromium')});
+  browser = await browserType.launch(browserName === 'chromium'
+    ? {channel:process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'chrome' : 'chromium')}
+    : {});
 });
 after(async () => { try { await browser?.close(); } finally { preview?.kill(); } });
 
@@ -178,8 +183,9 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
       await page.locator('#birth-city').click();
       await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
       await page.locator('#birth-submit').click();
-      await expect(page.locator('#birth-generation')).toBeVisible();
-      await expect(page.locator('#birth-form')).toBeHidden();
+      await expect(page.locator('#birth-generation')).toBeHidden();
+      await expect(page.locator('#birth-form')).toBeVisible();
+      await expect(page.locator('#birth-submit')).toBeDisabled();
       await expect.poll(() => posts.length).toBe(1);
       if (scenario === 'refresh-with-accepted-history-receipt') {
         releaseResponse();
@@ -226,7 +232,6 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     let finishCancelled;
     page.on('pageerror',error => errors.push(error.message));
     const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));
-    const thaiCopy = JSON.parse(await readFile(new URL('../web-client/assets/copy/th.json',import.meta.url),'utf8'));
     await page.route('**/*',async route => {
       const address = new URL(route.request().url()), path = address.pathname;
       if (address.origin !== new URL(url).origin && /^https?:$/.test(address.protocol)) return route.abort();
@@ -319,15 +324,16 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.equal(generated,undefined);
     rejectConsent = false;
     await page.locator('#birth-submit').click();
-    await expect(page.locator('#birth-generation')).toBeVisible();
-    await expect(page.locator('#birth-generation-title')).toHaveText(thaiCopy.generation.th.previewTitle);
-    await expect(page.locator('#birth-form')).toBeHidden();
+    await expect(page.locator('#birth-generation')).toBeHidden();
+    await expect(page.locator('#birth-form')).toBeVisible();
+    await expect(page.locator('#birth-submit')).toBeDisabled();
     await page.locator('#birth-form').evaluate(form => form.requestSubmit());
     releasePost();
     await page.waitForFunction(id => sessionStorage.getItem('active-preview') === id,fixture.id);
     await expect(page).toHaveURL(/report\.html\?id=/,{timeout:60000});
     await page.waitForFunction(id => window.fateBoot?.openingReportId === id,fixture.id);
-    await expect(page.locator('#fate-startup')).toBeVisible();
+    await expect(page.locator('#fate-startup')).toBeHidden();
+    await expect(page.locator('.fate-startup-track')).toHaveCount(0);
     assert.equal(await page.evaluate(() => performance.getEntriesByName('fate-app-ready').length),0);
     assert.equal(reads.length,0);
     release();
@@ -392,6 +398,41 @@ test('Instagram Android uses only the low-memory report animation', async () => 
     await expect(page.locator('video[src$="report-loading-web.mp4"]')).toHaveCount(0);
     await expect(page.locator('img[src*="report-loading-animated.webp"]')).toHaveCount(0);
     assert.equal(await page.locator('.fate-generation-lite').evaluate(element => getComputedStyle(element).animationName),'fate-generation-lite');
+    assert.deepEqual(errors,[]);
+  } finally {
+    await context.close();
+  }
+});
+
+test('desktop handoff removes both legacy loaders and always shows the sole report animation', async () => {
+  const context = await browser.newContext({viewport:{width:1280,height:800}});
+  const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));
+  const errors = [];
+  try {
+    const page = await context.newPage();
+    page.on('pageerror',error => errors.push(error.message));
+    await page.route('**/*',async route => {
+      const address = new URL(route.request().url());
+      if (address.origin !== new URL(url).origin && /^https?:$/.test(address.protocol)) return route.abort();
+      if (!address.pathname.startsWith('/api/')) return route.continue();
+      if (address.pathname === '/api/landing/visits') {
+        const events = route.request().postDataJSON()?.events || [];
+        return route.fulfill({json:{ok:true,accepted_sequences:events.map(event => event.sequence)}});
+      }
+      if (address.pathname === '/api/life-reports/' + fixture.id) return route.fulfill({json:fixture});
+      return route.fulfill({json:{recorded:true}});
+    });
+    await page.goto(url + 'report.html?id=' + fixture.id + '&lang=th&from_form=1',{waitUntil:'domcontentloaded'});
+    await expect(page.locator('#birth-generation')).toBeHidden();
+    await expect(page.locator('#fate-startup')).toBeHidden();
+    await expect(page.locator('.fate-startup-track')).toHaveCount(0);
+    const reportAnimation = page.locator(
+      'video[src$="report-loading-web.mp4"]:visible, img[src*="report-loading-animated.webp"]:visible, .fate-generation-lite:visible'
+    );
+    await expect(reportAnimation).toHaveCount(1,{timeout:30000});
+    await page.waitForTimeout(300);
+    await expect(reportAnimation).toHaveCount(1);
+    await expect(reportAnimation).toHaveCount(0,{timeout:10000});
     assert.deepEqual(errors,[]);
   } finally {
     await context.close();
