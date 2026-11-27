@@ -80,10 +80,7 @@ class ReportPreview extends StatelessWidget {
   }
 
   void _openLine() {
-    // Keep the supported LINE URL scheme directly inside the tap activation.
-    // Meta in-app browsers otherwise spend several seconds on their generic
-    // web hand-off page before they offer the installed LINE app.
-    h5.browser.openPage('https://line.me/R/ti/p/SmujXXCH9v', sameTab: true);
+    h5.browser.openPage('https://line.me/ti/p/TrGGcMWmuV', sameTab: true);
     _trackLineContact('click_line');
   }
 
@@ -366,7 +363,7 @@ class _ReportLineQrState extends State<_ReportLineQr> {
 
   @override
   Widget build(BuildContext context) => Image.asset(
-    'assets/images/line-contact-qr-956ed148.jpg',
+    'assets/images/line-contact-qr-515aa969.jpg',
     width: 232,
     fit: BoxFit.contain,
     semanticLabel: widget.label,

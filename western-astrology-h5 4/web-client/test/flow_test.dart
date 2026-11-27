@@ -309,13 +309,13 @@ void main() {
             widget is Image &&
             widget.image is AssetImage &&
             (widget.image as AssetImage).assetName ==
-                'assets/images/line-contact-qr-956ed148.jpg',
+                'assets/images/line-contact-qr-515aa969.jpg',
       );
       expect(qr, findsOneWidget);
       expect(find.text(h5.copy.t('jy', 'lineContact.scan')), findsOneWidget);
       await tester.runAsync(() async {
         await precacheImage(
-          const AssetImage('assets/images/line-contact-qr-956ed148.jpg'),
+          const AssetImage('assets/images/line-contact-qr-515aa969.jpg'),
           tester.element(qr),
         );
       });
@@ -344,7 +344,7 @@ void main() {
       expect(browser.openedPages, isEmpty);
       expect(find.text(h5.copy.t('jy', 'lineContact.open')), findsOneWidget);
       await click(tester, contact);
-      expect(browser.sameTabPages, ['https://line.me/R/ti/p/SmujXXCH9v']);
+      expect(browser.sameTabPages, ['https://line.me/ti/p/TrGGcMWmuV']);
       expect(find.byType(AlertDialog), findsNothing);
       expect(
         browser.activities.where(
