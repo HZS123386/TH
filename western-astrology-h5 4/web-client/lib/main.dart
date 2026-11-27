@@ -34,7 +34,10 @@ Future<Json> _loadTranslations(String language) async {
       // Do not reuse a failed loadString future from the asset bundle cache.
       final translations = object(
         jsonDecode(
-          await rootBundle.loadString('assets/copy/$language.json', cache: false),
+          await rootBundle.loadString(
+            'assets/copy/$language.json',
+            cache: false,
+          ),
         ),
       );
       if (object(translations['jy'])[language] is! Map) {
@@ -52,10 +55,17 @@ Future<void> _startApp(WebBrowserPort browser) async {
   usePathUrlStrategy();
   final language = h5Language(Uri.base.queryParameters['lang']);
   final fonts = LanguageFonts();
-  // Both are required before runApp, but neither depends on the other's result.
-  final (translations, _) = await (
+  final path = Uri.base.path;
+  final needsReportRoute =
+      path.endsWith('/') ||
+      path.endsWith('/index.html') ||
+      path.endsWith('/report.html');
+  // Load the report route beside copy and fonts so a warmed landing page never
+  // hides the native form before the sole generation animation can render.
+  final (translations, _, _) = await (
     _loadTranslations(language),
     fonts.ensure(language),
+    needsReportRoute ? H5App.preloadReportRoute() : Future<void>.value(),
   ).wait;
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([

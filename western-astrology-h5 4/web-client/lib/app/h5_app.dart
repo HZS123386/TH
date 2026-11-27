@@ -21,9 +21,11 @@ class H5App extends StatefulWidget {
   final H5Controller controller;
   final String? initialLocation, openingReportId;
 
+  static Future<void> preloadReportRoute() => reports.loadLibrary();
+
   @visibleForTesting
   static Future<void> loadRoutesForWidgetTests() async {
-    await reports.loadLibrary();
+    await preloadReportRoute();
     await information.loadLibrary();
   }
 
