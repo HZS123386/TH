@@ -404,6 +404,57 @@ test('Instagram Android uses only the low-memory report animation', async () => 
   }
 });
 
+test('desktop form warms Flutter and opens the sole report animation without a document reload', async () => {
+  const context = await browser.newContext({viewport:{width:1280,height:800}});
+  const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));
+  const errors = [];
+  let reportDocuments = 0;
+  try {
+    const page = await context.newPage();
+    page.on('pageerror',error => errors.push(error.message));
+    await page.route('**/*',async route => {
+      const request = route.request(), address = new URL(request.url());
+      if (address.origin !== new URL(url).origin && /^https?:$/.test(address.protocol)) return route.abort();
+      if (address.pathname.endsWith('/report.html') && request.resourceType() === 'document') reportDocuments++;
+      if (!address.pathname.startsWith('/api/')) return route.continue();
+      const reply = json => route.fulfill({json});
+      if (address.pathname === '/api/landing/visits') {
+        const events = request.postDataJSON()?.events || [];
+        return reply({ok:true,accepted_sequences:events.map(event => event.sequence)});
+      }
+      if (address.pathname === '/api/thai-locations') return reply({items:[bangkok],total:1});
+      if (address.pathname === '/api/landing/config') return reply({notice_version:'h5-data-use-3'});
+      if (address.pathname === '/api/landing/consents') return reply({accepted:true,notice_version:'h5-data-use-3'});
+      if (address.pathname === '/api/life-reports' && request.method() === 'POST') {
+        const {landing_visit,...input} = request.postDataJSON();
+        return reply({...fixture,input});
+      }
+      return reply({recorded:true});
+    });
+    await page.goto(url + '?lang=th&topic=career',{waitUntil:'domcontentloaded'});
+    const timeOrigin = await page.evaluate(() => performance.timeOrigin);
+    await selectBirthValue(page,'date','1995-08-17');
+    await selectBirthValue(page,'time','09:30');
+    await page.waitForFunction(() => window.fateH5.reportExperienceStarting());
+    assert.equal(await page.evaluate(() => window.fateStartFlutter()),true);
+    await page.locator('#birth-city').click();
+    await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
+    await page.waitForFunction(() => window.fateBirthForm.attached,{timeout:30000});
+    const started = Date.now();
+    await page.locator('#birth-submit').click();
+    const reportAnimation = page.locator('video[src$="report-loading-web.mp4"]:visible');
+    await expect(reportAnimation).toHaveCount(1,{timeout:3000});
+    assert.ok(Date.now() - started < 3000,'warmed handoff should expose the report animation within 3 seconds');
+    await expect(page).toHaveURL(new RegExp('report\\.html\\?id=' + fixture.id));
+    assert.ok(Math.abs(await page.evaluate(() => performance.timeOrigin) - timeOrigin) <= 2);
+    assert.equal(reportDocuments,0);
+    await expect(page.locator('#birth-generation,.fate-startup-track')).toHaveCount(0);
+    assert.deepEqual(errors,[]);
+  } finally {
+    await context.close();
+  }
+});
+
 test('desktop handoff removes both legacy loaders and always shows the sole report animation', async () => {
   const context = await browser.newContext({viewport:{width:1280,height:800}});
   const fixture = JSON.parse(await readFile(new URL('../web-client/test/fixtures/th-preview.json',import.meta.url),'utf8'));

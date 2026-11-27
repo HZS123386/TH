@@ -141,6 +141,8 @@ test('the native landing form creates a report without loading or waiting for Fl
     await expect(page.locator('#birth-form')).toBeVisible();
     await expect(page.locator('#birth-submit')).toBeDisabled();
     await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
+    await expect.poll(() => requests.some(path => /main\.dart\.(?:js|mjs|wasm)$/.test(path))).toBe(true);
+    await expect.poll(() => requests.some(path => path.endsWith('/report-loading-poster.webp'))).toBe(true);
     releasePost();
     await expect(page).toHaveURL(/report\.html\?id=native-accepted-report&lang=zh$/);
     await expect(page.locator('#fate-startup')).toBeHidden();
@@ -226,7 +228,6 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.locator('#birth-submit').click();
 
     await expect(page.locator('#birth-generation')).toHaveCount(0);
-    await expect(page.locator('#birth-form')).toBeVisible();
     await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
     await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);
     await expect(page.locator('#fate-startup')).toBeHidden();

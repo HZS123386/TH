@@ -281,9 +281,20 @@ class _GenerationVideoState extends State<GenerationVideo>
             onElementCreated: _createdImage,
           ),
         )
-      : HtmlElementView.fromTagName(
-          key: const ValueKey('generation-video'),
-          tagName: 'video',
-          onElementCreated: _created,
+      : Stack(
+          fit: StackFit.expand,
+          children: [
+            Opacity(
+              opacity: widget.active ? 1 : 0,
+              child: const GenerationPoster(
+                key: ValueKey('generation-first-frame'),
+              ),
+            ),
+            HtmlElementView.fromTagName(
+              key: const ValueKey('generation-video'),
+              tagName: 'video',
+              onElementCreated: _created,
+            ),
+          ],
         );
 }

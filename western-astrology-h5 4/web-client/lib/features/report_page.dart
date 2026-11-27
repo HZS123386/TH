@@ -40,7 +40,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   bool _resumedPreview = false,
       _checkedPaymentReturn = false,
       _openedPresentationScheduled = false;
-  late bool _openingPresentation;
+  late bool _openingPresentation, _presentInitialGeneration;
 
   bool _usesCheckout(LifeReport report) =>
       report.sectionedReport || report.personalReport;
@@ -53,7 +53,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _openingPresentation = widget.openedFromForm;
     if (widget.h5.browser.readSetting('active-preview', session: true) ==
         widget.id) {
       widget.h5.browser.writeSetting('active-preview', '', session: true);
@@ -62,6 +61,8 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     widget.h5.trackActivity('report_loading');
     _model.addListener(_changed);
     final generated = widget.h5.takeGeneratedPreview(widget.id);
+    _presentInitialGeneration = widget.openedFromForm || generated != null;
+    _openingPresentation = _presentInitialGeneration;
     if (generated != null) {
       // From the form, this report was already fetched, validated, and prepared for display.
       _model.accept(generated);
@@ -78,7 +79,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       }
       return;
     }
-    if (widget.openedFromForm &&
+    if (_presentInitialGeneration &&
         !_openedPresentationScheduled &&
         r.hasPreview) {
       _openedPresentationScheduled = true;
@@ -88,11 +89,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     }
     if (!_resumedPreview && !r.hasPreview && r.previewInProgress) {
       _resumedPreview = true;
-      _openedPresentationScheduled = widget.openedFromForm;
+      _openedPresentationScheduled = _presentInitialGeneration;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_generating) unawaited(_generate(false));
       });
-    } else if (widget.openedFromForm &&
+    } else if (_presentInitialGeneration &&
         !_openedPresentationScheduled &&
         !r.hasPreview) {
       _openedPresentationScheduled = true;

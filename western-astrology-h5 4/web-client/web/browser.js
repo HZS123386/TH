@@ -569,11 +569,41 @@ window.addEventListener('pageshow', event => {
 window.addEventListener('online', () => { scheduleFateActivity(0); });
 // Capture the entry's state before Flutter manages browser history.
 try { fateVisitContext(); } catch {}
+let fateReportWarm, fateReportAppStarting = false;
+function warmFateReportExperience() {
+  // Meta WebViews use a deliberately lightweight path to protect their small
+  // memory budget. Desktop browsers can spend the form/API wait preloading the
+  // next page instead of starting Flutter before the visitor asks for a report.
+  if (fateReportWarm || fateEmbeddedBrowser) return fateReportWarm;
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const constrained = connection?.saveData || /(^|-)2g$/i.test(connection?.effectiveType || '');
+  const warm = async (path, priority = 'high') => {
+    try {
+      const response = await fetch(new URL(path, document.baseURI), {
+        cache: 'force-cache', credentials: 'same-origin', priority
+      });
+      if (response.ok) await response.arrayBuffer();
+    } catch { /* Navigation can cancel an optional warmup without affecting the report. */ }
+  };
+  const appStart = constrained ? null : window.fateStartFlutter?.();
+  fateReportAppStarting = !!appStart;
+  const runtime = appStart ? [] : window._flutter?.supportsDart2Wasm === true
+    ? ['main.dart.mjs','main.dart.wasm'] : ['main.dart.js'];
+  const core = ['assets/assets/images/report-loading-poster.webp',...constrained ? [] : runtime];
+  fateReportWarm = Promise.allSettled([
+    ...core.map(path => warm(path)),
+    ...(appStart ? [Promise.resolve(appStart)] : [])
+  ]);
+  if (!constrained) setTimeout(() => void warm('media/report-loading-web.mp4','low'),200);
+  return fateReportWarm;
+}
 window.fateH5 = {
   ownerKey: fateOwnerKey,
   embedded: fateEmbeddedBrowser,
   metaBrowser: fateMetaBrowser,
   metaPlatform: fateMetaPlatform,
+  warmReportExperience: warmFateReportExperience,
+  reportExperienceStarting() { return fateReportAppStarting; },
   trackRuntime: recordFateRuntime,
   trackViewReadingClick: trackFateViewReadingClick,
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },

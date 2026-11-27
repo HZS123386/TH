@@ -10,7 +10,7 @@ for (const browser of ['chromium','firefox','webkit']) {
     ? [['tests/native-landing.browser.mjs','tests/birth-form.browser.mjs']]
     : [
         nativeArgs,
-        ['--test-name-pattern=desktop handoff removes both legacy loaders',
+        ['--test-name-pattern=desktop (?:form warms Flutter|handoff removes both legacy loaders)',
           'tests/birth-form.browser.mjs'],
       ];
   for (const args of runs) {

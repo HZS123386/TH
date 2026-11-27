@@ -21,6 +21,7 @@
   let suppressLocationClickUntil = 0;
   const labels = window.fateBirthCopies || {};
   const firstPages = new Map();
+  const flutterAttachWaiters = new Set();
 
   async function fetchPlaces(country, query, offset, signal) {
     const args = new URLSearchParams({country,level:['CN','TH'].includes(country) ? 'locality' : 'city',query,offset:String(offset)});
@@ -226,13 +227,34 @@
     return place?.countryCode === countries[language] && place.timeZone ? 'complete' : 'place';
   }
 
+  function maybeWarmReportExperience() {
+    const step = progress();
+    if (step === 'place' || step === 'complete') window.fateH5.warmReportExperience?.();
+  }
+
+  function waitForFlutterAttach(timeout = 2500) {
+    if (submitToFlutter) return Promise.resolve(true);
+    return new Promise(resolve => {
+      let timer;
+      const done = attached => {
+        clearTimeout(timer);
+        flutterAttachWaiters.delete(done);
+        resolve(attached);
+      };
+      flutterAttachWaiters.add(done);
+      timer = setTimeout(() => done(false),timeout);
+    });
+  }
+
   function closeOptions() {
     clearTimeout(searchTimer);
     locationRequest?.abort();
-    byId('birth-options').hidden = true;
-    byId('birth-options-shield').hidden = true;
-    byId('birth-city').setAttribute('aria-expanded','false');
-    byId('birth-city').closest('.birth-location')?.classList.remove('options-open');
+    const menu = byId('birth-options'), shield = byId('birth-options-shield'), city = byId('birth-city');
+    if (!menu || !shield || !city) return;
+    menu.hidden = true;
+    shield.hidden = true;
+    city.setAttribute('aria-expanded','false');
+    city.closest('.birth-location')?.classList.remove('options-open');
   }
 
   function choosePlace(item) {
@@ -768,10 +790,12 @@
       let report = record.sent ? await findSubmission(record) : null;
       if (!form.isConnected) return;
       if (!report) {
-        const config = await reportRequest('/api/landing/config',owner,visit);
+        const [config,consent] = await Promise.all([
+          reportRequest('/api/landing/config',owner,visit),
+          reportRequest('/api/landing/consents',owner,visit,{notice_version:noticeVersion,granted:true})
+        ]);
         if (!config?.notice_version) throw Error('consentError');
         if (config.notice_version !== noticeVersion || record.notice !== noticeVersion) throw Error('noticeOutdated');
-        const consent = await reportRequest('/api/landing/consents',owner,visit,{notice_version:noticeVersion,granted:true});
         if (consent?.accepted !== true || consent.notice_version !== noticeVersion) throw Error('consentError');
         if (!form.isConnected) return;
         consentAccepted = true;
@@ -798,8 +822,16 @@
       if (history.state?.[submissionKey]?.reportId !== report.id) await saveSubmission(null);
       else submission = null;
       await Promise.all([generationShown,clickTracking]);
-      // The landing page owns report creation. Opening the accepted report must
-      // never wait for Flutter to initialize or for the Dart bridge to attach.
+      // Desktop browsers initialize Flutter while the visitor finishes the form
+      // and the API accepts the report. Reuse that engine to avoid a second full
+      // document boot; the timed fallback preserves navigation if it cannot attach.
+      const attached = submitToFlutter ||
+        (window.fateH5.reportExperienceStarting?.() && await waitForFlutterAttach());
+      if (attached) {
+        pending = {page:'report',language,report,input};
+        if (await dispatch()) return;
+      }
+      pending = null;
       reopenAcceptedReport(report.id);
       return;
     } catch (error) {
@@ -819,23 +851,23 @@
   }
 
   async function dispatch() {
-    if (failed || !submitToFlutter || !pending) return;
+    if (failed || !submitToFlutter || !pending) return false;
     const send = submitToFlutter, data = pending;
     pending = null;
     try {
       const error = await send(JSON.stringify(data));
       if (!error) {
         if (data.page === 'report' && submission) await saveSubmission(null);
-        return;
+        return true;
       }
-      if (send !== submitToFlutter) return;
+      if (send !== submitToFlutter) return false;
       throw Error(error);
     } catch (error) {
-      if (send !== submitToFlutter) return;
+      if (send !== submitToFlutter) return false;
       if (acceptedReport && error.message !== 'badResult') {
         returnToForm(copy.ui.network);
         byId('birth-retry').hidden = false;
-        return;
+        return false;
       }
       if (acceptedReport) {
         acceptedReport = null;
@@ -843,6 +875,7 @@
         try { sessionStorage.removeItem('active-preview'); } catch {}
       }
       returnToForm(copy.ui[error.message] || copy.ui.network);
+      return false;
     }
   }
 
@@ -861,6 +894,7 @@
       track('invalid_form');
       return;
     }
+    window.fateH5.warmReportExperience?.();
     startReport(undefined,clickTracking);
   }
 
@@ -875,7 +909,10 @@
     for (const field of ['date','time']) {
       byId('birth-' + field + '-trigger').addEventListener('click',() => openPicker(field));
       byId('birth-' + field).addEventListener('input',() => updatePickerField(field));
-      byId('birth-' + field).addEventListener('change',() => track('form_progress_' + progress()));
+      byId('birth-' + field).addEventListener('change',() => {
+        track('form_progress_' + progress());
+        maybeWarmReportExperience();
+      });
     }
     byId('birth-picker-confirm').addEventListener('click',confirmPicker);
     byId('birth-picker-close').addEventListener('click',() => byId('birth-picker').close());
@@ -886,6 +923,7 @@
       byId('birth-time').disabled = event.target.checked;
       updatePickerField('time');
       track('form_progress_' + progress());
+      maybeWarmReportExperience();
     });
     byId('birth-question').addEventListener('change',event => {
       byId('birth-custom').hidden = event.target.value !== 'custom';
@@ -971,6 +1009,7 @@
     engineFailed,
     get submitting() { return creating; },
     get editing() { return !main.hidden && (edited || creating); },
+    get attached() { return !!submitToFlutter; },
     attach(raw, send) {
       const initial = JSON.parse(raw);
       const first = !main.firstElementChild;
@@ -988,10 +1027,12 @@
         if (!main.hidden) track('form_progress_' + progress());
       }
       submitToFlutter = send;
+      for (const resolve of [...flutterAttachWaiters]) resolve(true);
       engineReady();
       queueMicrotask(dispatch);
     },
     detach() {
+      for (const resolve of [...flutterAttachWaiters]) resolve(false);
       if (main.firstElementChild) closeOptions();
       show(false);
       submitToFlutter = pending = place = copy = acceptedReport = originalPlace = originalProfile = null;

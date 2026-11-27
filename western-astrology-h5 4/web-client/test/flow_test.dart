@@ -1586,11 +1586,17 @@ void main() {
           'report': ready,
           'input': input,
         });
-        await waitForDeferredView(tester, find.byType(ReportPreview));
+        await waitForDeferredView(tester, find.byType(GenerationDialog));
         expect(await accepted, '');
         expect(calls, isEmpty);
         expect(browser.readSetting('active-preview', session: true), isEmpty);
         expect(browser.formVisible, isFalse);
+        expect(find.byType(GenerationVideo), findsOneWidget);
+        expect(find.byType(ReportPreview), findsNothing);
+        await tester.pump(const Duration(milliseconds: 1500));
+        await tester.pumpAndSettle();
+        expect(find.byType(GenerationDialog), findsNothing);
+        expect(find.byType(ReportPreview), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
         h5.dispose();

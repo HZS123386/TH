@@ -20,27 +20,40 @@ if(document.documentElement.dataset.metaBrowser==='instagram'&&
   fateFlutterConfig.canvasKitMaximumSurfaces=2;
   fateFlutterConfig.canvasKitVariant='chromium';
 }
+let fateFlutterStart;
+function startFateFlutter() {
+  if (window.fateBoot.upgrading) return Promise.resolve(false);
+  if (fateFlutterStart) return fateFlutterStart;
+  preloadEngineAssets();
+  fateFlutterStart = new Promise((resolve) => {
+    _flutter.loader.load({
+      config: fateFlutterConfig,
+      onEntrypointLoaded: async (initializer) => {
+        try {
+          window.fateBoot.stage('engine');
+          const app = await initializer.initializeEngine(fateFlutterConfig);
+          window.fateBoot.stage('app');
+          await app.runApp();
+          resolve(true);
+        } catch (error) {
+          window.fateBoot.fail();
+          console.error('FATE startup failed', error);
+          resolve(false);
+        }
+      }
+    }).catch(() => {
+      window.fateBoot.fail();
+      console.error('FATE loader failed');
+      resolve(false);
+    });
+  });
+  return fateFlutterStart;
+}
+window.fateStartFlutter = startFateFlutter;
 if (!window.fateBoot.upgrading && fateLandingPath) {
   // The native form is the complete landing experience. Do not make it compete
   // with Flutter's engine, Wasm and fonts before the visitor can enter details.
   window.fateBoot.landingReady();
 } else if (!window.fateBoot.upgrading) {
-  preloadEngineAssets();
-  _flutter.loader.load({
-    config: fateFlutterConfig,
-    onEntrypointLoaded: async (initializer) => {
-      try {
-        window.fateBoot.stage('engine');
-        const app = await initializer.initializeEngine(fateFlutterConfig);
-        window.fateBoot.stage('app');
-        await app.runApp();
-      } catch (error) {
-        window.fateBoot.fail();
-        console.error('FATE startup failed', error);
-      }
-    }
-  }).catch(() => {
-    window.fateBoot.fail();
-    console.error('FATE loader failed');
-  });
+  void startFateFlutter();
 }
