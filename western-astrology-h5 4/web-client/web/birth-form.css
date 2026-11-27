@@ -139,6 +139,8 @@ html[data-meta-browser=facebook] #birth-options button { touch-action:none; }
   animation:birth-generation-pulse 1.8s ease-in-out infinite; }
 html[data-embedded-browser=meta] .birth-generation-visual {
   background-image:url(assets/assets/images/report-loading-poster.webp); }
+html[data-meta-browser=instagram][data-meta-platform=android] .birth-generation-visual {
+  animation:none; filter:none; }
 #birth-generation-retry { min-height:44px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
   background:transparent; color:#f4d399; font:inherit; cursor:pointer; }
 @keyframes birth-generation-pulse { 50% { transform:scale(1.035); filter:brightness(1.12); } }

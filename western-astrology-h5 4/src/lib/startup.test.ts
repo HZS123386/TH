@@ -203,15 +203,33 @@ it("keeps report ownership usable when embedded-browser storage is blocked", () 
   expect(fullyBlocked.h5.ownerKey()).toBe(fullyBlocked.h5.ownerKey());
 });
 
-it("uses the compatible Flutter renderer for Meta embedded report pages", async () => {
-  const page = openDocument(new Map(), false, { userAgent: "Mozilla/5.0 Instagram 410.0.0.0" });
+it("uses a low-memory CanvasKit configuration for Instagram Android report pages", async () => {
+  const page = openDocument(new Map(), false, { userAgent: "Mozilla/5.0 Android 16 Instagram 417.0.0.54.77" });
   const initializeEngine = vi.fn(async (_config: any) => ({ runApp: vi.fn(async () => {}) }));
   const load = page.startFlutter(vi.fn(async (options: any) => {
     await options.onEntrypointLoaded({ initializeEngine });
   }));
   await Promise.resolve();
-  expect(load.mock.calls[0][0].config.renderer).toBe("canvaskit");
-  expect(initializeEngine.mock.calls[0][0].renderer).toBe("canvaskit");
+  const expected = {
+    renderer: "canvaskit",
+    canvasKitForceCpuOnly: true,
+    canvasKitMaximumSurfaces: 2,
+    canvasKitVariant: "chromium",
+  };
+  expect(load.mock.calls[0][0].config).toMatchObject(expected);
+  expect(initializeEngine.mock.calls[0][0]).toMatchObject(expected);
+});
+
+it("keeps accelerated CanvasKit for Facebook Android report pages", async () => {
+  const page = openDocument(new Map(), false, { userAgent: "Mozilla/5.0 Android 16 [FBAN/FB4A;FBAV/540.0.0.0]" });
+  const initializeEngine = vi.fn(async (_config: any) => ({ runApp: vi.fn(async () => {}) }));
+  const load = page.startFlutter(vi.fn(async (options: any) => {
+    await options.onEntrypointLoaded({ initializeEngine });
+  }));
+  await Promise.resolve();
+  expect(load.mock.calls[0][0].config).toMatchObject({renderer:"canvaskit"});
+  expect(load.mock.calls[0][0].config.canvasKitForceCpuOnly).toBeUndefined();
+  expect(initializeEngine.mock.calls[0][0].canvasKitForceCpuOnly).toBeUndefined();
 });
 
 it("retains the last page through hiding, leaving and restoring without losing ownership", async () => {

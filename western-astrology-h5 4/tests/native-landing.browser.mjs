@@ -258,6 +258,7 @@ test('Instagram on Android keeps the header above the form while scrolling and c
     assert.equal(await page.evaluate(() => window.fateH5.metaPlatform),'android');
     await page.addStyleTag({content:':root{--fate-safe-area-top:70px}'});
     assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).paddingTop),'0px');
+    assert.equal(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),'none');
 
     const checkPosition = async () => {
       const bar = await header.boundingBox();
