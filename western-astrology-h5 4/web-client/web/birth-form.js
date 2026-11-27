@@ -462,7 +462,7 @@
     byId('birth-custom').placeholder = j.questionTitle;
     byId('birth-custom').setAttribute('aria-label',j.writeQuestion);
     byId('birth-submit').textContent = outdated ? j.openLatest : j.topics[topic].action;
-    byId('birth-retry').textContent = byId('birth-generation-retry').textContent = copy.generation.retry;
+    byId('birth-retry').textContent = copy.generation.retry;
     const boards = copy.themes.map(group => {
       const board = document.createElement('div');
       board.className = 'birth-board';
@@ -558,9 +558,8 @@
     if (!failed || !submitToFlutter) return;
     failed = false;
     if (!retrySubmission) {
-      byId('birth-retry').hidden = byId('birth-generation-retry').hidden = true;
-      if (creating) byId('birth-generation-status').textContent = acceptedReport ? copy.generation.preview : copy.preparing;
-      else say('');
+      byId('birth-retry').hidden = true;
+      if (!creating) say('');
     }
     queueMicrotask(dispatch);
   }
@@ -664,9 +663,6 @@
       track('form_progress_' + progress());
     }
     creating = waiting = false;
-    const screen = byId('birth-generation');
-    screen.hidden = true;
-    main.removeAttribute('data-generating');
     setFormWaiting(false);
     if (outdated) byId('birth-submit').textContent = copy.jy.openLatest;
     say(message);
@@ -678,8 +674,6 @@
     document.activeElement?.blur?.();
     // Keep the completed, disabled form in place until the accepted report can
     // navigate. GenerationDialog on the report route is the only loading view.
-    byId('birth-generation').hidden = true;
-    main.removeAttribute('data-generating');
     say('');
     show(true);
     return Promise.resolve();
@@ -803,7 +797,6 @@
       }
       if (history.state?.[submissionKey]?.reportId !== report.id) await saveSubmission(null);
       else submission = null;
-      byId('birth-generation-status').textContent = report.preview_state === 'ready' ? copy.generation.ready : copy.generation.preview;
       await Promise.all([generationShown,clickTracking]);
       // The landing page owns report creation. Opening the accepted report must
       // never wait for Flutter to initialize or for the Dart bridge to attach.
@@ -840,8 +833,8 @@
     } catch (error) {
       if (send !== submitToFlutter) return;
       if (acceptedReport && error.message !== 'badResult') {
-        byId('birth-generation-status').textContent = copy.ui.network;
-        byId('birth-generation-retry').hidden = false;
+        returnToForm(copy.ui.network);
+        byId('birth-retry').hidden = false;
         return;
       }
       if (acceptedReport) {
@@ -947,7 +940,6 @@
       } catch { await localize(previous); say(copy.ui.network); }
     });
     byId('birth-retry').addEventListener('click',retry);
-    byId('birth-generation-retry').addEventListener('click',retry);
     localize(language).then(async () => {
       if (!form.isConnected) return;
       try {

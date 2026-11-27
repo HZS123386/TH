@@ -137,7 +137,7 @@ test('the native landing form creates a report without loading or waiting for Fl
     await expect(page.locator('#birth-city')).toHaveValue('北京市');
     await page.locator('#birth-submit').click();
 
-    await expect(page.locator('#birth-generation')).toBeHidden();
+    await expect(page.locator('#birth-generation')).toHaveCount(0);
     await expect(page.locator('#birth-form')).toBeVisible();
     await expect(page.locator('#birth-submit')).toBeDisabled();
     await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
@@ -225,7 +225,7 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.getByRole('option',{name:'北京市',exact:false}).click();
     await page.locator('#birth-submit').click();
 
-    await expect(page.locator('#birth-generation')).toBeHidden();
+    await expect(page.locator('#birth-generation')).toHaveCount(0);
     await expect(page.locator('#birth-form')).toBeVisible();
     await expect(page.locator('.birth-generation-visual')).toHaveCount(0);
     await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);

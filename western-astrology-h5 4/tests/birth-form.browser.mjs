@@ -183,7 +183,7 @@ for (const scenario of ['refresh-after-accept','refresh-before-delivery','refres
       await page.locator('#birth-city').click();
       await page.getByRole('option',{name:bangkok.nameThai,exact:false}).click();
       await page.locator('#birth-submit').click();
-      await expect(page.locator('#birth-generation')).toBeHidden();
+      await expect(page.locator('#birth-generation')).toHaveCount(0);
       await expect(page.locator('#birth-form')).toBeVisible();
       await expect(page.locator('#birth-submit')).toBeDisabled();
       await expect.poll(() => posts.length).toBe(1);
@@ -324,7 +324,7 @@ test('a new visitor fills the native form with Flutter held, then submits exactl
     assert.equal(generated,undefined);
     rejectConsent = false;
     await page.locator('#birth-submit').click();
-    await expect(page.locator('#birth-generation')).toBeHidden();
+    await expect(page.locator('#birth-generation')).toHaveCount(0);
     await expect(page.locator('#birth-form')).toBeVisible();
     await expect(page.locator('#birth-submit')).toBeDisabled();
     await page.locator('#birth-form').evaluate(form => form.requestSubmit());
@@ -423,7 +423,7 @@ test('desktop handoff removes both legacy loaders and always shows the sole repo
       return route.fulfill({json:{recorded:true}});
     });
     await page.goto(url + 'report.html?id=' + fixture.id + '&lang=th&from_form=1',{waitUntil:'domcontentloaded'});
-    await expect(page.locator('#birth-generation')).toBeHidden();
+    await expect(page.locator('#birth-generation')).toHaveCount(0);
     await expect(page.locator('#fate-startup')).toBeHidden();
     await expect(page.locator('.fate-startup-track')).toHaveCount(0);
     const reportAnimation = page.locator(
