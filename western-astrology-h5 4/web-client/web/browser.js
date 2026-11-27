@@ -571,10 +571,11 @@ window.addEventListener('online', () => { scheduleFateActivity(0); });
 try { fateVisitContext(); } catch {}
 let fateReportWarm, fateReportAppStarting = false;
 function warmFateReportExperience() {
-  // Meta WebViews use a deliberately lightweight path to protect their small
-  // memory budget. Desktop browsers can spend the form/API wait preloading the
-  // next page instead of starting Flutter before the visitor asks for a report.
-  if (fateReportWarm || fateEmbeddedBrowser) return fateReportWarm;
+  // Instagram's WebView needs the deliberately lightweight path to protect its
+  // small memory budget. Facebook can safely spend the remaining
+  // form/API time starting Flutter; otherwise its cold report navigation leaves
+  // only the body background visible for several seconds.
+  if (fateReportWarm || fateMetaBrowser === 'instagram') return fateReportWarm;
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   const constrained = connection?.saveData || /(^|-)2g$/i.test(connection?.effectiveType || '');
   const warm = async (path, priority = 'high') => {
