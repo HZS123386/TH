@@ -6,10 +6,13 @@ const fateUserAgent = window.navigator?.userAgent || '';
 const fateMetaBrowser = /Instagram/i.test(fateUserAgent) ? 'instagram'
   : /(?:\bFBAN\b|\bFBAV\b|\bFB_IAB\b|\bFB4A\b)/i.test(fateUserAgent) ? 'facebook' : null;
 const fateEmbeddedBrowser = fateMetaBrowser !== null;
+const fateMetaPlatform = !fateEmbeddedBrowser ? null : /Android/i.test(fateUserAgent) ? 'android'
+  : /(?:iPhone|iPad|iPod)/i.test(fateUserAgent) ? 'ios' : 'other';
 try {
   if (fateEmbeddedBrowser) {
     document.documentElement.dataset.embeddedBrowser = 'meta';
     document.documentElement.dataset.metaBrowser = fateMetaBrowser;
+    document.documentElement.dataset.metaPlatform = fateMetaPlatform;
   }
 } catch {}
 function fateCookieOwner() {
@@ -570,6 +573,7 @@ window.fateH5 = {
   ownerKey: fateOwnerKey,
   embedded: fateEmbeddedBrowser,
   metaBrowser: fateMetaBrowser,
+  metaPlatform: fateMetaPlatform,
   trackRuntime: recordFateRuntime,
   trackViewReadingClick: trackFateViewReadingClick,
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },

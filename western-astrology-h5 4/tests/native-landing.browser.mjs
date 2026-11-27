@@ -161,6 +161,7 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     userAgent:'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Instagram 410.0.0.0 Mobile'
   });
   let owner, popups = 0;
+  const requested = [];
   try {
     await context.addInitScript(() => {
       for (const method of ['getItem','setItem','removeItem']) {
@@ -172,6 +173,7 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.route('**/*',async route => {
       const request = route.request(), address = new URL(request.url());
       if (address.origin !== new URL(url).origin) return route.abort();
+      requested.push(address.pathname);
       if (!address.pathname.startsWith('/api/')) return route.continue();
       const reply = json => route.fulfill({json});
       if (address.pathname === '/api/landing/visits') return reply({ok:true,accepted_sequences:[]});
@@ -190,6 +192,9 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
     assert.equal(await page.evaluate(() => window.fateH5.embedded),true);
     assert.equal(await page.evaluate(() => window.fateH5.metaBrowser),'instagram');
+    assert.equal(await page.evaluate(() => window.fateH5.metaPlatform),'ios');
+    await page.addStyleTag({content:':root{--fate-safe-area-top:70px}'});
+    assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).paddingTop),'70px');
     assert.equal(await page.evaluate(() => window.fateBoot.embedded),true);
     await page.evaluate(() => {
       Object.defineProperty(window.visualViewport,'offsetTop',{configurable:true,value:44});
@@ -210,9 +215,16 @@ test('Meta embedded browsers can submit when Web Storage is unavailable', async 
     await page.locator('#birth-submit').click();
 
     await expect(page.locator('#birth-generation')).toBeVisible();
+    const generationBackground = await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).backgroundImage);
+    assert.match(generationBackground,/report-loading-poster\.webp/);
+    assert.doesNotMatch(generationBackground,/report-loading-animated\.webp/);
     assert.match(await page.locator('.birth-generation-visual').evaluate(element => getComputedStyle(element).animationName),/birth-generation-pulse/);
     await expect(page).toHaveURL(/report\.html\?id=embedded-accepted-report&lang=zh$/);
     await expect(page.locator('#fate-startup')).toBeVisible();
+    const startupBackground = await page.locator('#fate-startup').evaluate(element => getComputedStyle(element,'::before').backgroundImage);
+    assert.match(startupBackground,/report-loading-poster\.webp/);
+    assert.doesNotMatch(startupBackground,/report-loading-animated\.webp/);
+    assert.equal(requested.some(path => path.endsWith('/report-loading-animated.webp')),false);
     await page.evaluate(() => window.fateBoot.ready());
     await expect(page.locator('#accepted-report')).toBeVisible();
     await expect(page.locator('#fate-startup')).toBeHidden();
@@ -243,6 +255,9 @@ test('Instagram on Android keeps the header above the form while scrolling and c
     const content = page.locator('#birth-content');
     await expect(language).toHaveValue('zh');
     assert.equal(await page.evaluate(() => window.fateH5.metaBrowser),'instagram');
+    assert.equal(await page.evaluate(() => window.fateH5.metaPlatform),'android');
+    await page.addStyleTag({content:':root{--fate-safe-area-top:70px}'});
+    assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).paddingTop),'0px');
 
     const checkPosition = async () => {
       const bar = await header.boundingBox();
@@ -294,6 +309,9 @@ test('Facebook embedded browser can scroll and select the city list', async () =
 
     await page.goto(url + '?lang=zh',{waitUntil:'domcontentloaded'});
     assert.equal(await page.evaluate(() => window.fateH5.metaBrowser),'facebook');
+    assert.equal(await page.evaluate(() => window.fateH5.metaPlatform),'android');
+    await page.addStyleTag({content:':root{--fate-safe-area-top:70px}'});
+    assert.equal(await page.locator('#fate-birth').evaluate(element => getComputedStyle(element).paddingTop),'0px');
     const city = page.locator('#birth-city'), menu = page.locator('#birth-options');
     await city.click();
     const option = page.getByRole('option',{name:'北京市',exact:false});

@@ -1,3 +1,4 @@
+:root { --fate-safe-area-top:env(safe-area-inset-top); }
 #fate-flutter { position:fixed; inset:0; }
 html[data-birth-visible] #fate-flutter { visibility:hidden; pointer-events:none; }
 html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden] { display:none !important; }
@@ -5,8 +6,11 @@ html[data-birth-visible] #fate-startup, #fate-birth [hidden], #fate-birth[hidden
   position:fixed; inset:var(--fate-viewport-top,0px) 0 auto; height:var(--fate-viewport-height,100vh);
   display:flex; flex-direction:column; box-sizing:border-box;
   font:15px/1.5 system-ui,sans-serif; color:#f6ecdf; background:#100b1b; color-scheme:dark;
-  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  padding:var(--fate-safe-area-top) 0 env(safe-area-inset-bottom);
 }
+/* Android Meta WebViews already place the page below their browser chrome but
+   can report that same inset again through safe-area-inset-top. */
+html[data-embedded-browser=meta][data-meta-platform=android] #fate-birth { padding-top:0; }
 #fate-birth * { box-sizing:border-box; }
 /* Keep the header in its own row so viewport changes cannot shift it over the portrait. */
 #fate-birth .birth-header { flex:none; width:100%; max-width:900px; height:58px; margin:0 auto; padding:0 21px;
@@ -133,6 +137,8 @@ html[data-meta-browser=facebook] #birth-options button { touch-action:none; }
     url(assets/assets/images/report-loading-poster.webp) center/contain no-repeat;
   -webkit-mask-image:radial-gradient(ellipse,#000 40%,transparent 73%); mask-image:radial-gradient(ellipse,#000 40%,transparent 73%);
   animation:birth-generation-pulse 1.8s ease-in-out infinite; }
+html[data-embedded-browser=meta] .birth-generation-visual {
+  background-image:url(assets/assets/images/report-loading-poster.webp); }
 #birth-generation-retry { min-height:44px; padding:8px 24px; border:1px solid #ac8758; border-radius:10px;
   background:transparent; color:#f4d399; font:inherit; cursor:pointer; }
 @keyframes birth-generation-pulse { 50% { transform:scale(1.035); filter:brightness(1.12); } }

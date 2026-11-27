@@ -944,7 +944,8 @@
     const warmGenerationVisual = () => {
       generationVisual = new Image();
       generationVisual.decoding = 'async';
-      generationVisual.src = new URL('assets/assets/images/report-loading-animated.webp',document.baseURI).href;
+      const image = window.fateH5.embedded ? 'report-loading-poster.webp' : 'report-loading-animated.webp';
+      generationVisual.src = new URL('assets/assets/images/' + image,document.baseURI).href;
     };
     if ('requestIdleCallback' in window) requestIdleCallback(warmGenerationVisual,{timeout:2500});
     else setTimeout(warmGenerationVisual,1200);
