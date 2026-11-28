@@ -27,13 +27,18 @@
       if (fbq.callMethod) fbq.callMethod.apply(fbq, arguments);
       else fbq.queue.push(arguments);
     };
-    Object.assign(fbq, { push: fbq, loaded: true, version: '2.0', queue: [] });
-    window.fbq = window._fbq = fbq;
+    window.fbq = fbq;
+    if (!window._fbq) window._fbq = fbq;
+    fbq.push = fbq;
+    fbq.loaded = true;
+    fbq.version = '2.0';
+    fbq.queue = [];
 
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-    document.head.append(script);
+    const firstScript = document.getElementsByTagName('script')[0];
+    firstScript.parentNode.insertBefore(script, firstScript);
   }
 
   const pixelId = '1130430653088165';
@@ -43,6 +48,7 @@
   window.fbq('track', 'PageView');
 })();
 </script>
+<!-- End Meta Pixel Code -->
 </head>
 <body class="campaign-v2 consultation-v3 ritual-v4 report-v5 value-v6 report-v8 report-v9 report-v12" data-view="home">
 <noscript><img src="https://www.facebook.com/tr?id=1130430653088165&amp;ev=PageView&amp;noscript=1"
