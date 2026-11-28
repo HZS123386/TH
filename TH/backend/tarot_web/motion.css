@@ -1,0 +1,23 @@
+/* Card movement runs during shuffle, selection and reveal. */
+.deck-grid{position:relative;isolation:isolate;perspective:900px}
+.deck-grid .deck-card{transform-origin:50% 55%}
+.deck-grid .deck-card:focus-visible>.tarot-back,.deck-grid .deck-card:active:not(:disabled)>.tarot-back{box-shadow:0 0 14px #e2b78435,inset 0 0 0 2px #1f182b,inset 0 0 0 3px #e3c19782}
+@media(hover:hover) and (pointer:fine){.deck-grid .deck-card:hover:not(:disabled)>.tarot-back{box-shadow:0 0 14px #e2b78435,inset 0 0 0 2px #1f182b,inset 0 0 0 3px #e3c19782}}
+.deck-grid.motion-active .deck-card{transition:none;pointer-events:none}
+.deck-grid.motion-active .deck-card:hover:not(:disabled){transform:none}
+.deck-grid .deck-card.is-lifting{opacity:.18;transition:opacity .14s ease}
+.card-slot.is-receiving{border-color:#efcb92;background:#62464d40;box-shadow:0 0 14px #e7b46d29}
+.tarot-flight{position:fixed;z-index:190;pointer-events:none!important;transform-origin:center;will-change:transform}
+.tarot-flight>.tarot-back{width:100%;height:100%;border-color:#e1bc87;box-shadow:inset 0 0 0 2px #1f182b,inset 0 0 0 3px #d4b08b70,0 6px 12px #09051180}
+.tarot-flight .back-star{font-size:24px}.tarot-flight .back-moon{font-size:9px;top:10%}.tarot-flight .back-corner{display:none}
+.card-flip{position:relative;aspect-ratio:.61;perspective:1000px;border-radius:7px}
+.flip-inner{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateY(0deg);border-radius:inherit}
+.flip-front,.flip-back{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:inherit}
+.flip-front{transform:rotateY(0deg)}
+.flip-back{transform:rotateY(180deg)}
+.flip-front>.card-face,.flip-back>.tarot-back{width:100%;height:100%;aspect-ratio:auto}
+.flip-back>.tarot-back{border-radius:inherit;border-color:#d1ab7b;box-shadow:0 9px 22px #0003,inset 0 0 0 4px #1f182b,inset 0 0 0 5px #c8a58a42}
+.is-revealing .flip-inner{will-change:transform}
+body.motion-paused .deck-grid .deck-card{transition:none}
+@media(max-width:760px){.card-flip{aspect-ratio:.6;border-radius:6px}}
+@media(prefers-reduced-motion:reduce){.deck-grid .deck-card{transition:none}.tarot-flight{display:none}}

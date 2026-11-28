@@ -37,6 +37,7 @@ if (postgresContainer) {
 }
 const apiPort = process.env.SABAI_API_PORT || '8000';
 const webPort = process.env.SABAI_WEB_PORT || process.env.FATE_APP_PORT || '5176';
+const apiOnly = process.argv.includes('--api-only') || process.argv.includes('--tarot');
 const previewArgs = process.argv.includes('--skip-build') ? ['--skip-build'] : [];
 const previewEnv = { ...process.env, FATE_API_UPSTREAM: `http://127.0.0.1:${apiPort}` };
 const apiEnv = { ...process.env };
@@ -60,16 +61,20 @@ const children = [
     ],
     { stdio: 'inherit', env: apiEnv },
   ),
-  spawn(process.execPath, ['scripts/serve-app.mjs', ...previewArgs], {
-    stdio: 'inherit',
-    env: { ...previewEnv, FATE_APP_PORT: webPort },
-  }),
-  spawn(process.execPath, ['scripts/serve-flutter.mjs', ...previewArgs], {
-    cwd: fileURLToPath(new URL('../../western-astrology-h5 4/', import.meta.url)),
-    stdio: 'inherit',
-    env: previewEnv,
-  }),
 ];
+if (!apiOnly) {
+  children.push(
+    spawn(process.execPath, ['scripts/serve-app.mjs', ...previewArgs], {
+      stdio: 'inherit',
+      env: { ...previewEnv, FATE_APP_PORT: webPort },
+    }),
+    spawn(process.execPath, ['scripts/serve-flutter.mjs', ...previewArgs], {
+      cwd: fileURLToPath(new URL('../../western-astrology-h5 4/', import.meta.url)),
+      stdio: 'inherit',
+      env: previewEnv,
+    }),
+  );
+}
 let closing = false;
 function close(code = 0) {
   if (closing) return;

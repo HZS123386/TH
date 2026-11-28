@@ -59,6 +59,7 @@ const views = {
   visits: ['访问与来源', '查看每次访问的填写进度、前台停留和最后记录。'],
   'page-diagnostics': ['页面停留与错误', '比较 H5 各页的前台停留时间，查看出错的环节和已记录的原因。'],
   'visit-funnel': ['H5 访问漏斗', '查看从填写资料到点击 LINE 的各步数据。'],
+  'tarot-activity': ['塔罗访问统计', '查看塔罗各页面的进入人数、进入次数、停留时间和关键操作。'],
   'ad-funnel': ['广告转化', '查看带投放标签的访客，从进入 H5 到点击 LINE 的各步人数。'],
   reports: ['报告管理', '查看生成状态、解锁权限，追踪每一份报告。'],
   orders: ['订单与支付', '区分订单创建、到账核验和报告权益。'],
@@ -66,7 +67,7 @@ const views = {
   issues: ['失败与异常', '区分当前业务异常与历史失败尝试，定位需要跟进的记录。'],
   audit: ['操作记录', '管理员的每次处理都有时间、原因和结果。'],
   sources: ['数据来源与口径', '知道数据从哪里来，也知道每个数字如何计算。'],
-  'line-contacts': ['LINE 报告发放', '按领取编号查询占星报告，处理 LINE 发放。'],
+  'line-contacts': ['LINE 报告发放', '查询占星或塔罗领取编号，处理 LINE 发放。'],
 };
 const visitPages = {
   welcome: '欢迎页', birth_form: '资料填写页', consent: '数据使用确认', history: '历史报告列表',
@@ -216,6 +217,8 @@ const errors = {
   life_report_generating: '这份报告仍在生成中，请稍后刷新。',
   admin_line_range_invalid: '请选择有效的起止时间，结束时间须晚于开始时间。',
   admin_expired_code_not_found: '未查到已过期且仍在 7 天保留期内的登录码。',
+  admin_tarot_receipt_not_found: '未找到这个塔罗领取编号。',
+  admin_tarot_receipt_not_accepted: '请先接单，再登记已发送。',
   admin_retry_limited: '生成请求触发限额，请稍后再试。',
   life_report_not_found: '这份报告已不存在。',
   too_many_requests: '刷新过于频繁，请稍后再试。',
@@ -469,7 +472,7 @@ async function loadView({ refresh = false } = {}) {
       const params = new URLSearchParams({ days, page_size: 5 });
       data = await api('/records/reports?' + params);
     } else if (visitRange) data = await api('/visit-funnel?' + new URLSearchParams(visitRange));
-    else if (['ad-funnel', 'page-diagnostics'].includes(view)) data = await api(`/${view}?days=${days}`);
+    else if (['ad-funnel', 'page-diagnostics', 'tarot-activity'].includes(view)) data = await api(`/${view}?days=${days}`);
     else if (view === 'sources') data = await api('/sources');
     else if (view === 'line-contacts') {
       const params = new URLSearchParams({
@@ -501,6 +504,7 @@ async function loadView({ refresh = false } = {}) {
     }
     else if (view === 'ad-funnel') renderAdFunnel(data);
     else if (view === 'page-diagnostics') renderPageDiagnostics(data);
+    else if (view === 'tarot-activity') renderTarotActivity(data);
     else if (view === 'sources') renderSources(data.items);
     else if (view === 'line-contacts') {
       if (state.page > data.last_page) {
@@ -574,6 +578,17 @@ function renderLineContacts(data) {
     </form>
     <div id="line-code-result" role="status"></div>
   </section>
+  <section class="panel line-stats" aria-labelledby="tarot-lookup-title">
+    <div class="data-group-heading"><h2 id="tarot-lookup-title">塔罗领取编号查询</h2></div>
+    <p class="stat-hint">收到 LINE 咨询后，用领取码查询原问题和牌阵。</p>
+    <form class="filters" id="tarot-receipt-lookup">
+      <div class="search"><input aria-label="塔罗领取编号" placeholder="例如 T12345"
+        autocomplete="off" spellcheck="false" maxlength="20" required></div>
+      <button class="button" type="submit">查询并生成解读</button>
+    </form>
+    <div id="tarot-receipt-result"></div>
+    <p id="tarot-receipt-status" class="stat-hint" role="status"></p>
+  </section>
   <p class="data-note">「时间范围」筛选上方两项数据，最多保留 30 天。二维码展示按图片进入报告视口计次。点击打开 LINE 或在电脑复制领取编号，均算领取入口操作，同一浏览器计一人。下方待办和编号查询可跨日期。</p>
   <section class="panel table-panel">
     <div class="line-delivery-tabs" role="group" aria-label="报告发放分类">
@@ -592,6 +607,7 @@ function renderLineContacts(data) {
       <button type="button" class="button" id="line-prev" ${state.page <= 1 ? 'disabled' : ''}>上一页</button>
       <button type="button" class="button" id="line-next" ${data.has_more ? '' : 'disabled'}>下一页</button>
     </div></div></section>`;
+  bindTarotReceiptLookup();
   const lookupForm = $('#line-code-lookup');
   const lookupInput = lookupForm.querySelector('input');
   const lookupButton = lookupForm.querySelector('button');
@@ -686,6 +702,121 @@ function renderLineContacts(data) {
     });
   });
 }
+function bindTarotReceiptLookup() {
+  const form = $('#tarot-receipt-lookup');
+  const input = form.querySelector('input');
+  const lookupButton = form.querySelector('button');
+  const output = $('#tarot-receipt-result');
+  const status = $('#tarot-receipt-status');
+  let current = null;
+
+  function renderReceipt(receipt) {
+    const spread = window.TarotCore?.spreads?.[receipt.spread_id];
+    const catalog = window.TAROT_CONTENT?.cards || [];
+    const cards = receipt.cards.map((card, index) => {
+      const name = catalog.find((entry) => entry.id === card.id)?.name.zh || `牌号 ${card.id}`;
+      const position = spread?.positions[index]?.zh || `牌位 ${index + 1}`;
+      return `<li>${esc(position)} · ${esc(name)} · ${card.reversed ? '逆位' : '正位'}</li>`;
+    }).join('');
+    const deliveryStatus = receipt.sent_at != null ? '已发送' : receipt.accepted_at != null ? '待发送' : '待接单';
+    const fields = [
+      ['领取编号', receipt.claim_code],
+      ['报告参考编号', receipt.report_id],
+      ['报告语言', receipt.language === 'th' ? '泰文' : '简体中文'],
+      ['牌阵', spread?.name.zh || receipt.spread_id],
+      ['发放状态', deliveryStatus],
+      ['登记时间', fullDate(receipt.created_at)],
+      ['接单时间', fullDate(receipt.accepted_at)],
+      ['发送时间', fullDate(receipt.sent_at)],
+    ];
+    const nextAction = receipt.accepted_at == null ? ['accept', '标记接单'] : ['mark_sent', '标记已手工发送'];
+    output.innerHTML = `<dl class="detail-fields">${fields.map(([name, value]) =>
+      `<div><dt class="field-label">${name}</dt><dd class="field-value">${esc(value)}</dd></div>`
+    ).join('')}</dl>
+      <p class="field-value"><strong>咨询问题</strong><br>${esc(receipt.question)}</p>
+      <ol>${cards}</ol>
+      <label for="tarot-copy-text">完整塔罗解读</label>
+      <textarea id="tarot-copy-text" rows="12" readonly spellcheck="false"></textarea>
+      <div class="line-actions">
+        <button class="button" type="button" data-copy-tarot>复制完整解读</button>
+        ${receipt.sent_at == null ? `<button class="button" type="button" data-tarot-action="${nextAction[0]}">${nextAction[1]}</button>` : ''}
+      </div>`;
+    const report = {
+      id: receipt.report_id, claimCode: receipt.claim_code, question: receipt.question,
+      topic: receipt.topic, spreadId: receipt.spread_id, cards: receipt.cards,
+    };
+    output.querySelector('textarea').value = window.TarotReading.formatText(report, receipt.language, true);
+  }
+
+  input.addEventListener('input', () => {
+    current = null;
+    output.replaceChildren();
+    status.textContent = '';
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (lookupButton.disabled) return;
+    const code = input.value.trim().toUpperCase();
+    input.value = code;
+    if (!/^(?:T[1-9][0-9]{4}|T-(?:[0-9A-HJKMNP-TV-Z]{12}|[1-9][0-9]{5,17}))$/.test(code)) {
+      status.textContent = '请输入完整的塔罗领取编号。';
+      return;
+    }
+    lookupButton.disabled = true;
+    current = null;
+    output.replaceChildren();
+    const session = state.session;
+    status.textContent = '正在查询并生成解读…';
+    try {
+      const result = await api('/line-contacts/tarot-lookup', { method: 'POST', body: { code } });
+      await Promise.all([
+        import('/tarot/content.js'), import('/tarot/core.js'), import('/tarot/reading.js?v=23.16'),
+      ]);
+      if (!form.isConnected || input.value !== code || state.session !== session) return;
+      current = result;
+      renderReceipt(current);
+      status.textContent = '';
+    } catch (error) {
+      if (form.isConnected && input.value === code) status.textContent = error.message;
+    } finally {
+      lookupButton.disabled = false;
+    }
+  });
+  output.addEventListener('click', async (event) => {
+    if (event.target.closest('[data-copy-tarot]')) {
+      const field = output.querySelector('textarea');
+      try {
+        await navigator.clipboard.writeText(field.value);
+        if (field.isConnected) status.textContent = '已复制，可以发给用户。';
+      } catch {
+        field.focus();
+        field.select();
+        if (field.isConnected) status.textContent = '请手动复制已选中的解读。';
+      }
+      return;
+    }
+    const button = event.target.closest('[data-tarot-action]');
+    const receipt = current;
+    if (!button || button.disabled || !receipt) return;
+    const action = button.dataset.tarotAction;
+    button.disabled = true;
+    status.textContent = '';
+    try {
+      const updates = await api('/line-contacts/tarot-status', {
+        method: 'POST', body: { code: receipt.claim_code, action },
+      });
+      if (!form.isConnected || current !== receipt) return;
+      current = { ...receipt, ...updates };
+      renderReceipt(current);
+      status.textContent = action === 'accept' ? '已标记接单。' : '已登记手工发送。';
+    } catch (error) {
+      if (form.isConnected && current === receipt) status.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 const reportLink = (row) =>
   row.action?.startsWith('tarot_receipt_')
     ? `<span class="mono">${esc(row.report_id || '未关联')}</span>`
@@ -729,6 +860,37 @@ function renderPageDiagnostics(data) {
     <section class="panel table-panel"><div class="panel-header"><div><h3>最近的程序错误</h3><p class="muted">按记录时间展示最近 25 条。同次打开页面的同类前端异常只记首次；模型失败按单次调用记录。</p></div><a href="#issues">全部异常 ↗</a></div>
     ${errorRows.length ? table(['北京时间', '出错环节', '记录到的原因', '关联访问或报告'], errorRows) : empty('这段时间没有记录到程序错误')}</section>
     <p class="data-note">最多显示最近 30 天。浏览器关闭前未送达的记录可能缺失。<a href="#sources">查看统计口径 ↗</a></p>`;
+}
+function renderTarotActivity(data) {
+  const pages = {
+    home: '塔罗首页 / 首次提问', draw: '选牌页', reflection: '选牌后填写问题',
+    report_loading: '报告加载页', report: '基础报告页', archive: '我的塔罗报告',
+    line_receipt: 'LINE 领取弹窗', chat: '塔罗对话页',
+  };
+  const actions = {
+    reading_start: '点击开始抽牌', draw_first_started: '开始先抽牌流程', draw_first_resumed: '继续先抽牌流程',
+    card_selected: '选中一张牌', draw_first_question_confirmed: '选牌后确认问题', draw_resumed: '恢复已有选牌',
+    question_confirmed: '首次确认问题', spread_matched: '匹配牌阵', clarification_shown: '展示追问',
+    question_clarified: '确认追问', spread_changed: '更换牌阵', spread_confirmed: '确认牌阵',
+    free_report_generated: '生成基础报告', line_message_copied: '成功复制领取码', line_open_clicked: '点击打开 LINE',
+    report_export: '导出报告', app_handoff: '点击进入塔罗对话', companion_message: '发送对话消息',
+    plan_checked: '切换行动项勾选', suggestion_refresh: '更换问题建议',
+    consultation_example_selected: '选择示例问题', consultation_cta: '点击使用示例问题',
+  };
+  $('#content').innerHTML = `
+    <section class="panel table-panel" aria-label="塔罗页面访问">
+      <div class="panel-header"><h3>塔罗页面访问</h3></div>
+      ${table(['页面', '进入人数（去重）', '进入次数', '总可见停留', '平均每次停留'], data.pages.map(row =>
+        `<tr><th scope="row">${esc(pages[row.event])}</th><td>${number(row.people)}</td><td>${number(row.times)}</td>
+        <td>${duration(row.total_ms)}</td><td>${duration(row.average_ms)}</td></tr>`), true)}
+    </section>
+    <p class="data-note">每页人数按匿名浏览器去重，重复进入照常计次。只累计页面可见时间，切到后台暂停计时。按服务器首次收到记录的时间筛选，从启用埋点后开始统计。</p>
+    <section class="panel table-panel" aria-label="塔罗操作统计">
+      <div class="panel-header"><h3>塔罗操作统计</h3></div>
+      ${table(['操作', '操作人数（去重）', '操作次数'], data.actions.map(row =>
+        `<tr><th scope="row">${esc(actions[row.event])}</th><td>${number(row.people)}</td><td>${number(row.times)}</td></tr>`), true)}
+    </section>
+    <p class="data-note">同一浏览器重复操作照常计次。点击打开 LINE 统计的是站内点击。</p>`;
 }
 function renderVisitFunnel(metrics) {
   const measure = state.funnelMeasure;

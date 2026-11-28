@@ -61,6 +61,7 @@ node TH/scripts/dev.mjs --skip-build
 ```
 
 打开 `http://127.0.0.1:8000/admin/`。后台与 H5/App 共用当前数据库，不需要构建 Flutter 或启动另一套服务；`--skip-build` 仅适用于已有 H5/App 构建。
+塔罗联调可从仓库根目录运行 `node TH/scripts/dev.mjs --api-only`，使用同一后台和数据库。塔罗页面地址为 `http://127.0.0.1:8000/tarot/`。
 
 本机已配置管理员，登录信息保存在 `TH/data/admin-access.txt`（Git 忽略）。配置项位于 `TH/.env`：
 
@@ -70,6 +71,8 @@ ADMIN_PASSWORD_HASH='生成的 scrypt-v1 密码哈希'
 ```
 
 客服使用同一个 `/admin/` 页面登录。用不同的用户名和同一方式生成的密码哈希配置 `REPORT_SUPPORT_USERNAME`、`REPORT_SUPPORT_PASSWORD_HASH` 后重启。客服只能访问「LINE 报告发放」。在 LINE 收到五位领取编号后，输入编号查询并点击「确认已加好友」。后台生成完整报告，生成完成后可「下载 PDF」。客服在 LINE 发送后点击「标记已发送」。领取码用于客服查找报告，完整内容由客服发放。下载使用同服务 `/thai-landing/` 下的 H5 构建产物。
+
+塔罗用户主动登记后获得 T12345 格式的领取码。管理员或客服到同页的「塔罗领取编号查询」查看原问题和牌面、复制完整解读，并登记接单和手工发送状态。已登记的旧领取码也可以查询。管理员在「塔罗访问统计」查看页面和操作指标，数据来自 `tarot_activity`。
 
 H5 用户通过 LINE 领取完整版。服务器默认关闭新建支付订单，已有订单的核对、已解锁报告及售后记录继续可用。
 

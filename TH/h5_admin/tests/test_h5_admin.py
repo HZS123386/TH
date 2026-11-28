@@ -93,7 +93,7 @@ def admin(postgres_url):
 
 def test_admin_data_requires_separate_login_and_static_page_has_no_business_data(admin):
     http, _ = admin
-    for path in ("/overview", "/visit-funnel", "/ad-funnel", "/page-diagnostics", "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
+    for path in ("/overview", "/visit-funnel", "/ad-funnel", "/page-diagnostics", "/tarot-activity", "/sources", "/records/reports", "/reports/report-1", "/visits/first"):
         assert http.get("/api/admin" + path).status_code == 401
     html = http.get("/admin/")
     assert html.status_code == 200 and "report-1" not in html.text
@@ -102,6 +102,35 @@ def test_admin_data_requires_separate_login_and_static_page_has_no_business_data
     assert http.get("/admin/config.py").status_code == 404
     login(http, "support-test")
     assert http.get("/api/admin/page-diagnostics").status_code == 403
+    assert http.get("/api/admin/tarot-activity").status_code == 403
+
+
+def test_tarot_activity_counts_browser_visits_and_checkpoints_separately_from_astrology(admin):
+    http, _ = admin
+    login(http)
+    astrology_before = http.get("/api/admin/visit-funnel").json()
+    view = {"id": str(uuid4()), "event": "draw", "visible_ms": 2400}
+    card = {"id": str(uuid4()), "event": "card_selected"}
+
+    def post(visitor, *observations, origin="https://testserver"):
+        return http.post("/api/tarot/activity", headers={"X-Tarot-Visitor": visitor * 32, "Origin": origin},
+                         json={"observations": observations}).status_code
+
+    assert post("a", view, card) == 204
+    assert post("a", {**view, "visible_ms": 3600}, card) == 204
+    assert post("a", view, card) == 204
+    assert post("a", {**view, "id": str(uuid4()), "visible_ms": 1200}, {**card, "id": str(uuid4())}) == 204
+    assert post("b", {**view, "id": str(uuid4()), "visible_ms": 2400}) == 204
+    assert post("b", view, origin="https://outside.invalid") == 403
+    assert post("a", {**view, "question": "private"}) == 422
+
+    stats = http.get("/api/admin/tarot-activity").json()
+    pages = {row["event"]: row for row in stats["pages"]}
+    assert pages["draw"] == {"event": "draw", "people": 2, "times": 3, "total_ms": 7200, "average_ms": 2400}
+    assert pages["report"]["times"] == 0 and pages["report"]["total_ms"] is None
+    action = next(row for row in stats["actions"] if row["event"] == "card_selected")
+    assert (action["people"], action["times"]) == (1, 2)
+    assert http.get("/api/admin/visit-funnel").json() == astrology_before
 
 
 def test_visit_funnels_count_form_and_historical_welcome_entries(admin):
@@ -355,6 +384,53 @@ def test_line_report_counts_filter_first_contact_and_group_current_status(admin)
     assert result.json()["first_contact_visitor_counts"] == {"total": 0, "unconfirmed": 0, "pending": 0, "sent": 0}
     assert http.get(path, params={"contact_start": midnight}).status_code == 422
     assert http.get(path, params={"contact_start": noon, "contact_end": noon}).status_code == 422
+
+
+def test_tarot_registration_persists_cards_and_support_delivery(postgres_url):
+    settings = Settings(database_url=postgres_url, report_support_username="support-test",
+                        report_support_password_hash=HASH)
+    app = create_app(settings)
+    receipt_path = "/api/tarot/receipts"
+    lookup = "/api/admin/line-contacts/tarot-lookup"
+    status = "/api/admin/line-contacts/tarot-status"
+    body = {
+        "request_key": uuid4().hex, "report_id": "MIRA-TEST-RECEIPT",
+        "question": "我应该怎样开启这次沟通？", "topic": "communication",
+        "spread_id": "relationship", "language": "zh",
+        "cards": [{"id": 21, "reversed": True}, {"id": 0, "reversed": False}, {"id": 8, "reversed": True}],
+    }
+    with TestClient(app) as http:
+        assert http.post(receipt_path, json={**body, "cards": body["cards"][:1]}).status_code == 422
+        registration = http.post(receipt_path, json=body)
+        assert registration.status_code == 200
+        assert registration.headers["Cache-Control"] == "no-store"
+        code = registration.json()["claim_code"]
+        assert len(code) == 6 and code[0] == "T" and code[1:].isdigit()
+        assert http.post(receipt_path, json=body).json() == registration.json()
+        assert http.post(receipt_path, json={**body, "language": "th"}).status_code == 409
+        assert http.post(lookup, json={"code": code}).status_code == 401
+
+        csrf = login(http, "support-test")
+        assert http.post(lookup, json={"code": code}).status_code == 403
+        found = http.post(lookup, headers=csrf, json={"code": code})
+        assert found.status_code == 200 and found.headers["Cache-Control"] == "no-store"
+        assert found.json()["question"] == body["question"]
+        assert found.json()["cards"] == body["cards"]
+        assert "request_hash" not in found.json()
+        assert found.json()["accepted_at"] is None and found.json()["sent_at"] is None
+        sent = {"code": code, "action": "mark_sent"}
+        assert http.post(status, headers=csrf, json=sent).status_code == 409
+        accepted = http.post(status, headers=csrf, json={"code": code, "action": "accept"}).json()
+        completed = http.post(status, headers=csrf, json=sent).json()
+        assert completed["sent_at"] >= completed["accepted_at"] == accepted["accepted_at"]
+        assert http.post(status, headers=csrf, json=sent).json() == completed
+
+    with app.state.store.connect() as db:
+        assert db.execute("SELECT COUNT(*) AS count FROM tarot_receipts").fetchone()["count"] == 1
+        audit = db.execute("SELECT action FROM admin_audit WHERE report_id=%s ORDER BY created", (code,)).fetchall()
+        assert [row["action"] for row in audit] == [
+            "tarot_receipt_lookup", "tarot_receipt_accept", "tarot_receipt_mark_sent",
+        ]
 
 
 def test_support_can_deliver_full_report_without_unlocking_h5(client):

@@ -38,6 +38,9 @@ from .bazi_reports import BaziReports
 from .thai_readings import ThaiReports, generate_reading
 from .life_reports import LifeReports, life_report_router
 from .landing_features import LandingFeatures, landing_router, owner_for
+from .tarot_analytics import ACTIVITY_PATH, VISITOR_HEADER, VISITOR_PATTERN, tarot_activity_router
+from .tarot_readings import TarotReadings, tarot_router
+from .tarot_receipts import tarot_receipt_router
 from .western_app import NOTICE as WESTERN_NOTICE, WesternApp, WesternProfileInput, western_router
 from .static_assets import LandingStaticFiles
 from h5_admin.service import H5Admin, admin_page_router, admin_router
@@ -112,6 +115,9 @@ def create_app(settings: Settings | None = None):
     app.state.life_reports = life_reports
     app.include_router(life_report_router(life_reports))
     app.include_router(landing_router(LandingFeatures(store, settings, life_reports)))
+    app.include_router(tarot_router(TarotReadings(store, settings, model_slots)))
+    app.include_router(tarot_receipt_router(store, require_https=settings.app_env == "production"))
+    app.include_router(tarot_activity_router(store, require_https=settings.app_env == "production"))
     app.state.h5_admin = H5Admin(store, settings, life_reports)
     app.include_router(admin_router(app.state.h5_admin))
     app.include_router(admin_page_router())
@@ -131,6 +137,7 @@ def create_app(settings: Settings | None = None):
             return store.save_thai_chart(user_id, key, result)
 
     rates: dict[tuple[str, str], deque] = defaultdict(deque)
+    tarot_rates: dict[tuple[str, str], deque] = defaultdict(deque)
 
     def error_response(code: str, status: int, request: Request):
         request.state.failure_code = code
@@ -189,17 +196,23 @@ def create_app(settings: Settings | None = None):
             if telemetry and re.fullmatch(r"[A-Za-z0-9_-]{32,128}", report_key):
                 # Visits batch many observations; shared networks must not share one visitor's quota.
                 key = (owner_for(report_key), request.url.path)
+            tarot_telemetry = request.method == "POST" and request.url.path == ACTIVITY_PATH
+            if tarot_telemetry:
+                visitor = request.headers.get(VISITOR_HEADER, "")
+                if re.fullmatch(VISITOR_PATTERN, visitor):
+                    key = (store.hash(visitor), request.url.path)
+            rate_buckets = tarot_rates if tarot_telemetry else rates
             now = time.monotonic()
             # Keep the prototype limiter bounded, including arbitrary requested paths.
-            for stale in [key for key, times in rates.items() if not times or times[-1] < now - 60]:
-                del rates[stale]
-            if len(rates) >= 2000 and key not in rates:
+            for stale in [key for key, times in rate_buckets.items() if not times or times[-1] < now - 60]:
+                del rate_buckets[stale]
+            if len(rate_buckets) >= 2000 and key not in rate_buckets:
                 response = error_response("busy", 429, request)
                 response.headers["Retry-After"] = "60"
                 if h5_request:
                     app.state.h5_admin.record_failure(request, 429, round((time.monotonic() - started) * 1000))
                 return response
-            bucket = rates[key]
+            bucket = rate_buckets[key]
             while bucket and bucket[0] < now - 60:
                 bucket.popleft()
             # Report creation/listing has its own allowance; payment and other routes keep their limit.
@@ -225,7 +238,7 @@ def create_app(settings: Settings | None = None):
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Content-Language"] = LOCALES[request_language(request)]
         if (request.url.path == "/api/auth/h5-code"
-                or request.url.path.startswith("/api/app/h5-reports")
+                or request.url.path.startswith(("/api/app/h5-reports", "/api/tarot/"))
                 or request.url.path.endswith("/app-login-code")):
             response.headers["Cache-Control"] = "no-store"
         if request.url.path == "/admin" or request.url.path.startswith(("/admin/", "/api/admin/")):
@@ -689,6 +702,9 @@ def create_app(settings: Settings | None = None):
     # Serve the landing build alongside its existing calculation API, on one origin.
     if settings.thai_landing_dir and Path(settings.thai_landing_dir).is_dir():
         app.mount("/thai-landing", LandingStaticFiles(directory=settings.thai_landing_dir, html=True), name="thai-landing")
+
+    tarot_site = Path(__file__).resolve().parents[1] / "tarot_web"
+    app.mount("/tarot", LandingStaticFiles(directory=tarot_site, html=True), name="tarot")
 
     dist = Path(__file__).resolve().parents[2] / "dist"
     if dist.is_dir():
