@@ -9,12 +9,12 @@ let reports=Array.isArray(cache.reports)?cache.reports.filter(r=>Core.validRepor
 let draft=cache.draft&&Object.hasOwn(Core.spreads,cache.draft.spreadId||'relationship')&&typeof cache.draft.question==='string'&&cache.draft.question.length<=180&&C.questions.some(q=>q.id===cache.draft.topic)&&Core.validCards(cache.draft.deck,22)&&Array.isArray(cache.draft.selected)&&cache.draft.selected.length<=(Core.spreads[cache.draft.spreadId||'relationship']?.count||3)&&new Set(cache.draft.selected).size===cache.draft.selected.length&&cache.draft.selected.every(i=>Number.isInteger(i)&&i>=0&&i<22)?{...cache.draft,spreadId:cache.draft.spreadId||'relationship',entryMode:cache.draft.entryMode==='cards-first'?'cards-first':'question-first'}:null;
 if(draft?.entryMode==='cards-first'&&draft.spreadId!=='relationship')draft=null;
 let selectedTopic=draft?.topic||C.questions[0].id, questionDraft=draft?.question||'', activeReport=null, currentView='home', modalFocus=null, recognition=null, toastTimer, storageFailed=false, pendingClarification=null;
-let lineRegistrationPending=false;
+const lineReceiptStates=new WeakMap();
 let motionBusy=false,motionEpoch=0,drawNeedsShuffle=false,freshReportId=null,motionEnabled=!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const L=v=>typeof v==='string'?v:(v?.[lang]||v?.zh||'');
 const t=(zh,th)=>lang==='th'?th:zh;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const icon=(name)=>{const paths={arrow:'M5 12h14m-6-6 6 6-6 6',back:'M19 12H5m6-6-6 6 6 6',book:'M4 4h6a3 3 0 0 1 2 2 3 3 0 0 1 2-2h6v16h-6a3 3 0 0 0-2 1 3 3 0 0 0-2-1H4z M12 6v15',close:'m6 6 12 12M6 18 18 6',lock:'M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5zM12 14v3',check:'m5 12 4 4L19 6',mic:'M9 4a3 3 0 0 1 6 0v8a3 3 0 0 1-6 0zM5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8',chat:'M21 11a8 8 0 0 1-8 8H7l-5 3 2-6a8 8 0 1 1 17-5z',download:'M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4',volume:'M4 9h4l5-5v16l-5-5H4zM17 8a6 6 0 0 1 0 8',send:'m3 3 19 9-19 9 4-9zM7 12h15',shuffle:'M3 6h3l12 12h3M3 18h3L18 6h3m-4-3 4 3-4 3m0 6 4 3-4 3',heart:'M12 21 3 12C-3 4 7-1 12 6c5-7 15-2 9 6z'};return `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]||paths.arrow}"/></svg>`};
+const icon=(name)=>{const paths={arrow:'M5 12h14m-6-6 6 6-6 6',back:'M19 12H5m6-6-6 6 6 6',book:'M4 4h6a3 3 0 0 1 2 2 3 3 0 0 1 2-2h6v16h-6a3 3 0 0 0-2 1 3 3 0 0 0-2-1H4z M12 6v15',close:'m6 6 12 12M6 18 18 6',lock:'M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5zM12 14v3',check:'m5 12 4 4L19 6',mic:'M9 4a3 3 0 0 1 6 0v8a3 3 0 0 1-6 0zM5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8',chat:'M21 11a8 8 0 0 1-8 8H7l-5 3 2-6a8 8 0 1 1 17-5z',volume:'M4 9h4l5-5v16l-5-5H4zM17 8a6 6 0 0 1 0 8',send:'m3 3 19 9-19 9 4-9zM7 12h15',shuffle:'M3 6h3l12 12h3M3 18h3L18 6h3m-4-3 4 3-4 3m0 6 4 3-4 3',heart:'M12 21 3 12C-3 4 7-1 12 6c5-7 15-2 9 6z'};return `<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]||paths.arrow}"/></svg>`};
 const topic=()=>C.questions.find(q=>q.id===(activeReport?.topic||selectedTopic))||C.questions[0];
 const questionOf=r=>r.question||L(C.questions.find(q=>q.id===r.topic).question);
 const cardAt=c=>C.cards.find(x=>x.id===c.id);
@@ -110,7 +110,7 @@ function loadReportAssets() {
   if (reportAssetsPromise) return reportAssetsPromise;
   const marker = $('#line-handoff-styles');
   const assets = ['report.css', 'value.css', 'report-story.css', 'report-classic.css'].map(href =>
-    Object.assign(document.createElement('link'), { rel: 'stylesheet', href: `${href}?v=23.15` })
+    Object.assign(document.createElement('link'), { rel: 'stylesheet', href: `${href}?v=23.16` })
   );
   assets.push(Object.assign(document.createElement('script'), { src: 'reading.js?v=23.15' }));
 
@@ -150,47 +150,83 @@ function reportPlan(r, reading) {
  return `<details class="report-free-details tarot-report-plan"><summary>${t('七天行动安排','สิ่งที่ลองทำในเจ็ดวัน')}</summary><div class="plan-list">${steps}</div></details>`;
 }
 
+function reportReadingMask(){
+ return `<span class="sr-only">${t('完整解读通过 LINE 领取','รับคำอ่านฉบับเต็มทาง LINE')}</span>
+  <div class="tarot-reading-preview-mask" aria-hidden="true"><span></span><span></span><span></span><span></span></div>`;
+}
+
 function reportChapters(r,reading){
  const heading=r.unlocked?t('逐张深度解读','คำอ่านเชิงลึกทีละใบ'):t('逐张解读','คำอ่านทีละใบ');
  const cards=reading.cardReadings.map((card,i)=>{
   const sections=r.unlocked?card.sections:card.sections.slice(0,2);
+  const questionSection=card.sections[1];
+  const content=sections.map(section=>{
+   const body=!r.unlocked&&section===questionSection
+    ? reportReadingMask()
+    : `<p>${esc(section.text)}</p>`;
+   return `<h4 class="tarot-reading-label">${esc(section.title)}</h4>${body}`;
+  }).join('');
   return `<article class="report-chapter" data-chapter="${i}">
     <header class="chapter-heading"><span class="chapter-number">${String(i+1).padStart(2,'0')}</span><div><small>${esc(card.position)}</small><h3>${esc(card.name)} · ${esc(card.orientation)}</h3></div></header>
-    <div class="chapter-answer">${sections.map(section=>`<h4 class="tarot-reading-label">${esc(section.title)}</h4><p>${esc(section.text)}</p>`).join('')}</div>
+    <div class="chapter-answer">${content}</div>
   </article>`;
  }).join('');
  return `<section class="report-chapters" id="report-chapters">
    <div class="reading-section-title"><h2>${heading}</h2></div>${cards}
    <article class="report-chapter" data-chapter="synthesis">
     <header class="chapter-heading"><h3>${t('整体综合','สรุปภาพรวม')}</h3></header>
-    <div class="chapter-answer">${reading.synthesis.map(paragraph=>`<p>${esc(paragraph)}</p>`).join('')}
-    ${r.unlocked?reportPlan(r,reading):`<p>${t('完整报告包含每张牌的深层提醒和行动建议。','คำอ่านฉบับเต็มมีข้อสังเกตเชิงลึกและคำแนะนำของไพ่แต่ละใบ')}</p>`}</div>
+    <div class="chapter-answer">${r.unlocked
+     ? reading.synthesis.map(paragraph=>`<p>${esc(paragraph)}</p>`).join('')+reportPlan(r,reading)
+     : reportReadingMask()}</div>
    </article>
   </section>`;
 }
 
-function lineReceiveLabel(){return t('点击扫码添加LINE好友领取报告','แตะเพื่อสแกน QR เพิ่มเพื่อน LINE และรับรายงาน')}
-function reportLineBar(){return `<aside class="report-purchase-bar line-purchase-bar" aria-label="${t('完整报告领取入口','รับคำอ่านฉบับเต็ม')}"><button class="primary line-button" data-action="line-receive">${lineReceiveLabel()}</button></aside>`}
+function lineReceiptContent(r){
+ const code=LINE.receiptCode(r);
+ if(code){
+  return `<div class="line-receipt-code"><small>${t('领取码','รหัสรับรายงาน')}</small><strong>${esc(code)}</strong></div>
+   <button type="button" class="text-button line-copy-button" data-action="copy-line-message">${t('复制领取码','คัดลอกรหัสรับรายงาน')}</button>
+   <p id="line-copy-status" class="line-receipt-note" role="status" hidden></p>
+   <div class="line-manual-copy" hidden><label for="request-message" class="sr-only">${t('领取码','รหัสรับรายงาน')}</label><input id="request-message" readonly value="${esc(code)}"></div>`;
+ }
+ if(lineReceiptStates.get(r)==='error'){
+  return `<p class="line-receipt-note" role="status">${t('暂时无法获取领取码。','ขอรหัสรับรายงานไม่สำเร็จ')}</p>
+   <button type="button" class="text-button line-copy-button" data-action="retry-line-receipt">${t('重新获取','ลองอีกครั้ง')}</button>`;
+ }
+ return `<p class="line-receipt-note" role="status">${t('正在获取领取码…','กำลังขอรหัสรับรายงาน…')}</p>`;
+}
+
+function reportLinePanel(r){
+ return `<section class="line-receipt-panel" aria-labelledby="line-receipt-heading">
+  <img class="line-receipt-qr" src="${LINE.qrPath}" width="900" height="900" loading="lazy" decoding="async" alt="${t('添加 LINE 好友二维码','คิวอาร์โค้ดสำหรับเพิ่มเพื่อน LINE')}">
+  <h2 id="line-receipt-heading">${t('领取完整报告','รับรายงานฉบับเต็ม')}</h2>
+  <p class="line-receipt-help">${t('扫码或点击下方按钮添加 LINE 好友，再把领取码发给客服。','สแกนคิวอาร์โค้ดหรือแตะปุ่มด้านล่างเพื่อเพิ่มเพื่อน LINE แล้วส่งรหัสรับรายงานให้ทีมงาน')}</p>
+  <div id="line-receipt-content">${lineReceiptContent(r)}</div>
+  <a class="primary full line-button" href="${LINE.addFriendUrl}" data-action="open-line">${t('点击添加LINE好友，领取完整报告','แตะเพื่อเพิ่มเพื่อน LINE และรับรายงานฉบับเต็ม')}</a>
+ </section>`;
+}
 
 async function copyLineMessage(){
- const r=activeReport,field=$('#request-message'),manual=$('.line-manual-copy');if(!r||!field)return;
+ const r=activeReport,field=$('#request-message'),manual=$('.line-manual-copy'),status=$('#line-copy-status');if(!r||!field)return;
  const text=LINE.receiptCode(r);if(!text)return;
  let copied=false;
  try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);copied=true}}catch{}
  if(!field.isConnected)return;
+ status.hidden=false;
  if(!copied){if(manual)manual.hidden=false;field.focus();field.select();field.setSelectionRange(0,field.value.length);try{copied=document.execCommand('copy')===true}catch{}}
  if(copied){
   r.lineReceipt={...r.lineReceipt,copiedAt:Date.now()};save();track('line_message_copied');
   if(manual)manual.hidden=true;
-  if($('#line-copy-status'))$('#line-copy-status').textContent=t('已复制领取码。打开 LINE 添加好友后，粘贴发送给客服。','คัดลอกรหัสแล้ว เปิด LINE เพิ่มเพื่อน แล้ววางส่งให้ทีมงาน');
+  status.textContent=t('已复制领取码。打开 LINE 添加好友后，粘贴发送给客服。','คัดลอกรหัสแล้ว เปิด LINE เพิ่มเพื่อน แล้ววางส่งให้ทีมงาน');
   if($('.line-copy-button')){$('.line-copy-button').textContent=t('已复制 · 再次复制','คัดลอกแล้ว · คัดลอกอีกครั้ง');$('.line-copy-button').focus()}
- }else if($('#line-copy-status')){
-  $('#line-copy-status').textContent=t('未能自动复制。请手动复制下方领取码并发给 LINE 客服。','คัดลอกอัตโนมัติไม่ได้ กรุณาคัดลอกรหัสด้านล่างแล้วส่งให้ทีมงานใน LINE');
+ }else{
+  status.textContent=t('未能自动复制。请手动复制下方领取码并发给 LINE 客服。','คัดลอกอัตโนมัติไม่ได้ กรุณาคัดลอกรหัสด้านล่างแล้วส่งให้ทีมงานใน LINE');
   if(manual)manual.hidden=false;field.focus();field.select();
  }
 }
 function markLineOpened(){const r=activeReport;if(!r)return;r.lineReceipt={...r.lineReceipt,openedAt:Date.now()};save();track('line_open_clicked')}
-function reportPage(r){const reading=readingOf(r);return `<div class="report-shell report-v5-shell report-story-shell ${r.unlocked?'is-unlocked':'has-purchase-bar'}">${flowNav(4)}<section class="report-cover"><small class="eyebrow">${r.unlocked?t('MIRA · 你的完整塔罗解读','MIRA · คำอ่านไพ่ฉบับเต็มของคุณ'):t('MIRA · 你的塔罗报告','MIRA · คำอ่านไพ่ของคุณ')}</small><h1>${esc(questionOf(r))}</h1><p class="reading-meta">${esc(L(spreadOf(r).name))} · ${new Date(r.created).toLocaleDateString(lang==='th'?'th-TH-u-ca-gregory':'zh-CN')}</p><div class="report-mira-note"><img src="assets/mira-mystic-v20.webp?v=23.4" alt="${t('米拉','มิรา')}"><div><strong>${t('关于这件心事，米拉想对你说','เรื่องที่ค้างใจนี้ มิราอยากบอกคุณว่า')}</strong><p>${esc(reading.overallIntro)}</p></div></div><div class="report-spread-stage">${spread(r,reading)}</div><p class="report-cover-caption">${t('你亲手选出的牌 · 正逆位已保留','ไพ่ที่คุณเลือกเอง · คงตำแหน่งตั้งตรงและกลับหัว')}</p></section>${reportChapters(r,reading)}<div class="report-tools"><button class="secondary" data-action="download">${icon('download')}${t('保存文字报告','บันทึกคำอ่านเป็นข้อความ')}</button><button class="text-button" data-action="archive">${icon('book')}${t('我的报告','คำอ่านของฉัน')}</button></div></div>${r.unlocked?'':reportLineBar()}`}
+function reportPage(r){const reading=readingOf(r);return `<div class="report-shell report-v5-shell report-story-shell ${r.unlocked?'is-unlocked':''}">${flowNav(4)}<section class="report-cover"><small class="eyebrow">${r.unlocked?t('MIRA · 你的完整塔罗解读','MIRA · คำอ่านไพ่ฉบับเต็มของคุณ'):t('MIRA · 你的塔罗报告','MIRA · คำอ่านไพ่ของคุณ')}</small><h1>${esc(questionOf(r))}</h1><p class="reading-meta">${esc(L(spreadOf(r).name))} · ${new Date(r.created).toLocaleDateString(lang==='th'?'th-TH-u-ca-gregory':'zh-CN')}</p><div class="report-mira-note"><img src="assets/mira-mystic-v20.webp?v=23.4" alt="${t('米拉','มิรา')}"><div><strong>${t('关于这件心事，米拉想对你说','เรื่องที่ค้างใจนี้ มิราอยากบอกคุณว่า')}</strong><p>${esc(reading.overallIntro)}</p></div></div><div class="report-spread-stage">${spread(r,reading)}</div><p class="report-cover-caption">${t('你亲手选出的牌 · 正逆位已保留','ไพ่ที่คุณเลือกเอง · คงตำแหน่งตั้งตรงและกลับหัว')}</p></section>${reportChapters(r,reading)}${r.unlocked?'':reportLinePanel(r)}</div>`}
 
 function chatPage(r){const messages=Array.isArray(r.messages)?r.messages:[];return `<div class="chat-shell">${backButton('report')}<div class="chat-heading"><img src="assets/mira-mystic-v20.webp?v=23.4" alt="${t('米拉','มิรา')}"><div><span class="eyebrow">MIRA / ${t('塔罗陪伴','เพื่อนคุยผ่านไพ่ทาโรต์')}</span><h1>${t('想说的话，慢慢说。','ค่อย ๆ เล่าได้เลย')}</h1><small>${t('APP 承接体验 · 本地示例对话','ทดลองคุยต่อในแอป · บทสนทนาตัวอย่างในเครื่อง')}</small></div></div><button class="chat-context" data-action="back" data-value="report">${icon('book')}<span><small>${t('带着原牌阵，继续聊','คุยต่อจากไพ่ชุดเดิม')}</small><strong>${esc(questionOf(r))}</strong></span>${icon('arrow')}</button><div class="chat-messages" role="log" aria-live="polite"><div class="message assistant"><p>${t('我是米拉。你这次抽到的是：','ฉันมิรา ไพ่ที่คุณเลือกครั้งนี้คือ ')}${r.cards.map(c=>esc(L(cardAt(c).name))+' · '+(c.reversed?t('逆位','กลับหัว'):t('正位','ตั้งตรง'))).join(' / ')}。<br>${t('关于这件心事，哪一点最让你在意？我们从那里慢慢聊。','เรื่องนี้ มีจุดไหนที่คุณใส่ใจที่สุด? เราค่อย ๆ เริ่มตรงนั้นกัน')}</p></div>${messages.map(m=>`<div class="message ${m.who==='user'?'user':'assistant'}"><p>${esc(m.text)}</p></div>`).join('')}</div><div class="chat-prompts">${[t('我该怎么开口？','ฉันควรเริ่มพูดอย่างไร?'),t('这张牌怎么理解？','ควรมองไพ่ใบนี้อย่างไร?'),t('下一步可以做什么？','ลองทำอะไรต่อได้บ้าง?')].map(p=>`<button data-action="prompt" data-value="${esc(p)}">${p}</button>`).join('')}</div><form id="chat-form" class="chat-composer"><label class="sr-only" for="chat-input">${t('给米拉的消息','ข้อความถึงมิรา')}</label><input id="chat-input" maxlength="400" autocomplete="off" placeholder="${t('说说你的感受…','เล่าความรู้สึกของคุณ…')}"><button type="submit" aria-label="${t('发送','ส่ง')}">${icon('send')}</button></form><div class="chat-voice-button"><button class="text-button" data-action="voice-input">${icon('mic')}${t('语音输入','พูดแทนพิมพ์')}</button><button class="text-button" data-action="listen">${icon('volume')}${t('听米拉的回复','ฟังคำตอบของมิรา')}</button></div><p class="fine-print">${t('语音由浏览器提供，需允许麦克风；不支持时可继续文字聊天。','เสียงใช้ความสามารถของเบราว์เซอร์และต้องอนุญาตไมโครโฟน หากไม่รองรับ สามารถพิมพ์คุยต่อได้')}</p></div>`}
 function render(){const previousView=currentView;motionEpoch++;window.TarotMotion?.cancel();motionBusy=false;header();const [view,rawId]=location.hash.slice(1).split('/');let id='';try{id=decodeURIComponent(rawId||'')}catch{}currentView=['question','spread','draw','reflection','report','chat'].includes(view)?view:'home';if(currentView==='spread'){currentView='draw';const url=new URL(location.href);url.hash='draw';history.replaceState(null,'',url)}activeReport=reports.find(r=>r.id===id)||null;if(['draw','reflection'].includes(currentView)&&!draft){currentView='home'}if(currentView==='reflection'&&(draft.entryMode!=='cards-first'||draft.selected.length!==countOf(draft))){currentView='draw'}if(['report','chat'].includes(currentView)&&!activeReport){currentView='home';toast(t('未找到这份本机报告，可以从右上角查看已保存的报告。','ไม่พบคำอ่านนี้ในเครื่อง ลองดูคำอ่านที่บันทึกไว้จากมุมขวาบน'))}document.body.dataset.view=currentView;
@@ -201,6 +237,7 @@ function render(){const previousView=currentView;motionEpoch++;window.TarotMotio
  }
  $('#app').innerHTML=currentView==='home'?home():currentView==='question'?questionPage():currentView==='draw'?drawPage():currentView==='reflection'?reflectionPage():currentView==='report'?reportPage(activeReport):chatPage(activeReport);
  analytics?.page(currentView==='question'?'home':currentView, ['report','chat'].includes(currentView)?activeReport.id:undefined);
+ if(currentView==='report'&&!activeReport.unlocked)void ensureLineReceipt(activeReport);
  $('#app').id='app';if(currentView==='home')updateSticky();if(storageFailed)toast(t('浏览器暂时无法保存，请导出报告留存。','เบราว์เซอร์บันทึกไม่ได้ในขณะนี้ โปรดดาวน์โหลดคำอ่านไว้'));if(currentView==='chat')$('.chat-messages').scrollTop=$('.chat-messages').scrollHeight;if(currentView==='draw'&&(drawNeedsShuffle||previousView!=='draw')&&!draft.selected.length){drawNeedsShuffle=false;runShuffleMotion()}if(currentView==='report'&&freshReportId===activeReport.id){freshReportId=null;window.TarotMotion?.reveal($('.report-spread'))}}
 function setDrawBusy(value){motionBusy=value;const grid=$('.deck-grid');if(!grid)return;grid.setAttribute('aria-busy',String(value));grid.classList.toggle('is-busy',value);grid.querySelectorAll('.deck-card').forEach(b=>b.disabled=value||draft.selected.includes(Number(b.dataset.value))||draft.selected.length===countOf(draft));document.querySelectorAll('.slot-remove,[data-action="shuffle"],[data-action="spread-choice"]').forEach(b=>b.disabled=value);const revealButton=$('[data-action="reveal"]');if(revealButton)revealButton.disabled=value||draft.selected.length!==countOf(draft)}
 function runShuffleMotion(){if(!window.TarotMotion||!motionEnabled)return;const epoch=motionEpoch;setDrawBusy(true);$('.draw-motion-status').textContent=draft?.entryMode==='cards-first'?t('轻轻洗牌，想着你在意的那个人或那件事…','กำลังสับไพ่ นึกถึงคนหรือเรื่องความรักที่คุณใส่ใจ…'):t('轻轻洗牌，想着你刚才的问题…','กำลังสับไพ่ ค่อย ๆ นึกถึงคำถามของคุณ…');window.TarotMotion.shuffle($('.deck-grid')).catch(()=>{}).then(()=>{if(epoch!==motionEpoch||currentView!=='draw')return;setDrawBusy(false);$('.draw-motion-status').textContent=t('牌已展开，选此刻吸引你的牌。','ไพ่พร้อมแล้ว เลือกใบที่ดึงดูดคุณตอนนี้')})}
@@ -293,55 +330,26 @@ function beginDraw(){if(!draft)return go('home');track('spread_confirmed');go('d
 function reveal(){if(!draft||draft.selected.length!==countOf(draft))return;if(draft.entryMode==='cards-first'){questionDraft=draft.question;return go('reflection')}finishReport()}
 function openModal(title,body,footer='',analyticsPage=null){modalFocus=document.activeElement;$('#modal-root').innerHTML=`<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close icon-button" data-action="close" aria-label="${t('关闭','ปิด')}">${icon('close')}</button><h2 id="modal-title">${title}</h2><div class="modal-body">${body}</div>${footer?`<div class="modal-footer">${footer}</div>`:''}</section></div>`;document.body.classList.add('modal-open');analytics?.overlay(analyticsPage);$('.modal-close').focus()}
 function closeModal(){if(!$('#modal-root').innerHTML)return;$('#modal-root').innerHTML='';document.body.classList.remove('modal-open');analytics?.overlay(null);if(modalFocus?.isConnected)modalFocus.focus()}
-async function openLineReceipt(button){
- const r=activeReport;
- if(!r||lineRegistrationPending)return;
- const claimLang=lang;
- const buttons=document.querySelectorAll('[data-action="line-receive"]');
- lineRegistrationPending=true;
- buttons.forEach(item=>{item.disabled=true});
- button.textContent=t('正在获取领取码…','กำลังขอรหัสรับรายงาน…');
+async function ensureLineReceipt(r){
+ if(LINE.receiptCode(r)||lineReceiptStates.has(r))return;
+ lineReceiptStates.set(r,'loading');
  try{
   if(!/^[a-f0-9]{32}$/.test(r.lineReceipt?.requestKey||'')){
    // Persist the key before the request so a lost response can be retried.
    r.lineReceipt={...r.lineReceipt,requestKey:LINE.newRequestKey()};
    save();
   }
-  const code=await LINE.register({...r,question:questionOf(r)},claimLang);
-  if(LINE.receiptCode(r)!==code)r.lineReceipt={requestKey:r.lineReceipt.requestKey,claimCode:code};
+  const code=await LINE.register({...r,question:questionOf(r)},lang);
+  r.lineReceipt={...r.lineReceipt,claimCode:code};
   save();
+  lineReceiptStates.delete(r);
  }catch{
-  if(button.isConnected)toast(t('暂时无法获取领取码，请重试。','ขอรหัสรับรายงานไม่สำเร็จ กรุณาลองอีกครั้ง'));
-  return;
- }finally{
-  lineRegistrationPending=false;
-  buttons.forEach(item=>{item.disabled=false});
-  button.textContent=lineReceiveLabel();
+  lineReceiptStates.set(r,'error');
  }
- if(!button.isConnected||activeReport!==r||currentView!=='report')return;
- openModal(t('添加 LINE 好友','เพิ่มเพื่อน LINE'),`
-  <img class="line-receipt-qr" src="${LINE.qrPath}" width="250" height="250" alt="${t('扫码添加 LINE 好友领取报告','สแกน QR เพิ่มเพื่อน LINE เพื่อรับรายงาน')}">
-  <p class="line-receipt-help">${t('扫码或打开 LINE 添加好友，再把下方领取码发给客服。','สแกน QR หรือเปิด LINE เพื่อเพิ่มเพื่อน แล้วส่งรหัสด้านล่างให้ทีมงาน')}</p>
-  <div class="line-receipt-code"><small>${t('领取码','รหัสรับรายงาน')}</small><strong>${esc(LINE.receiptCode(r))}</strong></div>
-  <button class="text-button line-copy-button" data-action="copy-line-message">${t('复制领取码','คัดลอกรหัสรับรายงาน')}</button>
-  <p id="line-copy-status" class="line-receipt-note" role="status">${t('客服凭领取码查看这次抽牌，并发送完整解读。','ทีมงานจะใช้รหัสนี้ค้นหาไพ่ที่คุณเลือกและส่งคำอ่านฉบับเต็ม')}</p>
-  <div class="line-manual-copy" hidden><label for="request-message">${t('领取码','รหัสรับรายงาน')}</label><textarea id="request-message" rows="2" readonly spellcheck="false">${esc(LINE.receiptCode(r))}</textarea></div>
- `,`<button class="text-button line-receipt-close" data-action="close">${t('关闭','ปิด')}</button><a class="primary full line-open-button" href="${LINE.addFriendUrl}" target="_blank" rel="noopener noreferrer" data-action="open-line">${t('打开 LINE','เปิด LINE')}</a>`,'line_receipt');
- $('.modal').classList.add('line-receipt-modal');
+ const content=$('#line-receipt-content');
+ if(currentView==='report'&&activeReport===r&&content)content.innerHTML=lineReceiptContent(r);
 }
 function archive(){openModal(t('我的塔罗报告','คำอ่านไพ่ของฉัน'),`<p class="muted">${t('只显示当前浏览器保存的最近 12 份报告。','แสดงคำอ่านล่าสุดไม่เกิน 12 รายการที่บันทึกในเบราว์เซอร์นี้')}</p><div class="archive-list">${reports.length?reports.map(r=>`<button data-action="open-report" data-value="${r.id}"><small>${new Date(r.created).toLocaleDateString(lang==='th'?'th-TH-u-ca-gregory':'zh-CN')} · ${r.unlocked?t('完整报告','คำอ่านฉบับเต็ม'):t('基础报告 · 可通过 LINE 领取完整版','คำอ่านเบื้องต้น · รับฉบับเต็มทาง LINE')}</small><strong>${esc(questionOf(r))}</strong><span>${esc(r.id)}</span>${icon('arrow')}</button>`).join(''):`<div class="empty-state"><span>☾</span><p>${t('这里还没有报告。写下一个问题，开启一次塔罗解读。','ยังไม่มีคำอ่าน เขียนคำถามหนึ่งข้อ แล้วเริ่มอ่านไพ่ของคุณ')}</p></div>`}</div>`,!reports.length?`<button class="primary full" data-action="start">${t('开始免费抽牌','เริ่มเลือกไพ่ฟรี')}</button>`:'','archive')}
-function download(){
- const r=activeReport;
- const text=window.TarotReading.formatText({...r,question:questionOf(r)},lang,r.unlocked);
- const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
- const link=document.createElement('a');
- link.href=url;
- link.download=r.id+'.txt';
- link.click();
- setTimeout(()=>URL.revokeObjectURL(url),1000);
- track('report_export');
- toast(t('已生成文字报告。','สร้างไฟล์คำอ่านแล้ว'));
-}
 function reply(text,r){const d=deepContent(r),count=(r.messages||[]).filter(m=>m.who==='user').length;let answer;if(/再|详细|具体|然后|接着|ยังไง|เพิ่ม|ต่ออีก/.test(text)&&count>1)answer=t('接着刚才的沟通，我们先缩小一点：你最希望对方听见哪一个需要？把「你总是……」换成「这件事让我感到……，我希望……」。如果对方此刻不愿意听，也可以先暂停，约一个双方都愿意的时间。','จากที่คุยกัน ลองเริ่มจากความต้องการข้อเดียวที่อยากให้อีกฝ่ายได้ยิน เปลี่ยนจาก “คุณทำแบบนี้เสมอ” เป็น “เรื่องนี้ทำให้ฉันรู้สึก… และฉันอยาก…” ถ้าอีกฝ่ายยังไม่พร้อมฟัง พักก่อนแล้วตกลงเวลาใหม่ได้');else if(/牌|ไพ่/.test(text))answer=t('我们先从「','เริ่มจากตำแหน่ง “')+readingOf(r).cardReadings[r.cards.length-1].position+t('」的牌「','” ไพ่ “')+L(cardAt(lastCard(r)).name)+t('」看起：','”: ')+readingOf(r).cardReadings[r.cards.length-1].meaning+' '+t('哪一句最接近你现在的感受？','ประโยคไหนใกล้กับความรู้สึกของคุณตอนนี้?');else if(/开口|沟通|说|พูด|คุย/.test(text))answer=d.speech;else if(/行动|做什么|下一步|ทำอะไร|ต่อไป/.test(text))answer=d.plan[0].text+' '+t('这件事对你来说，什么时候做最合适？','สำหรับคุณ เวลาไหนเหมาะที่จะลองทำ?');else answer=[t('先分清已经发生的事，和你担心会发生的事。你最希望被对方理解的一点是什么？','ลองแยกสิ่งที่เกิดขึ้นจริงออกจากสิ่งที่กลัวว่าจะเกิด มีเรื่องไหนที่คุณอยากให้อีกฝ่ายเข้าใจที่สุด?'),t('你可以把刚才的感受写成一句话：「当……发生时，我感到……，我希望……。」不用一次说完所有委屈，先表达一个具体需要。','ลองเขียนว่า “เมื่อ…เกิดขึ้น ฉันรู้สึก… และฉันอยาก…” ไม่ต้องเล่าความเสียใจทั้งหมดในครั้งเดียว เริ่มจากความต้องการหนึ่งเรื่อง'),t('也留一点空间照顾自己。选一个你能决定的小行动，过几天看看真实变化，再决定要不要继续。你愿意先试哪一步？','อย่าลืมเผื่อพื้นที่ดูแลตัวเอง เลือกก้าวเล็ก ๆ ที่คุณตัดสินใจได้ แล้วกลับมาดูสิ่งที่เปลี่ยนไป คุณอยากเริ่มจากอะไร?')][(count-1)%3];return answer}
 function send(text){text=String(text||'').trim().slice(0,400);if(!text||!activeReport)return;activeReport.messages||=[];activeReport.messages.push({who:'user',text});activeReport.messages.push({who:'assistant',text:reply(text,activeReport)});activeReport.messages=activeReport.messages.slice(-40);save();track('companion_message');render();$('#chat-input').focus()}
 function listen(){if(!('speechSynthesis'in window)){toast(t('当前浏览器不支持朗读，请使用文字。','เบราว์เซอร์นี้ไม่รองรับการอ่านเสียง โปรดใช้ข้อความ'));return}speechSynthesis.cancel();const last=activeReport.messages?.filter(m=>m.who==='assistant').at(-1)?.text||t('我是米拉。关于这件心事，你最想从哪里开始聊？','ฉันมิรา เรื่องนี้คุณอยากเริ่มคุยจากตรงไหน?');const u=new SpeechSynthesisUtterance(last);u.lang=lang==='th'?'th-TH':'zh-CN';u.rate=.92;u.onerror=()=>toast(t('暂时无法朗读，可以继续文字聊天。','ยังอ่านเสียงไม่ได้ คุยผ่านข้อความต่อได้'));speechSynthesis.speak(u)}
@@ -367,12 +375,17 @@ else if(a==='pick'&&draft)pickCard(Number(v),b)
 else if(a==='unselect'&&draft){draft.selected.splice(Number(v),1);save();render()}
 else if(a==='shuffle'){if(draft.selected.length)openModal(t('重新洗牌？','สับไพ่ใหม่ไหม?'),`<p>${t('已选的牌会放回牌堆，需要重新选','ไพ่ที่เลือกจะกลับเข้ากอง แล้วเลือกใหม่ ')+countOf(draft)+t('张。',' ใบ')}</p>`,`<button class="primary full" data-action="shuffle-confirm">${t('放回并重新洗牌','คืนไพ่และสับใหม่')}</button><button class="text-button" data-action="close">${t('保留已选的牌','เก็บไพ่ที่เลือกไว้')}</button>`);else{draft.deck=Core.shuffle();drawNeedsShuffle=true;save();render()}}
 else if(a==='shuffle-confirm'){draft.deck=Core.shuffle();draft.selected=[];drawNeedsShuffle=true;save();closeModal();render()}
-else if(a==='reveal')reveal();else if(a==='line-receive'&&activeReport)openLineReceipt(b);else if(a==='copy-line-message'&&activeReport)copyLineMessage();else if(a==='open-line'&&activeReport)markLineOpened();
-else if(a==='archive')archive();else if(a==='open-report')go('report',v);else if(a==='download')download();else if(a==='retry-report-assets')render();else if(a==='close')closeModal();
+else if(a==='reveal')reveal();else if(a==='retry-line-receipt'&&activeReport&&lineReceiptStates.get(activeReport)==='error'){
+ const r=activeReport;
+ lineReceiptStates.delete(r);
+ $('#line-receipt-content').innerHTML=lineReceiptContent(r);
+ void ensureLineReceipt(r);
+}else if(a==='copy-line-message'&&activeReport)copyLineMessage();else if(a==='open-line'&&activeReport)markLineOpened();
+else if(a==='archive')archive();else if(a==='open-report')go('report',v);else if(a==='retry-report-assets')render();else if(a==='close')closeModal();
 else if(a==='chat'||a==='chat-voice'){track('app_handoff');go('chat',activeReport.id);if(a==='chat-voice')setTimeout(()=>toast(t('进入后点「语音输入」，即可开始说话。','กด “พูดแทนพิมพ์” เพื่อเริ่มพูด')),80)}
 else if(a==='prompt')send(v);else if(a==='listen')listen();else if(a==='voice-input')voiceInput();
-else if(a==='privacy')openModal(t('数据与使用说明','ข้อมูลและข้อควรรู้'),`<p>${t('此浏览器会保留最近 12 份报告，可单独导出文字。点击领取完整报告时，服务器会保存本次问题、牌阵、正逆位和报告语言，由客服凭领取码查阅。','เบราว์เซอร์นี้เก็บคำอ่านล่าสุด 12 รายการและส่งออกเป็นข้อความได้ เมื่อขอรับคำอ่านฉบับเต็ม เซิร์ฟเวอร์จะบันทึกคำถาม ผังไพ่ ตำแหน่งตั้งตรงหรือกลับหัว และภาษา เพื่อให้ทีมงานค้นหาด้วยรหัสรับรายงาน')}</p><p>${t('牌面为本机随机抽取，页面解读来自预设内容。完整报告通过 LINE 人工发送，本页不收款。请在 LINE 聊天中粘贴并发送领取码。','ไพ่สุ่มในเครื่อง คำอ่านในหน้านี้มาจากเนื้อหาตัวอย่าง คำอ่านฉบับเต็มส่งโดยทีมงานทาง LINE หน้านี้ไม่รับชำระเงิน กรุณาวางและส่งรหัสในแชต LINE')}</p><p>${t('塔罗会上传匿名的页面访问、操作与前台停留时间，用来改善体验。统计不包含问题、牌阵或聊天正文。','ระบบส่งข้อมูลการเปิดหน้า การกด และเวลาที่หน้าเว็บแสดงแบบไม่ระบุตัวตนเพื่อปรับปรุงการใช้งาน โดยไม่ส่งคำถาม ผังไพ่ หรือข้อความแชตไปยังระบบสถิติ')}</p>`,`<button class="secondary full" data-action="clear-data">${t('清除此设备的体验记录','ลบข้อมูลเดโมในอุปกรณ์นี้')}</button>`);
-else if(a==='clear-data')openModal(t('清除本机记录？','ลบข้อมูลในเครื่องไหม?'),`<p>${t('此浏览器保存的报告、聊天和计划将被清除。请先导出需要保留的报告。已登记的领取码仍可用于向客服领报告。','ข้อมูลคำอ่าน แชต และแผนในเบราว์เซอร์นี้จะถูกลบ โปรดดาวน์โหลดสิ่งที่ต้องการเก็บก่อน รหัสที่ลงทะเบียนแล้วยังใช้ขอรับคำอ่านจากทีมงานได้')}</p>`,`<button class="secondary full" data-action="clear-confirm">${t('确认清除','ยืนยันการลบ')}</button><button class="text-button" data-action="close">${t('取消','ยกเลิก')}</button>`);
+else if(a==='privacy')openModal(t('数据与使用说明','ข้อมูลและข้อควรรู้'),`<p>${t('此浏览器会保留最近 12 份报告。打开报告生成领取码时，服务器会保存本次问题、牌阵、正逆位和报告语言，由客服凭领取码查阅。','เบราว์เซอร์นี้เก็บคำอ่านล่าสุด 12 รายการ เมื่อเปิดคำอ่านเพื่อสร้างรหัสรับรายงาน เซิร์ฟเวอร์จะบันทึกคำถาม ผังไพ่ ตำแหน่งตั้งตรงหรือกลับหัว และภาษา เพื่อให้ทีมงานค้นหาด้วยรหัสรับรายงาน')}</p><p>${t('牌面为本机随机抽取，页面解读来自预设内容。完整报告通过 LINE 人工发送，本页不收款。请在 LINE 聊天中粘贴并发送领取码。','ไพ่สุ่มในเครื่อง คำอ่านในหน้านี้มาจากเนื้อหาตัวอย่าง คำอ่านฉบับเต็มส่งโดยทีมงานทาง LINE หน้านี้ไม่รับชำระเงิน กรุณาวางและส่งรหัสในแชต LINE')}</p><p>${t('塔罗会上传匿名的页面访问、操作与前台停留时间，用来改善体验。统计不包含问题、牌阵或聊天正文。','ระบบส่งข้อมูลการเปิดหน้า การกด และเวลาที่หน้าเว็บแสดงแบบไม่ระบุตัวตนเพื่อปรับปรุงการใช้งาน โดยไม่ส่งคำถาม ผังไพ่ หรือข้อความแชตไปยังระบบสถิติ')}</p>`,`<button class="secondary full" data-action="clear-data">${t('清除此设备的体验记录','ลบข้อมูลเดโมในอุปกรณ์นี้')}</button>`);
+else if(a==='clear-data')openModal(t('清除本机记录？','ลบข้อมูลในเครื่องไหม?'),`<p>${t('此浏览器保存的报告、聊天和计划将被清除。已登记的领取码仍可用于向客服领报告。','ข้อมูลคำอ่าน แชต และแผนในเบราว์เซอร์นี้จะถูกลบ รหัสที่ลงทะเบียนแล้วยังใช้ขอรับคำอ่านจากทีมงานได้')}</p>`,`<button class="secondary full" data-action="clear-confirm">${t('确认清除','ยืนยันการลบ')}</button><button class="text-button" data-action="close">${t('取消','ยกเลิก')}</button>`);
 else if(a==='clear-confirm'){reports=[];draft=null;questionDraft='';try{localStorage.removeItem(KEY);localStorage.removeItem('fate-mira-events-v1')}catch{}go('home');toast(t('已清除本机体验记录。','ลบข้อมูลเดโมแล้ว'))}
 });
 document.addEventListener('keydown',e=>{if(!$('.modal'))return;if(e.key==='Escape')closeModal();if(e.key==='Tab'){const focusable=[...$('.modal').querySelectorAll('button,input,a[href],textarea')].filter(x=>!x.disabled&&x.getClientRects().length&&!x.closest('[hidden]'));const first=focusable[0],last=focusable.at(-1);if(!first)return;if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});

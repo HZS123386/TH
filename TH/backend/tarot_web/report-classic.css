@@ -113,7 +113,6 @@ body.report-v9 .report-purchase-bar strong{color:#f4d69b;font-size:27px}
 body.report-v9 .report-purchase-bar em{color:#ba9abd;font-size:9px}
 body.report-v9 .report-purchase-bar .primary{background:linear-gradient(100deg,#d3a161,#e4bc7d);color:#32183b;border:1px solid #f1d39f;border-radius:4px;min-height:49px;font:500 17px/1.5 var(--serif);letter-spacing:.06em;box-shadow:0 3px 0 #8f6035;padding:11px 14px}
 body.report-v9.modal-open .report-purchase-bar{visibility:hidden}
-body.report-v9 .report-story-shell .report-tools>.secondary{background:#f7e6ca0d;border-color:#cdae7f66;color:#eddbc7}
 body.report-v9 .report-story-shell .companion-banner{border-top-color:#e9d6b74d;background:#1e102736;border-radius:7px;padding-top:21px;padding-bottom:21px}
 body.report-v9 .report-story-shell .report-footer{color:#c5a7d1}
 body.report-v9 .report-story-shell .report-footer>small{color:#b18cbc}

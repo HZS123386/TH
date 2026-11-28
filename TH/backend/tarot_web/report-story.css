@@ -96,6 +96,21 @@ body.report-v8 .report-story-shell .report-spread-stage .card-orientation{displa
 .chapter-answer{padding-top:17px}
 .chapter-answer>p{font-size:14px;line-height:2;color:#d1bdd7;white-space:pre-line;margin:0 0 14px}
 .chapter-answer>p:last-child{margin-bottom:0}
+.tarot-reading-preview-mask {
+  display:grid;
+  gap:0.85em;
+  margin:0.75em 0 0;
+  padding:0.35em 0.15em 0.55em;
+}
+.tarot-reading-preview-mask span {
+  height:0.5em;
+  border-radius:1em;
+  background:repeating-linear-gradient(90deg,#795f8277 0 0.46em,transparent 0.46em 0.62em);
+  filter:blur(2px);
+}
+.tarot-reading-preview-mask span:nth-child(2) { width:94%; }
+.tarot-reading-preview-mask span:nth-child(3) { width:98%; }
+.tarot-reading-preview-mask span:nth-child(4) { width:68%; }
 .chapter-answer>h4{font:400 18px/1.7 var(--serif);color:#dfd7c1;margin:23px 0 10px}
 .report-story-shell .report-chapter .plan-list{margin:17px 0 0;gap:10px}
 .report-story-shell .report-chapter .plan-list>label{padding:12px 11px;gap:10px;border-color:#aeb79834;background:#6b765617}
@@ -110,7 +125,6 @@ body.report-v8 .report-story-shell .report-spread-stage .card-orientation{displa
 .report-purchase-bar .primary{flex:1;min-width:0;min-height:46px;font-size:13px;padding:10px 12px;gap:7px;letter-spacing:.015em;line-height:1.5}
 .report-purchase-bar .primary>.icon{width:16px;height:16px}
 body.report-v8.modal-open .report-purchase-bar{visibility:hidden}
-.report-story-shell .report-tools{margin-top:25px}
 .report-story-shell .companion-banner{margin-top:28px}
 .report-story-shell .report-footer{margin-top:24px;font-size:10px;line-height:1.9}
 html[lang=th] .report-cover>h1{font-size:26px;line-height:1.65;letter-spacing:0}

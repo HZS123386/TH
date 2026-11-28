@@ -1,6 +1,6 @@
 (function(root){
   'use strict';
-  const addFriendUrl='https://line.me/ti/p/TrGGcMWmuV';
+  const addFriendUrl='https://line.me/R/ti/p/TrGGcMWmuV';
   const claimPattern=/^T[1-9][0-9]{4}$/;
 
   function receiptCode(report){
@@ -34,5 +34,5 @@
     }
   }
 
-  root.TarotLine=Object.freeze({addFriendUrl,qrPath:'assets/line-qr.png',receiptCode,newRequestKey,register});
+  root.TarotLine=Object.freeze({addFriendUrl,qrPath:'assets/line-friend-qr.jpg',receiptCode,newRequestKey,register});
 })(typeof window==='undefined'?globalThis:window);
