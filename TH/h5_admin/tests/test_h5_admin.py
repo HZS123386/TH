@@ -14,6 +14,7 @@ from backend.app.config import Settings
 from backend.app.landing_features import owner_for
 from backend.app.main import create_app
 from backend.tests import test_life_reports as life_fixtures
+from h5_admin import service as admin_service
 
 PROFILE, preview, finish = life_fixtures.PROFILE, life_fixtures.preview, life_fixtures.finish
 client = life_fixtures.client
@@ -104,16 +105,23 @@ def test_admin_data_requires_separate_login_and_static_page_has_no_business_data
     assert http.get("/api/admin/page-diagnostics").status_code == 403
 
 
-def test_visit_funnels_count_form_and_historical_welcome_entries(admin):
+def test_visit_funnels_only_count_tagged_form_and_historical_welcome_entries(admin, monkeypatch):
     http, app = admin
     now = time.time()
+    monkeypatch.setattr(admin_service, "VISIT_FUNNEL_START", datetime.fromtimestamp(now, ZoneInfo("Asia/Shanghai")) - timedelta(days=10))
     welcome = ("welcome", "view", "action", "visible")
     welcome_click = ("welcome", "click_welcome_start", "action", "visible")
     birth_form = ("birth_form", "view", "action", "visible")
     generate_click = ("birth_form", "click_generate_report", "action", "visible")
+    generation_page = ("generating_preview", "view", "action", "visible")
+    free_report = ("preview_report", "report_ready", "action", "visible")
     line_click = ("preview_report", "click_line", "action", "visible")
+    phone = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) Mobile/15E148 Instagram"}
+    safari = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/18.6 Safari/605.1.15"}
+    windows = {"Sec-CH-UA-Platform": '"Windows"', "Sec-CH-UA-Mobile": "?0"}
+    tablet = {"Sec-CH-UA-Platform": '"Android"', "Sec-CH-UA-Mobile": "?0"}
 
-    def visit(browser, events, *, source="meta", campaign="ad-funnel-test"):
+    def visit(browser, events, *, source="meta", campaign="ad-funnel-test", device_headers=None):
         visit_id = str(uuid4())
         activity = []
         for seq, (page, action, kind, state) in enumerate(events, 1):
@@ -121,23 +129,29 @@ def test_visit_funnels_count_form_and_historical_welcome_entries(admin):
                 page_view_id = str(uuid4())
             activity.append({"sequence": seq, "page_view_id": page_view_id, "page": page, "action": action,
                              "kind": kind, "state": state, "occurred_at": now, "visible_ms": 0})
-        result = http.post("/api/landing/visits", headers={"X-Report-Key": browser * 32}, json={
+        headers = {"X-Report-Key": browser * 32, **(device_headers or {})}
+        result = http.post("/api/landing/visits", headers=headers, json={
             "id": visit_id, "source": source, "campaign": campaign, "events": activity,
         })
         assert result.status_code == 200, result.text
         return visit_id
 
     visit("a", [welcome, welcome_click, welcome_click, birth_form, ("birth_form", "view", "state", "visible"),
-                ("history", "view", "action", "visible"), birth_form, generate_click, generate_click, line_click])
-    visit("a", [("welcome", "view", "state", "visible"), birth_form, generate_click, line_click, line_click])
+                ("history", "view", "action", "visible"), birth_form, generate_click, generate_click, generation_page,
+                ("generating_preview", "view", "state", "visible"), free_report, line_click], device_headers=phone)
+    visit("a", [("welcome", "view", "state", "visible"), birth_form, generate_click, generation_page, free_report,
+                line_click, line_click], device_headers=phone)
     visit("b", [welcome, birth_form, ("generating_preview", "generate", "action", "visible"),
+                ("preview_report", "report_ready", "action", "hidden"),
                 ("preview_report", "click_line", "state", "visible"),
-                ("preview_report", "open_line_contact", "action", "visible")])
-    visit("c", [welcome, welcome_click, birth_form, generate_click, line_click], campaign="")
+                ("preview_report", "open_line_contact", "action", "visible")], device_headers=safari)
+    visit("c", [welcome, welcome_click, birth_form, generate_click, generation_page, free_report, line_click],
+          campaign="", device_headers=windows)
     visit("d", [("welcome", "view", "action", "hidden"), birth_form, line_click])
-    visit("g", [welcome], source="", campaign="")
+    visit("g", [welcome, birth_form, generate_click, generation_page, free_report, line_click], source="", campaign="", device_headers=phone)
+    visit("i", [birth_form, generate_click, line_click], source="", device_headers=windows)
     visit("h", [("birth_form", "view", "action", "hidden"),
-                ("birth_form", "form_progress_empty", "state", "visible"), generate_click, line_click])
+                ("birth_form", "form_progress_empty", "state", "visible"), line_click, generate_click, generation_page], device_headers=tablet)
     older = visit("e", [welcome, line_click])
     expired = visit("f", [welcome, line_click])
     with app.state.store.connect() as db:
@@ -156,32 +170,42 @@ def test_visit_funnels_count_form_and_historical_welcome_entries(admin):
     }
 
     path = "/api/admin/visit-funnel"
-    week = {"entry_people": 6, "entry_visits": 7,
-            "welcome_people": 4, "welcome_visits": 5,
-            "birth_form_people": 5, "birth_form_visits": 6, "birth_form_views": 7,
-            "generate_click_people": 3, "generate_click_visits": 4, "generate_clicks": 5,
-            "line_click_people": 4, "line_click_visits": 5, "line_clicks": 6}
+    week = {"entry_people": 4, "entry_visits": 5,
+            "welcome_people": 2, "welcome_visits": 3,
+            "birth_form_people": 4, "birth_form_visits": 5, "birth_form_views": 6,
+            "generate_click_people": 2, "generate_click_visits": 3, "generate_clicks": 4,
+            "line_click_people": 3, "line_click_visits": 4, "line_clicks": 5,
+            "report_flow": {"generation_page": {"people": 2, "visits": 3, "events": 3},
+                            "free_report": {"people": 1, "visits": 2, "events": 2}, "line_after_generate_visits": 2},
+            "devices": {"mobile": {"people": 2, "visits": 3, "events": 4},
+                        "desktop": {"people": 1, "visits": 1, "events": 1},
+                        "unknown": {"people": 1, "visits": 1, "events": 1}}}
     assert http.get(path, params={"days": 7}).json() == week
     assert http.get(path, params={"days": 0}).json() == {
-        **week, "entry_people": 7, "entry_visits": 8,
-        "welcome_people": 5, "welcome_visits": 6, "line_click_people": 5, "line_click_visits": 6, "line_clicks": 7,
+        **week, "entry_people": 5, "entry_visits": 6,
+        "welcome_people": 3, "welcome_visits": 4, "line_click_people": 4, "line_click_visits": 5, "line_clicks": 6,
     }
 
     login(http, "support-test")
     assert http.get(path).status_code == 403
 
 
-def test_visit_funnel_filters_inclusive_beijing_dates(admin):
+def test_visit_funnel_filters_inclusive_beijing_dates_and_start_time(admin, monkeypatch):
     http, app = admin
     zone = ZoneInfo("Asia/Shanghai")
     previous_day = datetime.now(zone).date() - timedelta(days=1)
     start = datetime.combine(previous_day, datetime.min.time(), zone).timestamp()
     midnight = datetime.combine(previous_day + timedelta(days=1), datetime.min.time(), zone).timestamp()
+    first_visit = datetime.combine(previous_day, datetime.min.time(), zone).replace(hour=17, minute=5)
+    monkeypatch.setattr(admin_service, "VISIT_FUNNEL_START", first_visit)
+    cutoff = first_visit.timestamp()
     with app.state.store.connect() as db:
-        for index, stamp in enumerate((start - 1, start, midnight - 1, midnight)):
+        visits = [(start - 1, "desktop", "promo"), (cutoff - 1, "desktop", "promo"), (cutoff, "mobile", "promo"),
+                  (midnight - 1, "mobile", "promo"), (midnight, "desktop", "promo"), (cutoff, "desktop", "")]
+        for index, (stamp, device, campaign) in enumerate(visits):
             identifier = f"range-{index}"
-            db.execute("INSERT INTO landing_visits(id,owner,source,campaign,visited_at) VALUES(%s,%s,'','',%s)",
-                       (identifier, "range-owner", stamp))
+            db.execute("INSERT INTO landing_visits(id,owner,source,campaign,visited_at,device_type) VALUES(%s,%s,'meta',%s,%s,%s)",
+                       (identifier, "range-owner", campaign, stamp, device))
             db.execute("""
                 INSERT INTO landing_visit_activity(visit_id,sequence,page_view_id,page,action,state,kind,occurred_at,received_at,visible_ms)
                 VALUES(%s,1,%s,'birth_form','view','visible','action',%s,%s,0)
@@ -193,6 +217,8 @@ def test_visit_funnel_filters_inclusive_beijing_dates(admin):
     assert response.status_code == 200
     metrics = response.json()
     assert (metrics["birth_form_people"], metrics["birth_form_visits"], metrics["birth_form_views"]) == (1, 2, 2)
+    assert metrics["devices"] == {"mobile": {"people": 1, "visits": 2, "events": 2}}
+    assert http.get(path, params={"days": 0}).json()["birth_form_views"] == 3
     assert http.get(path, params={"start_date": chosen}).status_code == 422
     invalid = http.get(path, params={"start_date": (previous_day + timedelta(days=1)).isoformat(), "end_date": chosen})
     assert invalid.status_code == 422 and invalid.json()["code"] == "admin_visit_range_invalid"

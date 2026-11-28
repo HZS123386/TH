@@ -58,7 +58,7 @@ const views = {
   overview: ['数据总览', '从访问到报告交付，查看每一个关键环节。'],
   visits: ['访问与来源', '查看每次访问的填写进度、前台停留和最后记录。'],
   'page-diagnostics': ['页面停留与错误', '比较 H5 各页的前台停留时间，查看出错的环节和已记录的原因。'],
-  'visit-funnel': ['H5 访问漏斗', '查看从填写资料到点击 LINE 的各步数据。'],
+  'visit-funnel': ['H5 访问漏斗', '查看投放访客从进入资料填写页到点击 LINE 的各步数据。'],
   'ad-funnel': ['广告转化', '查看带投放标签的访客，从进入 H5 到点击 LINE 的各步人数。'],
   reports: ['报告管理', '查看生成状态、解锁权限，追踪每一份报告。'],
   orders: ['订单与支付', '区分订单创建、到账核验和报告权益。'],
@@ -226,7 +226,8 @@ const verifiedOrdersRoute = 'orders?time_basis=verified';
 const lineSentRoute = 'line-contacts?delivery=sent';
 const firstReportsRoute = 'reports?report_scope=first';
 const lineSentTitle = '已登记发送';
-const visitFunnelStartDate = '2026-11-20';
+const visitFunnelStart = '2026-11-20 17:05';
+const visitFunnelStartDate = visitFunnelStart.slice(0, 10);
 const reportEditionNames = { preview: '免费报告', full: '完整报告' };
 const loadReportRuntime = () => import('/thai-landing/runtime/report-pdf.js').catch(() => {
   throw new Error('PDF_runtime_unavailable');
@@ -425,16 +426,19 @@ async function loadView({ refresh = false } = {}) {
   let visitRange;
   if (isVisitFunnel) {
     const today = beijingDay().toISOString().slice(0, 10);
+    const firstDay = today < visitFunnelStartDate ? today : visitFunnelStartDate;
     visitRange = state.visitRange ?? {
-      start_date: today < visitFunnelStartDate ? today : visitFunnelStartDate,
+      start_date: firstDay,
       end_date: today,
     };
     const from = $('#visit-range-start');
     const through = $('#visit-range-end');
+    from.min = through.min = firstDay;
     from.max = through.max = today;
     from.value = visitRange.start_date;
     through.value = visitRange.end_date;
-    $('#visit-applied-range').textContent = `${visitRange.start_date} 至 ${visitRange.end_date}（北京时间）`;
+    const start = visitRange.start_date === visitFunnelStartDate ? visitFunnelStart : visitRange.start_date;
+    $('#visit-applied-range').textContent = `${start} 至 ${visitRange.end_date}（北京时间）`;
     $('#visit-range-error').hidden = true;
     state.funnelMetrics = null;
   }
@@ -732,11 +736,16 @@ function renderPageDiagnostics(data) {
 }
 function renderVisitFunnel(metrics) {
   const measure = state.funnelMeasure;
+  const flow = metrics.report_flow;
   const steps = [
     ['进入资料填写页', { people: metrics.birth_form_people, visits: metrics.birth_form_visits, events: metrics.birth_form_views }, '次打开'],
     ['点击生成报告', { people: metrics.generate_click_people, visits: metrics.generate_click_visits, events: metrics.generate_clicks }, '次点击'],
+    ['进入报告生成页', flow.generation_page, '次打开'],
+    ['免费报告就绪', flow.free_report, '次展示'],
     ['点击 LINE 按钮', { people: metrics.line_click_people, visits: metrics.line_click_visits, events: metrics.line_clicks }, '次点击'],
   ];
+  const conversion = metrics.generate_click_visits ? (100 * flow.line_after_generate_visits / metrics.generate_click_visits).toFixed(1) + '%' : '—';
+  const devices = [['mobile', '手机 / 平板'], ['desktop', '电脑'], ['unknown', '未识别']];
   $('#content').innerHTML = `
     <section class="panel" aria-label="H5 访问步骤"><div class="panel-body">
       <dl class="visit-funnel">${steps.map(([name, counts, eventUnit]) => `
@@ -744,8 +753,17 @@ function renderVisitFunnel(metrics) {
           <dt>${name}</dt>
           <dd><strong>${number(counts[measure])}</strong> ${{ people: '人', visits: '人次', events: eventUnit }[measure]}</dd>
         </div>`).join('')}</dl>
+      <p class="data-note">同一次访问中先点击生成报告、再点击 LINE 的有 ${number(flow.line_after_generate_visits)} 人次，转化率 ${conversion}。</p>
     </div></section>
-    <p class="data-note">按北京时间的访问开始日期筛选，包含起止当天。人数按浏览器去重，人次按访问去重，次数按打开或点击累计。访问记录保留最近 30 天。<a href="#sources">统计口径 ↗</a></p>`;
+    <p class="data-note">仅统计同时带有来源和活动标签的投放访问。按北京时间的访问开始日期筛选，包含起止当天。人数按浏览器去重，人次按访问去重，次数按打开或点击累计。访问记录保留最近 30 天。<a href="#sources">统计口径 ↗</a></p>
+    <section class="panel table-panel" aria-labelledby="visit-device-title">
+      <div class="panel-header"><h3 id="visit-device-title">进入设备</h3></div>
+      ${table(['设备类型', '人数', '人次', '次数'], devices.map(([key, label]) => {
+        const {people, visits, events} = metrics.devices[key] ?? {};
+        return `<tr><th scope="row">${label}</th><td>${number(people)}</td><td>${number(visits)}</td><td>${number(events)}</td></tr>`;
+      }), true)}
+    </section>
+    <p class="data-note">按实际打开资料填写页统计。缺少设备信息的访问计入「未识别」。</p>`;
 }
 function renderAdFunnel(metrics) {
   const steps = [

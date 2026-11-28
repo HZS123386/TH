@@ -4,7 +4,7 @@ import time
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Response
+from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import Field, StrictBool, model_validator
 
 from .schemas import Input
@@ -16,6 +16,19 @@ Key = Annotated[str, Header(alias="X-Report-Key", min_length=32, max_length=128,
 
 def owner_for(key):
     return "life:" + hashlib.sha256(key.encode()).hexdigest()
+
+
+def device_from_headers(headers):
+    platform = headers.get("sec-ch-ua-platform", "").strip(' "').lower()
+    agent = headers.get("user-agent", "").lower()
+    # A tablet can report ?0, so use its platform or User-Agent before checking for desktop.
+    if (headers.get("sec-ch-ua-mobile") == "?1" or platform in ("android", "ios", "ipados")
+            or any(marker in agent for marker in ("android", "iphone", "ipad", "ipod", "mobile", "kindle", "silk/"))):
+        return "mobile"
+    if (platform in ("windows", "macos", "linux", "chrome os")
+            or any(marker in agent for marker in ("windows nt", "macintosh", "x11", "cros", "linux"))):
+        return "desktop"
+    return None
 
 
 class VisitActivity(Input):
@@ -79,15 +92,18 @@ class ConsentInput(Input):
     granted: StrictBool
 
 
-def record_visit(db, body, owner):
+def record_visit(db, body, owner, *, device_type=None):
     now = time.time()
     cutoff = now - VISIT_RETENTION_SECONDS
     db.execute("DELETE FROM landing_visits WHERE visited_at < %s", (cutoff,))
     db.execute("DELETE FROM landing_visitors WHERE last_visited_at < %s", (cutoff,))
     db.execute("""
-        INSERT INTO landing_visits(id,owner,source,campaign,visited_at,region_code)
-        VALUES(%s,%s,%s,%s,%s,%s) ON CONFLICT(id) DO NOTHING
-    """, (str(body.id), owner, body.source, body.campaign, now, body.region))
+        INSERT INTO landing_visits(id,owner,source,campaign,visited_at,region_code,device_type)
+        VALUES(%s,%s,%s,%s,%s,%s,%s)
+        ON CONFLICT(id) DO UPDATE SET device_type=EXCLUDED.device_type
+        WHERE landing_visits.owner=EXCLUDED.owner AND landing_visits.device_type IS NULL
+          AND EXCLUDED.device_type IS NOT NULL
+    """, (str(body.id), owner, body.source, body.campaign, now, body.region, device_type))
     row = db.execute("SELECT owner,visited_at,source,campaign,region_code FROM landing_visits WHERE id=%s FOR UPDATE",
                      (str(body.id),)).fetchone()
     if row is None or row["owner"] != owner:
@@ -143,9 +159,9 @@ class LandingFeatures:
     def __init__(self, store, settings, reports):
         self.store, self.settings, self.reports = store, settings, reports
 
-    def visit(self, body, owner):
+    def visit(self, body, owner, *, device_type=None):
         with self.store.connect() as db:
-            record_visit(db, body, owner)
+            record_visit(db, body, owner, device_type=device_type)
 
     def event(self, visit_id, body, owner):
         report = self.reports.row(body.report_id, owner)
@@ -197,8 +213,8 @@ def landing_router(service):
         return {"accepted": True, "notice_version": NOTICE_VERSION}
 
     @router.post("/visits")
-    async def visit(body: VisitInput, key: Key):
-        service.visit(body, owner_for(key))
+    async def visit(body: VisitInput, key: Key, request: Request):
+        service.visit(body, owner_for(key), device_type=device_from_headers(request.headers))
         return {"ok": True, "accepted_sequences": [event.sequence for event in body.events]}
 
     @router.post("/visits/{visit_id}/events")

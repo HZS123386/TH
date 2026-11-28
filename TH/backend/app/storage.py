@@ -35,7 +35,7 @@ class Storage:
                 version = db.execute("SELECT version_num FROM alembic_version").fetchone()
         except psycopg.Error:
             raise RuntimeError("PostgreSQL is unavailable or the FATE schema has not been installed.") from None
-        if version is None or version["version_num"] != "20261126_merge_h5_integrity":
+        if version is None or version["version_num"] != "20261128_landing_device_stats":
             raise RuntimeError("Apply the FATE PostgreSQL migrations before starting the backend.")
 
     def login(self, hours: int):

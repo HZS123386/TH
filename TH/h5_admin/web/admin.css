@@ -815,6 +815,14 @@ nav {
   width: 80%;
   background: #f2effd;
 }
+.visit-funnel-step:nth-child(4) {
+  width: 75%;
+  background: #f5f2fd;
+}
+.visit-funnel-step:nth-child(5) {
+  width: 70%;
+  background: #f7f5fe;
+}
 .visit-funnel-step dt {
   font-size: 14px;
   font-weight: 600;

@@ -32,6 +32,7 @@ VERIFIED_LIVE = "environment='live' AND status='paid'"
 LINE_SENT_REPORTS = "preview IS NOT NULL AND line_sent_at >= %s"
 LINE_PAGE_SIZE = 25
 BEIJING = ZoneInfo("Asia/Shanghai")
+VISIT_FUNNEL_START = datetime(2026, 11, 20, 17, 5, tzinfo=BEIJING)
 # Report attribution comes from the snapshot stored at creation.
 BASE = f"""WITH active_visits AS (
  SELECT * FROM landing_visits
@@ -146,9 +147,12 @@ SOURCES = [
     {"name": "访问与渠道", "table": "landing_visits / landing_visitors / landing_visit_reports", "origin": "H5 资料填写页访问埋点及提交、查看预览事件",
      "rule": "进入填写页时开始上报。重新打开入口按本次链接标签记为新访问，刷新和返回恢复原访问。访客按匿名浏览器去重，首次日期按北京时间。访问记录保留最近 30 天，编号在 30 天未访问后过期。"},
     {"name": "H5 访问漏斗", "table": "landing_visits / landing_visit_activity", "origin": "欢迎页、资料填写页及报告按钮的 H5 事件",
-     "rule": "包含所有来源。从欢迎页或填写页可见的访问开始，按北京时间的访问开始日期筛选，包含起止当天，最多保留 30 天。"
+     "rule": "仅统计同时带有来源和活动标签的投放访问。从欢迎页或填写页可见的访问开始，按北京时间的访问开始日期筛选，包含起止当天，最多保留 30 天。"
+             "本漏斗统计起点为北京时间 2026 年 11 月 20 日 17:05。报告生成页按可见的打开记录计次，免费报告按页面记录的就绪事件计次。"
              "每一步的人数按匿名浏览器去重，人次按访问编号去重，次数按页面打开或按钮点击累计。"
-             "进入 H5 按访问编号计次，填写页按同一次访问中的页面打开计次，生成报告和 LINE 按按钮事件计次。生成报告按钮包含表单校验未通过的点击。按钮埋点启用前的点击无法回溯。"},
+             "进入 H5 按访问编号计次，填写页按同一次访问中的页面打开计次，生成报告和 LINE 按按钮事件计次。生成报告按钮包含表单校验未通过的点击。按钮埋点启用前的点击无法回溯。"
+             "生成到 LINE 的转化按同一次访问中先点击生成、后点击 LINE 的人次计算。"
+             "设备统计使用浏览器请求中的设备提示，按打开资料填写页的访问分组。手机包含可识别的平板，缺少设备信息的访问归为未识别。"},
     {"name": "广告转化", "table": "landing_visits / landing_visit_activity", "origin": "带来源和活动标签的 H5 访问及同一次访问的操作事件",
      "rule": "按访问开始时间筛选，最多保留最近 30 天。同一步按浏览器去重。新访问从填写页开始，历史欢迎页访问和按钮点击仍可回看。广告平台链接点击数尚未接入。"},
     {"name": "次日回访人数", "table": "landing_visits / landing_visit_activity", "origin": "新访问、打开页面或恢复前台的记录",
@@ -348,11 +352,13 @@ class H5Admin:
                 error["description"] = MESSAGES[error["code"]][0]
         return {"pages": pages, "errors": errors}
 
-    def visit_funnel(self, days, *, tagged_only=False, visit_range=None):
+    def visit_funnel(self, days, *, ad_summary=False, visit_range=None):
         start, end = visit_range if visit_range else (self.cutoff(days), None)
+        if not ad_summary:
+            start = max(start, VISIT_FUNNEL_START.timestamp())
         metrics = self.rows("""
             , funnel_visits AS (
-                SELECT v.id, v.owner,
+                SELECT v.id, v.owner, v.device_type,
                     BOOL_OR(a.page='welcome' AND a.action='view' AND a.state='visible') AS welcome,
                     BOOL_OR(a.page='welcome' AND a.kind='action' AND a.action='click_welcome_start') AS welcome_click,
                     COUNT(DISTINCT a.page_view_id) FILTER (
@@ -362,14 +368,33 @@ class H5Admin:
                     COUNT(*) FILTER (
                         WHERE a.page='birth_form' AND a.kind='action' AND a.action='click_generate_report'
                     ) AS generate_clicks,
-                    COUNT(*) FILTER (WHERE a.page='preview_report' AND a.kind='action' AND a.action='click_line') AS line_clicks
+                    COUNT(*) FILTER (WHERE a.page='preview_report' AND a.kind='action' AND a.action='click_line') AS line_clicks,
+                    COUNT(DISTINCT a.page_view_id) FILTER (
+                        WHERE a.page='generating_preview' AND a.state='visible'
+                          AND (a.action='view' OR (a.kind='state' AND a.action<>'leave_page'))
+                    ) AS generation_page_views,
+                    COUNT(DISTINCT a.page_view_id) FILTER (
+                        WHERE a.page='preview_report' AND a.state='visible' AND a.action='report_ready'
+                    ) AS free_report_views,
+                    MIN(a.sequence) FILTER (
+                        WHERE a.page='birth_form' AND a.kind='action' AND a.action='click_generate_report'
+                    ) AS first_generate_click,
+                    MAX(a.sequence) FILTER (
+                        WHERE a.page='preview_report' AND a.kind='action' AND a.action='click_line'
+                    ) AS last_line_click
                 FROM active_visits v JOIN landing_visit_activity a ON a.visit_id=v.id
                 WHERE v.visited_at>=%s AND (%s::double precision IS NULL OR v.visited_at<%s)
-                  AND (NOT %s OR (v.source<>'' AND v.campaign<>''))
+                  AND v.source<>'' AND v.campaign<>''
                   AND a.kind IN ('action','state')
-                  AND (a.action IN ('view','click_welcome_start','click_generate_report','click_line')
-                       OR (a.page='birth_form' AND a.kind='state' AND a.state='visible' AND a.action<>'leave_page'))
-                GROUP BY v.id,v.owner
+                  AND (a.action IN ('view','click_welcome_start','click_generate_report','report_ready','click_line')
+                       OR (a.page IN ('birth_form','generating_preview') AND a.kind='state'
+                           AND a.state='visible' AND a.action<>'leave_page'))
+                GROUP BY v.id,v.owner,v.device_type
+            ), device_counts AS (
+                SELECT COALESCE(device_type,'unknown') AS device,
+                    COUNT(DISTINCT owner) AS people, COUNT(*) AS visits, SUM(birth_form_views)::bigint AS events
+                FROM funnel_visits WHERE birth_form_views > 0 AND NOT %s
+                GROUP BY COALESCE(device_type,'unknown')
             )
             SELECT COUNT(*) AS entry_visits, COUNT(DISTINCT owner) AS entry_people,
                 COUNT(*) FILTER (WHERE welcome) AS welcome_visits,
@@ -383,12 +408,28 @@ class H5Admin:
                 COALESCE(SUM(generate_clicks), 0)::bigint AS generate_clicks,
                 COUNT(DISTINCT owner) FILTER (WHERE line_clicks > 0) AS line_click_people,
                 COUNT(*) FILTER (WHERE line_clicks > 0) AS line_click_visits,
-                COALESCE(SUM(line_clicks), 0)::bigint AS line_clicks
+                COALESCE(SUM(line_clicks), 0)::bigint AS line_clicks,
+                jsonb_build_object(
+                    'generation_page', jsonb_build_object(
+                        'people', COUNT(DISTINCT owner) FILTER (WHERE generation_page_views > 0),
+                        'visits', COUNT(*) FILTER (WHERE generation_page_views > 0),
+                        'events', COALESCE(SUM(generation_page_views), 0)::bigint
+                    ),
+                    'free_report', jsonb_build_object(
+                        'people', COUNT(DISTINCT owner) FILTER (WHERE free_report_views > 0),
+                        'visits', COUNT(*) FILTER (WHERE free_report_views > 0),
+                        'events', COALESCE(SUM(free_report_views), 0)::bigint
+                    ),
+                    'line_after_generate_visits', COUNT(*) FILTER (WHERE first_generate_click < last_line_click)
+                ) AS report_flow,
+                (SELECT COALESCE(jsonb_object_agg(device, to_jsonb(device_counts) - 'device'), '{}'::jsonb)
+                 FROM device_counts) AS devices
             FROM funnel_visits WHERE welcome OR birth_form_views > 0
-        """, (start, end, end, tagged_only))[0]
-        if tagged_only:
+        """, (start, end, end, ad_summary))[0]
+        if ad_summary:
             del metrics["birth_form_views"], metrics["generate_clicks"], metrics["line_clicks"]
             del metrics["birth_form_visits"], metrics["generate_click_visits"], metrics["line_click_visits"]
+            del metrics["devices"], metrics["report_flow"]
         else:
             del metrics["welcome_click_people"]
         return metrics
@@ -853,7 +894,7 @@ def admin_router(service):
 
     @router.get("/ad-funnel")
     def ad_funnel(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
-        return service.visit_funnel(days, tagged_only=True)
+        return service.visit_funnel(days, ad_summary=True)
 
     @router.get("/sources")
     def sources(current=Depends(only_admin)):

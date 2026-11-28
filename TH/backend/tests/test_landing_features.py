@@ -59,13 +59,17 @@ def test_visit_is_deduplicated_immutable_and_rejects_personal_fields(client):
     http, app, _, _ = client
     visit_id = visit(http)
     url = "/api/landing/visits"
-    assert http.post(url, json={"id": visit_id, "source": "changed"}, headers=HEADERS).status_code == 200
+    mobile = {**HEADERS, "User-Agent": "Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36 [FBAN/FB4A]"}
+    desktop = {**HEADERS, "Sec-CH-UA-Platform": '"Windows"', "Sec-CH-UA-Mobile": "?0"}
+    assert http.post(url, json={"id": visit_id, "source": "changed"}, headers=mobile).status_code == 200
+    assert http.post(url, json={"id": visit_id}, headers=desktop).status_code == 200
     assert http.post(url, json={"id": visit_id}, headers=OTHER).status_code == 404
     assert http.post(url, json={"id": str(uuid4()), "birth_date": "1995-08-17"}, headers=HEADERS).status_code == 422
     assert http.post(url, json={"id": str(uuid4()), "source": "name@example.com"}, headers=HEADERS).status_code == 422
     with app.state.life_reports.store.connect() as db:
         rows = db.execute("SELECT * FROM landing_visits").fetchall()
     assert len(rows) == 1 and rows[0]["source"] == "facebook"
+    assert rows[0]["device_type"] == "mobile"
 
 
 def test_visitor_number_keeps_first_region_and_beijing_date(client, monkeypatch):
@@ -180,7 +184,8 @@ def test_new_report_saves_first_entry_and_reuse_preserves_attribution(client):
     assert http.post("/api/landing/visits", json=first, headers=HEADERS).status_code == 200
     later = {"id": str(uuid4()), "source": "tiktok", "campaign": "new-promo", "region": "VN"}
     body = {"profile": PROFILE, "year": 2027}
-    created = http.post("/api/life-reports", json={**body, "landing_visit": later}, headers=HEADERS)
+    desktop = {**HEADERS, "Sec-CH-UA-Platform": '"Windows"', "Sec-CH-UA-Mobile": "?0"}
+    created = http.post("/api/life-reports", json={**body, "landing_visit": later}, headers=desktop)
     assert created.status_code == 200, created.text
     report_id = created.json()["id"]
     assert created.json()["preview_state"] == "ready"
@@ -192,8 +197,9 @@ def test_new_report_saves_first_entry_and_reuse_preserves_attribution(client):
         assert (row["landing_source"], row["landing_campaign"], row["landing_region"]) == ("facebook", "fortune_th_nov", "TH")
         assert "landing_visit" not in json.loads(row["input"])
         assert db.execute("SELECT region_code FROM landing_visits WHERE id=%s", (later["id"],)).fetchone()["region_code"] == "VN"
-        visit_row = db.execute("SELECT submitted_at,seen_at FROM landing_visits WHERE id=%s", (later["id"],)).fetchone()
+        visit_row = db.execute("SELECT submitted_at,seen_at,device_type FROM landing_visits WHERE id=%s", (later["id"],)).fetchone()
         assert visit_row["submitted_at"] is not None and visit_row["seen_at"] is None
+        assert visit_row["device_type"] == "desktop"
         assert db.execute("SELECT report_id FROM landing_visit_reports WHERE visit_id=%s", (later["id"],)).fetchone()["report_id"] == report_id
 
     return_visit = {**later, "id": str(uuid4())}

@@ -23,7 +23,7 @@ from . import marriage_report, thai
 from .astrology import CHAPTERS as WESTERN_CHAPTERS, FORECAST_VERSION, QUESTIONS as WESTERN_QUESTIONS, TITLES as WESTERN_TITLES, VERSION as WESTERN_VERSION, RoxyAstrology, western
 from .bazi_reports import preview_review_deadline_context, report_progress_context, report_usage_context
 from .roxy import RoxyError
-from .landing_features import VisitInput, record_submission, record_visit
+from .landing_features import VisitInput, device_from_headers, record_submission, record_visit
 from .life_card_payments import CARD_AMOUNT, SIMULATED_AMOUNT, SIMULATED_MERCHANT, SUNLANDS_AMOUNT, LifeCardPayments
 from .life_report_content import (
     CAREER_COPY, CAREER_VERSION, CHAPTERS, FORTUNE_CHAPTERS, FORTUNE_TOPICS, FORTUNE_VERSION,
@@ -372,7 +372,7 @@ class LifeReports:
             raise HTTPException(404, "life_submission_not_found")
         return self.public(row)
 
-    async def create(self, body, owner, network, *, wait=True, submission_id=None):
+    async def create(self, body, owner, network, *, wait=True, submission_id=None, visit_device=None):
         snapshot = body.model_dump(mode="json", exclude=None if body.career else {"career"})
         if body.report_kind == "life":
             snapshot.pop("report_kind")
@@ -423,7 +423,7 @@ class LifeReports:
                 if body.landing_visit is not None:
                     try:
                         with db.transaction():
-                            record_visit(db, body.landing_visit, owner)
+                            record_visit(db, body.landing_visit, owner, device_type=visit_device)
                             if not existing:
                                 attribution = db.execute("""
                                     SELECT visitor_number,first_source,first_campaign,region_code
@@ -1421,7 +1421,8 @@ def life_report_router(service):
                      submission_id: Annotated[UUID | None, Header(alias="Idempotency-Key")] = None):
         owner, network = scopes(key, request)
         try:
-            return await service.create(body, owner, network, wait=wait, submission_id=submission_id)
+            return await service.create(body, owner, network, wait=wait, submission_id=submission_id,
+                                        visit_device=device_from_headers(request.headers) if body.landing_visit else None)
         except RuntimeError as error:
             raise HTTPException(503, str(error)) from None
 
