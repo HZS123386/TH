@@ -5,6 +5,7 @@ from copy import deepcopy
 import json
 import re
 import time
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 import httpx
@@ -135,6 +136,36 @@ def test_preview_is_personal_and_does_not_return_paid_chapters(client):
     assert "birth_date" not in json.dumps(calls[0])
     assert all(len(row["evidence"]) == 2 for row in result["preview"]["traits"])
     assert preview(http)["id"] == result["id"] and len(calls) == 1
+
+
+def test_submission_recovers_only_its_owned_report_across_retries(client, monkeypatch):
+    http, app, _, _ = client
+    submission = str(uuid4())
+    path = f"/api/life-reports/submissions/{submission}"
+    body = {"profile": PROFILE, "year": 2027}
+    headers = {**HEADERS, "Idempotency-Key": submission}
+    assert http.get(path, headers=HEADERS).status_code == 404
+
+    def submit():
+        result = http.post("/api/life-reports?wait=false", json=body, headers=headers)
+        assert result.status_code == 200, result.text
+        return result.json()["id"]
+
+    with ThreadPoolExecutor(2) as pool:
+        ids = list(pool.map(lambda _: submit(), range(2)))
+    report_id = ids[0]
+    assert ids == [report_id, report_id]
+    assert http.get(path, headers=HEADERS).json()["id"] == report_id
+    assert http.get(path, headers={"X-Report-Key": "different-test-device-with-a-long-owner-key"}).status_code == 404
+    finished = http.post("/api/life-reports", json=body, headers=headers).json()
+    assert (finished["id"], finished["preview_state"]) == (report_id, "ready")
+    # A new writer version changes ordinary deduplication, but not an accepted submission.
+    monkeypatch.setattr("backend.app.life_reports.VERSION", "new-writing-version")
+    assert submit() == report_id
+    assert http.post("/api/life-reports?wait=false", json={**body, "year": 2028}, headers=headers).status_code == 409
+    with app.state.store.connect() as db:
+        assert db.execute("SELECT count(*) AS n FROM life_reports").fetchone()["n"] == 1
+        assert db.execute("SELECT count(*) AS n FROM life_report_submissions").fetchone()["n"] == 1
 
 
 def test_fortune_topics_unlock_with_distinct_evidence_and_content_progress(client):
@@ -1182,8 +1213,11 @@ def test_postgres_import_preserves_sunlands_receipt_and_unlock(tmp_path, postgre
         assert db.execute("SELECT number FROM life_simulated_payment_sequence").fetchone()["number"] == 17
 
 
-@pytest.mark.parametrize("postgres_url", ["20261119_merge_order_western", "20261120_claim_code"], indirect=True)
-def test_line_migration_accepts_both_branch_heads(postgres_url):
+@pytest.mark.parametrize("postgres_url", [
+    "20261119_merge_order_western", "20261120_claim_code", "20261124_report_link_integrity",
+    "20261126_h5_recovery_stats",
+], indirect=True)
+def test_line_migration_preserves_reports_from_supported_revisions(postgres_url):
     from pathlib import Path
 
     from alembic import command
@@ -1196,13 +1230,14 @@ def test_line_migration_accepts_both_branch_heads(postgres_url):
         db.execute("INSERT INTO life_reports(id,owner,fingerprint,input,chart,created) "
                    "VALUES ('existing-report','life:owner','fingerprint','{}','{}',100)")
         old_code = (db.execute("SELECT claim_code FROM life_reports").fetchone()["claim_code"]
-                    if before == "20261120_claim_code" else None)
+                    if before != "20261119_merge_order_western" else None)
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     config.attributes["database_url"] = postgres_url
     command.upgrade(config, "head")
+    store.verify_schema()
     with store.connect() as db:
         assert db.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            {"version_num": "20261120_merge_line_reports"}
+            {"version_num": "20261126_merge_h5_integrity"}
         ]
         saved = db.execute("SELECT claim_code,unlocked FROM life_reports WHERE id='existing-report'").fetchone()
         assert saved["unlocked"] == 0 and 10000 <= saved["claim_code"] <= 99999

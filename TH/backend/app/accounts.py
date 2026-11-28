@@ -5,6 +5,7 @@ import secrets
 # OWASP's 32 MiB scrypt configuration; password work runs off the event loop.
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**15, 8, 3
 H5_LOGIN_SECONDS = 600
+H5_LOGIN_RETENTION_AFTER_EXPIRY = 7 * 86400 - H5_LOGIN_SECONDS
 
 
 def new_h5_login_code() -> str:

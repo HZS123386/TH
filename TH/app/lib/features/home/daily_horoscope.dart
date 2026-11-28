@@ -99,6 +99,8 @@ class _DailyHoroscopePageState extends State<DailyHoroscopePage> {
               key: ValueKey(model.birthSign),
               selectedSign: sign,
               onSelected: (selected) {
+                if (selected == sign) return;
+                FateMotion.selectionFeedback();
                 if (model.birthSign != null) {
                   setState(() => _previewSign = selected);
                 } else {
@@ -108,7 +110,10 @@ class _DailyHoroscopePageState extends State<DailyHoroscopePage> {
             ),
             if (sign != null) ...[
               const SizedBox(height: 20),
-              _ReadingCard(model: model, home: false, sign: sign),
+              FateEntrance(
+                key: ValueKey(sign),
+                child: _ReadingCard(model: model, home: false, sign: sign),
+              ),
               const SizedBox(height: 12),
               Text(
                 s.dailyHoroscopeBasis,

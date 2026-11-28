@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../app/dependencies.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/asset_tile.dart';
 import '../../ui/theme.dart';
+import '../shop/shop_page.dart';
 
-const homeHeroImage = AssetImage('assets/images/temple-sanctuary.png');
-const objectsArtwork = 'assets/images/objects.png';
+const homeHeroImage = AssetImage(
+  'assets/images/action-offering-sanctuary.webp',
+);
 
 enum LiveRoom {
   temple,
@@ -171,9 +174,272 @@ class _RoomArt extends StatelessWidget {
         );
 }
 
+class _LiveLobby extends StatefulWidget {
+  const _LiveLobby();
+
+  @override
+  State<_LiveLobby> createState() => _LiveLobbyState();
+}
+
+class _LiveLobbyState extends State<_LiveLobby> {
+  bool _onlyBooked = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    final dependencies = DependencyScope.of(context);
+    return ListView(
+      key: const PageStorageKey('live-lobby-scroll'),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      children: [
+        Text(s.liveTab, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        FateCard(
+          padding: EdgeInsets.zero,
+          radius: 22,
+          child: Stack(
+            children: [
+              const Positioned.fill(child: _RoomArt(LiveRoom.temple)),
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0, .37, 1],
+                      colors: [
+                        Color(0x40140B25),
+                        Color(0x32140B25),
+                        Color(0xFF160E22),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6D2838),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          s.livePreview,
+                          style: const TextStyle(fontSize: 11, color: inkColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 46),
+                    Text(
+                      LiveRoom.temple.title(s),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    Text(
+                      LiveRoom.temple.note(s),
+                      style: const TextStyle(fontSize: 12, color: inkColor),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: () => context.go('/live?room=temple'),
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: Text(s.liveWatch),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        FateCard(
+          padding: EdgeInsets.zero,
+          child: ListTile(
+            leading: const Icon(Icons.play_circle_outline, color: goldColor),
+            title: Text(LiveRoom.objects.title(s)),
+            subtitle: Text(LiveRoom.objects.note(s)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go('/live?room=objects'),
+          ),
+        ),
+        const SizedBox(height: 20),
+        ValueListenableBuilder(
+          valueListenable: dependencies.demoLiveBookings,
+          builder: (context, bookings, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                children: [
+                  Text(
+                    s.liveUpcoming,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(fontSize: 19),
+                  ),
+                  FilterChip(
+                    label: Text('${s.liveMyReservations} (${bookings.length})'),
+                    selected: _onlyBooked,
+                    onSelected: (selected) {
+                      FateMotion.selectionFeedback();
+                      setState(() => _onlyBooked = selected);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_onlyBooked && bookings.isEmpty)
+                FateCard(child: Text(s.liveNoReservations)),
+              for (final room in LiveRoom.values)
+                if (!_onlyBooked || bookings.contains(room.name))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _scheduleCard(
+                      context,
+                      room,
+                      dependencies,
+                      bookings.contains(room.name),
+                    ),
+                  ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _scheduleCard(
+    BuildContext context,
+    LiveRoom room,
+    AppDependencies dependencies,
+    bool booked,
+  ) {
+    final s = AppLocalizations.of(context);
+    final today = dependencies.demoLiveDate;
+    final starts = DateTime(
+      today.year,
+      today.month,
+      today.day + room.index + 1,
+      20,
+    );
+    final material = MaterialLocalizations.of(context);
+    final time =
+        '${material.formatMediumDate(starts)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(starts), alwaysUse24HourFormat: true)}';
+    final title = room == LiveRoom.temple
+        ? s.liveTempleUpcoming
+        : s.liveObjectsUpcoming;
+    final button = OutlinedButton.icon(
+      style: booked
+          ? OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFB9D6AD),
+              backgroundColor: const Color(0x263B7447),
+              side: const BorderSide(color: Color(0x7A83A477)),
+            )
+          : null,
+      onPressed: () =>
+          _confirmBooking(context, dependencies, room, title, time, booked),
+      icon: Icon(
+        booked ? Icons.check_circle_outline : Icons.notifications_none,
+        size: 17,
+      ),
+      label: Semantics(
+        liveRegion: true,
+        child: Text(booked ? s.liveReserved : s.liveReserve),
+      ),
+    );
+    return FateCard(
+      padding: const EdgeInsets.all(12),
+      radius: 16,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: SizedBox.square(dimension: 50, child: _RoomArt(room)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(time, style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 4),
+                button,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmBooking(
+    BuildContext context,
+    AppDependencies dependencies,
+    LiveRoom room,
+    String title,
+    String time,
+    bool booked,
+  ) async {
+    final s = AppLocalizations.of(context);
+    final action = booked ? s.liveCancelReservation : s.liveReserve;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      animationStyle: FateMotion.dialog(context),
+      builder: (dialog) => AlertDialog(
+        title: Text(action),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title),
+            Text(time, style: Theme.of(dialog).textTheme.bodySmall),
+            const SizedBox(height: 10),
+            Text(
+              s.liveReservationDemo,
+              style: Theme.of(dialog).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog),
+            child: Text(s.close),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialog, true),
+            child: Text(action),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted || confirmed != true) return;
+    FateMotion.selectionFeedback();
+    final bookings = {...dependencies.demoLiveBookings.value};
+    if (booked) {
+      bookings.remove(room.name);
+    } else {
+      bookings.add(room.name);
+    }
+    dependencies.demoLiveBookings.value = Set.unmodifiable(bookings);
+  }
+}
+
 class LivePage extends StatefulWidget {
-  const LivePage({required this.room, super.key});
-  final LiveRoom room;
+  const LivePage({this.room, super.key});
+  final LiveRoom? room;
 
   @override
   State<LivePage> createState() => _LivePageState();
@@ -181,7 +447,7 @@ class LivePage extends StatefulWidget {
 
 class _LivePageState extends State<LivePage> {
   bool _playing = true, _details = false;
-  int _seconds = 0;
+  final _elapsed = ValueNotifier<int>(0);
   Timer? _timer;
   final _input = TextEditingController();
   final _messages = <String>[];
@@ -196,19 +462,19 @@ class _LivePageState extends State<LivePage> {
   void didUpdateWidget(covariant LivePage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.room == oldWidget.room) return;
-    _seconds = 0;
+    _elapsed.value = 0;
+    _playing = true;
     _details = false;
     _messages.clear();
     _input.clear();
+    _play();
   }
 
   void _play() {
     _timer?.cancel();
-    if (_playing) {
+    if (_playing && widget.room != null) {
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted && ModalRoute.of(context)?.isCurrent == true) {
-          setState(() => _seconds = (_seconds + 1) % 36);
-        }
+        _elapsed.value = (_elapsed.value + 1) % 36;
       });
     }
   }
@@ -231,6 +497,7 @@ class _LivePageState extends State<LivePage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _elapsed.dispose();
     _input.dispose();
     super.dispose();
   }
@@ -271,16 +538,18 @@ class _LivePageState extends State<LivePage> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final temple = widget.room == LiveRoom.temple;
+    final room = widget.room;
+    if (room == null) return const _LiveLobby();
+    final temple = room == LiveRoom.temple;
     return ListView(
-      key: const PageStorageKey('live-scroll'),
+      key: PageStorageKey(room),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       children: [
         Row(
           children: [
             IconButton.outlined(
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              onPressed: () => context.go('/fortune'),
+              onPressed: () => context.go('/live'),
               icon: const Icon(Icons.chevron_left),
             ),
             const SizedBox(width: 10),
@@ -289,7 +558,7 @@ class _LivePageState extends State<LivePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.room.title(s),
+                    room.title(s),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   Text(
@@ -306,56 +575,20 @@ class _LivePageState extends State<LivePage> {
           ],
         ),
         const SizedBox(height: 14),
-        FateEntrance(child: _poster(context)),
+        FateEntrance(child: _poster(context, room)),
         const SizedBox(height: 16),
         Text(
-          temple ? s.templeRoomHeading : s.storeTitle,
+          room == LiveRoom.temple ? s.templeRoomHeading : s.objectsRoom,
           style: Theme.of(context).textTheme.titleLarge,
         ),
-        Text(widget.room.note(s), style: Theme.of(context).textTheme.bodySmall),
+        Text(room.note(s), style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 14),
-        FateCard(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  width: 55,
-                  height: 59,
-                  child: _RoomArt(widget.room),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(temple ? s.templeService : s.objectCandle),
-                    Text(
-                      temple ? '฿1,280 · ${s.samplePrice}' : s.sampleCatalog,
-                      style: const TextStyle(color: goldColor, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 9),
-                ),
-                onPressed: temple
-                    ? () => _showBooking(context)
-                    : () => context.go('/shop'),
-                child: Text(
-                  temple ? s.bookingInfo : s.objectsTab,
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ),
-            ],
-          ),
-        ),
+        Text(s.roomObjectsInfo, style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 6),
+        if (temple)
+          const LiveShopProduct.journal()
+        else
+          const LiveShopProduct.candle(),
         const SizedBox(height: 14),
         Wrap(
           spacing: 8,
@@ -366,7 +599,7 @@ class _LivePageState extends State<LivePage> {
               onSelected: (_) => setState(() => _details = false),
             ),
             ChoiceChip(
-              label: Text(temple ? s.ceremonyInfo : s.roomObjectsInfo),
+              label: Text(temple ? s.ceremonyInfo : s.liveAboutShow),
               selected: _details,
               onSelected: (_) => setState(() => _details = true),
             ),
@@ -443,26 +676,16 @@ class _LivePageState extends State<LivePage> {
     );
   }
 
-  Widget _poster(BuildContext context) {
+  Widget _poster(BuildContext context, LiveRoom room) {
     final s = AppLocalizations.of(context);
     return FateCard(
       padding: EdgeInsets.zero,
       child: AspectRatio(
-        aspectRatio: 1.11,
+        aspectRatio: 1.38,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            AnimatedSwitcher(
-              duration: FateMotion.duration(
-                context,
-                const Duration(milliseconds: 650),
-              ),
-              child: _RoomArt(
-                widget.room,
-                key: ValueKey((widget.room, _seconds ~/ 6)),
-                phase: _seconds ~/ 6,
-              ),
-            ),
+            _previewArt(room),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -488,11 +711,14 @@ class _LivePageState extends State<LivePage> {
                     '●  ${s.onAirNow} · ${s.demo}',
                     style: const TextStyle(color: inkColor, fontSize: 11),
                   ),
-                  Text(
-                    '00:${_seconds.toString().padLeft(2, '0')}',
-                    style: const TextStyle(
-                      fontFeatures: [FontFeature.tabularFigures()],
-                      fontSize: 12,
+                  ValueListenableBuilder(
+                    valueListenable: _elapsed,
+                    builder: (context, seconds, _) => Text(
+                      '00:${seconds.toString().padLeft(2, '0')}',
+                      style: const TextStyle(
+                        fontFeatures: [FontFeature.tabularFigures()],
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -503,7 +729,7 @@ class _LivePageState extends State<LivePage> {
               bottom: 53,
               right: 18,
               child: Text(
-                widget.room == LiveRoom.temple
+                room == LiveRoom.temple
                     ? s.templePosterTitle
                     : s.objectsPosterTitle,
                 style: const TextStyle(
@@ -542,9 +768,29 @@ class _LivePageState extends State<LivePage> {
                       animationStyle: FateMotion.dialog(context),
                       builder: (_) => Dialog(
                         clipBehavior: Clip.antiAlias,
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          child: _RoomArt(widget.room, phase: _seconds ~/ 6),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 680),
+                          child: AspectRatio(
+                            aspectRatio: 1.38,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _previewArt(room),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: IconButton.filledTonal(
+                                    onPressed: () => Navigator.of(
+                                      context,
+                                      rootNavigator: true,
+                                    ).pop(),
+                                    tooltip: s.close,
+                                    icon: const Icon(Icons.close),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -558,21 +804,11 @@ class _LivePageState extends State<LivePage> {
     );
   }
 
-  void _showBooking(BuildContext context) {
-    final s = AppLocalizations.of(context);
-    showDialog<void>(
-      context: context,
-      animationStyle: FateMotion.dialog(context),
-      builder: (sheet) => AlertDialog(
-        title: Text(s.templeService),
-        content: Text('฿1,280 · ${s.samplePrice}\n\n${s.bookingDemoNotice}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(sheet),
-            child: Text(s.close),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _previewArt(LiveRoom room) => ValueListenableBuilder(
+    valueListenable: _elapsed,
+    builder: (context, seconds, _) => AnimatedSwitcher(
+      duration: FateMotion.duration(context, const Duration(milliseconds: 650)),
+      child: _RoomArt(room, key: ValueKey(seconds ~/ 6), phase: seconds ~/ 6),
+    ),
+  );
 }

@@ -22,15 +22,6 @@ class AccountPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'YOUR SPACE',
-              style: TextStyle(
-                color: goldColor,
-                letterSpacing: 1.8,
-                fontSize: 9,
-              ),
-            ),
-            const SizedBox(height: 7),
             PageHeading(s.mySpace, s.mySpaceIntro),
             FateCard(
               gold: true,
@@ -175,7 +166,11 @@ class AccountPage extends StatelessWidget {
                         ChoiceChip(
                           label: Text(row.$2),
                           selected: d.session.locale.languageCode == row.$1,
-                          onSelected: (_) => d.session.changeLocale(row.$1),
+                          onSelected: (_) {
+                            if (d.session.locale.languageCode == row.$1) return;
+                            FateMotion.selectionFeedback();
+                            d.session.changeLocale(row.$1);
+                          },
                         ),
                     ],
                   ),

@@ -98,6 +98,7 @@ class _ThaiCalendarPageState extends State<ThaiCalendarPage>
   void _moveMonth(int offset) {
     final target = DateTime.utc(_month.year, _month.month + offset);
     if (!_inRange(target)) return;
+    FateMotion.selectionFeedback();
     setState(() {
       _selected = DateTime.utc(
         target.year,
@@ -325,19 +326,25 @@ class _ThaiCalendarPageState extends State<ThaiCalendarPage>
                                 ),
                               );
                             }
-                            return AnimatedSwitcher(
-                              duration: FateMotion.duration(
-                                context,
-                                FateMotion.change,
-                              ),
-                              switchInCurve: Curves.easeOutCubic,
-                              child: _MonthGrid(
+                            return GestureDetector(
+                              onHorizontalDragEnd: (details) {
+                                final velocity = details.primaryVelocity ?? 0;
+                                if (velocity.abs() >= 180) {
+                                  _moveMonth(velocity < 0 ? 1 : -1);
+                                }
+                              },
+                              child: FateEntrance(
                                 key: ValueKey(_month),
-                                entries: snapshot.data!,
-                                selected: _selected,
-                                today: _today,
-                                onSelect: (date) =>
-                                    setState(() => _selected = date),
+                                child: _MonthGrid(
+                                  entries: snapshot.data!,
+                                  selected: _selected,
+                                  today: _today,
+                                  onSelect: (date) {
+                                    if (_selected == date) return;
+                                    FateMotion.selectionFeedback();
+                                    setState(() => _selected = date);
+                                  },
+                                ),
                               ),
                             );
                           },
@@ -444,7 +451,6 @@ class _MonthGrid extends StatelessWidget {
     required this.selected,
     required this.today,
     required this.onSelect,
-    super.key,
   });
   final List<ThaiCalendarDetail> entries;
   final DateTime selected, today;

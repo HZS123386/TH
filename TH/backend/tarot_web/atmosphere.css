@@ -1,0 +1,106 @@
+/* V20 · Quiet movement, with the portrait itself acting as the pause control. */
+body[data-view="home"] button.studio-portrait {
+  appearance: none;
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  line-height: 0;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+}
+body[data-view="home"] .studio-portrait img {
+  position: relative;
+  z-index: 1;
+  transform-origin: 50% 80%;
+  animation: oracle-float 6.5s ease-in-out infinite;
+}
+body[data-view="home"] .studio-portrait::before {
+  pointer-events: none;
+  animation: oracle-aura 7.5s ease-in-out infinite;
+}
+body[data-view="home"] .studio-portrait::after {
+  content: "";
+  position: absolute;
+  inset: 8% 0 10%;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 42%, #f1d9b6 0 1px, transparent 2px),
+    radial-gradient(circle at 90% 20%, #e6c9ff 0 1px, transparent 2px),
+    radial-gradient(circle at 93% 75%, #d0abf1 0 .8px, transparent 1.8px),
+    radial-gradient(circle at 20% 8%, #e2c4f5 0 .8px, transparent 1.8px);
+  animation: oracle-stars 5.5s ease-in-out infinite;
+}
+body[data-view="home"] .portrait-motion-icon {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #cfb6e23b;
+  border-radius: 50%;
+  background: #1b1029c9;
+  color: #d6bee7;
+  font: 400 11px/1 var(--sans);
+  letter-spacing: 0;
+  pointer-events: none;
+}
+body[data-view="home"] .studio-portrait:focus-visible {
+  outline: 2px solid #e3c4f0;
+  outline-offset: 5px;
+}
+
+#site-header .music-toggle { position: relative; flex-shrink: 0; }
+#site-header .music-toggle > .icon { width: 18px; height: 18px; }
+#site-header .music-toggle[data-audio-state="playing"],
+body:is([data-view="home"], [data-view="draw"]) #site-header .music-toggle[data-audio-state="playing"] {
+  color: #edd5af;
+  border-color: #ddbc815c;
+  background: #d8b57b12;
+}
+#site-header .music-toggle[data-audio-state="playing"]::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #e3c29a;
+  box-shadow: 0 0 5px #e3c29a38;
+  pointer-events: none;
+}
+@keyframes oracle-float {
+  0%, 100% { transform: translateY(1px) scale(1); }
+  50% { transform: translateY(-3px) scale(1.012); }
+}
+@keyframes oracle-aura {
+  0%, 100% { opacity: .6; transform: scale(.97); }
+  50% { opacity: .95; transform: scale(1.04); }
+}
+@keyframes oracle-stars {
+  0%, 100% { opacity: .35; transform: translateY(1px); }
+  50% { opacity: .75; transform: translateY(-3px); }
+}
+
+/* Pause without changing the size of the portrait or moving surrounding controls. */
+body.motion-paused[data-view="home"] .studio-portrait img,
+body.motion-paused[data-view="home"] .studio-portrait::before,
+body.motion-paused[data-view="home"] .studio-portrait::after,
+body[data-view="home"] .studio-portrait[aria-pressed="false"] img,
+body[data-view="home"] .studio-portrait[aria-pressed="false"]::before,
+body[data-view="home"] .studio-portrait[aria-pressed="false"]::after {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-view="home"] .studio-portrait img,
+  body[data-view="home"] .studio-portrait::before,
+  body[data-view="home"] .studio-portrait::after { animation: none; }
+}

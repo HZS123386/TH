@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // Share the established H5 palette across every native surface.
 const canvasColor = Color(0xFF130C24),
@@ -14,6 +15,8 @@ abstract final class FateMotion {
   static const change = Duration(milliseconds: 240);
   static const page = Duration(milliseconds: 300);
   static const entrance = Duration(milliseconds: 380);
+
+  static void selectionFeedback() => HapticFeedback.selectionClick();
 
   static bool reduced(BuildContext context) =>
       MediaQuery.disableAnimationsOf(context) ||
@@ -144,7 +147,12 @@ ThemeData fateTheme() {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: const Color(0xFF3A294A),
-      contentTextStyle: const TextStyle(color: inkColor, height: 1.5),
+      contentTextStyle: const TextStyle(
+        color: inkColor,
+        height: 1.5,
+        fontFamily: 'NotoSansThai',
+        fontFamilyFallback: ['NotoSansSC', 'NotoSansSymbols'],
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -181,6 +189,16 @@ ThemeData fateTheme() {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
+    chipTheme: ChipThemeData(
+      backgroundColor: const Color(0xFF261C35),
+      selectedColor: const Color(0xFF493550),
+      secondarySelectedColor: const Color(0xFF493550),
+      checkmarkColor: goldColor,
+      labelStyle: const TextStyle(color: inkColor),
+      secondaryLabelStyle: const TextStyle(color: inkColor),
+      side: const BorderSide(color: lineColor),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: canvasColor,
       indicatorColor: goldColor.withValues(alpha: .16),
@@ -201,6 +219,9 @@ ThemeData fateTheme() {
           color: states.contains(WidgetState.selected) ? goldColor : mutedColor,
         ),
       ),
+    ),
+    listTileTheme: ListTileThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     dividerTheme: const DividerThemeData(
       color: lineColor,

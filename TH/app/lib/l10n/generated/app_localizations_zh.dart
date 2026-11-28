@@ -99,6 +99,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get todayTab => '今日';
 
   @override
+  String get quickAccess => '快速探索';
+
+  @override
+  String get luckyRevealHint => '点一下数字，展开今天的提示';
+
+  @override
+  String get readingBackToContents => '回到解读目录';
+
+  @override
   String get actionTab => '行动力';
 
   @override
@@ -153,10 +162,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get startThaiGuide => '填写资料，开始泰式占星';
 
   @override
+  String get homeChartExample => '先看西式星盘示例';
+
+  @override
   String get viewThaiGuide => '查看我的泰式星盘';
 
   @override
-  String get startSevenGuide => '查看七字命理示例';
+  String get startSevenGuide => '体验阿伦的示例对话';
+
+  @override
+  String get arunSampleHeading => '阿伦的示例对话';
+
+  @override
+  String get arunSampleReply =>
+      '先选一件十分钟内能做完的事。比如把明早要带的东西放在门口，或者写下明天最先要做的一件事。做完再看看，哪一步还需要调整。';
 
   @override
   String get startTarotGuide => '开始塔罗占卜';
@@ -166,12 +185,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get textReadingNote => '打字问，接着聊';
-
-  @override
-  String get voiceReading => '语音聊聊';
-
-  @override
-  String get voiceReadingNote => '说出你的困惑';
 
   @override
   String get textChat => '文字聊天';
@@ -229,6 +242,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get recoverReports => '我的报告';
 
   @override
+  String get recoverReportAction => '找回报告';
+
+  @override
   String get recentReadings => '最近的解读';
 
   @override
@@ -242,6 +258,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get reportCodeMissing => '找不到这个示例。请试试 FATE-THAI-001。';
+
+  @override
+  String get reportCodeRequired => '请先输入报告编号';
 
   @override
   String get newVisitor => '我是新用户';
@@ -298,6 +317,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get liveDemoNotice => '直播演示 · 非实时';
 
   @override
+  String get livePreview => '直播预览';
+
+  @override
+  String get liveWatch => '进入直播间';
+
+  @override
+  String get liveUpcoming => '直播预告';
+
+  @override
+  String get liveMyReservations => '我的预约';
+
+  @override
+  String get liveNoReservations => '你还没有预约场次。';
+
+  @override
+  String get liveReserve => '预约';
+
+  @override
+  String get liveReserved => '已预约';
+
+  @override
+  String get liveCancelReservation => '取消预约';
+
+  @override
+  String get liveReservationDemo => '演示预约仅在本次使用期间保留，不会发送通知。';
+
+  @override
+  String get liveTempleUpcoming => '寺庙祈福 · 心愿专场';
+
+  @override
+  String get liveObjectsUpcoming => '好物开箱 · 晚间香氛';
+
+  @override
+  String get liveAboutShow => '本场介绍';
+
+  @override
   String get livestreamPause => '暂停预览';
 
   @override
@@ -310,16 +365,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get templeRoomHeading => '把心愿，带到寺庙';
 
   @override
-  String get templeService => '个人心愿祈福';
-
-  @override
   String get samplePrice => '示例价';
-
-  @override
-  String get bookingInfo => '了解预约';
-
-  @override
-  String get bookingDemoNotice => '这里展示仪式说明与预约入口。正式场次待开放。';
 
   @override
   String get roomChat => '现场互动';
@@ -560,7 +606,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shopOrdersEmpty => '暂无好物订单';
 
   @override
-  String get shopDemoNotice => '好物商店为前端演示，暂未开放下单。';
+  String get shopDemoNotice => '演示订单不会扣款或发货。';
+
+  @override
+  String get shopSubtotal => '商品小计';
+
+  @override
+  String get shopReviewOrder => '确认订单';
+
+  @override
+  String get shopPlaceDemoOrder => '提交演示订单';
+
+  @override
+  String get shopOrderPlaced => '演示订单已创建';
+
+  @override
+  String get shopOrderNumber => '演示订单';
+
+  @override
+  String get shopIncreaseQuantity => '增加数量';
 
   @override
   String get mySpace => '我的陪伴与记录';
@@ -579,9 +643,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get thaiChartIntro => '按照出生日期、时间和地点查看泰式星盘。';
-
-  @override
-  String get sevenPreviewNote => '七字命理测算尚未接入。可以先体验阿伦的示例对话。';
 
   @override
   String get country => '国家 / 地区';
@@ -1466,22 +1527,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tarotRevealing => '正在翻开这一张牌…';
 
   @override
-  String get tarotSeerReading => '三张牌已集齐，占星师正在解读';
-
-  @override
   String get tarotReadingComplete => '解读完成';
-
-  @override
-  String get tarotReadingStepOne => '正在聆听星辰的低语…';
-
-  @override
-  String get tarotReadingStepTwo => '她抬手轻点星盘，引动星光…';
-
-  @override
-  String get tarotReadingStepThree => '正在翻阅三张牌的启示…';
-
-  @override
-  String get tarotReadingStepFour => '正在为你书写解读…';
 
   @override
   String tarotMinorName(String suit, String rank) {

@@ -8,14 +8,6 @@ abstract interface class DeviceStore {
   String ownerKey();
 }
 
-class AppLoginCode {
-  const AppLoginCode(this.value, this.expiresAt);
-
-  final String value;
-  final DateTime expiresAt;
-  bool get expired => !expiresAt.isAfter(DateTime.now());
-}
-
 class Cancelled implements Exception {
   const Cancelled();
 }
@@ -68,7 +60,6 @@ class ReportRepository {
   final DeviceStore store;
   final http.Client client;
   final String baseUrl;
-  final _firstCityPages = <String, Future<Json>>{};
   String language = 'th';
   Json Function()? visitContext;
   void Function(String, String, String)? onClientFailure;
@@ -218,28 +209,6 @@ class ReportRepository {
       timeout: input['report_kind'] == 'marriage' ? _reportReadTimeout : null,
     );
     return _wait(initial, input, token, false, progress);
-  }
-
-  Future<AppLoginCode> createAppLoginCode(
-    String reportId,
-    CancelToken token,
-  ) async {
-    final result = object(
-      await request(
-        '/api/life-reports/${Uri.encodeComponent(reportId)}/app-login-code',
-        token,
-        body: const {},
-        timeout: const Duration(seconds: 10),
-      ),
-    );
-    final code = text(result['code']), lifetime = result['expires_in'];
-    if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code) ||
-        lifetime is! int ||
-        lifetime <= 0 ||
-        lifetime > 600) {
-      throw const ApiFailure('badResult');
-    }
-    return AppLoginCode(code, DateTime.now().add(Duration(seconds: lifetime)));
   }
 
   Future<LifeReport> unlock(
@@ -476,73 +445,5 @@ class ReportRepository {
         }
       }
     }
-  }
-
-  Future<void> warmCities(String country) async {
-    try {
-      await _firstCityPage(country);
-    } on ApiFailure {
-      // An unsuccessful preload is retried when the visitor opens the list.
-    }
-  }
-
-  Future<Json> _firstCityPage(String country) =>
-      _firstCityPages.putIfAbsent(country, () async {
-        try {
-          return await _fetchCities(
-            country,
-            '',
-            0,
-            CancelToken(),
-            timeout: const Duration(seconds: 12),
-          );
-        } catch (_) {
-          _firstCityPages.remove(country);
-          rethrow;
-        }
-      });
-
-  Future<Json> cities(
-    String country,
-    String query,
-    int offset,
-    CancelToken token,
-  ) async {
-    token.check();
-    if (query.isEmpty && offset == 0) {
-      // A closed menu cancels its own wait. The next menu can reuse the request.
-      final result = await Future.any<Json>([
-        _firstCityPage(country),
-        token.future.then<Json>((_) => throw const Cancelled()),
-      ]);
-      token.check();
-      return result;
-    }
-    return _fetchCities(country, query, offset, token);
-  }
-
-  Future<Json> _fetchCities(
-    String country,
-    String query,
-    int offset,
-    CancelToken token, {
-    Duration? timeout,
-  }) async {
-    final params = Uri(
-      queryParameters: {
-        'country': country,
-        'level': country == 'CN' || country == 'TH' ? 'locality' : 'city',
-        'query': query,
-        'offset': '$offset',
-      },
-    ).query;
-    return object(
-      await request(
-        '/api/thai-locations?$params',
-        token,
-        owned: false,
-        timeout: timeout,
-      ),
-    );
   }
 }

@@ -7,6 +7,7 @@
 - 环境密钥、数据库、构建产物和归档不提交 Git；源码目录中的 `lib/data` 是业务源码，不能被数据目录忽略规则排除。
 - 迁移时保留的旧桌面路径仅有迁移提示，不是源码位置。
 
+- 唯一开发和启动目录是 `C:\Users\32668\Desktop\海外-玄学`，原 `C:\Users\32668\Desktop\git\TH-H` 已迁出，不得再在那里新增或修改项目代码。
 - H5 真实入口为 `western-astrology-h5 4/web-client/lib/main.dart`，App 入口为 `TH/app/lib/main.dart`，共用后端入口为 `TH/backend/app/main.py:create_app`。
 - 统一启动使用根目录下的 `node TH/scripts/dev.mjs`，继续修改现有模块和调用链，不新增同功能原型、覆盖层、代理入口或运行时补丁。
 - 本地配置在 `TH/.env`。业务库由唯一的 PostgreSQL `DATABASE_URL` 指定，启动前核对当前业务库及迁移版本。`TH/data/` 保留地点索引及本地资源。禁止输出密钥或把配置、业务数据及备份提交 Git。

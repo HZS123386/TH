@@ -52,6 +52,17 @@ class _ActionPageState extends State<ActionPage> {
     setState(() => _completing.add(plan.id));
     try {
       await d.actions.complete(owner, plan.id);
+      if (mounted &&
+          d.session.owner == owner &&
+          d.actions
+              .plans(owner)
+              .any((item) => item.id == plan.id && item.done)) {
+        FateMotion.selectionFeedback();
+        final s = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(s.actionCompleted)));
+      }
     } catch (_) {
       if (mounted) {
         final s = AppLocalizations.of(context);
@@ -244,7 +255,11 @@ class _ActionPageState extends State<ActionPage> {
                             label,
                             style: const TextStyle(fontSize: 11),
                           ),
-                          onSelected: (_) => setState(() => _filter = filter),
+                          onSelected: (_) {
+                            if (_filter == filter) return;
+                            FateMotion.selectionFeedback();
+                            setState(() => _filter = filter);
+                          },
                         ),
                     ],
                   ),

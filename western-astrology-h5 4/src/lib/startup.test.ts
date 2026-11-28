@@ -5,32 +5,28 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const source = readFileSync("web-client/web/browser.js", "utf8");
 const bootstrapSource = readFileSync("web-client/web/flutter_bootstrap.js", "utf8").replace(/\{\{flutter_(?:js|build_config)\}\}/g, "");
+const buildSource = readFileSync("scripts/build-flutter.mjs", "utf8");
 const recoveryKey = "fate-startup-recovery-at";
 
 function openDocument(storage = new Map<string, string>(), storageBlocked = false, options: {
   url?: string; language?: string; local?: Map<string, string>; cookie?: { value: string }; cookieBlocked?: boolean; fetch?: ReturnType<typeof vi.fn>;
-  portrait?: EventTarget; streamingHtml?: boolean; missingBootstrap?: boolean;
-  welcome?: boolean; privateBrowsing?: boolean;
+  streamingHtml?: boolean; missingBootstrap?: boolean; privateBrowsing?: boolean;
+  indexedDB?: { open: () => unknown };
   navigationType?: "navigate" | "reload" | "back_forward";
   historyEntry?: { state: Record<string, unknown> | null };
+  userAgent?: string;
 } = {}) {
   const status = { textContent: "" };
   const button = { hidden: true, addEventListener: vi.fn() };
   const startup = { remove: vi.fn(), dataset: {} as Record<string, string> };
-  const start = { setAttribute: vi.fn() };
-  const progress = { textContent: "" };
-  const select = { id: "fate-welcome-language", value: options.language ?? "zh" };
   const nodes = new Map<string, unknown>([
     ["fate-startup-status", status], ["fate-startup-retry", button], ["fate-startup", startup],
-    ["fate-welcome-start", start], ["fate-welcome-portrait-slot", { replaceWith: vi.fn() }],
-    ["fate-welcome-progress", progress], ["fate-welcome-language", select],
   ]);
-  if (options.welcome) nodes.set("fate-welcome", { querySelector: vi.fn(), addEventListener: vi.fn() });
   const listeners = new Map<string, ((event: any) => void)[]>();
   const window = { dispatchEvent: vi.fn(), addEventListener: vi.fn((type: string, listener: (event: any) => void) => {
     listeners.set(type, [...(listeners.get(type) ?? []), listener]);
   }) } as any;
-  const url = new URL(options.url ?? "http://127.0.0.1/thai-landing/?lang=zh&id=retained-report");
+  const url = new URL(options.url ?? "http://127.0.0.1/thai-landing/report.html?lang=zh&id=retained-report");
   const location = { href: url.href, host: url.host, hostname: url.hostname, pathname: url.pathname, protocol: url.protocol, search: url.search, reload: vi.fn(), replace: vi.fn() };
   const local = options.local ?? new Map<string, string>();
   const cookie = options.cookie ?? { value: "" };
@@ -41,88 +37,125 @@ function openDocument(storage = new Map<string, string>(), storageBlocked = fals
   });
   window.localStorage = makeStorage(local);
   window.sessionStorage = makeStorage(storage);
-  const document = { readyState: options.streamingHtml ? "loading" : "complete", visibilityState: "visible", documentElement: { lang: options.language ?? "zh", dataset: { welcome: String(!/(report|privacy|support)\.html$/.test(url.pathname)) } }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn((_type: string, _callback: (event?: any) => void) => {}), removeEventListener: vi.fn() };
+  const rootStyle = { setProperty: vi.fn() };
+  const document = { baseURI: new URL("./", url).href, readyState: options.streamingHtml ? "loading" : "complete", visibilityState: "visible", documentElement: { lang: options.language ?? "zh", dataset: {} as Record<string, string>, style: rootStyle }, getElementById: (id: string) => nodes.get(id), addEventListener: vi.fn((_type: string, _callback: (event?: any) => void) => {}), removeEventListener: vi.fn() };
   const fetch = options.fetch ?? vi.fn().mockImplementation(async (_url, options) => ({
     ok: true, json: async () => ({ ok: true, accepted_sequences: JSON.parse(options.body).events.map((event: any) => event.sequence) }),
   }));
-  window.navigator = { doNotTrack: "0", globalPrivacyControl: options.privateBrowsing ?? false };
+  window.navigator = { doNotTrack: "0", globalPrivacyControl: options.privateBrowsing ?? false, userAgent: options.userAgent ?? "Test Browser" };
   const historyEntry = options.historyEntry ?? { state: null };
   const history = {
     get state() { return historyEntry.state; },
-    replaceState: vi.fn((state: Record<string, unknown> | null, _title?: string, next?: URL | string) => {
-      historyEntry.state = state;
-      if (next) {
-        const address = new URL(next, location.href);
-        Object.assign(location, { href: address.href, pathname: address.pathname, search: address.search });
-      }
-    }),
+    replaceState: vi.fn((state: Record<string, unknown> | null) => { historyEntry.state = state; }),
   };
   Object.defineProperty(document, "cookie", {
     get: () => options.cookieBlocked ? "" : cookie.value,
-    set: (value: string) => { if (!options.cookieBlocked) cookie.value = value.includes("Max-Age=0") ? "" : value.split(";")[0]; },
+    set: (value: string) => {
+      if (options.cookieBlocked) return;
+      const [pair,...attributes] = value.split(";").map(part => part.trim());
+      const separator = pair.indexOf("=");
+      const name = pair.slice(0,separator), item = pair.slice(separator + 1);
+      const jar = new Map(cookie.value.split(";").map(part => part.trim()).filter(Boolean).map(part => {
+        const index = part.indexOf("=");
+        return [part.slice(0,index),part.slice(index + 1)];
+      }));
+      if (attributes.some(part => part.toLowerCase() === "max-age=0")) jar.delete(name);
+      else jar.set(name,item);
+      cookie.value = [...jar].map(([key,current]) => `${key}=${current}`).join("; ");
+    },
   });
   const context = {
     window, location, URL, URLSearchParams, Date, Event, setTimeout, clearTimeout, document, history,
     performance: { mark: vi.fn(), now: () => Date.now(), getEntriesByType: () => [{ type: options.navigationType ?? "navigate" }] },
-    crypto: webcrypto, AbortController, fetch, console: { error: vi.fn() },
-    fateWelcomePortrait: options.portrait,
-    requestAnimationFrame: (callback: (now: number) => void) => setTimeout(() => callback(Date.now()), 16),
+    crypto: webcrypto, TextEncoder, indexedDB: options.indexedDB,
+    AbortController, fetch, console: { error: vi.fn() },
     sessionStorage: window.sessionStorage,
+    preloadEngineAssets: vi.fn(),
     _flutter: { buildConfig: { engineRevision: "test-engine" }, loader: { load: vi.fn(async (_options: any) => {}) } },
   };
   window._flutter = options.missingBootstrap ? undefined : context._flutter;
   runInNewContext(source, context);
-  if (!options.streamingHtml) runInNewContext("mountFateWelcome()", context);
   const startFlutter = (load = vi.fn(async (_options: any) => {})) => {
     context._flutter.loader.load = load;
     runInNewContext(bootstrapSource, context);
     return load;
   };
   const emit = (type: string, event = {}) => { for (const listener of listeners.get(type) ?? []) listener(event); };
-  const dispatch = (name: string, target: unknown) => document.addEventListener.mock.calls.find(([type]) => type === name)?.[1]({ target });
-  const clickRetry = () => dispatch("click", { closest: (selector: string) => selector === "#fate-startup-retry" ? button : null });
-  const clickStart = () => dispatch("click", { closest: (selector: string) => selector === "#fate-welcome-start" ? start : null });
-  const selectLanguage = (language: string) => { select.value = language; dispatch("change", select); };
-  const preloadWasm = ({ graphics = true, gc = true } = {}) => {
-    Object.assign(window.navigator, { vendor: "Google Inc.", userAgent: "Chrome/136" });
-    const append = vi.fn();
-    const graphicsContext = graphics ? { getExtension: () => null } : null;
-    Object.assign(document, { head: { append }, createElement: () => ({ getContext: () => graphicsContext }) });
-    Object.assign(context, {
-      WebAssembly: { validate: () => gc },
-      ImageDecoder: class {},
-      Intl: { v8BreakIterator: class {}, Segmenter: class {} },
-      priorityPreload: (href: string, as: string) => ({ href, as }),
-    });
-    runInNewContext("preloadFateWasm('test-engine')", context);
-    return append.mock.calls.flat();
-  };
-  return { boot: window.fateBoot, h5: window.fateH5, window, document, fetch, location, status, button, start, progress, startup, storage, local, cookie, startFlutter, emit, clickRetry, clickStart, selectLanguage, preloadWasm };
+  const clickRetry = () => document.addEventListener.mock.calls.find(([type]) => type === "click")?.[1]({ target: { closest: () => button } });
+  return { boot: window.fateBoot, h5: window.fateH5, window, document, fetch, location, status, button, startup, storage, local, cookie, startFlutter, emit, clickRetry };
 }
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-11T06:00:00Z")); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
-it.each(["zh", "th"])("records the %s welcome before Flutter and shares its identity", async (language) => {
-  const page = openDocument(new Map(), false, { language, welcome: true });
-  const visit = JSON.parse(page.h5.visitContext());
-  const owner = page.h5.ownerKey();
-  expect(page.fetch).toHaveBeenCalledTimes(1);
-  const [url, request] = page.fetch.mock.calls[0];
-  expect(url).toBe("/api/landing/visits");
-  expect(request.headers["X-Report-Key"]).toBe(owner);
-  expect(request.headers["X-Visit-Id"]).toBe(visit.id);
-  expect(JSON.parse(request.body)).toMatchObject({
-    id: visit.id, events: [{ page: "welcome", action: "view", state: "visible" }],
-  });
-  page.h5.trackActivity(JSON.stringify({ ...visit, activity: { page: "welcome", action: "view" } }),
-    owner, "/api/landing/visits");
-  await vi.advanceTimersByTimeAsync(300);
-  expect(page.fetch).toHaveBeenCalledTimes(1);
+it("deduplicates the reading-button conversion across tabs and omits URL parameters", async () => {
+  vi.useRealTimers();
+  const owner = "a".repeat(48);
+  const readingMarker = Buffer.from(await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(owner))).toString("hex");
+  const local = new Map([["astro-life-report-key", owner]]);
+  const markers = new Set(["line-claim:" + readingMarker]);
+  const db = {
+    close() {},
+    transaction() {
+      const tx = {
+        oncomplete: () => {}, onabort: () => {},
+        objectStore: () => ({
+          add(_value: boolean, marker: string) {
+            if (markers.has(marker)) return queueMicrotask(() => tx.onabort());
+            markers.add(marker);
+            queueMicrotask(() => tx.oncomplete());
+          },
+        }),
+      };
+      return tx;
+    },
+  };
+  const indexedDB = {
+    open() {
+      const request = { result: db, onsuccess: () => {} };
+      queueMicrotask(() => request.onsuccess());
+      return request;
+    },
+  };
+  const fetch = vi.fn().mockResolvedValue({});
+  const options = {
+    url: "https://fate.example/thai-landing/?lang=zh&utm_source=test-ad",
+    local, indexedDB, fetch,
+    cookie: { value: "_fbp=fb.1.123456789.2345; _fbc=fb.1.123456789.adClick; another=private-data" },
+  };
+  const a = openDocument(new Map(), false, options);
+  const b = openDocument(new Map(), false, options);
+  expect(fetch).not.toHaveBeenCalled();
+  await Promise.all([a.h5.trackViewReadingClick(), b.h5.trackViewReadingClick()]);
+  expect(fetch).toHaveBeenCalledOnce();
+  expect(markers).toContain(readingMarker);
+  const [destination, request] = fetch.mock.calls[0];
+  const pixel = new URL(destination);
+  expect(pixel.origin + pixel.pathname).toBe("https://www.facebook.com/tr/");
+  expect(pixel.searchParams.get("ev")).toBe("AddToCart");
+  expect(pixel.searchParams.get("dl")).toBe("https://fate.example/thai-landing/");
+  expect(pixel.searchParams.get("fbp")).toBe("fb.1.123456789.2345");
+  expect(pixel.searchParams.get("fbc")).toBe("fb.1.123456789.adClick");
+  expect([...pixel.searchParams.keys()].sort()).toEqual(["dl", "ev", "fbc", "fbp", "id", "ts"]);
+  expect(request).toMatchObject({ keepalive: true, referrerPolicy: "no-referrer" });
+  const privatePage = openDocument(new Map(), false, { ...options, privateBrowsing: true });
+  await privatePage.h5.trackViewReadingClick();
+  expect(fetch).toHaveBeenCalledOnce();
 });
 
-it("does not record the HTML welcome when tracking is disabled", () => {
-  const page = openDocument(new Map(), false, { welcome: true, privateBrowsing: true });
+it("finishes reading-button tracking when click deduplication stalls", async () => {
+  const page = openDocument(new Map(), false, { indexedDB: { open: () => ({}) } });
+  const complete = vi.fn();
+  const result = page.h5.trackViewReadingClick().then(complete);
+  await vi.advanceTimersByTimeAsync(299);
+  expect(complete).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1);
+  await result;
+  expect(page.fetch).not.toHaveBeenCalled();
+});
+
+it("does not record a visit when tracking is disabled", () => {
+  const page = openDocument(new Map(), false, { privateBrowsing: true });
   expect(page.fetch).not.toHaveBeenCalled();
   expect(page.h5.visitContext()).toBe("{}");
   expect(page.local.has("astro-life-report-key")).toBe(false);
@@ -149,6 +182,55 @@ it("uses fresh tags on re-entry and keeps the corresponding visit through reload
   expect(JSON.parse(reload.h5.visitContext())).toEqual(next);
   const back = openDocument(storage, false, { local, url, historyEntry: entry, navigationType: "back_forward" });
   expect(JSON.parse(back.h5.visitContext())).toEqual(first);
+});
+
+it("keeps report ownership usable when embedded-browser storage is blocked", () => {
+  const cookie = { value: "" };
+  const first = openDocument(new Map(), true, { cookie, userAgent: "Instagram 410.0.0.0 Android" });
+  const owner = first.h5.ownerKey();
+  expect(owner).toMatch(/^[0-9a-f]{48}$/);
+  expect(first.h5.ownerKey()).toBe(owner);
+  expect(first.h5.embedded).toBe(true);
+  expect(first.boot.embedded).toBe(true);
+  expect(first.document.documentElement.dataset.embeddedBrowser).toBe("meta");
+  expect(cookie.value).toContain(`fate-report-owner=${owner}`);
+
+  const reload = openDocument(new Map(), true, { cookie, userAgent: "[FBAN/FBIOS;FBAV/500.0.0.0]" });
+  expect(reload.h5.ownerKey()).toBe(owner);
+
+  const fullyBlocked = openDocument(new Map(), true, { cookieBlocked: true, userAgent: "FB_IAB/FB4A" });
+  expect(fullyBlocked.h5.ownerKey()).toMatch(/^[0-9a-f]{48}$/);
+  expect(fullyBlocked.h5.ownerKey()).toBe(fullyBlocked.h5.ownerKey());
+});
+
+it("uses accelerated low-surface CanvasKit for Instagram Android report pages", async () => {
+  const page = openDocument(new Map(), false, { userAgent: "Mozilla/5.0 Android 16 Instagram 417.0.0.54.77" });
+  const initializeEngine = vi.fn(async (_config: any) => ({ runApp: vi.fn(async () => {}) }));
+  const load = page.startFlutter(vi.fn(async (options: any) => {
+    await options.onEntrypointLoaded({ initializeEngine });
+  }));
+  await Promise.resolve();
+  const expected = {
+    renderer: "canvaskit",
+    canvasKitMaximumSurfaces: 2,
+    canvasKitVariant: "chromium",
+  };
+  expect(load.mock.calls[0][0].config).toMatchObject(expected);
+  expect(initializeEngine.mock.calls[0][0]).toMatchObject(expected);
+  expect(load.mock.calls[0][0].config.canvasKitForceCpuOnly).toBeUndefined();
+  expect(initializeEngine.mock.calls[0][0].canvasKitForceCpuOnly).toBeUndefined();
+});
+
+it("keeps accelerated CanvasKit for Facebook Android report pages", async () => {
+  const page = openDocument(new Map(), false, { userAgent: "Mozilla/5.0 Android 16 [FBAN/FB4A;FBAV/540.0.0.0]" });
+  const initializeEngine = vi.fn(async (_config: any) => ({ runApp: vi.fn(async () => {}) }));
+  const load = page.startFlutter(vi.fn(async (options: any) => {
+    await options.onEntrypointLoaded({ initializeEngine });
+  }));
+  await Promise.resolve();
+  expect(load.mock.calls[0][0].config).toMatchObject({renderer:"canvaskit"});
+  expect(load.mock.calls[0][0].config.canvasKitForceCpuOnly).toBeUndefined();
+  expect(initializeEngine.mock.calls[0][0].canvasKitForceCpuOnly).toBeUndefined();
 });
 
 it("retains the last page through hiding, leaving and restoring without losing ownership", async () => {
@@ -410,87 +492,52 @@ it('does not let a cached former owner overwrite the current owner queue', async
   expect(pendingItems(storage).every(item => item.visit.id === 'other-visit')).toBe(true);
 });
 
-it.each(["zh", "th"])("accepts a streamed %s welcome click and enters before the first Flutter frame", (language) => {
-  const page = openDocument(new Map(), false, { language, streamingHtml: true });
-  const enter = vi.fn();
-  page.clickStart();
-  page.clickStart();
-  expect(page.start.setAttribute).toHaveBeenCalledWith("aria-busy", "true");
-  expect(page.progress.textContent).not.toBe("");
-  page.boot.stage("engine");
-  page.boot.connectWelcome(enter);
-  expect(enter).toHaveBeenCalledTimes(1);
-  expect(page.startup.dataset.state).toBe("waiting");
-  page.boot.ready();
-  page.boot.ready();
-  expect(enter).toHaveBeenCalledTimes(1);
-});
-
-it.each([false, true])("starts Flutter in parallel and reveals the portrait (cached=%s)", (complete) => {
-  const portrait = Object.assign(new EventTarget(), { setAttribute: vi.fn(), complete, naturalWidth: 720 });
-  const page = openDocument(new Map(), false, { portrait });
-  expect(page.startFlutter()).toHaveBeenCalledOnce();
-  if (!complete) {
-    expect(portrait.setAttribute).not.toHaveBeenCalled();
-    portrait.dispatchEvent(new Event("load"));
-  }
-  expect(portrait.setAttribute).toHaveBeenCalledWith("data-loaded", "");
-});
-
-it("starts the same Flutter Wasm downloads early without spending bandwidth on incompatible browsers", () => {
-  expect(openDocument().preloadWasm()).toEqual([
-    { href: "main.dart.mjs", as: "script", rel: "modulepreload" },
-    { href: "main.dart.wasm", as: "fetch" },
-    { href: "engine/test-engine/skwasm.js", as: "script", rel: "modulepreload" },
-    { href: "engine/test-engine/skwasm.wasm", as: "fetch" },
-  ]);
-  expect(openDocument().preloadWasm({ graphics: false })).toEqual([]);
-  expect(openDocument().preloadWasm({ gc: false })).toEqual([]);
-  const first = openDocument();
-  first.boot.fail();
-  expect(openDocument(first.storage).preloadWasm()).toEqual([]);
-});
-
-it("keeps early language choices and waits for the latest choice before handing off", async () => {
-  const page = openDocument(new Map(), false, {
-    language: "th",
-    url: "http://127.0.0.1/thai-landing/?lang=th&utm_source=story#start",
-    streamingHtml: true,
-    welcome: true,
-  });
-  page.selectLanguage("zh");
-  expect(page.document.documentElement.lang).toBe("zh");
-  expect(page.location.href).toContain("lang=zh&utm_source=story#start");
-  const enter = vi.fn();
-  const change = vi.fn(async (_language: string) => true);
-  page.boot.connectWelcome(enter, change, "th");
-  await page.boot.ready();
-  expect(page.startup.remove).not.toHaveBeenCalled();
-  expect(change).not.toHaveBeenCalled();
-  page.selectLanguage("vi");
-  page.clickStart();
-  page.clickStart();
-  await vi.advanceTimersByTimeAsync(80);
-  expect(change.mock.calls).toEqual([["vi"]]);
-  expect(enter).toHaveBeenCalledOnce();
-  expect(page.document.documentElement.lang).toBe("vi");
-  expect(page.location.href).toContain("lang=vi&utm_source=story#start");
+it("keeps the landing form independent from Flutter startup", () => {
+  const page = openDocument(new Map(), false, { url: "http://127.0.0.1/thai-landing/?lang=zh" });
+  expect(page.startFlutter()).not.toHaveBeenCalled();
   expect(page.startup.remove).toHaveBeenCalledOnce();
+  expect(page.window.dispatchEvent).not.toHaveBeenCalled();
+  expect(page.location.replace).not.toHaveBeenCalled();
 });
 
-it("keeps the welcome open without a click and leaves deep links on their original route", () => {
-  for (const route of ["", "report.html?id=retained-report", "privacy.html", "support.html"]) {
-    const page = openDocument(new Map(), false, {
-      url: `http://127.0.0.1/thai-landing/${route}`, welcome: !route,
-    });
-    const enter = vi.fn();
-    page.boot.connectWelcome(enter);
-    if (route) page.boot.enterWelcome();
+it("preloads the Dart runtime on Flutter pages but not on the native landing entry", () => {
+  expect(buildSource).toContain("writeFile(indexPath,index.replace(runtimeSlot,''))");
+  expect(buildSource).toContain("writeFile(path.join(generated,page),index.replace(runtimeSlot,runtimePreload))");
+});
+
+it.each(["report.html?id=retained-report", "privacy.html", "support.html"])(
+  "starts Flutter immediately for %s and retains the original URL", (route) => {
+    const page = openDocument(new Map(), false, { url: "http://127.0.0.1/thai-landing/" + route });
+    expect(page.startFlutter()).toHaveBeenCalledOnce();
     page.boot.ready();
-    expect(enter).not.toHaveBeenCalled();
-    expect(page.startup.remove).toHaveBeenCalledTimes(route ? 1 : 0);
     expect(page.location.replace).not.toHaveBeenCalled();
-  }
+  },
+);
+
+it("records startup and page errors without exception text, duplicate frame errors, or private visits", () => {
+  const page = openDocument();
+  page.boot.stage("engine");
+  page.boot.fail();
+  page.boot.ready();
+  const context = JSON.parse(page.h5.visitContext());
+  page.h5.trackActivity(JSON.stringify({ ...context, activity: { page: "preview_report", action: "view" } }),
+    page.h5.ownerKey(), "/api/landing/visits");
+  const error = { error: new TypeError("private birth data"), filename: "http://127.0.0.1/thai-landing/main.dart.js" };
+  page.emit("error", error);
+  page.emit("error", error);
+  page.emit("error", { ...error, filename: "https://external.invalid/pixel.js" });
+  page.h5.trackRuntime("runtime_flutter_rendering");
+  const saved = page.storage.get("fate-activity-pending")!;
+  expect(saved).not.toContain("private birth data");
+  expect(saved).not.toContain("main.dart.js");
+  const runtime = JSON.parse(saved).items.map((item: any) => item.event)
+    .filter((event: any) => event.kind === "action" && event.action.startsWith("runtime_"));
+  expect(runtime.map((event: any) => [event.page, event.action]).sort()).toEqual([
+    ["preview_report", "runtime_flutter_rendering"], ["preview_report", "runtime_js_type"], ["unobserved", "runtime_boot_engine"],
+  ]);
+  const privatePage = openDocument(new Map(), false, { privateBrowsing: true });
+  privatePage.boot.fail();
+  expect(privatePage.storage.has("fate-activity-pending")).toBe(false);
 });
 
 it("recovers a failed startup once and leaves persistent failures retryable", () => {
@@ -508,29 +555,6 @@ it("recovers a failed startup once and leaves persistent failures retryable", ()
   expect(second.location.reload).not.toHaveBeenCalled();
   expect(second.status.textContent).toContain("页面加载失败");
   expect(second.button.hidden).toBe(false);
-});
-
-it("continues the first welcome tap after an automatic reload", async () => {
-  const first = openDocument(new Map(), false, { welcome: true });
-  first.clickStart();
-  first.boot.fail();
-  vi.advanceTimersByTime(700);
-
-  const next = openDocument(first.storage, false, { welcome: true, navigationType: "reload" });
-  const enter = vi.fn();
-  next.boot.connectWelcome(enter, async () => true, "zh");
-  expect(next.start.setAttribute).toHaveBeenCalledWith("aria-busy", "true");
-  expect(enter).toHaveBeenCalledOnce();
-  await next.boot.ready();
-  expect(next.startup.remove).toHaveBeenCalledOnce();
-});
-
-it("retries a transient Wasm fetch error with the normal renderer", async () => {
-  const first = openDocument();
-  first.startFlutter(vi.fn(async () => { throw new TypeError("Failed to fetch dynamically imported module"); }));
-  await vi.advanceTimersByTimeAsync(700);
-  expect(first.location.reload).toHaveBeenCalledOnce();
-  expect(openDocument(first.storage).boot.compatibility).toBe(false);
 });
 
 it("cancels recovery when the app becomes visible and clears the failure marker", () => {
@@ -684,10 +708,25 @@ it.each(["error", "unhandledrejection"])("recovers a pre-ready %s while ignoring
 });
 
 it("handles callback-mode JavaScript entrypoint fetch errors", () => {
-  const page = openDocument();
+  const page = openDocument(new Map(), false, { url: "https://fate.example/thai-landing/" });
   page.emit("error", { target: { tagName: "SCRIPT", src: "https://fate.example/thai-landing/main.dart.js" } });
   vi.advanceTimersByTime(700);
   expect(page.location.reload).toHaveBeenCalledOnce();
+});
+
+it("keeps third-party and browser-muted script faults out of startup recovery and page errors", () => {
+  const external = { error: new TypeError("external"), filename: "https://external.invalid/pixel.js" };
+  const muted = { error: null, message: "Script error.", filename: "", lineno: 0, colno: 0 };
+  for (const event of [external, muted]) {
+    const page = openDocument();
+    page.emit("error", event);
+    vi.advanceTimersByTime(700);
+    expect(page.location.reload).not.toHaveBeenCalled();
+    expect(page.storage.has(recoveryKey)).toBe(false);
+    page.boot.ready();
+    page.emit("error", event);
+    expect(page.storage.has("fate-activity-pending")).toBe(false);
+  }
 });
 
 it("recovers inline bootstrap syntax errors and offers retry before DOMContentLoaded", () => {

@@ -13,48 +13,53 @@ external JSPromise<JSString> _export(JSString payload, JSString format);
 external void _payment(JSString action, JSString fields);
 @JS('fateH5.pageReady')
 external void _ready(JSString page);
-@JS('fateH5.welcomeAge')
-external JSNumber _welcomeAge();
-@JS('fateH5.trackViewReadingClick')
-external void _viewReadingClick();
 @JS('fateH5.trackActivity')
 external void _activity(JSString payload, JSString key, JSString endpoint);
 @JS('fateH5.trackFailure')
 external void _failure(JSString path, JSString code, JSString method);
 @JS('fateBoot.fail')
 external void _startupFailed();
-@JS('fateBoot.connectWelcome')
-external void _connectWelcome(
-  JSFunction enter,
-  JSFunction changeLanguage,
-  JSString language,
-);
+@JS('fateBoot.openingReportId')
+external JSString? get _openingReportId;
+@JS('fateH5.trackRuntime')
+external void _runtimeError(JSString action);
 @JS('fateH5.ownerKey')
 external JSString? _ownerKey();
 @JS('fateH5.visitContext')
 external JSString _visitContext();
+@JS('fateBirthForm.attach')
+external void _attachBirthForm(JSString initial, JSFunction submit);
+@JS('fateBirthForm.submitting')
+external JSBoolean get _birthFormSubmitting;
+@JS('fateBirthForm.setVisible')
+external void _setBirthFormVisible(JSBoolean visible);
+@JS('fateBirthForm.detach')
+external void _detachBirthForm();
 
 class WebBrowserPort implements BrowserPort {
+  String? get openingReportId => _openingReportId?.toDart;
   void startupFailed() => _startupFailed();
-  String? get startupLanguage =>
-      web.document.documentElement?.getAttribute('lang');
-  bool get hasBrowserWelcome =>
-      web.document.documentElement?.getAttribute('data-welcome') == 'true' &&
-      web.document.getElementById('fate-welcome') != null;
-
-  void connectWelcome(
-    void Function() enter,
-    Future<bool> Function(String) changeLanguage,
-    String language,
-  ) {
-    JSPromise<JSBoolean> change(JSString next) =>
-        changeLanguage(next.toDart).then((changed) => changed.toJS).toJS;
-    _connectWelcome(enter.toJS, change.toJS, language.toJS);
+  void trackFrameworkError(String? library) {
+    final action = switch (library) {
+      'widgets library' => 'runtime_flutter_widgets',
+      'rendering library' => 'runtime_flutter_rendering',
+      _ => 'runtime_flutter_framework',
+    };
+    try {
+      _runtimeError(action.toJS);
+    } catch (_) {
+      // Flutter still handles the error when diagnostics are unavailable.
+    }
   }
 
   @override
-  Duration get welcomeAge =>
-      Duration(microseconds: (_welcomeAge().toDartDouble * 1000).round());
+  bool get supportsLineApp {
+    final navigator = web.window.navigator;
+    final agent = navigator.userAgent;
+    // iPadOS can identify itself as a Mac in desktop browsing mode.
+    return RegExp(r'Android|iPhone|iPad|iPod').hasMatch(agent) ||
+        (agent.contains('Macintosh') && navigator.maxTouchPoints > 1);
+  }
 
   @override
   void openPage(String path, {bool sameTab = false}) {
@@ -96,13 +101,21 @@ class WebBrowserPort implements BrowserPort {
   void pageReady(String page) => _ready(page.toJS);
 
   @override
-  void trackViewReadingClick() {
-    try {
-      _viewReadingClick();
-    } catch (_) {
-      // An older landing page may still be open during a release.
-    }
+  void attachBirthForm(Json initial, Future<String> Function(Json) submit) {
+    JSPromise<JSString> receive(JSString payload) => submit(
+      object(jsonDecode(payload.toDart)),
+    ).then((value) => value.toJS).toJS;
+    _attachBirthForm(jsonEncode(initial).toJS, receive.toJS);
   }
+
+  @override
+  bool get birthFormSubmitting => _birthFormSubmitting.toDart;
+
+  @override
+  void setBirthFormVisible(bool visible) => _setBirthFormVisible(visible.toJS);
+
+  @override
+  void detachBirthForm() => _detachBirthForm();
 
   @override
   void trackActivity(String page, String action) {

@@ -1,4 +1,5 @@
 """Authenticated operations on the existing H5 records and services."""
+from datetime import date, datetime, timedelta
 import hashlib
 import hmac
 import json
@@ -10,6 +11,7 @@ import time
 from typing import Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -17,9 +19,12 @@ from fastapi.responses import FileResponse
 from pydantic import Field
 
 from backend.app.accounts import DUMMY_PASSWORD_HASH, password_matches
+from backend.app.i18n import MESSAGES
 from backend.app.landing_features import VISIT_RETENTION_SECONDS, owner_for
 from backend.app.life_reports import LifeInput
-from backend.app.schemas import Input
+from backend.app.schemas import H5AppLoginInput, Input
+from backend.app.tarot_analytics import TAROT_ACTIONS, TAROT_PAGES
+from backend.app.tarot_receipts import TarotReceiptAction, TarotReceiptLookup
 
 COOKIE = "fate_admin"
 ASSETS = Path(__file__).resolve().parent / "web"
@@ -28,6 +33,7 @@ FAILURES = "('unavailable','unconfigured','limited')"
 VERIFIED_LIVE = "environment='live' AND status='paid'"
 LINE_SENT_REPORTS = "preview IS NOT NULL AND line_sent_at >= %s"
 LINE_PAGE_SIZE = 25
+BEIJING = ZoneInfo("Asia/Shanghai")
 # Report attribution comes from the snapshot stored at creation.
 BASE = f"""WITH active_visits AS (
  SELECT * FROM landing_visits
@@ -90,6 +96,9 @@ BASE = f"""WITH active_visits AS (
  CASE WHEN u.validated=0 THEN COALESCE(NULLIF(u.error_code,''),'historical_unknown') ELSE '' END code,
  r.status report_status,r.case_status,r.attribution
  FROM report_model_usage u JOIN reports r ON r.id=u.report_id
+), page_stays AS NOT MATERIALIZED (
+ SELECT visit_id,page_view_id,page,MAX(visible_ms) visible_ms FROM landing_visit_activity
+ GROUP BY visit_id,page_view_id,page
 ), visits AS (
  SELECT v.id,v.visited_at created,substr(v.owner,6,12) visitor,v.source,v.campaign,v.region_code entry_region,
  n.visitor_number,n.region_code,n.first_visit_date,
@@ -108,9 +117,7 @@ BASE = f"""WITH active_visits AS (
    WHERE l.visit_id=v.id
  ) links ON TRUE
  LEFT JOIN LATERAL (
-   SELECT SUM(t.visible_ms) visible_ms FROM (
-     SELECT MAX(a.visible_ms) visible_ms FROM landing_visit_activity a WHERE a.visit_id=v.id GROUP BY a.page_view_id
-   ) t
+   SELECT SUM(t.visible_ms) visible_ms FROM page_stays t WHERE t.visit_id=v.id
  ) dwell ON TRUE
 ), issues AS (
  SELECT 'report:'||id id,report_id,created,name,source,campaign,'report' category,status,code,case_status,'' path,NULL::bigint http_status,NULL::bigint duration_ms,attribution,visitor_number,NULL::text visit_id
@@ -124,6 +131,13 @@ BASE = f"""WITH active_visits AS (
  FROM h5_request_failures f LEFT JOIN reports r ON r.id=f.report_id
  LEFT JOIN active_visits v ON v.id=f.visit_id AND v.owner=f.owner
  LEFT JOIN active_visitors n ON n.owner=f.owner
+ WHERE f.recovery_key IS NULL OR f.report_id IS NULL
+ UNION ALL SELECT 'runtime:'||v.id||':'||a.sequence,NULL,a.received_at,'',v.source,v.campaign,
+ 'runtime','failed',a.action,'',a.page,NULL,NULL,CASE WHEN v.source='' THEN 'untagged' ELSE 'tagged' END,
+ n.visitor_number,v.id
+ FROM landing_visit_activity a JOIN active_visits v ON v.id=a.visit_id
+ LEFT JOIN active_visitors n ON n.owner=v.owner
+ WHERE a.kind='action' AND starts_with(a.action,'runtime_')
 ), audit AS (
  SELECT a.id,a.report_id,a.created,a.actor,a.action,a.status,a.code,a.note,'' source,'' campaign,
  r.visitor_number,r.id IS NOT NULL report_exists
@@ -131,8 +145,17 @@ BASE = f"""WITH active_visits AS (
 ) """
 
 SOURCES = [
-    {"name": "访问与渠道", "table": "landing_visits / landing_visitors / landing_visit_reports", "origin": "H5 欢迎页访问埋点及提交、查看预览事件",
-     "rule": "欢迎页可见时开始上报。重新打开入口按本次链接标签记为新访问，刷新和返回恢复原访问。访客按匿名浏览器去重，首次日期按北京时间。访问记录保留最近 30 天，编号在 30 天未访问后过期。"},
+    {"name": "塔罗访问统计", "table": "tarot_activity", "origin": "塔罗 H5 页面可见记录、操作事件和停留时长上报",
+     "rule": "按服务器首次收到记录的时间筛选。每行人数按匿名浏览器去重，次数按每次进入或操作累计。"
+             "同一次进入只累计前台可见时长，重复上报不累加。"},
+    {"name": "访问与渠道", "table": "landing_visits / landing_visitors / landing_visit_reports", "origin": "H5 资料填写页访问埋点及提交、查看预览事件",
+     "rule": "进入填写页时开始上报。重新打开入口按本次链接标签记为新访问，刷新和返回恢复原访问。访客按匿名浏览器去重，首次日期按北京时间。访问记录保留最近 30 天，编号在 30 天未访问后过期。"},
+    {"name": "H5 访问漏斗", "table": "landing_visits / landing_visit_activity", "origin": "欢迎页、资料填写页及报告按钮的 H5 事件",
+     "rule": "包含所有来源。从欢迎页或填写页可见的访问开始，按北京时间的访问开始日期筛选，包含起止当天，最多保留 30 天。"
+             "每一步的人数按匿名浏览器去重，人次按访问编号去重，次数按页面打开或按钮点击累计。"
+             "进入 H5 按访问编号计次，填写页按同一次访问中的页面打开计次，生成报告和 LINE 按按钮事件计次。生成报告按钮包含表单校验未通过的点击。按钮埋点启用前的点击无法回溯。"},
+    {"name": "广告转化", "table": "landing_visits / landing_visit_activity", "origin": "带来源和活动标签的 H5 访问及同一次访问的操作事件",
+     "rule": "按访问开始时间筛选，最多保留最近 30 天。同一步按浏览器去重。新访问从填写页开始，历史欢迎页访问和按钮点击仍可回看。广告平台链接点击数尚未接入。"},
     {"name": "次日回访人数", "table": "landing_visits / landing_visit_activity", "origin": "新访问、打开页面或恢复前台的记录",
      "rule": "按北京时间自然日计算。同一浏览器连续两天有访问记录，第二天算回访。按回访日期筛选，范围内每个浏览器计一次。"
              "轨迹按发生时间归日，历史无轨迹使用访问记录时间。"},
@@ -140,6 +163,9 @@ SOURCES = [
      "rule": "时间为服务器收到最新事件的时间。前台表示上报时可见，不保证当前在线；切到后台不等于离开。离开事件不能区分关闭、刷新或跳转。外部收银台内部页面不可观测，支付结果以服务端核验为准。历史缺失显示未采集，隐私设置、断网或浏览器关闭可能造成漏报；不据此推断放弃或离开原因。"},
     {"name": "操作轨迹与停留", "table": "landing_visit_activity", "origin": "H5 原页面和操作埋点、可见状态变化及每 15 秒的时长检查点",
      "rule": "只累计前台可见时间，不等于阅读时间。每次进入页面按累计最大时长去重，再求和；补发不会重复计时。操作时间来自浏览器，接收时间来自服务器。保留 30 天，旧记录不回填；浏览器关闭可能缺最后一段。待发队列最多 500 条，溢出数量单独标记。"},
+    {"name": "程序错误原因", "table": "landing_visit_activity / h5_request_failures / report_model_usage",
+     "origin": "浏览器异常、Flutter 启动及框架错误、接口失败和模型调用失败",
+     "rule": "前端按服务器收到事件的时间展示，同一次页面打开只上报同类异常的首次记录。仅上传预定义错误类别。服务端未捕获的异常只记录异常类型。历史缺少的原因无法回填。"},
     {"name": "填写进度与已提交资料", "table": "landing_visit_activity / landing_visit_reports / life_reports.input",
      "origin": "H5 表单必填校验的状态，以及服务器保存的关联报告",
      "rule": "填写进度取最近一次记录，包括未选资料、下一项需要填写的内容、已填完。表单上报只包含状态。"
@@ -157,11 +183,11 @@ SOURCES = [
     {"name": "处理记录", "table": "admin_audit / admin_cases", "origin": "已登录管理员提交的业务操作和备注",
      "rule": "处理进度只是内部跟进状态，不修改订单支付状态或报告权限。所有操作记录管理员、时间、原因与结果。"},
     {"name": "LINE 联系与报告发放", "table": "landing_visit_activity / life_reports / admin_audit", "origin": "H5 添加好友按钮、二维码显示事件和客服确认",
-     "rule": "按北京时间筛选首次打开领取码的时间，每份报告计一次，展示当前发放状态。"
+     "rule": "按北京时间筛选报告的首次领取记录。系统收到领取入口操作时登记，缺记录时以客服首次确认时间补记。每份报告计一次，展示当前发放状态。"
              "总览和销售端的已登记发送量均按发送登记时间筛选。待发报告和待确认好友展示全部待办。"
-             "点击人数按匿名浏览器去重，二维码每次显示计一次，联系事件统计最多保留 30 天。"},
+             "领取入口操作按匿名浏览器去重。二维码展示和入口操作分别显示区间内收到的记录，以及其中在区间内发生的记录。发生时间取浏览器记录，最晚按服务器接收时间计算。最多保留 30 天。"},
     {"name": "接口失败", "table": "h5_request_failures", "origin": "现有 H5 API 请求边界中的非成功响应",
-     "rule": "保留最近 30 天且最多 20000 条。记录接口模板、HTTP 状态、错误码、耗时、匿名访客哈希和访问编号；按所有权核对关联。包含地点查询和报告创建前的失败；客户端网络或响应解析异常单独标注，不当作服务端 HTTP 失败。不保存请求体、手机号、访问密钥、IP 或查询参数。"},
+     "rule": "保留最近 30 天且最多 20000 条。同一设备的同一次提交被受理后，刷新恢复时产生的查询 404 从接口失败统计中排除。记录接口模板、HTTP 状态、错误码、耗时、匿名访客哈希和访问编号；按所有权核对关联。包含地点查询和报告创建前的失败；客户端网络或响应解析异常单独标注，不当作服务端 HTTP 失败。不保存请求体、手机号、访问密钥、IP 或查询参数。"},
 ]
 
 
@@ -209,8 +235,17 @@ class H5Admin:
                 db.execute("SET LOCAL lock_timeout = '100ms'")
                 if report_id and not db.execute("SELECT 1 FROM life_reports WHERE id=%s AND owner=%s", (report_id, key_owner)).fetchone():
                     report_id = ""
-                db.execute("INSERT INTO h5_request_failures(created,method,path,http_status,code,duration_ms,report_id,owner,visit_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                           (time.time(), request.method, path, status, code, duration_ms, report_id, owner, visit_id))
+                recovery_key = None
+                if (request.method == "GET" and path == "/api/life-reports/submissions/{submission_id}"
+                        and status == 404 and code == "life_submission_not_found" and key_owner):
+                    submission_id = UUID(str(request.path_params["submission_id"]))
+                    recovery_key = self.reports.lock_submission(db, key_owner, submission_id)
+                    receipt = db.execute("SELECT report_id FROM life_report_submissions WHERE owner=%s AND submission_id=%s",
+                                         (key_owner, submission_id)).fetchone()
+                    report_id = receipt["report_id"] if receipt else None
+                db.execute("""INSERT INTO h5_request_failures(created,method,path,http_status,code,duration_ms,report_id,owner,visit_id,recovery_key)
+                              VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                           (time.time(), request.method, path, status, code, duration_ms, report_id, owner, visit_id, recovery_key))
                 db.execute("DELETE FROM h5_request_failures WHERE created<%s", (time.time() - 30 * 86400,))
                 db.execute("DELETE FROM h5_request_failures WHERE id IN (SELECT id FROM h5_request_failures ORDER BY created DESC OFFSET 20000)")
         except psycopg.Error:
@@ -301,6 +336,83 @@ class H5Admin:
     def cutoff(days):
         return time.time() - days * 86400 if days else 0
 
+    def page_diagnostics(self, days):
+        since = max(self.cutoff(days), time.time() - VISIT_RETENTION_SECONDS)
+        pages = self.rows("""
+            SELECT s.page,COUNT(*) entries,SUM(s.visible_ms) visible_ms,ROUND(AVG(s.visible_ms)) average_ms
+            FROM page_stays s JOIN active_visits v ON v.id=s.visit_id
+            WHERE v.visited_at>=%s GROUP BY s.page ORDER BY SUM(s.visible_ms) DESC,s.page
+        """, (since,))
+        errors = self.rows("""
+            SELECT category,code,path,http_status,created,visit_id,visitor_number,report_id
+            FROM issues WHERE category IN ('runtime','request','model') AND created>=%s
+            ORDER BY created DESC,id DESC LIMIT 25
+        """, (since,))
+        for error in errors:
+            if error["category"] == "request" and error["code"] in MESSAGES:
+                error["description"] = MESSAGES[error["code"]][0]
+        return {"pages": pages, "errors": errors}
+
+    def tarot_activity(self, days):
+        with self.store.connect() as db:
+            rows = db.execute("""
+                SELECT event, COUNT(DISTINCT visitor_hash) AS people, COUNT(*) AS times,
+                    SUM(visible_ms) AS total_ms, ROUND(AVG(visible_ms))::bigint AS average_ms
+                FROM tarot_activity WHERE recorded_at >= to_timestamp(%s)
+                GROUP BY event
+            """, (self.cutoff(days),)).fetchall()
+        events = {row["event"]: row for row in rows}
+        return {
+            "pages": [events.get(page, {"event": page, "people": 0, "times": 0,
+                                       "total_ms": None, "average_ms": None}) for page in TAROT_PAGES],
+            "actions": [events.get(action, {"event": action, "people": 0, "times": 0}) for action in TAROT_ACTIONS],
+        }
+
+    def visit_funnel(self, days, *, tagged_only=False, visit_range=None):
+        start, end = visit_range if visit_range else (self.cutoff(days), None)
+        metrics = self.rows("""
+            , funnel_visits AS (
+                SELECT v.id, v.owner,
+                    BOOL_OR(a.page='welcome' AND a.action='view' AND a.state='visible') AS welcome,
+                    BOOL_OR(a.page='welcome' AND a.kind='action' AND a.action='click_welcome_start') AS welcome_click,
+                    COUNT(DISTINCT a.page_view_id) FILTER (
+                        WHERE a.page='birth_form' AND a.state='visible'
+                          AND (a.action='view' OR (a.kind='state' AND a.action<>'leave_page'))
+                    ) AS birth_form_views,
+                    COUNT(*) FILTER (
+                        WHERE a.page='birth_form' AND a.kind='action' AND a.action='click_generate_report'
+                    ) AS generate_clicks,
+                    COUNT(*) FILTER (WHERE a.page='preview_report' AND a.kind='action' AND a.action='click_line') AS line_clicks
+                FROM active_visits v JOIN landing_visit_activity a ON a.visit_id=v.id
+                WHERE v.visited_at>=%s AND (%s::double precision IS NULL OR v.visited_at<%s)
+                  AND (NOT %s OR (v.source<>'' AND v.campaign<>''))
+                  AND a.kind IN ('action','state')
+                  AND (a.action IN ('view','click_welcome_start','click_generate_report','click_line')
+                       OR (a.page='birth_form' AND a.kind='state' AND a.state='visible' AND a.action<>'leave_page'))
+                GROUP BY v.id,v.owner
+            )
+            SELECT COUNT(*) AS entry_visits, COUNT(DISTINCT owner) AS entry_people,
+                COUNT(*) FILTER (WHERE welcome) AS welcome_visits,
+                COUNT(DISTINCT owner) FILTER (WHERE welcome) AS welcome_people,
+                COUNT(DISTINCT owner) FILTER (WHERE welcome AND welcome_click) AS welcome_click_people,
+                COUNT(DISTINCT owner) FILTER (WHERE birth_form_views > 0) AS birth_form_people,
+                COUNT(*) FILTER (WHERE birth_form_views > 0) AS birth_form_visits,
+                COALESCE(SUM(birth_form_views), 0)::bigint AS birth_form_views,
+                COUNT(DISTINCT owner) FILTER (WHERE generate_clicks > 0) AS generate_click_people,
+                COUNT(*) FILTER (WHERE generate_clicks > 0) AS generate_click_visits,
+                COALESCE(SUM(generate_clicks), 0)::bigint AS generate_clicks,
+                COUNT(DISTINCT owner) FILTER (WHERE line_clicks > 0) AS line_click_people,
+                COUNT(*) FILTER (WHERE line_clicks > 0) AS line_click_visits,
+                COALESCE(SUM(line_clicks), 0)::bigint AS line_clicks
+            FROM funnel_visits WHERE welcome OR birth_form_views > 0
+        """, (start, end, end, tagged_only))[0]
+        if tagged_only:
+            del metrics["birth_form_views"], metrics["generate_clicks"], metrics["line_clicks"]
+            del metrics["birth_form_visits"], metrics["generate_click_visits"], metrics["line_click_visits"]
+        else:
+            del metrics["welcome_click_people"]
+        return metrics
+
     def line_contacts(self, days, report_id, delivery, page, report_range=None):
         since = self.cutoff(days)
         unconfirmed = "line_confirmed_at IS NULL"
@@ -317,6 +429,7 @@ class H5Admin:
         elif report_id:
             match, params = "preview IS NOT NULL AND id=%s", (report_id,)
         retention = time.time() - VISIT_RETENTION_SECONDS
+        activity_since = max(retention, since)
         with self.store.connect() as db:
             # The count and page must see the same records while agents mark reports sent.
             db.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
@@ -328,14 +441,20 @@ class H5Admin:
             """, (*params, LINE_PAGE_SIZE, (page - 1) * LINE_PAGE_SIZE)).fetchall()
             metrics = db.execute(f"""
                 SELECT COUNT(*) FILTER (WHERE a.action='line_qr_shown') AS qr_popups,
-                       COUNT(DISTINCT v.owner) FILTER (WHERE a.action='open_line_contact') AS click_visitors,
+                       COUNT(DISTINCT v.owner) FILTER (WHERE a.action IN ('open_line_contact','click_line')) AS click_visitors,
+                       COUNT(*) FILTER (WHERE a.action='line_qr_shown' AND a.occurred_at >= %s) AS occurred_popups,
+                       COUNT(DISTINCT v.owner) FILTER (WHERE a.action IN ('open_line_contact','click_line')
+                                                      AND a.occurred_at >= %s) AS occurred_visitors,
                        (SELECT COUNT(*) FROM life_reports WHERE {LINE_SENT_REPORTS}) AS line_sent
                 FROM landing_visit_activity a JOIN landing_visits v ON v.id=a.visit_id
                 WHERE v.visited_at >= %s AND a.received_at >= %s
                   AND a.page='preview_report' AND a.kind='action'
-                  AND a.action IN ('open_line_contact','line_qr_shown')
-            """, (since, retention, max(retention, since))).fetchone()
-            result = {"items": items, "has_more": total > page * LINE_PAGE_SIZE, "total": total, "metrics": metrics}
+                  AND a.action IN ('open_line_contact','click_line','line_qr_shown')
+            """, (activity_since, activity_since, since, retention, activity_since)).fetchone()
+            occurred = {"qr_popups": metrics.pop("occurred_popups"), "click_visitors": metrics.pop("occurred_visitors")}
+            last_page = max(1, (total + LINE_PAGE_SIZE - 1) // LINE_PAGE_SIZE)
+            result = {"items": items, "total": total, "last_page": last_page, "has_more": page < last_page, "metrics": metrics}
+            result["activity_by_occurrence"] = occurred
             if report_range is not None:
                 count_columns = f"""
                     COUNT(*) AS total,
@@ -370,6 +489,78 @@ class H5Admin:
                     result[series] = row
         return result
 
+    def lookup_expired_h5_code(self, code, actor):
+        with self.store.connect() as db:
+            db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,20261123))", (actor,))
+            now = time.time()
+            recent = db.execute(
+                "SELECT COUNT(*) AS count FROM admin_audit WHERE action='h5_code_lookup' AND actor=%s AND created>%s",
+                (actor, now - 60),
+            ).fetchone()["count"]
+            if recent >= 30:
+                raise HTTPException(429, "too_many_requests")
+            match = self.store.expired_h5_login_code(db, code, now)
+            result = None
+            if match:
+                result = db.execute("""
+                    SELECT accounts.user_id, visitors.visitor_number,
+                           source.claim_code::text AS issued_claim_code, to_jsonb(latest) AS latest_report
+                    FROM (VALUES (%s::text,%s::text)) AS link(owner,report_id)
+                    LEFT JOIN h5_app_accounts accounts ON accounts.owner=link.owner
+                    LEFT JOIN landing_visitors visitors ON visitors.owner=link.owner
+                    LEFT JOIN life_reports source ON source.id=link.report_id AND source.owner=link.owner
+                    LEFT JOIN LATERAL (
+                        SELECT id,claim_code::text AS claim_code,created,preview_state,full_state
+                        FROM life_reports WHERE owner=link.owner ORDER BY created DESC,id DESC LIMIT 1
+                    ) latest ON TRUE
+                """, (match["owner"], match["report_id"])).fetchone()
+            latest = result["latest_report"] if result else None
+            # Audit the operator and report without recording the submitted login code.
+            db.execute(
+                """INSERT INTO admin_audit(id,report_id,created,actor,action,status,note)
+                   VALUES(%s,%s,%s,%s,'h5_code_lookup',%s,%s)""",
+                (str(uuid4()), latest["id"] if latest else "", now, actor,
+                 "succeeded" if match else "failed", "回查已过期的 App 登录码"),
+            )
+        return result
+
+    @staticmethod
+    def audit_tarot_receipt(db, actor, code, action, note, found=True):
+        db.execute(
+            """INSERT INTO admin_audit(id,report_id,created,actor,action,status,code,note)
+               VALUES(%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (str(uuid4()), code if found else "", time.time(), actor, action,
+             "succeeded" if found else "failed", "" if found else "admin_tarot_receipt_not_found", note),
+        )
+
+    def lookup_tarot_receipt(self, code, actor):
+        with self.store.connect() as db:
+            row = db.execute(
+                """SELECT claim_code, report_id, question, topic, spread_id, language, cards, created_at, accepted_at, sent_at
+                   FROM tarot_receipts WHERE claim_code=%s""", (code,),
+            ).fetchone()
+            self.audit_tarot_receipt(db, actor, code, "tarot_receipt_lookup", "查阅塔罗领取登记", found=row is not None)
+        return row
+
+    def update_tarot_receipt(self, body, actor):
+        with self.store.connect() as db:
+            row = db.execute(
+                "SELECT accepted_at, sent_at FROM tarot_receipts WHERE claim_code=%s FOR UPDATE", (body.code,),
+            ).fetchone()
+            if row is None:
+                raise HTTPException(404, "admin_tarot_receipt_not_found")
+            if body.action == "mark_sent" and row["accepted_at"] is None:
+                raise HTTPException(409, "admin_tarot_receipt_not_accepted")
+            field, note = (
+                ("accepted_at", "客服已在 LINE 收到塔罗编号")
+                if body.action == "accept" else ("sent_at", "客服已在 LINE 手工发送塔罗报告")
+            )
+            if row[field] is None:
+                row[field] = max(time.time(), row["accepted_at"] or 0)
+                db.execute(f"UPDATE tarot_receipts SET {field}=%s WHERE claim_code=%s", (row[field], body.code))
+                self.audit_tarot_receipt(db, actor, body.code, f"tarot_receipt_{body.action}", note)
+        return row
+
     def line_contact_report(self, report_id):
         with self.store.connect() as db:
             row = db.execute("""
@@ -400,7 +591,11 @@ class H5Admin:
                 if action == "confirm":
                     if confirmed:
                         return {"full_state": state}
-                    db.execute("UPDATE life_reports SET line_confirmed_at=%s WHERE id=%s", (now, report_id))
+                    # Manual claims may arrive without an H5 contact event.
+                    db.execute(
+                        "UPDATE life_reports SET line_contact_at=COALESCE(line_contact_at, %s), "
+                        "line_confirmed_at=%s WHERE id=%s", (now, now, report_id),
+                    )
                     note = "客服按报告编号确认已添加 LINE 好友"
                 else:
                     if not confirmed or row["line_sent_at"] is not None:
@@ -534,10 +729,8 @@ class H5Admin:
                                 "FROM landing_visit_activity WHERE visit_id=%s AND kind<>'dwell' "
                                 "ORDER BY sequence LIMIT 50 OFFSET %s", (visit_id, (page - 1) * 50)).fetchall()
             total = db.execute("SELECT COUNT(*) count FROM landing_visit_activity WHERE visit_id=%s AND kind<>'dwell'", (visit_id,)).fetchone()["count"]
-            pages = db.execute("""SELECT page,SUM(visible_ms) visible_ms,COUNT(*) entries FROM (
-                SELECT page_view_id,page,MAX(visible_ms) visible_ms FROM landing_visit_activity
-                WHERE visit_id=%s GROUP BY page_view_id,page
-            ) t GROUP BY page ORDER BY page""", (visit_id,)).fetchall()
+            pages = db.execute(BASE + """SELECT page,SUM(visible_ms) visible_ms,COUNT(*) entries FROM page_stays
+                WHERE visit_id=%s GROUP BY page ORDER BY page""", (visit_id,)).fetchall()
             profiles = db.execute("""
                 SELECT r.id report_id,r.input::jsonb #>> '{profile,birth_date}' birth_date,
                        r.input::jsonb #>> '{profile,birth_time}' birth_time,
@@ -550,7 +743,7 @@ class H5Admin:
         return {"visit": visits[0], "events": [dict(row) for row in events], "pages": [dict(row) for row in pages],
                 "total": total, "page": page, "page_size": 50,
                 "submitted_profiles": [dict(row) for row in profiles],
-                "failures": self.rows("SELECT * FROM issues WHERE category='request' AND visit_id=%s ORDER BY created DESC LIMIT 100", (visit_id,))}
+                "failures": self.rows("SELECT * FROM issues WHERE category IN ('runtime','request') AND visit_id=%s ORDER BY created DESC,id DESC LIMIT 100", (visit_id,))}
 
     def report(self, report_id):
         with self.store.connect() as db:
@@ -699,6 +892,30 @@ def admin_router(service):
     def overview(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
         return service.overview(days)
 
+    @router.get("/visit-funnel")
+    def visit_funnel(days: int = Query(30, ge=0, le=365), start_date: date | None = None,
+                     end_date: date | None = None, current=Depends(only_admin)):
+        if start_date is None and end_date is None:
+            return service.visit_funnel(days)
+        if start_date is None or end_date is None or not start_date <= end_date <= datetime.now(BEIJING).date():
+            raise HTTPException(422, "admin_visit_range_invalid")
+        midnight = datetime.min.time()
+        start = datetime.combine(start_date, midnight, BEIJING).timestamp()
+        end = datetime.combine(end_date + timedelta(days=1), midnight, BEIJING).timestamp()
+        return service.visit_funnel(days, visit_range=(start, end))
+
+    @router.get("/page-diagnostics")
+    def page_diagnostics(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
+        return service.page_diagnostics(days)
+
+    @router.get("/tarot-activity")
+    def tarot_activity(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
+        return service.tarot_activity(days)
+
+    @router.get("/ad-funnel")
+    def ad_funnel(days: int = Query(30, ge=0, le=365), current=Depends(only_admin)):
+        return service.visit_funnel(days, tagged_only=True)
+
     @router.get("/sources")
     def sources(current=Depends(only_admin)):
         return {"items": SOURCES}
@@ -749,6 +966,24 @@ def admin_router(service):
     @router.post("/line-contacts/{report_id}/report")
     def line_contact_report(report_id: str, current=Depends(service.write_session)):
         return service.line_contact_report(report_id)
+
+    @router.post("/line-contacts/app-code-lookup")
+    def lookup_expired_h5_code(body: H5AppLoginInput, current=Depends(service.write_session)):
+        result = service.lookup_expired_h5_code(body.code, current["username"])
+        if result is None:
+            raise HTTPException(404, "admin_expired_code_not_found")
+        return result
+
+    @router.post("/line-contacts/tarot-lookup")
+    def lookup_tarot_receipt(body: TarotReceiptLookup, current=Depends(service.write_session)):
+        result = service.lookup_tarot_receipt(body.code, current["username"])
+        if result is None:
+            raise HTTPException(404, "admin_tarot_receipt_not_found")
+        return result
+
+    @router.post("/line-contacts/tarot-status")
+    def update_tarot_receipt(body: TarotReceiptAction, current=Depends(service.write_session)):
+        return service.update_tarot_receipt(body, current["username"])
 
     return router
 

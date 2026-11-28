@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
 import { brotliCompressSync, brotliDecompressSync, constants, gzipSync } from 'node:zlib';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -9,8 +9,8 @@ import { setTimeout as pause } from 'node:timers/promises';
 
 export const projectRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export const flutterRoot=path.join(projectRoot,'web-client');
-const cached=['flutter-3.50.0','flutter'].map(name=>path.join(homedir(),'.cache','fate-sdk',name,'bin','flutter.bat'));
-const binary=process.env.FATE_FLUTTER_BIN||(process.platform==='win32'?cached.find(existsSync):undefined)||'flutter';
+const cached=path.join(homedir(),'.cache','fate-sdk','flutter','bin','flutter.bat');
+const binary=process.env.FATE_FLUTTER_BIN||(process.platform==='win32'&&existsSync(cached)?cached:'flutter');
 // Use the SDK's Dart analyzer so Unicode repository paths keep working.
 export function flutter(args){return new Promise((resolve,reject)=>{const tool=args[0]==='analyze'?path.join(path.dirname(binary),process.platform==='win32'?'dart.bat':'dart'):binary;const quote=value=>`'${String(value).replaceAll("'","''")}'`;const command=`& ${quote(tool)} ${args.map(quote).join(' ')}; exit $LASTEXITCODE`;const child=process.platform==='win32'?spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{cwd:flutterRoot,stdio:'inherit',windowsHide:true}):spawn(tool,args,{cwd:flutterRoot,stdio:'inherit'});child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(`SDK tool exited with ${code}`)));});}
 export const basePath=process.env.FATE_H5_BASE_PATH||'/thai-landing/';
@@ -33,8 +33,8 @@ export async function buildLanding({release=false,noPub=false}={}){
   if(!generated.startsWith(temporary+path.sep)||!previous.startsWith(temporary+path.sep)||destination!==path.join(projectRoot,'site'))throw Error('Unexpected build directory');
   await flutter(['build','web','--release','--wasm','--enable-wasm-deferred-loading',...(noPub?['--no-pub']:[]),'--no-web-resources-cdn',`--base-href=${basePath}`,`--output=${generated}`,'--dart-define=FATE_API_BASE_URL=']);
   const compiledFiles=await readdir(generated);
-  if(!compiledFiles.some(file=>/^main\.dart_module\d+\.wasm$/.test(file))||
-      !compiledFiles.some(file=>/^main\.dart\.js_\d+.*\.part\.js$/.test(file))){
+  if (!compiledFiles.some(file=>/^main\.dart_module\d+\.wasm$/.test(file)) ||
+      !compiledFiles.some(file=>/^main\.dart\.js_\d+.*\.part\.js$/.test(file))) {
     throw Error('Expected deferred chunks for both Flutter Web targets');
   }
   const bootstrap=await readFile(path.join(generated,'flutter_bootstrap.js'),'utf8');
@@ -47,40 +47,50 @@ export async function buildLanding({release=false,noPub=false}={}){
   const browserSource=await readFile(path.join(flutterRoot,'web','browser.js'),'utf8');
   const indexPath=path.join(generated,'index.html');
   let index=await readFile(indexPath,'utf8');
-  // Warm the Wasm downloads before the Flutter loader reaches its dynamic import.
+  // Start loading the small Dart module as soon as the browser parses the entry.
   const runtimeSlot='<!-- FATE_WASM_RUNTIME_PRELOAD -->';
   if(!index.includes(runtimeSlot))throw Error('Missing Wasm runtime preload slot');
-  index=index.replace(runtimeSlot,`<script>preloadFateWasm(${JSON.stringify(engineRevision)});</script>`);
-  // The first paint and Flutter welcome use the same translated content.
-  const copy=JSON.parse(await readFile(path.join(flutterRoot,'assets','copy.json'),'utf8'));
-  const welcomeCopy=copy.jy;
-  for(const language of Object.keys(welcomeCopy)){
-    await stat(path.join(generated,'assets','assets','copy',language+'.json'));
-  }
-  const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  for(const key of ['name','role','headline','note','start','swipe']){
-    const slot=`<!-- FATE_WELCOME_${key.toUpperCase()} -->`;
-    if(!index.includes(slot))throw Error(`Missing welcome copy slot: ${key}`);
-    index=index.replace(slot,Object.entries(welcomeCopy).map(([lang, {welcome}])=>`<span class="fate-startup-${lang}">${escapeHtml(welcome[key] ?? '')}</span>`).join(''));
-  }
-  const strokeSlot='<!-- FATE_WELCOME_STROKES -->';
-  if(!index.includes(strokeSlot))throw Error('Missing welcome stroke data slot');
-  index=index.replace(strokeSlot,JSON.stringify(copy.welcomeStrokes).replaceAll('<','\\u003c'));
+  const runtimePreload='<link rel="modulepreload" href="main.dart.mjs" crossorigin fetchpriority="low">';
   // Discover engine fonts during the HTML request instead of after the Wasm download.
   const fontManifest=JSON.parse(await readFile(path.join(generated,'assets','FontManifest.json'),'utf8'));
   const fontAssets=new Set(fontManifest.flatMap(family=>family.fonts.map(font=>font.asset)));
-  for (const file of ['FateChineseUI.otf','NotoSansMyanmar-Regular.ttf','NotoSansKhmer-Regular.ttf','NotoSansLao-Regular.ttf']) {
-    fontAssets.delete('assets/fonts/'+file); // The HTML shell preloads the active language font.
+  for (const file of ['NotoSansThai.ttf','FateChineseUI.otf','NotoSansMyanmar-Regular.ttf','NotoSansKhmer-Regular.ttf','NotoSansLao-Regular.ttf']) {
+    fontAssets.delete('assets/fonts/'+file); // Preloaded by the entry when selected.
   }
   const fallbackFont='fonts/fallback/Roboto-Regular.ttf';
   if(existsSync(path.join(generated,'assets',fallbackFont)))fontAssets.add(fallbackFont);
   if(!index.includes('<!-- FATE_FONT_PRELOADS -->'))throw Error('Missing font preload slot');
   index=index.replace('<!-- FATE_FONT_PRELOADS -->',[...fontAssets].map(asset=>`<link rel="preload" href="assets/${asset}" as="fetch" fetchpriority="low" crossorigin>`).join('\n  '));
   if(!index.includes('<script src="browser.js"></script>'))throw Error('Missing browser bootstrap slot');
-  await writeFile(indexPath,index.replace('<script src="browser.js"></script>',`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`));
+  index=index.replace('<script src="browser.js"></script>',()=>`<script>${browserSource.replaceAll('</script>','<\\/script>')}</script>`);
+  // Keep the editable form and just its labels in the first response, ahead of Flutter.
+  const copies = {};
+  const formKeys = 'title language portrait formTitle formCaption date dateParts calendar time unknown city citySearch questionTitle questions writeQuestion topics topicLabel disclaimer submitConsent regionPending regionRetry noticeOutdated consentError openLatest'.split(' ');
+  for (const file of await readdir(path.join(flutterRoot,'assets','copy'))) {
+    if (!file.endsWith('.json')) continue;
+    const lang = path.basename(file,'.json');
+    const data = JSON.parse(await readFile(path.join(flutterRoot,'assets','copy',file),'utf8'));
+    const pick = (object, keys) => Object.fromEntries(keys.map(key => [key,object[key]]));
+    copies[lang] = {
+      jy: pick(data.jy[lang],formKeys),
+      ui: pick(data.ui[lang],['invalidDate','timeRequired','invalidPlace','network','badResult','noCity','morePlaces','confirm','close']),
+      marriage: pick(data.marriage[lang],['title','form_hint']),
+      generation: pick(data.generation[lang],['storage','busy','retry','previewTitle','preview','ready']),
+      preparing: data.jy[lang].interpretation.steps.basics.status,
+      themes: Object.values(data.jyThemes).map(items => items.map(item => item[lang]))
+    };
+  }
+  const formScript = await readFile(path.join(flutterRoot,'web','birth-form.js'),'utf8');
+  const formStyle = await readFile(path.join(flutterRoot,'web','birth-form.css'),'utf8');
+  index=index.replace('<!-- FATE_BIRTH_COPY -->',()=>`<script>window.fateBirthCopies=${JSON.stringify(copies).replaceAll('<','\\u003c')}</script>`)
+    .replace('<link rel="stylesheet" href="birth-form.css">',()=>`<style>${formStyle}</style>`)
+    .replace('<script src="birth-form.js"></script>',()=>`<script>${formScript}</script>`);
+  // The landing form must be interactive without fetching Flutter. Only pages
+  // rendered by Flutter receive the Dart module preload.
+  await writeFile(indexPath,index.replace(runtimeSlot,''));
   // Preserve the existing report.html deep links, including saved report IDs.
   for (const page of ['report.html','privacy.html','support.html']) {
-    await cp(path.join(generated,'index.html'),path.join(generated,page));
+    await writeFile(path.join(generated,page),index.replace(runtimeSlot,runtimePreload));
   }
   for(const file of ['main.dart.wasm','main.dart.mjs','main.dart.js','browser.js','runtime/report-pdf.js','fonts/pdf/NotoSansThai-Regular.ttf','fonts/pdf/NotoSansSC-Regular.ttf','fonts/pdf/NotoSansMyanmar-Regular.ttf','fonts/pdf/NotoSansKhmer-Regular.ttf','fonts/pdf/NotoSansLao-Regular.ttf','media/report-loading-web.mp4'])await stat(path.join(generated,file));
   const compressible=new Set(['.html','.js','.mjs','.css','.json','.svg','.wasm','.ttf','.otf']);
@@ -90,9 +100,9 @@ export async function buildLanding({release=false,noPub=false}={}){
     if(!info.isFile()||info.size<1024)continue;
     const original=await readFile(file);
     await writeFile(file+'.gz',gzipSync(original,{level:9}));
-    // Compress the entry points and the normal Skwasm renderer most tightly.
-    const startupBinary=['main.dart.js','main.dart.wasm','skwasm.wasm'].includes(path.basename(relative));
-    const quality=release||startupBinary?11:path.extname(relative)==='.wasm'?10:6;
+    // Use denser Brotli for large startup binaries even in the regular site build.
+    const startupBinary=relative==='main.dart.js'||path.extname(relative)==='.wasm';
+    const quality=release?11:(startupBinary?10:6);
     const brotli=brotliCompressSync(original,{params:{[constants.BROTLI_PARAM_QUALITY]:quality}});
     if(!brotliDecompressSync(brotli).equals(original))throw Error(`Brotli verification failed: ${relative}`);
     if(brotli.length<original.length)await writeFile(file+'.br',brotli);

@@ -115,12 +115,29 @@
             </div>
           </div>
           <div id="page-error" class="error-banner" role="alert" hidden></div>
+          <section id="visit-funnel-controls" class="panel visit-funnel-controls" aria-label="访问漏斗筛选" hidden>
+            <div class="visit-funnel-toolbar">
+              <form id="visit-funnel-range" class="date-range-form">
+                <label>开始日期 <input id="visit-range-start" type="date" required /></label>
+                <label>结束日期 <input id="visit-range-end" type="date" required /></label>
+                <button class="button" type="submit">应用</button>
+                <button id="visit-range-reset" class="button" type="button">恢复默认</button>
+              </form>
+              <div class="funnel-measures" role="group" aria-label="统计单位">
+                <button class="button" type="button" data-funnel-measure="people" aria-pressed="true">人数</button>
+                <button class="button" type="button" data-funnel-measure="visits" aria-pressed="false">人次</button>
+                <button class="button" type="button" data-funnel-measure="events" aria-pressed="false">次数</button>
+              </div>
+            </div>
+            <p id="visit-range-error" class="error-text" role="alert" hidden></p>
+            <p id="visit-applied-range" class="stat-hint"></p>
+          </section>
           <section id="line-stats" class="panel line-stats" aria-labelledby="line-stats-title" hidden>
             <div class="data-group-heading">
               <h2 id="line-stats-title">领取码报告统计</h2>
               <small class="muted">北京时间 UTC+8</small>
             </div>
-            <form id="line-range-form" class="line-range-form">
+            <form id="line-range-form" class="date-range-form">
               <div class="line-range-presets" role="group" aria-label="快捷时间范围">
                 <button class="button" type="button" data-line-range="today">今天</button>
                 <button class="button" type="button" data-line-range="morning">今天中午前</button>
@@ -133,8 +150,8 @@
             <p id="line-applied-range" class="stat-hint"></p>
             <div id="line-report-counts" class="line-report-counts" aria-live="polite">
               <dl class="line-report-count-pair">
-                <div><dt>首次弹码 <small>未去重</small></dt><dd data-line-count="total">—</dd></div>
-                <div class="line-report-count-dedup"><dt>首次弹码 <small>去重</small></dt><dd data-line-count="total" data-line-dedup>—</dd></div>
+                <div><dt>首次领取记录 <small>未去重</small></dt><dd data-line-count="total">—</dd></div>
+                <div class="line-report-count-dedup"><dt>首次领取记录 <small>去重</small></dt><dd data-line-count="total" data-line-dedup>—</dd></div>
               </dl>
               <dl class="line-report-count-pair">
                 <div><dt>待确认加好友 <small>未去重</small></dt><dd data-line-count="unconfirmed">—</dd></div>
@@ -149,7 +166,7 @@
                 <div class="line-report-count-dedup"><dt>其中已发送 <small>去重</small></dt><dd data-line-count="sent" data-line-dedup>—</dd></div>
               </dl>
             </div>
-            <p class="stat-hint">未去重按报告计数。去重按浏览器访客的最早一次弹码计数，显示对应报告的当前发放状态。</p>
+            <p class="stat-hint">首次领取记录取服务器收到领取入口操作的时间，缺记录时以客服首次确认时间补记。未去重按报告计数，去重按匿名浏览器的首份领取记录计数。状态取对应报告的当前状态。</p>
           </section>
           <div id="content" aria-live="polite"></div>
           <footer class="page-footer">

@@ -104,6 +104,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todayTab => 'Today';
 
   @override
+  String get quickAccess => 'Quick access';
+
+  @override
+  String get luckyRevealHint => 'Tap the number for today’s insight';
+
+  @override
+  String get readingBackToContents => 'Back to contents';
+
+  @override
   String get actionTab => 'Actions';
 
   @override
@@ -158,10 +167,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startThaiGuide => 'Enter birth details to begin';
 
   @override
+  String get homeChartExample => 'View a sample Western chart';
+
+  @override
   String get viewThaiGuide => 'View my Thai chart';
 
   @override
-  String get startSevenGuide => 'Preview seven-character readings';
+  String get startSevenGuide => 'Try Arun’s sample chat';
+
+  @override
+  String get arunSampleHeading => 'Arun’s sample chat';
+
+  @override
+  String get arunSampleReply =>
+      'Pick one thing you can finish in ten minutes. You could set out what you need tomorrow morning or write down the first thing you’ll do tomorrow. Then see what still needs adjusting.';
 
   @override
   String get startTarotGuide => 'Start a tarot reading';
@@ -171,12 +190,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get textReadingNote => 'Ask and keep talking';
-
-  @override
-  String get voiceReading => 'Voice chat';
-
-  @override
-  String get voiceReadingNote => 'Talk through your question';
 
   @override
   String get textChat => 'Text chat';
@@ -239,6 +252,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoverReports => 'My reports';
 
   @override
+  String get recoverReportAction => 'Find reports';
+
+  @override
   String get recentReadings => 'Recent readings';
 
   @override
@@ -253,6 +269,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportCodeMissing => 'Example not found. Try FATE-THAI-001.';
+
+  @override
+  String get reportCodeRequired => 'Enter a report number first.';
 
   @override
   String get newVisitor => 'I’m new here';
@@ -310,6 +329,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveDemoNotice => 'Live preview · Illustrative scenes';
 
   @override
+  String get livePreview => 'Live preview';
+
+  @override
+  String get liveWatch => 'Watch preview';
+
+  @override
+  String get liveUpcoming => 'Upcoming shows';
+
+  @override
+  String get liveMyReservations => 'My bookings';
+
+  @override
+  String get liveNoReservations => 'You haven’t booked a show yet.';
+
+  @override
+  String get liveReserve => 'Book';
+
+  @override
+  String get liveReserved => 'Booked';
+
+  @override
+  String get liveCancelReservation => 'Cancel booking';
+
+  @override
+  String get liveReservationDemo =>
+      'Demo bookings last for this session and don’t send notifications.';
+
+  @override
+  String get liveTempleUpcoming => 'Temple blessings · A wish ceremony';
+
+  @override
+  String get liveObjectsUpcoming => 'Unboxing · Evening fragrances';
+
+  @override
+  String get liveAboutShow => 'About this show';
+
+  @override
   String get livestreamPause => 'Pause preview';
 
   @override
@@ -322,17 +378,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get templeRoomHeading => 'Bring your wish to the temple';
 
   @override
-  String get templeService => 'Personal blessing';
-
-  @override
   String get samplePrice => 'Sample price';
-
-  @override
-  String get bookingInfo => 'Booking information';
-
-  @override
-  String get bookingDemoNotice =>
-      'Preview the ceremony and booking steps. Actual dates are pending.';
 
   @override
   String get roomChat => 'Room chat';
@@ -578,8 +624,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shopOrdersEmpty => 'No object orders yet';
 
   @override
-  String get shopDemoNotice =>
-      'This sample shop is browsing-only. Orders are unavailable.';
+  String get shopDemoNotice => 'Demo orders won’t charge you or ship items.';
+
+  @override
+  String get shopSubtotal => 'Subtotal';
+
+  @override
+  String get shopReviewOrder => 'Review order';
+
+  @override
+  String get shopPlaceDemoOrder => 'Place demo order';
+
+  @override
+  String get shopOrderPlaced => 'Demo order placed';
+
+  @override
+  String get shopOrderNumber => 'Demo order';
+
+  @override
+  String get shopIncreaseQuantity => 'Increase quantity';
 
   @override
   String get mySpace => 'My readings and records';
@@ -599,10 +662,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get thaiChartIntro =>
       'See the Thai chart for your birth date, time, and place.';
-
-  @override
-  String get sevenPreviewNote =>
-      'Seven-character calculations are unavailable in this preview. Try a demo conversation with Arun.';
 
   @override
   String get country => 'Country / region';
@@ -1556,23 +1615,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tarotRevealing => 'Turning over your card…';
 
   @override
-  String get tarotSeerReading =>
-      'All three cards are ready. The astrologer is reading them.';
-
-  @override
   String get tarotReadingComplete => 'Reading complete';
-
-  @override
-  String get tarotReadingStepOne => 'Listening to the stars…';
-
-  @override
-  String get tarotReadingStepTwo => 'The astrologer touches the glowing chart…';
-
-  @override
-  String get tarotReadingStepThree => 'Exploring the three cards…';
-
-  @override
-  String get tarotReadingStepFour => 'Writing your reading…';
 
   @override
   String tarotMinorName(String suit, String rank) {

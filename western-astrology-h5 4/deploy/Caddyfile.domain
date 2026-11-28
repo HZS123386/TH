@@ -1,6 +1,9 @@
     # BEGIN FATE landing routes
     @fateLanding path /thai-landing /thai-landing/*
-    @fateEngine path_regexp fateEngine ^/thai-landing/engine/[a-f0-9]{40}/
+    @fateEngine {
+        path_regexp fateEngine ^/thai-landing/engine/[a-f0-9]{40}/
+        not path /thai-landing/engine/*/skwasm.wasm
+    }
     @fateRevalidated {
         not path /thai-landing/engine/*
     }

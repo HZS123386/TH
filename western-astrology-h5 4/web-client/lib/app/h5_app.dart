@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../features/information_page.dart' deferred as information;
 import '../features/landing_page.dart';
 import '../features/report_page.dart' deferred as reports;
-import '../features/welcome_page.dart';
-import '../features/information_page.dart' deferred as information;
 import '../features/support_content.dart';
+import '../ui/site_header.dart';
 import '../ui/theme.dart';
 import 'controller.dart';
 import 'localizations.dart';
@@ -15,16 +15,17 @@ class H5App extends StatefulWidget {
   const H5App({
     required this.controller,
     this.initialLocation,
-    this.browserWelcome = false,
+    this.openingReportId,
     super.key,
   });
   final H5Controller controller;
-  final String? initialLocation;
-  final bool browserWelcome;
+  final String? initialLocation, openingReportId;
+
+  static Future<void> preloadReportRoute() => reports.loadLibrary();
 
   @visibleForTesting
   static Future<void> loadRoutesForWidgetTests() async {
-    await reports.loadLibrary();
+    await preloadReportRoute();
     await information.loadLibrary();
   }
 
@@ -34,18 +35,14 @@ class H5App extends StatefulWidget {
 
 class _H5AppState extends State<H5App> {
   Timer? _timingFrame;
-  bool _reportedReady = false;
-  bool _welcomePortraitPainted = false;
   late final _router = GoRouter(
     initialLocation: widget.initialLocation,
     routes: [
       ShellRoute(
-        builder: (context, state, child) => _Shell(
-          landing: state.uri.path == '/',
-          browserWelcome: widget.browserWelcome,
-          onWelcomePortraitPainted: _welcomePortraitDidPaint,
-          child: child,
-        ),
+        builder: (context, state, child) => state.uri.path == '/'
+            // The outgoing report still needs a Material ancestor while the HTML form takes over.
+            ? Material(type: MaterialType.transparency, child: child)
+            : _Shell(isReport: state.uri.path == '/report.html', child: child),
         routes: [
           GoRoute(
             path: '/',
@@ -79,15 +76,26 @@ class _H5AppState extends State<H5App> {
           ),
           GoRoute(
             path: '/report.html',
-            builder: (context, state) => _DeferredPage(
-              load: reports.loadLibrary,
-              page: () => reports.ReportPage(
-                key: ValueKey(state.uri.queryParameters['id']),
-                h5: widget.controller,
-                id: state.uri.queryParameters['id'] ?? '',
-                paymentReturn: state.uri.queryParameters['payment_return'] == '1',
-              ),
-            ),
+            builder: (context, state) {
+              final id = state.uri.queryParameters['id'] ?? '';
+              final openedFromForm = id == widget.openingReportId;
+              return _DeferredPage(
+                load: reports.loadLibrary,
+                // The report generation dialog is the only loading
+                // presentation. Keep deferred-library startup visually quiet.
+                showLoading: false,
+                page: () => reports.ReportPage(
+                  key: ValueKey(state.uri.queryParameters['id']),
+                  h5: widget.controller,
+                  id: id,
+                  openedFromForm: openedFromForm,
+                  generationPresented:
+                      state.uri.queryParameters['generation_presented'] == '1',
+                  paymentReturn:
+                      state.uri.queryParameters['payment_return'] == '1',
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -97,13 +105,12 @@ class _H5AppState extends State<H5App> {
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(_reportAppReady);
     WidgetsBinding.instance.addPostFrameCallback((_) => _observeFirstFrame());
   }
 
   void _observeFirstFrame() {
     if (!mounted) return;
-    // Web batches raster timings for 100ms; a static welcome needs a later frame.
+    // Web batches raster timings for 100ms; an idle page needs a later frame.
     _timingFrame = Timer.periodic(const Duration(milliseconds: 160), (timer) {
       if (!mounted || WidgetsBinding.instance.firstFrameRasterized) {
         timer.cancel();
@@ -114,47 +121,14 @@ class _H5AppState extends State<H5App> {
     unawaited(
       WidgetsBinding.instance.waitUntilFirstFrameRasterized.then((_) {
         _timingFrame?.cancel();
-        _reportAppReady();
+        if (!mounted) return;
+        widget.controller.browser.pageReady('app-ready');
       }),
     );
   }
 
-  void _welcomePortraitDidPaint() {
-    _welcomePortraitPainted = true;
-    _reportAppReady();
-  }
-
-  void _reportAppReady() {
-    if (!mounted ||
-        _reportedReady ||
-        !WidgetsBinding.instance.firstFrameRasterized) {
-      return;
-    }
-    final h5 = widget.controller;
-    final landing = _router.routeInformationProvider.value.uri.path == '/';
-    if (landing &&
-        h5.welcomeOpen &&
-        !widget.browserWelcome &&
-        !_welcomePortraitPainted) {
-      return;
-    }
-    _reportedReady = true;
-    h5.removeListener(_reportAppReady);
-    h5.browser.pageReady('app-ready');
-    if (landing) {
-      unawaited(
-        precacheImage(
-          const AssetImage('assets/images/theme-thai-artwork.jpg'),
-          context,
-          onError: (error, stack) {},
-        ),
-      );
-    }
-  }
-
   @override
   void dispose() {
-    widget.controller.removeListener(_reportAppReady);
     _timingFrame?.cancel();
     _router.dispose();
     super.dispose();
@@ -179,10 +153,15 @@ class _H5AppState extends State<H5App> {
 }
 
 class _DeferredPage extends StatefulWidget {
-  const _DeferredPage({required this.load, required this.page});
+  const _DeferredPage({
+    required this.load,
+    required this.page,
+    this.showLoading = true,
+  });
 
   final Future<void> Function() load;
   final Widget Function() page;
+  final bool showLoading;
 
   @override
   State<_DeferredPage> createState() => _DeferredPageState();
@@ -196,7 +175,9 @@ class _DeferredPageState extends State<_DeferredPage> {
     future: _library,
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
-        return const Center(child: CircularProgressIndicator());
+        return widget.showLoading
+            ? const Center(child: CircularProgressIndicator())
+            : const SizedBox.shrink();
       }
       if (!snapshot.hasError) return widget.page();
       final copy = H5Scope.of(context).copy;
@@ -217,20 +198,11 @@ class _DeferredPageState extends State<_DeferredPage> {
 }
 
 class _Shell extends StatelessWidget {
-  const _Shell({
-    required this.child,
-    required this.onWelcomePortraitPainted,
-    required this.landing,
-    required this.browserWelcome,
-  });
+  const _Shell({required this.child, required this.isReport});
   final Widget child;
-  final VoidCallback onWelcomePortraitPainted;
-  final bool landing;
-  final bool browserWelcome;
+  final bool isReport;
   @override
   Widget build(BuildContext context) {
-    final h5 = H5Scope.of(context);
-    final showWelcome = landing && h5.welcomeOpen;
     final screen = MediaQuery.sizeOf(context);
     final wide = screen.width >= 700;
     return ColoredBox(
@@ -244,29 +216,16 @@ class _Shell extends StatelessWidget {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: h5PageMaxWidth),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ExcludeSemantics(
-                    excluding: showWelcome,
-                    child: IgnorePointer(
-                      ignoring: showWelcome,
-                      // Build the hidden form when the welcome transition begins.
-                      child: Scaffold(
-                        body: showWelcome && !h5.landingPrepared
-                            ? const SizedBox.expand()
-                            : child,
-                      ),
+              child: Scaffold(
+                body: Column(
+                  children: [
+                    SiteHeader(
+                      showLanguages: !isReport,
+                      homeArrowLeading: isReport,
                     ),
-                  ),
-                  if (showWelcome && !browserWelcome)
-                    Positioned.fill(
-                      child: WelcomePage(
-                        h5: h5,
-                        onPortraitPainted: onWelcomePortraitPainted,
-                      ),
-                    ),
-                ],
+                    Expanded(child: child),
+                  ],
+                ),
               ),
             ),
           ),

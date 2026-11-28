@@ -425,33 +425,46 @@ nav {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
-.line-stats {
+.line-stats,
+.visit-funnel-controls {
   padding: 16px 20px;
   margin-bottom: 16px;
 }
-.line-range-form,
-.line-range-presets {
+.date-range-form,
+.line-range-presets,
+.funnel-measures {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.line-range-form {
+.date-range-form {
   align-items: end;
   margin-bottom: 8px;
 }
-.line-range-form label {
+.date-range-form label {
   display: grid;
   gap: 4px;
   font-size: 12px;
   min-width: 0;
   max-width: 100%;
 }
-.line-range-form input {
+.date-range-form input {
   min-width: 0;
 }
-.line-range-presets [aria-pressed="true"] {
+.line-range-presets [aria-pressed="true"],
+.funnel-measures [aria-pressed="true"] {
   color: var(--accent);
   border-color: var(--accent);
+}
+.visit-funnel-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.visit-funnel-toolbar .date-range-form {
+  margin-bottom: 0;
 }
 .line-report-counts {
   display: grid;
@@ -772,6 +785,48 @@ nav {
   font-size: 10px;
   color: #9b9fad;
   padding-top: 1px;
+}
+.visit-funnel {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  max-width: 760px;
+  margin: 16px auto;
+}
+.visit-funnel-step {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  min-width: 0;
+  padding: 14px clamp(12px, 3vw, 28px);
+  border: 1px solid #ded8fa;
+  border-radius: 10px;
+  background: #eae5fc;
+  color: #3f345f;
+}
+.visit-funnel-step:nth-child(2) {
+  width: 90%;
+  background: #eeeafd;
+}
+.visit-funnel-step:nth-child(3) {
+  width: 80%;
+  background: #f2effd;
+}
+.visit-funnel-step dt {
+  font-size: 14px;
+  font-weight: 600;
+}
+.visit-funnel-step dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.visit-funnel-step dd strong {
+  font-size: 22px;
+  font-weight: 650;
+  color: #33236e;
 }
 .table-wrap {
   overflow-x: auto;

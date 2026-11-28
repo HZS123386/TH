@@ -1,14 +1,13 @@
 {
   "jy": {
-    "lineContact": {
-      "action": "Tambahkan kami di LINE untuk menerima laporan",
-      "title": "Tambahkan teman di LINE",
-      "scan": "Pindai kode QR atau buka LINE, lalu kirim kode pengambilan ke tim dukungan.",
-      "claimNumber": "Kode pengambilan laporan",
-      "claimHint": "Kirim kode ini di LINE untuk menerima laporan lengkap.",
-      "copyReportId": "Salin kode pengambilan",
-      "open": "Buka LINE"
+    "portrait": {
+      "name": "Ajarn Yada",
+      "role": "Astrolog hubungan",
+      "headline": "Siapa yang memengaruhi hubungan Anda?",
+      "note": "Pahami orang dan perilaku yang memengaruhi hubungan melalui pengalaman Anda sendiri."
     },
+    "submitConsent": "Dengan membuat laporan, Anda menyetujui penggunaan data kelahiran untuk menghitung dan menafsirkan bagan sesuai kebijakan privasi.",
+    "lineContact": {"action": "Hubungi kami di LINE", "title": "Dapatkan laporan lewat LINE", "scan": "Pindai kode QR atau buka LINE dan kirim kode klaim kepada kami.", "claimNumber": "Kode klaim", "claimHint": "Simpan kode ini untuk meminta laporan lewat LINE.", "copyReportId": "Salin kode klaim", "open": "Buka LINE"},
     "appLogin": {"title": "Kode masuk", "copy": "Salin", "copied": "Disalin", "get": "Dapatkan kode", "refresh": "Dapatkan kode baru", "loading": "Sedang mengambil kode…", "failed": "Kode masuk belum bisa diambil.", "expired": "Kode ini telah kedaluwarsa."},
     "language": "Bahasa",
     "dateParts": {
@@ -25,8 +24,6 @@
     "house": "Rumah {number}",
     "home": "Beranda FATE",
     "title": "FATE · Pembacaan astrologi pribadi",
-    "welcome": {"first": "Selamat datang", "returning": "Selamat datang kembali", "firstNote": "Jelajahi peta bintang Anda", "returningNote": "Senang bertemu Anda lagi", "start": "Mulai menjelajah", "swipe": "Geser ke atas untuk mulai", "headline": "Siapa yang memengaruhi hubungan Anda?", "note": "Pahami orang dan perilaku yang memengaruhi hubungan melalui pengalaman Anda sendiri.", "name": "Ajarn Yada", "role": "Astrolog hubungan"},
-    "persona": "Astrolog AI pribadi Anda",
       "personal": {"relationshipUnlock": "Buka laporan lengkap untuk panduan hubungan pribadi", "relationshipTitle": "Hal yang menghambat hubungan", "relationshipAction": "Satu langkah untuk dicoba", "title": "Bacaan astrologi Barat pribadi Anda", "freeTitle": "Bacaan gratis", "freeHint": "Kenali kepribadian alami dan cara Anda mengekspresikan diri.", "paidHint": "Bakat pribadi dan tiga bulan penting", "talent": "Bakat pribadi", "node-1": "Peluang pertama", "node-2": "Peluang kedua", "node-3": "Peluang ketiga", "benefit": "Hal yang mendukung", "caution": "Pengingat ringan", "action": "Langkah kecil", "timeUnknown": "Tambahkan waktu lahir yang akurat untuk mengakses bacaan pribadi lengkap.", "unavailable": "Informasi bulanan belum lengkap sehingga bacaan lengkap belum tersedia.", "nodesTitle": "Tiga bulan penting", "keywords": "Kata kunci bagan Anda", "traits": "Ciri pribadi", "opportunity": "Peluang dalam waktu dekat"},
     "formTitle": "Kenali diri melalui bagan kelahiran",
     "formCaption": "Mulai dengan bacaan gratis, lalu kenali bakat Anda dan tiga bulan yang spesifik.",

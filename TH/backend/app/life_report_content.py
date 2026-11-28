@@ -1284,7 +1284,7 @@ class LifeWriter(BaziReports):
             fallback_settings = replace(settings, fortune_provider="qwen", fortune_fallback_provider="")
             self.fallback_writer = LifeWriter(store, fallback_settings, slots, charge=charge)
             if self.fallback_writer.enabled:
-                # Switch providers on service failures while retaining schema repair on the primary.
+                # Route service failures to the fallback without another transient retry on the primary.
                 self.retry_transient = False
 
     @property
@@ -1309,10 +1309,16 @@ class LifeWriter(BaziReports):
             result = await super().generate(bundle, owner, network, deadline=deadline)
         failure = result.get("failure_code", "")
         service_failure = failure in {"model_unconfigured", "model_connection", "model_timeout", "model_overloaded", "model_rate_limit", "model_quota_exhausted"} or failure.startswith("upstream_status_")
-        if result["state"] != "unconfigured" and not (result["state"] == "unavailable" and service_failure):
+        schema_failure = bundle.get("stage") == "marriage_preview" and (
+            failure == marriage_report.PREVIEW_SCHEMA_FAILURE
+            or (failure == "repair_schema" and marriage_report.PREVIEW_SCHEMA_FAILURE in result.get("attempt_failures", ()))
+        )
+        if result["state"] != "unconfigured" and not (result["state"] == "unavailable" and (service_failure or schema_failure)):
             return result
-        # Writers using the same primary configuration share the service cooldown.
-        if time.monotonic() >= self.availability["retry_at"]:
+        if schema_failure:
+            logger.info("Marriage preview schema repair with %s was exhausted; trying %s", self.provider, fallback.provider)
+        elif time.monotonic() >= self.availability["retry_at"]:
+            # Writers using the same primary configuration share the service cooldown.
             self.availability.update(retry_at=time.monotonic() + 60, failure_code=failure)
             logger.warning("Life report writer %s unavailable (%s); trying %s", self.provider, failure or "unconfigured", fallback.provider)
         # A failed primary attempt already admitted this logical request; fallback cache hits stay free.

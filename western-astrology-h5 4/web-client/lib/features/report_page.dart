@@ -19,11 +19,13 @@ class ReportPage extends StatefulWidget {
     required this.h5,
     required this.id,
     this.paymentReturn = false,
+    this.openedFromForm = false,
+    this.generationPresented = false,
     super.key,
   });
   final H5Controller h5;
   final String id;
-  final bool paymentReturn;
+  final bool paymentReturn, openedFromForm, generationPresented;
   @override
   State<ReportPage> createState() => _ReportPageState();
 }
@@ -36,7 +38,10 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   bool _deleting = false, _paying = false;
   String _deleteError = '';
   bool _reported = false, _reportedFull = false, _generating = false;
-  bool _resumedPreview = false, _checkedPaymentReturn = false;
+  bool _resumedPreview = false,
+      _checkedPaymentReturn = false,
+      _openedPresentationScheduled = false;
+  late bool _openingPresentation, _presentInitialGeneration;
 
   bool _usesCheckout(LifeReport report) =>
       report.sectionedReport || report.personalReport;
@@ -49,10 +54,18 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    if (widget.h5.browser.readSetting('active-preview', session: true) ==
+        widget.id) {
+      widget.h5.browser.writeSetting('active-preview', '', session: true);
+    }
     WidgetsBinding.instance.addObserver(this);
     widget.h5.trackActivity('report_loading');
     _model.addListener(_changed);
     final generated = widget.h5.takeGeneratedPreview(widget.id);
+    _presentInitialGeneration =
+        !widget.generationPresented &&
+        (widget.openedFromForm || generated != null);
+    _openingPresentation = _presentInitialGeneration;
     if (generated != null) {
       // From the form, this report was already fetched, validated, and prepared for display.
       _model.accept(generated);
@@ -69,10 +82,26 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       }
       return;
     }
+    if (_presentInitialGeneration &&
+        !_openedPresentationScheduled &&
+        r.hasPreview) {
+      _openedPresentationScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_presentReadyReport(r));
+      });
+    }
     if (!_resumedPreview && !r.hasPreview && r.previewInProgress) {
       _resumedPreview = true;
+      _openedPresentationScheduled = _presentInitialGeneration;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_generating) unawaited(_generate(false));
+      });
+    } else if (_presentInitialGeneration &&
+        !_openedPresentationScheduled &&
+        !r.hasPreview) {
+      _openedPresentationScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _openingPresentation = false);
       });
     }
     if (!_checkedPaymentReturn &&
@@ -106,7 +135,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
         if (mounted) {
           widget.h5.browser.pageReady('report-content');
           unawaited(widget.h5.trackReport(r.id, 'seen'));
-          if (!_generating && !r.ready) {
+          if (!r.ready) {
             widget.h5.trackActivity('preview_report', 'report_ready');
           }
         }
@@ -117,9 +146,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           widget.h5.browser.pageReady('report-full-content');
-          if (!_generating) {
-            widget.h5.trackActivity('full_report', 'report_ready');
-          }
+          widget.h5.trackActivity('full_report', 'report_ready');
         }
       });
     }
@@ -234,16 +261,25 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       _generationRequest?.cancel();
       final token = CancelToken();
       _generationRequest = token;
-      state.retry(resetProgress: !full);
+      state.retry();
       final first = attempts++ == 0;
-      widget.h5.trackActivity(page, first ? 'generate' : 'retry_generation');
       try {
-        final resume =
-            first &&
-            (full ? initial.fullInProgress : initial.previewInProgress);
+        // After a lost progress response, check the original ID before retrying generation.
+        final current = !full && !first
+            ? await widget.h5.repository.load(initial.id, token)
+            : initial;
+        final resume = full
+            ? first && current.fullInProgress
+            : current.previewInProgress || current.hasPreview;
+        final action = !first
+            ? 'retry_generation'
+            : !full && resume
+            ? 'view'
+            : 'generate';
+        widget.h5.trackActivity(page, action);
         final result = resume
             ? await widget.h5.repository.resumeGeneration(
-                initial,
+                current,
                 token,
                 state.update,
                 full: full,
@@ -269,8 +305,8 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     }
 
     unawaited(run());
-    await Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder<void>(
+    final completed = await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder<bool>(
         opaque: true,
         pageBuilder: (context, animation, secondaryAnimation) => GenerationDialog(
           h5: widget.h5,
@@ -279,11 +315,11 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           input: initial.input,
           onCancel: () {
             _generationRequest?.cancel();
-            Navigator.of(context, rootNavigator: true).pop();
+            Navigator.of(context, rootNavigator: true).pop(false);
           },
           onRetry: () => unawaited(run()),
           onComplete: (r) {
-            Navigator.of(context, rootNavigator: true).pop();
+            Navigator.of(context, rootNavigator: true).pop(true);
             if (r.id != widget.id) {
               context.go(
                 '/report.html?id=${Uri.encodeComponent(r.id)}&lang=${r.language}',
@@ -298,13 +334,45 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     _generationRequest?.cancel();
     state.dispose();
     if (mounted) {
-      setState(() => _generating = false);
+      setState(() {
+        _generating = false;
+        _openingPresentation = false;
+      });
       _model.resume();
-      widget.h5.trackActivity(
-        _model.report?.ready == true ? 'full_report' : 'preview_report',
-        state.complete ? 'report_ready' : 'cancel_generation',
-      );
+      // The first displayed preview or full report records its own ready event.
+      if (completed != true) {
+        final report = _model.report;
+        final returnedPage = report?.ready == true
+            ? 'full_report'
+            : report?.hasPreview == true
+            ? 'preview_report'
+            : 'report_loading';
+        widget.h5.trackActivity(returnedPage, 'cancel_generation');
+      }
     }
+  }
+
+  Future<void> _presentReadyReport(LifeReport report) async {
+    final state = GenerationState()..ready(report);
+    await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder<bool>(
+        opaque: true,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            GenerationDialog(
+              h5: widget.h5,
+              state: state,
+              full: false,
+              input: report.input,
+              onCancel: () =>
+                  Navigator.of(context, rootNavigator: true).pop(false),
+              onRetry: () {},
+              onComplete: (_) =>
+                  Navigator.of(context, rootNavigator: true).pop(true),
+            ),
+      ),
+    );
+    state.dispose();
+    if (mounted) setState(() => _openingPresentation = false);
   }
 
   void _navigate(String key) {
@@ -567,23 +635,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _marriageBirthDetails(LifeReport report, Copy c) {
-    final profile = report.profile;
-    final time = text(profile['birth_time']);
-    final details = [
-      text(profile['birth_date']),
-      time.isEmpty ? c.t('report', 'timeUnknown') : time,
-      text(profile['birthplace']),
-    ].where((value) => value.isNotEmpty).join(' · ');
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Text(
-        details,
-        style: const TextStyle(color: lavender, fontSize: 12, height: 1.5),
-      ),
-    );
-  }
-
   Widget _freePreview(LifeReport report, Copy c) => JYCard(
     key: const ValueKey('free-report-content'),
     padding: const EdgeInsets.all(20),
@@ -602,7 +653,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               fontWeight: FontWeight.w700,
             ),
           ),
-          _marriageBirthDetails(report, c),
           const SizedBox(height: 12),
         ],
         if (report.sectionedReport)
@@ -698,10 +748,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
             ),
           ),
           const SizedBox(height: 18),
-        ],
-        if (!report.marriageReport) ...[
-          AppLoginCodePanel(h5: widget.h5, reportId: report.id),
-          const SizedBox(height: 16),
         ],
         if (!report.sectionedReport)
           if (report.personalReport)
@@ -1080,6 +1126,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
     builder: (context, _) {
       final r = _model.report,
           c = r == null ? widget.h5.copy : widget.h5.reportCopy(r);
+      if (_openingPresentation && _model.error.isEmpty) {
+        return const ColoredBox(color: Color(0xFF0B0715));
+      }
       if (r == null) {
         return Center(
           child: SingleChildScrollView(
@@ -1098,10 +1147,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                     onPressed: () => _model.load(),
                     child: Text(c.t('generation', 'retry')),
                   ),
-                TextButton(
-                  onPressed: _backHome,
-                  child: Text(c.t('jy', 'checkout.back')),
-                ),
               ],
             ),
           ),
@@ -1110,10 +1155,15 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
       if (!r.full &&
           r.hasPreview &&
           (!r.personalReport || r.json['preview_state'] == 'ready')) {
-        return ReportCheckout(
+        return ReportPreview(
           h5: widget.h5,
-          report: r,
+          reportId: r.id,
+          claimCode: r.claimCode,
+          marriage: r.marriageReport,
+          relationshipOffer:
+              r.sixPersonalThemes && r.relationshipPreview.isNotEmpty,
           onPay: _usesCheckout(r) && r.canPay ? _pay : null,
+          priceLabel: _usesCheckout(r) && r.canPay ? r.priceLabel : '',
           freePreview: _freePreview(r, c),
           onExportPdf: r.relationshipReport && !_model.exporting
               ? () => _model.export('pdf')
@@ -1121,7 +1171,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           exportStatus: r.relationshipReport ? _model.exportStatus : '',
           busy: _deleting || _generating || _paying,
           error: _deleteError.isNotEmpty ? _deleteError : _model.error,
-          onBack: _backHome,
           onErase: () => _erase(),
         );
       }
@@ -1136,10 +1185,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                 const FateBrand(compact: true),
                 const SizedBox(height: 24),
                 Text(c.t('report', 'previewStates.${r.json['preview_state']}')),
-                if (r.previewInProgress) ...[
-                  const SizedBox(height: 12),
-                  AppLoginCodePanel(h5: widget.h5, reportId: r.id),
-                ],
                 const SizedBox(height: 18),
                 JYButton(
                   label: c.t(
@@ -1147,10 +1192,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                     r.previewInProgress ? 'viewProgress' : 'retryPreview',
                   ),
                   onPressed: _generating ? null : () => _generate(false),
-                ),
-                TextButton(
-                  onPressed: _backHome,
-                  child: Text(c.t('jy', 'checkout.back')),
                 ),
               ],
             ),
@@ -1182,13 +1223,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
           children: [
             Row(
               children: [
-                IconButton(
-                  key: const ValueKey('report-back-home'),
-                  tooltip: c.t('jy', 'checkout.back'),
-                  onPressed: _backHome,
-                  icon: const Icon(Icons.arrow_back, color: gold, size: 19),
-                ),
-                const SizedBox(width: 8),
                 const FateBrand(),
                 const Spacer(),
                 IconButton(
@@ -1205,10 +1239,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               ],
             ),
             const SizedBox(height: 12),
-            if (!r.sectionedReport) ...[
-              AppLoginCodePanel(h5: widget.h5, reportId: r.id),
-              const SizedBox(height: 18),
-            ],
             JYCard(
               padding: const EdgeInsets.all(24),
               radius: 20,
@@ -1229,14 +1259,9 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                     const SizedBox(height: 6),
                   ],
                   Text(
-                    r.sectionedReport
-                        ? text(r.json['title'])
-                        : c.t(
-                            'jy',
-                            r.personalReport
-                                ? 'personal.title'
-                                : 'report.title',
-                          ),
+                    r.personalReport && !r.sectionedReport
+                        ? c.t('jy', 'personal.title')
+                        : text(r.json['title']),
                     style: const TextStyle(
                       color: Color(0xFFFFEAC5),
                       fontSize: 23,
@@ -1244,9 +1269,7 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (r.marriageReport)
-                    _marriageBirthDetails(r, c)
-                  else if (!r.personalReport) ...[
+                  if (!r.personalReport) ...[
                     const SizedBox(height: 8),
                     Text(
                       r.western
@@ -1360,17 +1383,14 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
                   if (!r.ready) ...[
                     const SizedBox(height: 16),
                     Text(
-                      r.marriageFullFailed
-                          ? c.t('jy', 'interpretation.interrupted')
-                          : c.t('report', 'states.${r.json['full_state']}'),
+                      c.t('report', 'states.${r.json['full_state']}'),
                       style: const TextStyle(fontSize: 12, color: lavender),
                     ),
-                    if (!r.marriageFullFailed)
-                      ReadingProgress(
-                        percent: r.percent(true),
-                        reduced: MediaQuery.disableAnimationsOf(context),
-                        label: c.t('jy', 'progress'),
-                      ),
+                    ReadingProgress(
+                      percent: r.percent(true),
+                      reduced: MediaQuery.disableAnimationsOf(context),
+                      label: c.t('jy', 'progress'),
+                    ),
                     OutlinedButton(
                       onPressed: _generating ? null : () => _generate(true),
                       child: Text(
@@ -1402,10 +1422,6 @@ class _ReportPageState extends State<ReportPage> with WidgetsBindingObserver {
               icon: const Icon(Icons.download_outlined, size: 17),
               label: Text(c.t('report', 'save')),
             ),
-            if (r.sectionedReport) ...[
-              const SizedBox(height: 14),
-              AppLoginCodePanel(h5: widget.h5, reportId: r.id),
-            ],
             if (_model.exportStatus.isNotEmpty)
               Text(
                 _model.exportStatus,

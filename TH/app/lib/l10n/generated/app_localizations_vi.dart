@@ -103,6 +103,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get todayTab => 'Hôm nay';
 
   @override
+  String get quickAccess => 'Truy cập nhanh';
+
+  @override
+  String get luckyRevealHint => 'Chạm vào số để xem gợi ý hôm nay';
+
+  @override
+  String get readingBackToContents => 'Về mục lục';
+
+  @override
   String get actionTab => 'Hành động';
 
   @override
@@ -157,10 +166,20 @@ class AppLocalizationsVi extends AppLocalizations {
   String get startThaiGuide => 'Nhập thông tin để xem chiêm tinh Thái';
 
   @override
+  String get homeChartExample => 'Xem lá số phương Tây mẫu';
+
+  @override
   String get viewThaiGuide => 'Xem lá số Thái của tôi';
 
   @override
-  String get startSevenGuide => 'Xem mẫu luận giải bảy số';
+  String get startSevenGuide => 'Xem cuộc trò chuyện mẫu với Arun';
+
+  @override
+  String get arunSampleHeading => 'Trò chuyện mẫu với Arun';
+
+  @override
+  String get arunSampleReply =>
+      'Hãy chọn một việc có thể làm xong trong mười phút. Bạn có thể chuẩn bị đồ cần dùng vào sáng mai hoặc viết ra việc đầu tiên sẽ làm ngày mai. Xong rồi hãy xem còn điều gì cần điều chỉnh.';
 
   @override
   String get startTarotGuide => 'Bắt đầu xem Tarot';
@@ -170,12 +189,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get textReadingNote => 'Nhập câu hỏi và trò chuyện tiếp';
-
-  @override
-  String get voiceReading => 'Trò chuyện bằng giọng nói';
-
-  @override
-  String get voiceReadingNote => 'Nói ra điều đang băn khoăn';
 
   @override
   String get textChat => 'Nhắn tin';
@@ -238,6 +251,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get recoverReports => 'Báo cáo của tôi';
 
   @override
+  String get recoverReportAction => 'Tìm lại báo cáo';
+
+  @override
   String get recentReadings => 'Luận giải gần đây';
 
   @override
@@ -253,6 +269,9 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get reportCodeMissing =>
       'Không tìm thấy mẫu này. Hãy thử FATE-THAI-001.';
+
+  @override
+  String get reportCodeRequired => 'Vui lòng nhập mã báo cáo trước.';
 
   @override
   String get newVisitor => 'Tôi là người dùng mới';
@@ -310,6 +329,43 @@ class AppLocalizationsVi extends AppLocalizations {
   String get liveDemoNotice => 'Xem thử · Cảnh minh họa';
 
   @override
+  String get livePreview => 'Xem thử trực tiếp';
+
+  @override
+  String get liveWatch => 'Vào phòng phát';
+
+  @override
+  String get liveUpcoming => 'Lịch phát sắp tới';
+
+  @override
+  String get liveMyReservations => 'Lịch đã đặt';
+
+  @override
+  String get liveNoReservations => 'Bạn chưa đặt lịch xem nào.';
+
+  @override
+  String get liveReserve => 'Đặt lịch';
+
+  @override
+  String get liveReserved => 'Đã đặt';
+
+  @override
+  String get liveCancelReservation => 'Hủy đặt lịch';
+
+  @override
+  String get liveReservationDemo =>
+      'Lịch đặt thử chỉ được lưu trong phiên này và không gửi thông báo.';
+
+  @override
+  String get liveTempleUpcoming => 'Cầu phúc tại chùa · Lễ cầu nguyện';
+
+  @override
+  String get liveObjectsUpcoming => 'Mở hộp · Hương thơm buổi tối';
+
+  @override
+  String get liveAboutShow => 'Giới thiệu buổi phát';
+
+  @override
   String get livestreamPause => 'Tạm dừng xem thử';
 
   @override
@@ -322,17 +378,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get templeRoomHeading => 'Mang điều ước đến chùa';
 
   @override
-  String get templeService => 'Cầu phúc cá nhân';
-
-  @override
   String get samplePrice => 'Giá mẫu';
-
-  @override
-  String get bookingInfo => 'Thông tin đặt lễ';
-
-  @override
-  String get bookingDemoNotice =>
-      'Xem quy trình đặt lễ và mô tả nghi lễ. Lịch chính thức chưa mở.';
 
   @override
   String get roomChat => 'Tương tác';
@@ -576,7 +622,25 @@ class AppLocalizationsVi extends AppLocalizations {
   String get shopOrdersEmpty => 'Chưa có đơn vật phẩm';
 
   @override
-  String get shopDemoNotice => 'Đây là cửa hàng mẫu, chưa mở đặt hàng.';
+  String get shopDemoNotice => 'Đơn thử sẽ không thu tiền hoặc giao hàng.';
+
+  @override
+  String get shopSubtotal => 'Tạm tính';
+
+  @override
+  String get shopReviewOrder => 'Kiểm tra đơn hàng';
+
+  @override
+  String get shopPlaceDemoOrder => 'Đặt đơn thử';
+
+  @override
+  String get shopOrderPlaced => 'Đã tạo đơn thử';
+
+  @override
+  String get shopOrderNumber => 'Đơn thử';
+
+  @override
+  String get shopIncreaseQuantity => 'Tăng số lượng';
 
   @override
   String get mySpace => 'Luận giải và ghi chép của tôi';
@@ -595,10 +659,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get thaiChartIntro => 'Xem lá số Thái theo ngày, giờ và nơi sinh.';
-
-  @override
-  String get sevenPreviewNote =>
-      'Bản xem trước chưa tính được bảy số. Hãy thử trò chuyện mẫu với Arun.';
 
   @override
   String get country => 'Quốc gia / khu vực';
@@ -1551,23 +1611,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get tarotRevealing => 'Đang lật lá bài…';
 
   @override
-  String get tarotSeerReading => 'Đã đủ ba lá. Nhà chiêm tinh đang đọc bài.';
-
-  @override
   String get tarotReadingComplete => 'Đã đọc xong';
-
-  @override
-  String get tarotReadingStepOne =>
-      'Đang lắng nghe lời thì thầm của các vì sao…';
-
-  @override
-  String get tarotReadingStepTwo => 'Nhà chiêm tinh chạm vào bản đồ sao…';
-
-  @override
-  String get tarotReadingStepThree => 'Đang xem xét ba lá bài…';
-
-  @override
-  String get tarotReadingStepFour => 'Đang viết phần giải nghĩa…';
 
   @override
   String tarotMinorName(String suit, String rank) {

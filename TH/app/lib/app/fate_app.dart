@@ -304,9 +304,11 @@ class _FateAppState extends State<FateApp> with WidgetsBindingObserver {
               context,
               state,
               LivePage(
-                room: state.uri.queryParameters['room'] == 'objects'
-                    ? LiveRoom.objects
-                    : LiveRoom.temple,
+                room: switch (state.uri.queryParameters['room']) {
+                  'temple' => LiveRoom.temple,
+                  'objects' => LiveRoom.objects,
+                  _ => null,
+                },
               ),
               tab: true,
             ),
@@ -500,13 +502,68 @@ class _AppShell extends StatelessWidget {
   final bool hideNavigation;
   static const _tabs = ['/fortune', '/action', '/live', '/shop', '/more'];
 
+  Future<void> _showQuickAccess(BuildContext context) async {
+    final s = AppLocalizations.of(context);
+    final entries = [
+      (
+        s.dailyHoroscopeTitle,
+        Icons.wb_twilight_outlined,
+        DailyHoroscopePage.location,
+      ),
+      (s.tarot, Icons.style_outlined, '/fortune/tarot'),
+      (s.calendarTitle, Icons.calendar_month_outlined, '/fortune/calendar'),
+      (s.luckyNumbers, Icons.auto_awesome_outlined, '/fortune/lucky-numbers'),
+      (s.chart, Icons.explore_outlined, '/chart'),
+      (s.reports, Icons.menu_book_outlined, '/reports'),
+    ];
+    final destination = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 430),
+      sheetAnimationStyle: FateMotion.dialog(context),
+      builder: (sheet) => SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                child: Text(
+                  s.quickAccess,
+                  style: Theme.of(sheet).textTheme.titleLarge,
+                ),
+              ),
+              for (final (title, icon, location) in entries)
+                ListTile(
+                  leading: Icon(icon, color: goldColor),
+                  title: Text(title),
+                  trailing: Icon(
+                    path == location ? Icons.check : Icons.chevron_right,
+                    color: path == location ? goldColor : mutedColor,
+                  ),
+                  onTap: () => Navigator.pop(sheet, location),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!context.mounted || destination == null || destination == path) return;
+    FateMotion.selectionFeedback();
+    context.push(destination);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context), d = DependencyScope.of(context);
     final daily = path == DailyHoroscopePage.location;
     final chatting = path.startsWith('/companion/');
     final calendar = path == '/fortune/calendar';
-    final guideChat = path.startsWith('/reading/');
     final selected = _tabs.contains(path)
         ? _tabs.indexOf(path)
         : const [
@@ -519,7 +576,7 @@ class _AppShell extends StatelessWidget {
           ].contains(path)
         ? 4
         : 0;
-    final showBack = !_tabs.contains(path) && (context.canPop() || !guideChat);
+    final showBack = !_tabs.contains(path);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return ColoredBox(
       color: const Color(0xFF0B0715),
@@ -577,6 +634,12 @@ class _AppShell extends StatelessWidget {
                               ),
                             ),
                       actions: [
+                        if (!daily)
+                          IconButton(
+                            tooltip: s.quickAccess,
+                            onPressed: () => _showQuickAccess(context),
+                            icon: const Icon(Icons.grid_view_rounded, size: 20),
+                          ),
                         if (daily)
                           PopupMenuButton<String>(
                             tooltip: s.language,
@@ -600,7 +663,7 @@ class _AppShell extends StatelessWidget {
                             onPressed: () => showReportRecovery(context),
                             icon: const Icon(Icons.article_outlined, size: 17),
                             label: Text(
-                              s.reports,
+                              s.recoverReportAction,
                               maxLines: 1,
                               style: const TextStyle(fontSize: 12),
                             ),
@@ -611,7 +674,7 @@ class _AppShell extends StatelessWidget {
                               ),
                             ),
                           ),
-                        if (path == '/shop')
+                        if (path == '/shop' || path == '/live')
                           ValueListenableBuilder(
                             valueListenable: d.demoCart,
                             builder: (context, items, _) {
@@ -650,7 +713,7 @@ class _AppShell extends StatelessWidget {
                     ),
               body: child,
               bottomNavigationBar:
-                  hideNavigation || daily || chatting || (guideChat && keyboard)
+                  hideNavigation || daily || chatting || keyboard
                   ? null
                   : DecoratedBox(
                       decoration: const BoxDecoration(
@@ -662,17 +725,19 @@ class _AppShell extends StatelessWidget {
                         key: const ValueKey('app-bottom-navigation'),
                         height: 64,
                         backgroundColor: const Color(0xFF171222),
-                        indicatorColor: Colors.transparent,
                         animationDuration: FateMotion.duration(
                           context,
                           FateMotion.change,
                         ),
                         selectedIndex: selected,
-                        onDestinationSelected: (index) =>
-                            context.go(_tabs[index]),
+                        onDestinationSelected: (index) {
+                          if (index != selected) FateMotion.selectionFeedback();
+                          context.go(_tabs[index]);
+                        },
                         destinations: [
                           NavigationDestination(
                             icon: const Icon(Icons.wb_sunny_outlined),
+                            selectedIcon: const Icon(Icons.wb_sunny_rounded),
                             label: s.todayTab,
                           ),
                           NavigationDestination(
@@ -680,27 +745,29 @@ class _AppShell extends StatelessWidget {
                               Icons.eco_outlined,
                               color: actionColor,
                             ),
-                            selectedIcon: const CircleAvatar(
-                              radius: 13,
-                              backgroundColor: Color(0x38ADBF9A),
-                              child: Icon(
-                                Icons.eco_outlined,
-                                color: actionColor,
-                                size: 19,
-                              ),
+                            selectedIcon: const Icon(
+                              Icons.eco_rounded,
+                              color: actionColor,
                             ),
                             label: s.actionTab,
                           ),
                           NavigationDestination(
                             icon: const Icon(Icons.ondemand_video_outlined),
+                            selectedIcon: const Icon(
+                              Icons.ondemand_video_rounded,
+                            ),
                             label: s.liveTab,
                           ),
                           NavigationDestination(
                             icon: const Icon(Icons.shopping_bag_outlined),
+                            selectedIcon: const Icon(
+                              Icons.shopping_bag_rounded,
+                            ),
                             label: s.objectsTab,
                           ),
                           NavigationDestination(
                             icon: const Icon(Icons.person_outline),
+                            selectedIcon: const Icon(Icons.person_rounded),
                             label: s.mine,
                           ),
                         ],

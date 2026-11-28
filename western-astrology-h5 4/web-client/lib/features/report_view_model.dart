@@ -18,6 +18,7 @@ class ReportViewModel extends ChangeNotifier {
       feedbackBusy = false,
       _disposed = false,
       _active = true;
+  int _loadFailures = 0;
   CancelToken? _read, _feedback;
   Timer? _poll;
   Future<LifeReport?> load({bool background = false}) async {
@@ -43,9 +44,13 @@ class ReportViewModel extends ChangeNotifier {
       if (_disposed || token.cancelled) return null;
       report = next;
       error = '';
+      _loadFailures = 0;
       return next;
     } catch (cause) {
-      if (!_disposed && !token.cancelled) error = h5.message(cause);
+      if (!_disposed && !token.cancelled) {
+        error = h5.message(cause);
+        _loadFailures++;
+      }
       return null;
     } finally {
       if (!_disposed && !token.cancelled) {
@@ -59,11 +64,24 @@ class ReportViewModel extends ChangeNotifier {
   void _schedule() {
     _poll?.cancel();
     final r = report;
-    if (!_active || r == null) return;
-    if (r.previewInProgress || r.fullInProgress) {
-      _poll = Timer(const Duration(seconds: 3), () {
+    if (!_active) return;
+    final initialRetry = r == null && error.isNotEmpty && _loadFailures <= 4;
+    if (initialRetry ||
+        r?.previewInProgress == true ||
+        r?.fullInProgress == true) {
+      final delay = initialRetry
+          ? Duration(
+              seconds: switch (_loadFailures) {
+                <= 1 => 1,
+                2 => 2,
+                3 => 4,
+                _ => 8,
+              },
+            )
+          : const Duration(seconds: 3);
+      _poll = Timer(delay, () {
         if (h5.browser.visible) {
-          unawaited(load(background: true));
+          unawaited(load(background: r != null));
         } else {
           _schedule();
         }
@@ -86,6 +104,7 @@ class ReportViewModel extends ChangeNotifier {
     if (next.id != id) throw const FormatException('report_changed');
     report = next;
     error = '';
+    _loadFailures = 0;
     notifyListeners();
     _schedule();
   }

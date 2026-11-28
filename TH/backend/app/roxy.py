@@ -165,9 +165,10 @@ def chart_for_app(profile: ProfileInput, raw: dict | None, status="ready", insta
 class RoxyClient:
     """Shared bounded transport; each domain owns its endpoints and validation."""
 
-    def __init__(self, settings: Settings, store: Storage, *, paths, validator):
+    def __init__(self, settings: Settings, store: Storage, *, paths, validator, method="POST"):
         self.settings, self.store = settings, store
         self.paths, self.validator = paths, validator
+        self.method = method
         self.cache = OrderedDict()
         self.inflight = {}
         self.failures = OrderedDict()
@@ -205,8 +206,9 @@ class RoxyClient:
                 raise RoxyError("roxy_local_limit")
             async with self.slots, asyncio.timeout(30):
                 async with httpx.AsyncClient(timeout=25, follow_redirects=False) as client:
-                    async with client.stream("POST", BASE_URL + self.paths[operation],
-                                             headers={"X-API-Key": self.settings.roxy_api_key}, params={"lang": lang}, json=body) as response:
+                    payload = {"json": body} if self.method == "POST" else {}
+                    async with client.stream(self.method, BASE_URL + self.paths[operation],
+                                             headers={"X-API-Key": self.settings.roxy_api_key}, params={"lang": lang}, **payload) as response:
                         if response.status_code != 200:
                             code = {401: "roxy_auth_failed", 403: "roxy_auth_failed", 429: "roxy_quota", 400: "roxy_input_rejected", 422: "roxy_input_rejected"}.get(response.status_code, "roxy_unavailable")
                             raise RoxyError(code)

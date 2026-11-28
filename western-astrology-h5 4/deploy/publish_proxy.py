@@ -163,10 +163,22 @@ def main():
             assert '<base href="/thai-landing/">' in html, 'Landing domain did not reach Flutter'
         if args.site_routes:
             # Certificate issuance may take a moment after the DNS records are saved.
+            tarot_site = b'root * /data/fatespread-site/current' in site
+            mounted_tarot = b'rewrite @fateTarotRoot /tarot{path}' in site
+            entry = 'https://fatehoro.top/' if tarot_site or mounted_tarot else 'https://fatehoro.top/thai-landing/'
             html = run('curl', '--fail', '--silent', '--show-error', '--max-time', '10',
                        '--retry', '8', '--retry-delay', '3', '--retry-all-errors', '--retry-max-time', '45',
-                       '--resolve', 'fatehoro.top:443:127.0.0.1', 'https://fatehoro.top/thai-landing/')
-            assert '<base href="/thai-landing/">' in html, 'Dedicated domain did not reach Flutter'
+                       '--resolve', 'fatehoro.top:443:127.0.0.1', entry)
+            if mounted_tarot:
+                source_html = run('curl', '--fail', '--silent', '--show-error', '--max-time', '10',
+                                  '--resolve', 'fatehoro.top:443:127.0.0.1', 'https://fatehoro.top/tarot/')
+                assert html == source_html, 'Dedicated domain did not serve the mounted Tarot page'
+            elif tarot_site:
+                source_html = run('curl', '--fail', '--silent', '--show-error', '--max-time', '10',
+                                  '--resolve', 'fatespread.top:443:127.0.0.1', 'https://fatespread.top/')
+                assert html == source_html, 'Dedicated domain did not serve the published Tarot page'
+            else:
+                assert '<base href="/thai-landing/">' in html, 'Dedicated domain did not reach Flutter'
         assert before_id == run('docker', 'inspect', WEB, '--format', '{{.Id}}').strip()
         if domain_update:
             result.update(version=args.release, date=args.release[1:11].replace('.', '-'),

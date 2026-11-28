@@ -35,6 +35,15 @@ class HomePage extends StatelessWidget {
               initialGuide: initialGuide,
               key: ValueKey(initialGuide),
             ),
+            const SizedBox(height: 20),
+            const DailyHoroscopeCard(),
+            const SizedBox(height: 12),
+            _ShortcutCard(
+              icon: Icons.auto_awesome_outlined,
+              label: s.luckyNumbers,
+              subtitle: s.luckyNumberHint,
+              onTap: () => context.push('/fortune/lucky-numbers'),
+            ),
             const SizedBox(height: 16),
             FateCard(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
@@ -67,8 +76,8 @@ class HomePage extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            const DailyHoroscopeCard(),
+            const SizedBox(height: 16),
+            const LiveTeasers(),
             const SizedBox(height: 18),
             if (dependencies.companion
                 .conversation(dependencies.companion.selected)
@@ -132,36 +141,6 @@ class HomePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            FateCard(
-              padding: EdgeInsets.zero,
-              onTap: () => context.push('/fortune/tarot'),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    const FateEmblem(Icons.style_outlined, size: 52),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            s.dailyDraw,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          Text(
-                            s.dailyDrawNote,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.arrow_forward, color: goldColor, size: 20),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
             FateSectionTitle(s.journey),
             FateCard(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -186,12 +165,6 @@ class HomePage extends StatelessWidget {
                       s.birthNote,
                       Icons.calendar_month_outlined,
                       '/birth',
-                    ),
-                    (
-                      s.luckyNumbers,
-                      s.todayLuckyNumber,
-                      Icons.auto_awesome_outlined,
-                      '/fortune/lucky-numbers',
                     ),
                   ])
                     ListTile(
@@ -262,7 +235,9 @@ class _TodayReadingState extends State<_TodayReading> {
   late ReadingGuide _selected = widget.initialGuide;
 
   void _select(ReadingGuide guide) {
-    if (guide != _selected) setState(() => _selected = guide);
+    if (guide == _selected) return;
+    FateMotion.selectionFeedback();
+    setState(() => _selected = guide);
   }
 
   @override
@@ -274,31 +249,28 @@ class _TodayReadingState extends State<_TodayReading> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          padding: const EdgeInsets.only(top: 8, bottom: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 7,
-                child: Text(
-                  s.todayQuestion,
-                  style: const TextStyle(fontSize: 20, height: 1.36),
-                ),
+              Text(
+                MaterialLocalizations.of(
+                  context,
+                ).formatMediumDate(DateTime.now()),
+                style: const TextStyle(fontSize: 12, color: goldColor),
               ),
-              const SizedBox(width: 6),
-              Flexible(
-                flex: 3,
-                child: Text(
-                  s.todayNote,
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(fontSize: 9, color: mutedColor),
+              const SizedBox(height: 5),
+              Text(
+                s.todayQuestion,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontSize: 28,
+                  height: 1.3,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
         ),
-        const LiveTeasers(),
-        const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -371,27 +343,28 @@ class _TodayReadingState extends State<_TodayReading> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             for (final guide in ReadingGuide.values)
-              AnimatedContainer(
-                duration: duration,
-                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
-                width: guide == _selected ? 18 : 5,
-                height: 5,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  color: guide == _selected
-                      ? goldColor
-                      : mutedColor.withValues(alpha: .48),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+                child: AnimatedContainer(
+                  duration: duration,
+                  width: guide == _selected ? 22 : 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: guide == _selected
+                        ? goldColor
+                        : mutedColor.withValues(alpha: .48),
+                  ),
                 ),
               ),
           ],
         ),
         SizedBox(
           height: 26,
-          child: AnimatedSwitcher(
-            duration: duration,
+          child: FateEntrance(
+            key: ValueKey(_selected),
             child: Text(
               _selected.hint(s),
-              key: ValueKey(_selected),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
@@ -424,26 +397,35 @@ class _TodayReadingState extends State<_TodayReading> {
             ],
           ),
         ),
+        if (_selected == ReadingGuide.sirin)
+          Center(
+            child: TextButton(
+              onPressed: () => context.push('/chart?example=1'),
+              child: Text(s.homeChartExample),
+            ),
+          ),
         const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
-              child: _ChatEntry(
+              child: _ShortcutCard(
                 icon: Icons.chat_outlined,
                 label: s.textReading,
                 subtitle: s.textReadingNote,
                 onTap: () => _selected.openChat(context),
               ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _ChatEntry(
-                icon: Icons.mic_none_rounded,
-                label: s.voiceReading,
-                subtitle: s.voiceReadingNote,
-                onTap: () => _selected.openChat(context, voice: true),
+            if (_selected != ReadingGuide.mira) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ShortcutCard(
+                  icon: Icons.style_outlined,
+                  label: s.tarotDraw,
+                  subtitle: s.tarot,
+                  onTap: () => ReadingGuide.mira.start(context),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ],
@@ -451,8 +433,8 @@ class _TodayReadingState extends State<_TodayReading> {
   }
 }
 
-class _ChatEntry extends StatelessWidget {
-  const _ChatEntry({
+class _ShortcutCard extends StatelessWidget {
+  const _ShortcutCard({
     required this.icon,
     required this.label,
     required this.subtitle,
@@ -466,10 +448,10 @@ class _ChatEntry extends StatelessWidget {
   Widget build(BuildContext context) => FateCard(
     onTap: onTap,
     radius: 12,
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
     child: Row(
       children: [
-        Icon(icon, color: goldColor, size: 18),
+        Icon(icon, color: goldColor, size: 20),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -477,15 +459,18 @@ class _ChatEntry extends StatelessWidget {
             children: [
               Text(
                 label,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 subtitle,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: mutedColor, fontSize: 9),
+                style: const TextStyle(color: mutedColor, fontSize: 11),
               ),
             ],
           ),
@@ -532,11 +517,9 @@ class _GuardianCard extends StatelessWidget {
                         child: Hero(
                           tag: guardian.portraitTag,
                           transitionOnUserGestures: true,
-                          child: Image(
-                            image: AssetImage(guardian.image),
-                            fit: BoxFit.cover,
+                          child: GuardianPortrait(
+                            guardian,
                             alignment: const Alignment(0, -.7),
-                            excludeFromSemantics: true,
                           ),
                         ),
                       ),

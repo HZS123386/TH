@@ -1,6 +1,35 @@
 const fateOwnerName = 'astro-life-report-key';
+const fateOwnerCookieName = 'fate-report-owner';
 const fateValidOwner = value => typeof value === 'string' && /^[A-Za-z0-9_-]{32,128}$/.test(value);
 const fateHex = bytes => Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+const fateUserAgent = window.navigator?.userAgent || '';
+const fateMetaBrowser = /Instagram/i.test(fateUserAgent) ? 'instagram'
+  : /(?:\bFBAN\b|\bFBAV\b|\bFB_IAB\b|\bFB4A\b)/i.test(fateUserAgent) ? 'facebook' : null;
+const fateEmbeddedBrowser = fateMetaBrowser !== null;
+const fateMetaPlatform = !fateEmbeddedBrowser ? null : /Android/i.test(fateUserAgent) ? 'android'
+  : /(?:iPhone|iPad|iPod)/i.test(fateUserAgent) ? 'ios' : 'other';
+try {
+  if (fateEmbeddedBrowser) {
+    document.documentElement.dataset.embeddedBrowser = 'meta';
+    document.documentElement.dataset.metaBrowser = fateMetaBrowser;
+    document.documentElement.dataset.metaPlatform = fateMetaPlatform;
+  }
+} catch {}
+function fateCookieOwner() {
+  try {
+    const value = document.cookie.split(';').map(item => item.trim()).find(item => item.startsWith(fateOwnerCookieName + '='));
+    const owner = value && decodeURIComponent(value.slice(fateOwnerCookieName.length + 1));
+    return fateValidOwner(owner) ? owner : null;
+  } catch { return null; }
+}
+function fateSaveCookieOwner(owner) {
+  try {
+    const path = new URL('.', document.baseURI).pathname;
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${fateOwnerCookieName}=${encodeURIComponent(owner)}; Path=${path}; Max-Age=15552000; SameSite=Lax${secure}`;
+    return fateCookieOwner() === owner;
+  } catch { return false; }
+}
 function fateOwnerStores() {
   const stores = [];
   for (const read of [() => window.localStorage, () => window.sessionStorage]) {
@@ -15,7 +44,7 @@ function fateSavedOwner(stores) {
       if (fateValidOwner(value)) return value;
     } catch {}
   }
-  return null;
+  return fateCookieOwner();
 }
 let fateOwner;
 function fateOwnerKey() {
@@ -28,9 +57,44 @@ function fateOwnerKey() {
       persisted = store.getItem(fateOwnerName) === key || persisted;
     } catch {}
   }
-  fateOwner = persisted ? key : null;
-  return fateOwner;
+  // Meta's embedded browsers can expose Storage but reject writes. A first-party
+  // cookie preserves ownership across their WebView reloads; the in-memory key
+  // still lets the current form submit when every persistence API is blocked.
+  persisted = fateSaveCookieOwner(key) || persisted;
+  fateOwner = key;
+  return key;
 }
+
+let fateViewportBaseline = Math.max(window.innerHeight || 0, window.visualViewport?.height || 0);
+let fateKeyboardOpen = false;
+function fateKeyboardTarget() {
+  const target = document.activeElement;
+  if (!target?.matches?.('input,textarea,[contenteditable="true"]')) return false;
+  return target.tagName !== 'INPUT' || !['checkbox','radio','button','submit','date','time'].includes(target.type);
+}
+function syncFateViewport() {
+  const viewport = window.visualViewport;
+  const height = viewport?.height || window.innerHeight;
+  const keyboardTarget = fateKeyboardTarget();
+  if (Number.isFinite(height) && height > 0) {
+    if ((!keyboardTarget && !fateKeyboardOpen) || height > fateViewportBaseline) fateViewportBaseline = height;
+    // Keep the form in place during a button tap until the keyboard actually closes.
+    fateKeyboardOpen = (keyboardTarget || fateKeyboardOpen)
+      && height < fateViewportBaseline - Math.max(110,fateViewportBaseline * .18);
+    document.documentElement.style?.setProperty('--fate-viewport-height', `${Math.round(height)}px`);
+  }
+  // A toolbar offset alone should not leave a gap above the form.
+  const top = fateKeyboardOpen ? viewport?.offsetTop || 0 : 0;
+  if (Number.isFinite(top) && top >= 0) {
+    document.documentElement.style?.setProperty('--fate-viewport-top', `${Math.round(top)}px`);
+  }
+}
+syncFateViewport();
+window.addEventListener('resize', syncFateViewport);
+window.visualViewport?.addEventListener('resize', syncFateViewport);
+window.visualViewport?.addEventListener('scroll', syncFateViewport);
+document.addEventListener('focusin',syncFateViewport);
+document.addEventListener('focusout',() => setTimeout(syncFateViewport,0));
 
 // Upgrade only the deployed IP site; local previews keep their existing origin.
 // The short-lived host cookie avoids putting report credentials in URLs or logs.
@@ -70,7 +134,16 @@ const fateHttpsUpgrading=(()=>{
   return false;
 })();
 const fatePerfEnabled=new URLSearchParams(location.search).get('startup')==='1';
-const fateBootLabels={
+const fateOpeningReportId = (() => {
+  if (location.pathname !== new URL('report.html', document.baseURI).pathname) return null;
+  const query = new URLSearchParams(location.search), id = query.get('id');
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(id || '')) return null;
+  if (history.state?.openingReport === id || query.get('from_form') === '1') return id;
+  try { return sessionStorage.getItem('active-preview') === id ? id : null; }
+  catch { return null; }
+})();
+if (fateOpeningReportId) document.documentElement.dataset.openingReport = '';
+const fateBootTranslations={
   zh:{engine:'正在准备星空画面',app:'正在载入你的专属页面',slow:'网络有点慢，请稍候',retry:'连接暂时中断，正在重新加载',failed:'页面加载失败，请检查网络后重试'},
   th:{engine:'กำลังเตรียมภาพดวงดาว',app:'กำลังเปิดหน้าส่วนตัวของคุณ',slow:'เครือข่ายช้าเล็กน้อย กรุณารอสักครู่',retry:'การเชื่อมต่อขัดข้อง กำลังโหลดใหม่',failed:'โหลดไม่สำเร็จ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่'},
   en:{engine:'Preparing your sky',app:'Loading your page',slow:'The network is slow. Please wait',retry:'Connection interrupted. Reloading',failed:'The page could not load. Check your connection and try again'},
@@ -81,62 +154,8 @@ const fateBootLabels={
   "ms":{"engine": "Membuka langit anda", "app": "Membuka langit anda", "slow": "Rangkaian perlahan. Sila tunggu", "retry": "Sambungan terputus. Memuatkan semula", "failed": "Halaman tidak dapat dimuatkan. Semak sambungan dan cuba lagi"},
   "id":{"engine": "Membuka langit Anda", "app": "Membuka langit Anda", "slow": "Jaringan lambat. Silakan tunggu", "retry": "Koneksi terputus. Memuat ulang", "failed": "Halaman belum dapat dimuat. Periksa koneksi dan coba lagi"}
 };
-let fateAppReady=false,fateRevealingApp=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
-let fateWelcomeRequested=false,fateWelcomeEnter,fateWelcomeSetLanguage,fateFlutterLanguage;
-let fateWelcomeLanguage=document.documentElement.lang;
-function showFateStartupStatus(stage) {
-  const labels = fateBootLabels[fateWelcomeLanguage] ?? fateBootLabels.th;
-  const status = document.getElementById('fate-startup-status');
-  const progress = document.getElementById('fate-welcome-progress');
-  if (status) status.textContent = labels[stage] ?? labels.app;
-  if (progress) progress.textContent = labels.app;
-}
-function updateFateWelcomeLanguagePicker() {
-  const select = document.getElementById('fate-welcome-language');
-  if (!select) return;
-  select.value = fateWelcomeLanguage;
-  const label = document.getElementById('fate-welcome-language-label');
-  if (label) label.textContent = select.selectedOptions[0]?.textContent ?? '';
-}
-function selectFateWelcomeLanguage(language) {
-  fateWelcomeLanguage = language;
-  document.documentElement.lang = language;
-  updateFateWelcomeLanguagePicker();
-  const url = new URL(location.href);
-  url.searchParams.set('lang', language);
-  history.replaceState(history.state, '', url);
-  if (typeof preloadFateLanguage === 'function') preloadFateLanguage(language);
-  showFateStartupStatus(document.getElementById('fate-startup')?.dataset.state);
-  writeWelcomeName(document.getElementById('fate-welcome'));
-}
-function deliverFateWelcome() {
-  if (!fateWelcomeRequested || !fateWelcomeEnter) return;
-  const enter = fateWelcomeEnter;
-  fateWelcomeEnter = undefined;
-  enter();
-}
-function nextFatePaint() {
-  return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-}
-async function revealFateApp(afterEntry = false) {
-  if (fateRevealingApp) return;
-  fateRevealingApp = true;
-  if (afterEntry) await nextFatePaint();
-  while (fateWelcomeSetLanguage && fateWelcomeLanguage !== fateFlutterLanguage) {
-    const requested = fateWelcomeLanguage;
-    let changed = false;
-    try { changed = await fateWelcomeSetLanguage(requested); } catch {}
-    if (changed) fateFlutterLanguage = requested;
-    if (!changed && requested === fateWelcomeLanguage) selectFateWelcomeLanguage(fateFlutterLanguage);
-    document.documentElement.lang = fateWelcomeLanguage;
-    await nextFatePaint();
-  }
-  document.documentElement.dataset.welcome = 'false';
-  document.getElementById('fate-startup')?.remove();
-  performance.mark('fate-page-visible');
-  fateWelcomeEnter = undefined;
-  fateWelcomeSetLanguage = undefined;
-}
+const fateBootLabels=fateBootTranslations[document.documentElement.lang];
+let fateBootFinished=false,fateBootFailed=false,fateBootRecovery,fateBootPhase='entry';
 const fateBootRetryKey='fate-startup-recovery-at';
 // Consume a queued retry even if navigation stalled, then latch the path preference before its TTL expires.
 const fateBootRetry=(()=>{
@@ -148,135 +167,99 @@ const fateBootRetry=(()=>{
     return previous;
   }catch{return null;}
 })();
-const fateResumeWelcome=fateBootRetry?.pending===true && fateBootRetry.entered===true &&
-  performance.getEntriesByType('navigation')[0]?.type==='reload';
-const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateAppReady){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
+const fateBootSlow=fateHttpsUpgrading?undefined:setTimeout(()=>{if(!fateBootFinished){window.fateBoot.stage('slow');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;}},12000);
 // A truncated HTML stream may render the overlay without ever reaching the inline bootstrap.
-const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail();},20000);
-const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBoot.fail(),90000);
+const fateBootHtml=fateHttpsUpgrading?undefined:setTimeout(()=>{if(document.readyState==='loading'&&!window._flutter?.buildConfig)window.fateBoot.fail('runtime_boot_html');},20000);
+const fateBootWatchdog=fateHttpsUpgrading?undefined:setTimeout(()=>window.fateBoot.fail('runtime_boot_timeout'),90000);
+function finishFateBoot(appReady){
+  if(fateBootFinished)return;
+  fateBootFinished=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);clearTimeout(fateBootRecovery);
+  try{sessionStorage.removeItem(fateBootRetryKey);}catch{}
+  document.getElementById('fate-startup')?.remove();
+  if (appReady && fateOpeningReportId) {
+    try {
+      const state = {...history.state}, url = new URL(location.href);
+      if (state.openingReport === fateOpeningReportId || url.searchParams.has('from_form')) {
+        delete state.openingReport;
+        url.searchParams.delete('from_form');
+        history.replaceState(state, '', url);
+      }
+    } catch {}
+  }
+  if(appReady){performance.mark('fate-app-ready');window.dispatchEvent(new Event('fate-app-ready'));}
+}
 window.fateBoot={
   upgrading:fateHttpsUpgrading,
+  embedded:fateEmbeddedBrowser,
+  openingReportId:fateOpeningReportId,
   compatibility:fateBootRetry?.compatibility===true,
-  stage(stage){if(fateAppReady||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage==='engine'||stage==='app'?(fateWelcomeRequested?'waiting':stage):stage;showFateStartupStatus(stage);},
-  connectWelcome(enter, setLanguage, language) {
-    fateWelcomeEnter=enter;
-    fateWelcomeSetLanguage=setLanguage;
-    fateFlutterLanguage=language;
-    deliverFateWelcome();
-  },
-  enterWelcome(){
-    if(fateBootFailed||fateWelcomeRequested||document.documentElement.dataset.welcome!=='true')return;
-    fateWelcomeRequested=true;
-    performance.mark('fate-welcome-accepted');
-    document.getElementById('fate-welcome-start')?.setAttribute('aria-busy','true');
-    this.stage('waiting');
-    showFateStartupStatus('waiting');
-    deliverFateWelcome();
-    if (fateAppReady) void revealFateApp(true);
-  },
-  fail(error){
-    if(fateHttpsUpgrading||fateAppReady||fateBootFailed)return;
+  stage(stage){if(fateBootFinished||(fateBootFailed&&stage!=='retry'&&stage!=='failed'))return;if(stage==='engine'||stage==='app')fateBootPhase=stage;const startup=document.getElementById('fate-startup');if(startup)startup.dataset.state=stage;const status=document.getElementById('fate-startup-status');if(status)status.textContent=fateBootLabels[stage]||fateBootLabels.app;},
+  fail(reason = 'runtime_boot_' + fateBootPhase){
+    if(fateHttpsUpgrading||fateBootFinished||fateBootFailed)return;
     fateBootFailed=true;clearTimeout(fateBootSlow);clearTimeout(fateBootHtml);clearTimeout(fateBootWatchdog);
+    if (reason) recordFateRuntime(reason);
     // A failed ES-module import stays rejected for this document; retry it once in a fresh document.
     let recover=false;
     if(!fateBootRetry){try{
-      // A transient fetch failure can retry the same (smaller) renderer.
-      const fetchFailed=error?.name==='TypeError' && /fetch|network|load failed/i.test(error.message);
-      const marker=JSON.stringify({at:Date.now(),path:location.pathname,pending:true,
-        compatibility:fateBootPhase!=='app'&&!fetchFailed,entered:fateWelcomeRequested});
+      // App assets can fail after the engine is ready; those retries retain the normal renderer.
+      const marker=JSON.stringify({at:Date.now(),path:location.pathname,pending:true,compatibility:fateBootPhase!=='app'});
       sessionStorage.setItem(fateBootRetryKey,marker);
       recover=sessionStorage.getItem(fateBootRetryKey)===marker;
     }catch{}}
-    if(recover){this.stage('retry');fateBootRecovery=setTimeout(()=>location.reload(),700);return;}
+    if(recover && !window.fateBirthForm?.editing){
+      this.stage('retry');
+      fateBootRecovery=setTimeout(()=>{
+        if(window.fateBirthForm?.editing)window.fateBirthForm.engineFailed();
+        else location.reload();
+      },700);
+      return;
+    }
+    window.fateBirthForm?.engineFailed();
     this.stage('failed');const button=document.getElementById('fate-startup-retry');if(button)button.hidden=false;
   },
-  async ready() {
-    if (fateAppReady) return;
-    fateAppReady = true;
-    fateBootFailed = false;
-    clearTimeout(fateBootSlow);
-    clearTimeout(fateBootHtml);
-    clearTimeout(fateBootWatchdog);
-    clearTimeout(fateBootRecovery);
-    try { sessionStorage.removeItem(fateBootRetryKey); } catch {}
-    const startup = document.getElementById('fate-startup');
-    if (startup) startup.dataset.state = 'ready';
-    const retry = document.getElementById('fate-startup-retry');
-    if (retry) retry.hidden = true;
-    performance.mark('fate-app-ready');
-    window.dispatchEvent(new Event('fate-app-ready'));
-    // The browser owns the welcome until the visitor enters the form.
-    if (fateWelcomeRequested || document.documentElement.dataset.welcome !== 'true' ||
-        !document.getElementById('fate-welcome')) {
-      await revealFateApp();
-    }
-  }
+  ready(){finishFateBoot(true);},
+  landingReady(){finishFateBoot(false);}
 };
-function preloadFateWasm(engineRevision) {
-  const {upgrading, compatibility} = window.fateBoot;
-  const {vendor, userAgent} = window.navigator;
-  if (upgrading || compatibility || (vendor !== 'Google Inc.' && !userAgent.includes('Edg/'))) return;
-  // Match the installed Flutter loader's Wasm GC and graphics requirements.
-  const gcModule = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 120, 0]);
-  if (typeof WebAssembly === 'undefined' || !WebAssembly.validate(gcModule)) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 1;
-  const context = canvas.getContext('webgl2') || canvas.getContext('webgl');
-  if (!context) return;
-  context.getExtension('WEBGL_lose_context')?.loseContext();
-
-  const lite = typeof ImageDecoder !== 'undefined' && typeof Intl.v8BreakIterator !== 'undefined'
-    && typeof Intl.Segmenter !== 'undefined';
-  const renderer = lite ? 'skwasm' : 'skwasm_heavy';
-  const priority = document.documentElement.dataset.welcome === 'true' ? 'low' : 'high';
-  const runtime = priorityPreload('main.dart.mjs', 'script', priority);
-  runtime.rel = 'modulepreload';
-  const rendererBase = `engine/${engineRevision}/${renderer}`;
-  const rendererModule = priorityPreload(rendererBase + '.js', 'script', priority);
-  rendererModule.rel = 'modulepreload';
-  document.head.append(
-    runtime,
-    priorityPreload('main.dart.wasm', 'fetch', priority),
-    rendererModule,
-    priorityPreload(rendererBase + '.wasm', 'fetch', priority),
-  );
-}
 // Flutter's JavaScript entrypoint uses a callback and does not reject on a script fetch error.
 window.addEventListener('error',event=>{
-  if(event.error||event.message||(event.target?.tagName==='SCRIPT'&&/\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src)))window.fateBoot.fail(event.error);
+  const script = event.target?.tagName === 'SCRIPT' && /\/(?:main\.dart\.js|flutter_bootstrap\.js|(?:skwasm|canvaskit)(?:_[\w]+)?\.js)(?:\?|$)/.test(event.target.src);
+  if (!event.error && !event.message && !script) return;
+  const source = event.filename || (script && event.target.src);
+  // Browsers hide the source and exception of a muted cross-origin script error.
+  if (!source && !event.error && /^Script error\.?$/i.test(event.message || '')) return;
+  try { if (source && new URL(source, location.href).origin !== new URL(location.href).origin) return; } catch { return; }
+  const reason = script ? 'runtime_script_load' : fateJsErrorCode(event.error, 'runtime_js_error');
+  if (!fateBootFinished) window.fateBoot.fail(reason);
+  else recordFateRuntime(reason);
 },true);
-window.addEventListener('unhandledrejection',event=>window.fateBoot.fail(event.reason));
-// The HTML response can stall after rendering the button but before DOMContentLoaded.
-document.addEventListener('click',event=>{
-  if(event.target?.closest?.('#fate-startup-retry')) location.reload();
-  else if(event.target?.closest?.('#fate-welcome-start')) window.fateBoot.enterWelcome();
+window.addEventListener('unhandledrejection',event=>{
+  const reason = fateJsErrorCode(event.reason, 'runtime_rejection');
+  if (fateBootFinished) recordFateRuntime(reason);
+  else window.fateBoot.fail(reason);
 });
-document.addEventListener('change',event=>{
-  const select=event.target;
-  if(select?.id==='fate-welcome-language' && document.documentElement.dataset.welcome==='true' &&
-      Object.hasOwn(fateBootLabels,select.value)) {
-    selectFateWelcomeLanguage(select.value);
+function fateJsErrorCode(error, fallback) {
+  switch (error?.name) {
+    case 'TypeError': return 'runtime_js_type';
+    case 'ReferenceError': return 'runtime_js_reference';
+    case 'SyntaxError': return 'runtime_js_syntax';
+    case 'RangeError': return 'runtime_js_range';
+    default: return fallback;
   }
-});
+}
+// The HTML response can stall after rendering the button but before DOMContentLoaded.
+document.addEventListener('click',event=>{if(event.target?.closest?.('#fate-startup-retry'))location.reload();});
 const fatePendingKey = 'fate-activity-pending';
 let fateActivity, fateActivitySequence = 0, fatePending = [], fateDropped = {};
 let fateUnstored = new Map(), fateRemoved = new Set(), fateStoredKeys = new Set(), fateStoredDropped = {}, fateOverflow = {};
 let fateSending = 0, fateRetryAt = 0, fateRetryCount = 0, fateSendTimer, fateDwellTimer;
 const fateTrackingAllowed = () => window.navigator?.globalPrivacyControl !== true && window.navigator?.doNotTrack !== '1';
-const fateMetaPixelId = '2150104392567893';
+const fateMetaPixelId = '29364528359833816';
 let fateMetaPixelStarted = false;
-
-function fateMetaPixelAllowed() {
-  if (location.hostname !== 'ipplay.top' || !fateTrackingAllowed()) return false;
-  const landing = new URL('.', document.baseURI).pathname;
-  const path = location.pathname;
-  return (path === '/' || path === landing || path === landing + 'index.html') &&
-    !new URLSearchParams(location.search).has('id');
-}
-
-function trackFateMetaPixel(event) {
-  if (!fateMetaPixelAllowed()) return;
+function trackFatePageView() {
+  if (!fateTrackingAllowed()) return;
   try {
+    const landing = new URL('.', document.baseURI).pathname;
+    if (location.pathname !== landing && location.pathname !== landing + 'index.html') return;
     if (!fateMetaPixelStarted) {
       if (!window.fbq) {
         const fbq = function () {
@@ -290,48 +273,94 @@ function trackFateMetaPixel(event) {
         script.src = 'https://connect.facebook.net/en_US/fbevents.js';
         document.head.append(script);
       }
-      // Send the explicit landing events with automatic form and route tracking disabled.
+      // Send explicit landing events without automatic form or history tracking.
       window.fbq.disablePushState = true;
       window.fbq('set', 'autoConfig', false, fateMetaPixelId);
       window.fbq('init', fateMetaPixelId);
       window.fbq('track', 'PageView');
       fateMetaPixelStarted = true;
     }
-    if (event === 'AddToCart') window.fbq('track', 'AddToCart');
   } catch {
-    // Tracking is optional for report generation.
+    // A tracking failure must never block report generation.
   }
 }
-
-async function trackFirstFateReadingClick() {
-  if (!fateMetaPixelAllowed()) return;
-  try {
-    const owner = fateOwnerKey();
-    if (!owner) return;
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(owner));
-    const marker = fateHex(new Uint8Array(digest));
-    const request = indexedDB.open('fate-meta-pixel-' + fateMetaPixelId, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore('add-to-cart');
-    request.onsuccess = () => {
-      const database = request.result;
-      try {
-        const transaction = database.transaction('add-to-cart', 'readwrite');
-        transaction.onabort = () => database.close();
-        transaction.oncomplete = () => {
+function sendFateViewReadingPixel() {
+  if (!fateTrackingAllowed()) return;
+  const pixel = new URL('https://www.facebook.com/tr/');
+  const landingPage = new URL(location.pathname, location.href);
+  pixel.searchParams.set('id', fateMetaPixelId);
+  pixel.searchParams.set('ev', 'AddToCart');
+  pixel.searchParams.set('dl', landingPage.href);
+  pixel.searchParams.set('ts', String(Date.now()));
+  for (const name of ['fbp', 'fbc']) {
+    const prefix = '_' + name + '=';
+    const value = document.cookie.split(';').map(cookie => cookie.trim())
+      .find(cookie => cookie.startsWith(prefix))?.slice(prefix.length);
+    if (value && /^fb\.\d+\.\d+\.[A-Za-z0-9_-]+$/.test(value)) {
+      pixel.searchParams.set(name, value);
+    }
+  }
+  // Keep the request alive across report navigation and omit query parameters.
+  void fetch(pixel.href, {
+    mode: 'no-cors', keepalive: true, credentials: 'include', referrerPolicy: 'no-referrer',
+  }).catch(() => {});
+}
+function trackFateViewReadingClick() {
+  if (!fateTrackingAllowed()) return Promise.resolve();
+  return new Promise(resolve => {
+    let finished = false;
+    let transaction;
+    const timer = setTimeout(() => {
+      try { transaction?.abort(); } catch {}
+      finish();
+    }, 300);
+    function finish() {
+      finished = true;
+      clearTimeout(timer);
+      resolve();
+    }
+    async function track() {
+      const owner = fateOwnerKey();
+      if (!owner) return finish();
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(owner));
+      if (finished) return;
+      // Reuse the marker from the original reading-button event.
+      const marker = fateHex(new Uint8Array(digest));
+      const request = indexedDB.open('fate-meta-pixel-' + fateMetaPixelId, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('add-to-cart');
+      request.onerror = finish;
+      request.onblocked = finish;
+      request.onsuccess = () => {
+        const database = request.result;
+        if (finished || !fateTrackingAllowed()) {
           database.close();
-          trackFateMetaPixel('AddToCart');
-        };
-        // Only one tab can save the first click for this browser ID.
-        transaction.objectStore('add-to-cart').add(true, marker);
-      } catch {
-        database.close();
-      }
-    };
-  } catch {
-    // Skip tracking when the browser cannot store the marker.
-  }
+          finish();
+          return;
+        }
+        try {
+          transaction = database.transaction('add-to-cart', 'readwrite');
+          transaction.onabort = () => {
+            database.close();
+            finish();
+          };
+          transaction.oncomplete = () => {
+            database.close();
+            if (finished) return;
+            try {
+              sendFateViewReadingPixel();
+            } catch {}
+            finish();
+          };
+          transaction.objectStore('add-to-cart').add(true, marker);
+        } catch {
+          database.close();
+          finish();
+        }
+      };
+    }
+    void track().catch(finish);
+  });
 }
-
 const fateState = () => document.visibilityState === 'hidden' ? 'hidden' : 'visible';
 const fateEventKey = item => `${item.visit.id}:${item.event.sequence}`;
 const fateEntryParams = new URLSearchParams(location.search);
@@ -499,6 +528,21 @@ function recordFateActivity(kind = 'action', state = fateState(), action, failur
   persistFateActivity({ visit: fateActivity.visit, event });
   scheduleFateActivity();
 }
+function recordFateRuntime(action) {
+  try {
+    if (!fateTrackingAllowed() || fateHttpsUpgrading) return;
+    if (!fateActivity) {
+      const visit = fateVisitContext(), key = visit && fateOwnerKey();
+      if (!key) return;
+      window.fateH5.trackActivity(JSON.stringify({...visit, activity: {page: 'unobserved', action}}), key, '/api/landing/visits');
+    } else {
+      if (fateActivity.runtimeErrors.has(action)) return;
+      recordFateActivity('action', fateState(), action);
+    }
+    // A repeating framework error can fire every frame of the same page.
+    fateActivity?.runtimeErrors.add(action);
+  } catch { /* Diagnostics must not interfere with startup or error handling. */ }
+}
 function scheduleFateDwell() {
   clearTimeout(fateDwellTimer);
   if (fateActivity && fateState() === 'visible') fateDwellTimer = setTimeout(() => {
@@ -523,14 +567,47 @@ window.addEventListener('pageshow', event => {
   }
 });
 window.addEventListener('online', () => { scheduleFateActivity(0); });
-let fateWelcomeStartedAt;
 // Capture the entry's state before Flutter manages browser history.
 try { fateVisitContext(); } catch {}
+let fateReportWarm, fateReportAppStarting = false;
+function warmFateReportExperience() {
+  // Instagram's WebView needs the deliberately lightweight path to protect its
+  // small memory budget. Facebook can safely spend the remaining
+  // form/API time starting Flutter; otherwise its cold report navigation leaves
+  // only the body background visible for several seconds.
+  if (fateReportWarm || fateMetaBrowser === 'instagram') return fateReportWarm;
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const constrained = connection?.saveData || /(^|-)2g$/i.test(connection?.effectiveType || '');
+  const warm = async (path, priority = 'high') => {
+    try {
+      const response = await fetch(new URL(path, document.baseURI), {
+        cache: 'force-cache', credentials: 'same-origin', priority
+      });
+      if (response.ok) await response.arrayBuffer();
+    } catch { /* Navigation can cancel an optional warmup without affecting the report. */ }
+  };
+  const appStart = constrained ? null : window.fateStartFlutter?.();
+  fateReportAppStarting = !!appStart;
+  const runtime = appStart ? [] : window._flutter?.supportsDart2Wasm === true
+    ? ['main.dart.mjs','main.dart.wasm'] : ['main.dart.js'];
+  const core = ['assets/assets/images/report-loading-poster.webp',...constrained ? [] : runtime];
+  fateReportWarm = Promise.allSettled([
+    ...core.map(path => warm(path)),
+    ...(appStart ? [Promise.resolve(appStart)] : [])
+  ]);
+  if (!constrained) setTimeout(() => void warm('media/report-loading-web.mp4','low'),200);
+  return fateReportWarm;
+}
 window.fateH5 = {
   ownerKey: fateOwnerKey,
-  trackViewReadingClick() { void trackFirstFateReadingClick(); },
+  embedded: fateEmbeddedBrowser,
+  metaBrowser: fateMetaBrowser,
+  metaPlatform: fateMetaPlatform,
+  warmReportExperience: warmFateReportExperience,
+  reportExperienceStarting() { return fateReportAppStarting; },
+  trackRuntime: recordFateRuntime,
+  trackViewReadingClick: trackFateViewReadingClick,
   visitContext() { return JSON.stringify(fateVisitContext() || {}); },
-  welcomeAge(){return fateWelcomeStartedAt===undefined?0:performance.now()-fateWelcomeStartedAt;},
   trackFailure(path, code, method) {
     recordFateActivity('action', fateState(), 'request_failed', { failure_path: path, failure_code: code, failure_method: method });
     if (fateActivity) fateActivity.activity = { ...fateActivity.activity, action: 'request_failed' };
@@ -539,8 +616,6 @@ window.fateH5 = {
     if (!fateTrackingAllowed()) { clearFateActivity(); return; }
     try {
       const { activity, ...visit } = JSON.parse(payload);
-      if (activity.page === 'welcome' && activity.action === 'view' && fateActivity?.key === key &&
-          fateActivity.visit.id === visit.id && fateActivity.activity.page === 'welcome' && fateActivity.activity.action === 'view') return;
       if (!fateActivity || fateActivity.key !== key) {
         clearFateActivity(false);
         try {
@@ -554,7 +629,7 @@ window.fateH5 = {
       }
       if (!fateActivity) {
         fateActivity = { visit, activity, key, endpoint, visibleMs: 0, visibleSince: null,
-          pageViewId: fateUuid() };
+          pageViewId: fateUuid(), runtimeErrors: new Set() };
       } else fateActivity.activity = activity;
       recordFateActivity();
       scheduleFateDwell();
@@ -573,7 +648,7 @@ window.fateH5 = {
     const target=new URL(action);
     if(target.origin!=='https://www.thaiepay.com'||target.pathname!=='/epaylink/payment.aspx'||target.username||target.password) throw new Error('Invalid payment URL');
     const form=document.createElement('form');
-    form.action=target.href;form.method='post';form.target='_blank';form.rel='noopener';
+    form.action=target.href;form.method='post';form.target=fateEmbeddedBrowser?'_self':'_blank';form.rel='noopener';
     for(const [name,value] of Object.entries(JSON.parse(fieldsJson))) {
       const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.append(input);
     }
@@ -583,115 +658,9 @@ window.fateH5 = {
     if(page==='app-ready')requestAnimationFrame(()=>requestAnimationFrame(()=>{
       rememberFateVisit();
       window.fateBoot.ready();
-      trackFateMetaPixel('PageView');
+      trackFatePageView();
     }));
     if(!fatePerfEnabled)return;
     requestAnimationFrame(()=>console.debug('[FATE H5 performance] '+JSON.stringify({page,readyMs:Math.round(performance.now()),resources:performance.getEntriesByType('resource').filter(e=>/api\/|main\.dart|skwasm|canvaskit|fonts\/|astrologer/.test(e.name)).map(e=>({name:new URL(e.name).pathname.replace(/(life-reports\/)\w{8,}/,'$1:id'),startMs:Math.round(e.startTime),endMs:Math.round(e.responseEnd),bytes:e.transferSize}))})));
   }
 };
-function writeWelcomeName(welcome){
-  const data=document.getElementById('fate-welcome-strokes')?.textContent?.trim();
-  const name=welcome?.querySelector('.fate-welcome-name');
-  if(!name)return;
-  name.querySelector('canvas')?.remove();
-  name.classList.remove('fate-welcome-stroke-name');
-  name.style.removeProperty('width');
-  const label=name?.querySelector(`.fate-startup-${document.documentElement.lang}`)?.textContent?.trim();
-  if(!data?.startsWith('{')||!label)return;
-  const drawing=JSON.parse(data)[label];
-  if(!drawing?.strokes?.length||drawing.width<=0)return;
-  const canvas=document.createElement('canvas');
-  const pen=canvas.getContext('2d');
-  if(!pen)return;
-  canvas.width=Math.ceil(drawing.width/8);
-  canvas.height=164;
-  canvas.setAttribute('aria-hidden','true');
-  name.style.width=`${drawing.width/1024}em`;
-  name.classList.add('fate-welcome-stroke-name');
-  name.append(canvas);
-  const strokes=drawing.strokes.map(points=>{
-    const lengths=[];
-    for(let i=2;i<points.length;i+=2){
-      lengths.push(Math.hypot(points[i]-points[i-2],points[i+1]-points[i-1]));
-    }
-    return {points,lengths,total:lengths.reduce((a,b)=>a+b,0)};
-  });
-  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  function paint(now){
-    if(!canvas.isConnected)return;
-    const progress=reduced.matches?1:Math.min(1,Math.max(0,(now-fateWelcomeStartedAt-60)/890));
-    pen.resetTransform();
-    pen.clearRect(0,0,canvas.width,canvas.height);
-    pen.setTransform(.125,0,0,.125,0,18);
-    pen.strokeStyle='#ffe5aa';
-    pen.lineWidth=68;
-    pen.lineCap=pen.lineJoin='round';
-    let tip;
-    const count=progress*strokes.length;
-    for(let i=0;i<count;i++){
-      const {points,lengths,total}=strokes[i];
-      let remaining=total*Math.min(1,count-i);
-      let x=points[0], y=points[1];
-      pen.beginPath();
-      pen.moveTo(x,y);
-      for(let part=0;part<lengths.length&&remaining>0;part++){
-        const length=lengths[part];
-        const fraction=length?Math.min(1,remaining/length):1;
-        x+=(points[part*2+2]-x)*fraction;
-        y+=(points[part*2+3]-y)*fraction;
-        pen.lineTo(x,y);
-        remaining-=length;
-      }
-      pen.stroke();
-      if(count-i<1)tip=[x,y];
-    }
-    if(tip){
-      pen.beginPath();
-      pen.arc(tip[0],tip[1],46,0,2*Math.PI);
-      pen.fillStyle='#fff3d4';
-      pen.fill();
-    }
-    if(progress<1)requestAnimationFrame(paint);
-  }
-  paint(performance.now());
-}
-function mountFateWelcome(){
-  if(document.documentElement.dataset.welcome!=='true')return;
-  if(fateResumeWelcome)window.fateBoot.enterWelcome();
-  const welcome=document.getElementById('fate-welcome');
-  const portraitSlot=document.getElementById('fate-welcome-portrait-slot');
-  const image=typeof fateWelcomePortrait==='undefined'?null:fateWelcomePortrait;
-  if(welcome){
-    fateWelcomeStartedAt=performance.now();
-    writeWelcomeName(welcome);
-    const trackWelcome = () => {
-      if (document.visibilityState !== 'visible') return;
-      document.removeEventListener('visibilitychange', trackWelcome);
-      try {
-        const visit = fateVisitContext();
-        if (!visit) return;
-        const owner = fateOwnerKey();
-        if (!owner) return;
-        window.fateH5.trackActivity(JSON.stringify({ ...visit, activity: { page: 'welcome', action: 'view' } }),
-          owner, '/api/landing/visits');
-        void flushFateActivity();
-      } catch {}
-    };
-    if (document.visibilityState === 'visible') trackWelcome();
-    else document.addEventListener('visibilitychange', trackWelcome);
-  }
-  if(image&&portraitSlot){
-    portraitSlot.replaceWith(image);
-    const painted=()=>{
-      image.setAttribute('data-loaded','');
-      window.fateH5.pageReady('welcome-visible');
-    };
-    if(image.complete){
-      if(image.naturalWidth)painted();
-    }else image.addEventListener('load',painted,{once:true});
-  }
-  let touchStart;
-  welcome?.addEventListener('touchstart',event=>{touchStart=event.target?.closest?.('.fate-welcome-language')?undefined:event.touches[0]?.clientY;},{passive:true});
-  welcome?.addEventListener('touchend',event=>{if(touchStart!==undefined&&touchStart-event.changedTouches[0]?.clientY>48)window.fateBoot.enterWelcome();touchStart=undefined;},{passive:true});
-  welcome?.addEventListener('wheel',event=>{if(event.deltaY>12&&!event.target?.closest?.('.fate-welcome-language'))window.fateBoot.enterWelcome();},{passive:true});
-}

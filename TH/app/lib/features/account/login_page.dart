@@ -82,6 +82,7 @@ class _LoginPageState extends State<LoginPage> {
     return ListenableBuilder(
       listenable: d.session,
       builder: (context, _) => SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,12 +180,19 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: username,
+                      textInputAction: TextInputAction.next,
                       autocorrect: false,
                       decoration: InputDecoration(labelText: s.username),
                     ),
                     const SizedBox(height: 15),
                     TextField(
                       controller: password,
+                      textInputAction: register
+                          ? TextInputAction.next
+                          : TextInputAction.done,
+                      onSubmitted: (_) {
+                        if (!register) submit();
+                      },
                       obscureText: true,
                       autocorrect: false,
                       enableSuggestions: false,
@@ -194,6 +202,8 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 15),
                       TextField(
                         controller: confirmation,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => submit(),
                         obscureText: true,
                         decoration: InputDecoration(
                           labelText: s.confirmPassword,

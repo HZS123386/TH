@@ -1,13 +1,37 @@
 # BEGIN FATE dedicated domain
 fatehoro.top {
     route {
-        # Keep the existing Flutter base path and preserve language query options.
-        redir / /thai-landing/?{query} 302
         redir /admin /admin/ 308
         @fate_admin path /admin/* /api/admin /api/admin/*
         reverse_proxy @fate_admin astro-life-report:8000
 
-        import astro_landing_routes
+        @tarotApi path /api/tarot/readings /api/tarot/status /api/tarot/receipts /api/tarot/activity
+        handle @tarotApi {
+            header Cache-Control "no-store"
+            reverse_proxy astro-life-report:8000
+        }
+
+        # Existing report links retain their same-origin browser access.
+        @fateAstrologyPage {
+            path /thai-landing /thai-landing/ /thai-landing/*.html
+            not {
+                path /thai-landing/report.html
+                query id=*
+            }
+        }
+        redir @fateAstrologyPage /?{query} 302
+
+        @fateAstrologyBackend path /thai-landing/* /api/* /health
+        handle @fateAstrologyBackend {
+            import astro_landing_routes
+        }
+
+        handle {
+            encode zstd gzip
+            @fateTarotRoot not path /tarot /tarot/*
+            rewrite @fateTarotRoot /tarot{path}
+            reverse_proxy astro-life-report:8000
+        }
     }
 }
 

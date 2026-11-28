@@ -22,27 +22,13 @@ const jy = JSON.parse(await readFile(path.join(root,'src','content','jy.json'),'
 copy.jy = jy.jy;
 // Use key for identity: id is the supported Indonesian language code.
 copy.jyThemes = jy.jyThemes;
+const checkoutFallback = copy.checkout.en;
 for(const language of Object.keys(copy.additional)) {
- for(const group of ['jy','experience','checkout'])copy[group][language]=copy.additional[language][group];
+ for(const group of ['jy','experience'])copy[group][language]=copy.additional[language][group];
+ copy.checkout[language]={...copy.additional[language].checkout,...checkoutFallback};
  for(const items of Object.values(copy.jyThemes))for(const item of items)item[language]=copy.additional[language].themes[item.key];
 }
 delete copy.additional;
-const handwriting = JSON.parse(await readFile(path.join(root,'src','content','welcome-strokes.json'),'utf8'));
-copy.welcomeStrokes = {};
-for (const { welcome: { name } } of Object.values(copy.jy)) {
-  const letters = [...name];
-  if (letters.some(letter => !handwriting.glyphs[letter]?.length)) continue;
-  let width = 0;
-  const strokes = [];
-  // Both renderers share these positioned paths, including marks with no advance.
-  for (const letter of letters) {
-    for (const stroke of handwriting.glyphs[letter]) {
-      strokes.push(stroke.map((point, index) => index % 2 === 0 ? point + width : point));
-    }
-    width += handwriting.advances[letter] ?? 1024;
-  }
-  copy.welcomeStrokes[name] = { width, strokes };
-}
 await mkdir(path.join(target,'assets','images'),{recursive:true});
 await mkdir(path.join(target,'assets','fonts'),{recursive:true});
 // Legal text is loaded only on the privacy route, outside the startup copy/font set.
@@ -63,8 +49,6 @@ for (const language of languages) {
   localized.jyThemes = Object.fromEntries(Object.entries(copy.jyThemes).map(([group, themes]) =>
     [group, themes.map(keepLanguage)]
   ));
-  const name = copy.jy[language].welcome.name;
-  localized.welcomeStrokes = Object.hasOwn(copy.welcomeStrokes, name) ? {[name]: copy.welcomeStrokes[name]} : {};
   await writeFile(path.join(copyDirectory, language + '.json'), JSON.stringify(localized));
 }
 const fontSubset=JSON.parse(await readFile(path.join(target,'assets','fonts','subsets.json'),'utf8'));

@@ -16,6 +16,7 @@ class LuckyNumbersPage extends StatefulWidget {
 class _LuckyNumbersPageState extends State<LuckyNumbersPage>
     with WidgetsBindingObserver {
   late DateTime _today;
+  bool _showMeaning = false;
   Timer? _midnightTimer;
 
   @override
@@ -29,7 +30,10 @@ class _LuckyNumbersPageState extends State<LuckyNumbersPage>
   void _refreshDate() {
     final now = DateTime.now();
     if (!DateUtils.isSameDay(_today, now)) {
-      setState(() => _today = now);
+      setState(() {
+        _today = now;
+        _showMeaning = false;
+      });
     }
     _midnightTimer?.cancel();
     final nextDay = DateTime(now.year, now.month, now.day + 1);
@@ -76,6 +80,12 @@ class _LuckyNumbersPageState extends State<LuckyNumbersPage>
         FateCard(
           gold: true,
           padding: EdgeInsets.zero,
+          onTap: _showMeaning
+              ? null
+              : () {
+                  FateMotion.selectionFeedback();
+                  setState(() => _showMeaning = true);
+                },
           child: SizedBox(
             height: 276,
             child: DecoratedBox(
@@ -94,7 +104,10 @@ class _LuckyNumbersPageState extends State<LuckyNumbersPage>
                     child: SizedBox.square(
                       dimension: 228,
                       child: FateEntrance(
-                        key: ValueKey(DateUtils.dateOnly(_today)),
+                        key: ValueKey((
+                          DateUtils.dateOnly(_today),
+                          _showMeaning,
+                        )),
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
@@ -158,35 +171,49 @@ class _LuckyNumbersPageState extends State<LuckyNumbersPage>
           ),
         ),
         const SizedBox(height: 16),
-        FateCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                s.luckyNumberHint,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: goldColor,
+        AnimatedSize(
+          duration: FateMotion.duration(context, FateMotion.change),
+          alignment: Alignment.topCenter,
+          child: _showMeaning
+              ? FateCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.luckyNumberHint,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: goldColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Semantics(liveRegion: true, child: Text(meaning)),
+                    ],
+                  ),
+                )
+              : Center(
+                  child: Text(
+                    s.luckyRevealHint,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: goldColor),
+                  ),
                 ),
+        ),
+        if (_showMeaning) ...[
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => openGuardian(
+              context,
+              reading: ReadingHandoff(
+                title: s.todayLuckyNumber,
+                text: '${formats.formatFullDate(_today)} · $number\n$meaning',
               ),
-              const SizedBox(height: 8),
-              Text(meaning),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () => openGuardian(
-            context,
-            reading: ReadingHandoff(
-              title: s.todayLuckyNumber,
-              text: '${formats.formatFullDate(_today)} · $number\n$meaning',
             ),
+            icon: const Icon(Icons.chat_bubble_outline),
+            label: Text(s.continueReading),
           ),
-          icon: const Icon(Icons.chat_bubble_outline),
-          label: Text(s.continueReading),
-        ),
+        ],
         const SizedBox(height: 12),
         Text(
           s.luckyNumberUpdates,

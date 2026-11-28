@@ -1,6 +1,13 @@
 {
   "zh": {
-    "title": "从出生时刻，揪出感情的搅局者",
+    "line_hook": {
+      "title": "你现在看到的，是已经能公开说的部分。",
+      "body": "真正卡住你的那个点，以及对应的解决动作，加 LINE 后立刻给你。",
+      "action": "点击添加好友，马上获取。"
+    },
+    "title": "泰式占星 · 婚姻关系报告",
+    "basis": "根据你的星盘，{positions}{joiner}{text}",
+    "recent_basis": "从近期行运看，{positions}{joiner}{text}",
     "form_hint": "从上升和近期行运，看清自己的感情模式。",
     "preview": ["基础信息", "上升在感情里的真实样子", "当前感情能量", "感情模式快照", "领取完整报告"],
     "full": ["报告说明", "婚姻与长期关系完整解剖", "上升、第七宫与感情行星", "当前与未来三年感情节奏", "其他重点领域", "可执行建议", "辅助建议", "总结"],
@@ -25,6 +32,11 @@
     "symbol": "泰式传统把浅蓝色与北方关联到金星，作为可选的象征参考。"
   },
   "th": {
+    "line_hook": {
+      "title": "สิ่งที่คุณเห็นตอนนี้คือส่วนที่เปิดเผยได้",
+      "body": "ส่วนที่ทำให้ความรักของคุณติดขัดจริง ๆ และสิ่งที่ควรลงมือทำ เราจะส่งให้ทันทีเมื่อคุณเพิ่มเพื่อนใน LINE",
+      "action": "แตะเพิ่มเพื่อนเพื่อรับทันที"
+    },
     "title": "โหราศาสตร์ไทย · รายงานชีวิตคู่",
     "basis": "จากดวงชะตาของคุณ {positions} {text}",
     "form_hint": "ดูลัคนาและดาวจรช่วงนี้เพื่อเข้าใจรูปแบบความรักของคุณ",
@@ -42,6 +54,11 @@
     "symbol": "ตามธรรมเนียมไทย สีฟ้าและทิศเหนือเป็นสัญลักษณ์ที่สัมพันธ์กับดาวศุกร์ ใช้เป็นเครื่องเตือนใจได้ตามความสมัครใจ"
   },
   "en": {
+    "line_hook": {
+      "title": "You’ve seen the part we can share here.",
+      "body": "Add us on LINE to get what’s really holding you back and what you can do about it right away.",
+      "action": "Add us on LINE to get it now"
+    },
     "title": "Thai Astrology · Marriage and Relationships",
     "basis": "Your chart shows {positions}. {text}",
     "form_hint": "Use your ascendant and recent transits to understand your relationship patterns.",
@@ -59,6 +76,11 @@
     "symbol": "Thai tradition associates light blue and north with Venus. Use them as optional symbols."
   },
   "vi": {
+    "line_hook": {
+      "title": "Đây là phần có thể chia sẻ công khai.",
+      "body": "Thêm bạn trên LINE để nhận ngay lời giải đáp về điều thực sự khiến bạn mắc kẹt và bước tiếp theo bạn có thể làm.",
+      "action": "Thêm bạn trên LINE để nhận ngay"
+    },
     "title": "Chiêm tinh Thái · Báo cáo hôn nhân",
     "basis": "Lá số của bạn cho thấy {positions}. {text}",
     "form_hint": "Hiểu cách mình yêu qua cung Mọc và các chuyển động gần đây.",
@@ -76,6 +98,11 @@
     "symbol": "Theo biểu tượng truyền thống Thái, xanh da trời và hướng Bắc gắn với sao Kim. Có thể dùng như một lời nhắc tùy chọn."
   },
   "my": {
+    "line_hook": {
+      "title": "အခုမြင်ရတာက ဒီနေရာမှာ မျှဝေလို့ရတဲ့ အပိုင်းပါ။",
+      "body": "သင့်အချစ်ရေးကို အမှန်တကယ် အဟန့်အတားဖြစ်စေတဲ့အချက်နဲ့ ဘာလုပ်သင့်လဲဆိုတာကို LINE မှာ မိတ်ဆွေထည့်ပြီးတာနဲ့ ပို့ပေးပါမယ်။",
+      "action": "LINE မှာ မိတ်ဆွေထည့်ပြီး အခုပဲ ရယူပါ"
+    },
     "title": "ထိုင်းဗေဒင် · အိမ်ထောင်ရေးအစီရင်ခံစာ",
     "basis": "သင့်ဇာတာအရ {positions} ဖြစ်ပါတယ်။ {text}",
     "form_hint": "လဂ်နှင့် မကြာသေးမီက ဂြိုဟ်ရွေ့လျားမှုများမှ သင့်အချစ်ရေးပုံစံကို နားလည်ပါ။",
@@ -93,6 +120,11 @@
     "symbol": "ထိုင်းရိုးရာအရ အပြာနုရောင်နှင့် မြောက်အရပ်သည် သောကြာဂြိုဟ်၏ သင်္ကေတများဖြစ်သည်။"
   },
   "km": {
+    "line_hook": {
+      "title": "អ្វីដែលអ្នកឃើញឥឡូវនេះ ជាផ្នែកដែលអាចចែករំលែកនៅទីនេះបាន។",
+      "body": "បន្ថែមយើងជាមិត្តនៅលើ LINE ដើម្បីដឹងភ្លាមៗថា អ្វីដែលកំពុងរារាំងអ្នកពិតប្រាកដ និងអ្វីដែលអ្នកគួរធ្វើបន្ទាប់។",
+      "action": "បន្ថែមមិត្តនៅលើ LINE ដើម្បីទទួលភ្លាមៗ"
+    },
     "title": "ហោរាសាស្ត្រថៃ · របាយការណ៍អាពាហ៍ពិពាហ៍",
     "basis": "តាមផែនទីតារារបស់អ្នក {positions}។ {text}",
     "form_hint": "យល់ពីទម្លាប់ស្នេហារបស់អ្នកតាមលគ្នានិងចលនាភពក្នុងពេលថ្មីៗ។",
@@ -110,6 +142,11 @@
     "symbol": "តាមប្រពៃណីថៃ ពណ៌ខៀវស្រាលនិងទិសខាងជើងជានិមិត្តរូបពាក់ព័ន្ធនឹងភពសុក្រ។"
   },
   "lo": {
+    "line_hook": {
+      "title": "ສິ່ງທີ່ເຈົ້າເຫັນຕອນນີ້ແມ່ນສ່ວນທີ່ແບ່ງປັນຢູ່ນີ້ໄດ້.",
+      "body": "ເພີ່ມພວກເຮົາເປັນໝູ່ໃນ LINE ເພື່ອຮູ້ທັນທີວ່າຫຍັງກຳລັງຂັດຂວາງເຈົ້າແທ້ໆ ແລະຄວນເຮັດຫຍັງຕໍ່.",
+      "action": "ເພີ່ມໝູ່ໃນ LINE ເພື່ອຮັບທັນທີ"
+    },
     "title": "ໂຫລາສາດໄທ · ລາຍງານຊີວິດຄູ່",
     "basis": "ຕາມດວງຊະຕາຂອງເຈົ້າ {positions}. {text}",
     "form_hint": "ເຂົ້າໃຈຮູບແບບຄວາມຮັກຈາກລັກຄະນາແລະການເຄື່ອນຂອງດາວຊ່ວງນີ້",
@@ -127,6 +164,11 @@
     "symbol": "ຕາມປະເພນີໄທ ສີຟ້າອ່ອນແລະທິດເໜືອເປັນສັນຍາລັກທີ່ກ່ຽວກັບດາວສຸກ"
   },
   "ms": {
+    "line_hook": {
+      "title": "Ini bahagian yang boleh dikongsi di sini.",
+      "body": "Tambah kami di LINE untuk terus mengetahui apa yang sebenarnya menghalang anda dan langkah yang boleh anda ambil.",
+      "action": "Tambah rakan di LINE untuk terima sekarang"
+    },
     "title": "Astrologi Thai · Laporan Perkahwinan",
     "basis": "Carta anda menunjukkan {positions}. {text}",
     "form_hint": "Kenali corak hubungan melalui asendan dan transit semasa.",
@@ -144,6 +186,11 @@
     "symbol": "Tradisi Thai mengaitkan biru muda dan arah utara dengan Zuhrah. Kedua-duanya ialah simbol pilihan."
   },
   "id": {
+    "line_hook": {
+      "title": "Ini bagian yang bisa dibagikan di sini.",
+      "body": "Tambahkan kami di LINE untuk langsung mengetahui apa yang benar-benar menghambatmu dan langkah yang bisa kamu ambil.",
+      "action": "Tambah teman di LINE untuk dapatkan sekarang"
+    },
     "title": "Astrologi Thai · Laporan Pernikahan",
     "basis": "Bagan Anda menunjukkan {positions}. {text}",
     "form_hint": "Kenali pola hubungan dari asenden dan transit saat ini.",

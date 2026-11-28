@@ -25,69 +25,6 @@ class ImmediateToken extends CancelToken {
 }
 
 void main() {
-  test(
-    'preloaded city browsing shares the request and isolates cancellation',
-    () async {
-      final gate = Completer<http.Response>();
-      final requests = <Map<String, String>>[];
-      final repo = ReportRepository(
-        TestBrowser(),
-        baseUrl: 'https://example.test',
-        client: MockClient((request) async {
-          requests.add(request.url.queryParameters);
-          if (requests.length == 1) return gate.future;
-          return jsonResponse({'items': [], 'total': 0});
-        }),
-      );
-
-      final warm = repo.warmCities('CN');
-      final token = CancelToken();
-      final opening = expectLater(
-        repo.cities('CN', '', 0, token),
-        throwsA(isA<Cancelled>()),
-      );
-      token.cancel();
-      await opening;
-      final reopened = repo.cities('CN', '', 0, CancelToken());
-      gate.complete(
-        jsonResponse({
-          'items': [
-            {'id': 'geonames:1816670'},
-          ],
-          'total': 3,
-        }),
-      );
-      await warm;
-      expect(await reopened, containsPair('total', 3));
-      expect(await repo.cities('CN', '', 0, CancelToken()), await reopened);
-      expect(requests, hasLength(1));
-      expect(requests.single, containsPair('level', 'locality'));
-
-      await repo.cities('CN', 'Beijing', 0, CancelToken());
-      await repo.cities('CN', '', 100, CancelToken());
-      expect(requests[1], containsPair('query', 'Beijing'));
-      expect(requests[2], containsPair('offset', '100'));
-    },
-  );
-
-  test('a failed city preload can be retried by the dropdown', () async {
-    var calls = 0;
-    final repo = ReportRepository(
-      TestBrowser(),
-      baseUrl: 'https://example.test',
-      client: MockClient((request) async {
-        if (++calls == 1) throw http.ClientException('offline');
-        return jsonResponse({'items': [], 'total': 0});
-      }),
-    );
-    await repo.warmCities('TH');
-    expect(
-      await repo.cities('TH', '', 0, CancelToken()),
-      containsPair('total', 0),
-    );
-    expect(calls, 2);
-  });
-
   for (final language in ['zh', 'th']) {
     test(
       '$language resumes a queued preview through calculation without creating another report',
@@ -439,35 +376,6 @@ void main() {
       expect(request.body, '{}');
       expect(report.chapters, hasLength(7));
       expect(report.ready, isTrue);
-    },
-  );
-
-  test(
-    'city queries use the country directory without sending an owner key',
-    () async {
-      late http.Request request;
-      final repo = ReportRepository(
-        TestBrowser(),
-        baseUrl: 'https://example.test',
-        client: MockClient((sent) async {
-          request = sent;
-          return http.Response('{"items":[],"total":0}', 200);
-        }),
-      );
-      for (final (country, level, query) in [
-        ('CN', 'locality', '邯郸'),
-        ('TH', 'locality', 'เชียงใหม่'),
-        ('SG', 'city', 'Singapore'),
-      ]) {
-        await repo.cities(country, query, 100, CancelToken());
-        expect(request.url.queryParameters, {
-          'country': country,
-          'level': level,
-          'query': query,
-          'offset': '100',
-        });
-        expect(request.headers.containsKey('X-Report-Key'), isFalse);
-      }
     },
   );
 

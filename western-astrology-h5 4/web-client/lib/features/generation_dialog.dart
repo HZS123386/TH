@@ -1,13 +1,9 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'generation_video.dart'
     if (dart.library.js_interop) 'generation_video_web.dart';
 import '../app/controller.dart';
 import '../core/models.dart';
-import '../core/repository.dart';
 import '../ui/theme.dart';
 import '../ui/jy_components.dart';
 import 'report_chart.dart';
@@ -17,13 +13,9 @@ class GenerationState extends ChangeNotifier {
   String phase = 'preview', error = '';
   LifeReport? report;
   bool complete = false;
-  void retry({bool resetProgress = false}) {
+  void retry() {
     error = '';
     complete = false;
-    if (resetProgress) {
-      percent = 0;
-      phase = 'preview';
-    }
     notifyListeners();
   }
 
@@ -48,130 +40,6 @@ class GenerationState extends ChangeNotifier {
   }
 }
 
-class AppLoginCodePanel extends StatefulWidget {
-  const AppLoginCodePanel({
-    required this.h5,
-    required this.reportId,
-    super.key,
-  });
-
-  final H5Controller h5;
-  final String reportId;
-
-  @override
-  State<AppLoginCodePanel> createState() => _AppLoginCodePanelState();
-}
-
-class _AppLoginCodePanelState extends State<AppLoginCodePanel> {
-  Future<AppLoginCode>? _request;
-  Timer? _expiry;
-  bool _copied = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _track(widget.h5.currentAppLoginCode);
-  }
-
-  void _track(Future<AppLoginCode>? request) {
-    _expiry?.cancel();
-    _request = request;
-    _copied = false;
-    unawaited(
-      request?.then<void>((code) {
-        if (mounted && _request == request && !code.expired) {
-          _expiry = Timer(code.expiresAt.difference(DateTime.now()), () {
-            if (mounted) setState(() {});
-          });
-        }
-      }, onError: (Object _, StackTrace _) {}),
-    );
-  }
-
-  Future<void> _copy(AppLoginCode code) async {
-    if (code.expired) {
-      setState(() {});
-      return;
-    }
-    try {
-      await Clipboard.setData(ClipboardData(text: code.value));
-      if (mounted) setState(() => _copied = true);
-    } catch (_) {
-      // The code can still be selected manually.
-    }
-  }
-
-  @override
-  void dispose() {
-    _expiry?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = widget.h5.copy;
-    String label(String key) => c.t('jy', 'appLogin.$key');
-    return JYCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label('title'),
-            style: const TextStyle(color: gold, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          FutureBuilder<AppLoginCode>(
-            future: _request,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(label('loading')),
-                );
-              }
-              final code = snapshot.data;
-              return Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 6,
-                children: [
-                  if (snapshot.hasError) Text(label('failed')),
-                  if (code?.expired == true) Text(label('expired')),
-                  if (code != null && !code.expired) ...[
-                    SelectableText(
-                      code.value,
-                      key: const ValueKey('h5-app-login-code'),
-                      style: const TextStyle(
-                        fontSize: 21,
-                        letterSpacing: 3,
-                        color: cream,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => _copy(code),
-                      child: Text(label(_copied ? 'copied' : 'copy')),
-                    ),
-                  ],
-                  TextButton(
-                    onPressed: () => setState(
-                      () => _track(
-                        widget.h5.requestAppLoginCode(
-                          widget.reportId,
-                          refresh: true,
-                        ),
-                      ),
-                    ),
-                    child: Text(label(_request == null ? 'get' : 'refresh')),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class GenerationDialog extends StatefulWidget {
   const GenerationDialog({
     required this.h5,
@@ -181,11 +49,14 @@ class GenerationDialog extends StatefulWidget {
     required this.onRetry,
     required this.onComplete,
     this.input,
+    this.showCancel = true,
+    this.embedded = false,
     super.key,
   });
   final H5Controller h5;
   final GenerationState state;
   final bool full;
+  final bool showCancel, embedded;
   final Json? input;
   final VoidCallback onCancel, onRetry;
   final void Function(LifeReport) onComplete;
@@ -194,31 +65,35 @@ class GenerationDialog extends StatefulWidget {
 }
 
 class _GenerationDialogState extends State<GenerationDialog> {
-  Timer? _reviewTimer, _stageTimer, _detailsTimer, _finishTimer;
-  String? _loginCodeReportId;
+  Timer? _reviewTimer, _stageTimer, _detailsTimer, _minimumTimer;
   int _step = 0, _detail = 0;
   bool _prepared = false,
       _reduced = false,
       _reviewDone = false,
+      _minimumElapsed = false,
+      _completionScheduled = false,
       _finishing = false,
       _navigating = false;
-
-  Duration get _finishDuration => _reduced || !widget.full
-      ? Duration.zero
-      : const Duration(milliseconds: 320);
+  // WebKit may need several frames to attach the media platform view after the
+  // dialog itself is built, so keep the ready transition long enough to be
+  // visibly useful on desktop Safari as well as Chromium and Firefox.
+  static const _minimumVisible = Duration(milliseconds: 1500);
   @override
   void initState() {
     super.initState();
+    _minimumTimer = Timer(_minimumVisible, () {
+      _minimumElapsed = true;
+      if (widget.state.complete && widget.state.error.isEmpty) {
+        _finishCompleted();
+      }
+    });
     widget.state.addListener(_changed);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_prepared) {
-      _changed();
-      return;
-    }
+    if (_prepared) return;
     _prepared = true;
     _reduced = MediaQuery.disableAnimationsOf(context);
     final input = widget.input ?? widget.state.report?.input ?? {};
@@ -245,39 +120,32 @@ class _GenerationDialogState extends State<GenerationDialog> {
   }
 
   void _changed() {
-    if (!mounted || !_prepared || _navigating) return;
-    final state = widget.state;
-    final report = state.report;
-    if (state.error.isNotEmpty) {
-      _loginCodeReportId = null;
-    } else if (report != null && report.id != _loginCodeReportId) {
-      _loginCodeReportId = report.id;
-      // Keep the code available for the report and history views.
-      widget.h5.requestAppLoginCode(report.id).ignore();
-    }
-    if (!state.complete || state.error.isNotEmpty) {
-      if (_finishing) {
-        _finishTimer?.cancel();
-        setState(() => _finishing = false);
-      }
+    if (!mounted || !_prepared || widget.state.error.isNotEmpty) return;
+    if (!widget.state.complete) {
       _advance();
       return;
     }
-    if (_finishing || ModalRoute.isCurrentOf(context) != true) return;
+    if (_completionScheduled || _finishing) return;
+    _completionScheduled = true;
+    // Fast desktop responses used to close this route before its first useful
+    // frame. Keep the sole loading presentation visible briefly, while long
+    // generations still open immediately when their report becomes readable.
     _reviewTimer?.cancel();
     _stageTimer?.cancel();
     _detailsTimer?.cancel();
+    if (_minimumElapsed) _finishCompleted();
+  }
+
+  void _finishCompleted() {
+    if (!mounted || _finishing || !widget.state.complete) return;
     setState(() => _finishing = true);
-    _finishTimer = Timer(_finishDuration, _finish);
+    _finish();
   }
 
   void _advance() {
-    if (!mounted ||
-        !_reviewDone ||
-        _finishing ||
-        widget.state.error.isNotEmpty) {
-      return;
-    }
+    if (!mounted || _finishing || widget.state.error.isNotEmpty) return;
+    if (widget.state.complete) return;
+    if (!_reviewDone) return;
     if (!_reduced && _step == 0 && widget.state.report != null) {
       setState(() => _step = 1);
       _stageTimer = Timer(const Duration(milliseconds: 2400), () {
@@ -288,16 +156,21 @@ class _GenerationDialogState extends State<GenerationDialog> {
   }
 
   void _finish() {
+    if (!mounted ||
+        _navigating ||
+        (!widget.embedded && ModalRoute.of(context)?.isCurrent != true) ||
+        !widget.state.complete ||
+        widget.state.error.isNotEmpty) {
+      return;
+    }
+    _navigating = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _navigating || !_finishing) return;
-      if (ModalRoute.isCurrentOf(context) != true ||
-          !widget.state.complete ||
-          widget.state.error.isNotEmpty) {
-        setState(() => _finishing = false);
-        return;
+      if (mounted &&
+          (widget.embedded || ModalRoute.of(context)?.isCurrent == true) &&
+          widget.state.complete &&
+          widget.state.error.isEmpty) {
+        widget.onComplete(widget.state.report!);
       }
-      _navigating = true;
-      widget.onComplete(widget.state.report!);
     });
     WidgetsBinding.instance.scheduleFrame();
   }
@@ -309,7 +182,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
       _reviewTimer,
       _stageTimer,
       _detailsTimer,
-      _finishTimer,
+      _minimumTimer,
     ]) {
       timer?.cancel();
     }
@@ -374,14 +247,6 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     report = state.report,
                                     input = widget.input ?? report?.input ?? {};
                                 final complete = state.complete;
-                                final marriagePreview =
-                                    !widget.full &&
-                                    (report?.marriageReport == true ||
-                                        input['report_kind'] == 'marriage');
-                                final marriageFailed =
-                                    widget.full &&
-                                    report?.marriageFullFailed == true &&
-                                    state.error.isNotEmpty;
                                 final waiting =
                                     !complete &&
                                     state.error.isEmpty &&
@@ -398,7 +263,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                     ? 'interpretation.queued'
                                     : state.phase == 'calculating'
                                     ? 'interpretation.preparing'
-                                    : state.percent >= (marriagePreview ? 85 : 99)
+                                    : state.percent >= 99
                                     ? 'interpretation.validating'
                                     : state.percent == 0
                                     ? report == null
@@ -576,34 +441,34 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                             ),
                                           ),
                                           const SizedBox(height: 10),
-                                          if (!marriageFailed &&
-                                              !(marriagePreview &&
-                                                  state.error.isNotEmpty))
-                                            ReadingProgress(
-                                              percent: state.percent,
-                                              reduced: _reduced || complete,
-                                              label: c.t('jy', 'progress'),
-                                              waiting: waiting,
-                                              waitingLabel: c.t(
-                                                'jy',
-                                                'interpretation.waitLabel',
-                                              ),
+                                          ReadingProgress(
+                                            percent: state.percent,
+                                            reduced: _reduced || complete,
+                                            label: c.t('jy', 'progress'),
+                                            waiting: waiting,
+                                            waitingLabel: c.t(
+                                              'jy',
+                                              'interpretation.waitLabel',
                                             ),
+                                          ),
                                           if (!complete && state.error.isEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                 top: 10,
                                               ),
                                               child: Text(
-                                                '${c.t('jy', 'interpretation.next')} · ${_step < 2 ? c.t('jy', 'interpretation.steps.${keys[_step + 1]}.title') : c.t('jy', 'checkout.title')}',
+                                                '${c.t('jy', 'interpretation.next')} · ${_step < 2
+                                                    ? c.t('jy', 'interpretation.steps.${keys[_step + 1]}.title')
+                                                    : widget.full
+                                                    ? c.t('checkout', 'reportProduct')
+                                                    : c.t('jy', 'report.freeTitle')}',
                                                 style: const TextStyle(
                                                   fontSize: 12,
                                                   color: lavender,
                                                 ),
                                               ),
                                             ),
-                                          if (!marriageFailed)
-                                            errorMessage(state.error),
+                                          errorMessage(state.error),
                                           if (state.error.isNotEmpty)
                                             OutlinedButton(
                                               onPressed: widget.onRetry,
@@ -637,18 +502,15 @@ class _GenerationDialogState extends State<GenerationDialog> {
                                 vertical: 16,
                               ),
                               child: Center(
-                                // The video and fallback artwork are both 768 x 512.
                                 child: AspectRatio(
                                   aspectRatio: 3 / 2,
                                   child: ListenableBuilder(
                                     listenable: widget.state,
-                                    builder: (context, _) => AnimatedOpacity(
-                                      opacity: _finishing ? 0 : 1,
-                                      duration: _finishDuration,
-                                      child: GenerationVideo(
-                                        active: widget.state.error.isEmpty,
-                                        reduced: _reduced,
-                                      ),
+                                    builder: (context, _) => GenerationVideo(
+                                      active:
+                                          !_finishing &&
+                                          widget.state.error.isEmpty,
+                                      reduced: _reduced,
                                     ),
                                   ),
                                 ),
@@ -656,7 +518,7 @@ class _GenerationDialogState extends State<GenerationDialog> {
                             ),
                           ),
                         ),
-                        if (!_finishing)
+                        if (!_finishing && widget.showCancel)
                           Positioned(
                             left: 0,
                             right: 0,

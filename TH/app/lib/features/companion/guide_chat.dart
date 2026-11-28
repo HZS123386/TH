@@ -21,6 +21,7 @@ class _GuideChatState extends State<_GuideChat> {
   late var _voice = widget.voice;
   bool _saving = false;
   String? _owner;
+  bool get _showArunSample => widget.sample && _active == ReadingGuide.arun;
 
   List<Map<String, dynamic>> _history(AppDependencies d, String owner) {
     final rows = d.session.drafts.read(
@@ -34,15 +35,18 @@ class _GuideChatState extends State<_GuideChat> {
         .toList();
   }
 
-  void _toLatest() {
+  void _scrollConversation({bool preferSample = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_scroll.hasClients) return;
-      final end = _scroll.position.maxScrollExtent;
+      final position = _scroll.position;
+      final target = preferSample && _showArunSample
+          ? position.minScrollExtent
+          : position.maxScrollExtent;
       if (FateMotion.reduced(context)) {
-        _scroll.jumpTo(end);
+        _scroll.jumpTo(target);
       } else {
         _scroll.animateTo(
-          end,
+          target,
           duration: FateMotion.change,
           curve: Curves.easeOutCubic,
         );
@@ -59,13 +63,14 @@ class _GuideChatState extends State<_GuideChat> {
       LocalDraftStore.guideConversations,
     );
     final history = _history(d, owner);
-    final question = text.characters.take(90).toString();
     final reply = switch (text) {
       _ when text == s.guidePromptWork || text == s.readingSampleQuestion =>
         s.guideWorkReply,
       _ when text == s.guidePromptLove || text == s.readingSampleLove =>
         s.guideLoveReply,
-      _ => s.guideReflectReply(question),
+      _ when guide == ReadingGuide.arun && text == s.readingSampleLife =>
+        s.arunSampleReply,
+      _ => s.guideReflectReply(text.characters.take(90).toString()),
     };
     final recent = [
       ...history.skip(math.max(0, history.length - 38)),
@@ -81,7 +86,7 @@ class _GuideChatState extends State<_GuideChat> {
       });
       if (mounted && owner == d.session.owner) {
         _input.clear();
-        _toLatest();
+        _scrollConversation();
       }
     } catch (_) {
       if (mounted) {
@@ -102,7 +107,9 @@ class _GuideChatState extends State<_GuideChat> {
       _active = widget.initialGuide;
       _voice = widget.voice;
       _input.clear();
-      _toLatest();
+      _scrollConversation(preferSample: true);
+    } else if (oldWidget.sample != widget.sample) {
+      _scrollConversation(preferSample: true);
     }
   }
 
@@ -120,9 +127,12 @@ class _GuideChatState extends State<_GuideChat> {
             });
           }
           _owner = owner;
-          _toLatest();
+          _scrollConversation(preferSample: true);
         }
         final rows = _history(d, owner);
+        final sampleQuestion = _showArunSample
+            ? _active.sampleQuestion(s)
+            : null;
         final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 7),
@@ -145,7 +155,7 @@ class _GuideChatState extends State<_GuideChat> {
                                     _active = guide;
                                     _input.clear();
                                   });
-                                  _toLatest();
+                                  _scrollConversation(preferSample: true);
                                 },
                         ),
                       ),
@@ -174,15 +184,17 @@ class _GuideChatState extends State<_GuideChat> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    TextButton.icon(
-                      onPressed: () => _active.start(context),
-                      icon: const Icon(Icons.auto_awesome_outlined, size: 15),
-                      label: Text(
-                        s.startReading,
-                        style: const TextStyle(fontSize: 11),
+                    if (!_showArunSample) ...[
+                      const SizedBox(width: 6),
+                      TextButton.icon(
+                        onPressed: () => _active.start(context),
+                        icon: const Icon(Icons.auto_awesome_outlined, size: 15),
+                        label: Text(
+                          s.startReading,
+                          style: const TextStyle(fontSize: 11),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 5),
@@ -203,11 +215,11 @@ class _GuideChatState extends State<_GuideChat> {
                   selected: {_voice},
                   onSelectionChanged: (selected) {
                     setState(() => _voice = selected.first);
-                    if (!_voice) _toLatest();
+                    if (!_voice) _scrollConversation(preferSample: true);
                   },
                 ),
                 const SizedBox(height: 7),
-                if (!_voice)
+                if (!_voice && !_showArunSample)
                   FateCard(
                     gold: true,
                     radius: 12,
@@ -272,7 +284,7 @@ class _GuideChatState extends State<_GuideChat> {
                             TextButton(
                               onPressed: () {
                                 setState(() => _voice = false);
-                                _toLatest();
+                                _scrollConversation(preferSample: true);
                               },
                               child: Text(s.textChat),
                             ),
@@ -290,7 +302,32 @@ class _GuideChatState extends State<_GuideChat> {
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.only(top: 12, bottom: 2),
                     children: [
-                      if (rows.isEmpty)
+                      if (sampleQuestion != null) ...[
+                        Text(
+                          s.arunSampleHeading,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Semantics(
+                          label: sampleQuestion,
+                          excludeSemantics: true,
+                          child: _MessageBubble(
+                            text: sampleQuestion,
+                            user: true,
+                            accent: _active.color,
+                          ),
+                        ),
+                        Semantics(
+                          label: s.arunSampleReply,
+                          excludeSemantics: true,
+                          child: _MessageBubble(
+                            text: s.arunSampleReply,
+                            user: false,
+                            accent: _active.color,
+                          ),
+                        ),
+                        if (rows.isNotEmpty) const Divider(),
+                      ] else if (rows.isEmpty)
                         _MessageBubble(
                           text: s.guideGreeting,
                           user: false,
@@ -345,7 +382,14 @@ class _GuideChatState extends State<_GuideChat> {
                                   : () => _input.text = prompt,
                               label: Text(
                                 prompt,
-                                style: const TextStyle(fontSize: 11),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'NotoSansThai',
+                                  fontFamilyFallback: [
+                                    'NotoSansSC',
+                                    'NotoSansSymbols',
+                                  ],
+                                ),
                               ),
                             ),
                           ),

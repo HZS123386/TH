@@ -17,8 +17,10 @@ Json marriageFixture({Json? input, bool full = false}) {
   final data = fixture();
   final submitted =
       input ?? {...object(data['input']), 'report_kind': 'marriage'};
-  final language = text(object(submitted['profile'])['language']);
-  final copy = Copy(translations(), language);
+  final copy = Copy(
+    translations(),
+    text(object(submitted['profile'])['language']),
+  );
   final titles = copy.list('marriage', 'full');
   final freeTitles = copy.list('marriage', 'preview');
   data.remove('generation_progress');
@@ -47,9 +49,6 @@ Json marriageFixture({Json? input, bool full = false}) {
           {
             'key': marriagePreviewKeys[i],
             'title': freeTitles[i],
-            if (language == 'zh' &&
-                marriagePreviewKeys[i] == 'relationship_snapshot')
-              'visible': false,
             'paragraphs': ['Free marriage section ${i + 1}.'],
           },
       ],
@@ -179,9 +178,29 @@ Json personalFixture({String language = 'zh', bool full = false}) {
 }
 
 class TestBrowser implements BrowserPort {
+  Json? formInitial;
+  Future<String> Function(Json)? submitBirthForm;
+  bool formVisible = false;
+  @override
+  void attachBirthForm(Json initial, Future<String> Function(Json) submit) {
+    formInitial = initial;
+    submitBirthForm = submit;
+    formVisible = true;
+  }
+
+  @override
+  bool birthFormSubmitting = false;
+  @override
+  void setBirthFormVisible(bool visible) => formVisible = visible;
+  @override
+  void detachBirthForm() {
+    submitBirthForm = null;
+    formVisible = false;
+  }
+
   final openedPages = <String>[];
   @override
-  Duration get welcomeAge => Duration.zero;
+  bool supportsLineApp = false;
   @override
   void openPage(String path, {bool sameTab = false}) {
     openedPages.add(path);
@@ -200,12 +219,6 @@ class TestBrowser implements BrowserPort {
   @override
   Json visitContext() => visit;
   final activities = <Json>[];
-  int viewReadingClicks = 0;
-  @override
-  void trackViewReadingClick() {
-    viewReadingClicks++;
-  }
-
   @override
   void trackActivity(String page, String action) =>
       activities.add({'page': page, 'action': action});
