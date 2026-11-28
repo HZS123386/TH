@@ -15,8 +15,38 @@
 <link rel="stylesheet" href="compact-screen.css?v=23.10">
 <link rel="stylesheet" href="moon-studio.css?v=23.12">
 <link rel="stylesheet" href="atmosphere.css?v=23.10">
+<!-- Meta Pixel Code -->
+<script>
+(() => {
+  if (navigator.globalPrivacyControl === true || navigator.doNotTrack === '1') return;
+  // Track landing visits without loading Meta on private report links.
+  if (location.hash && location.hash !== '#home') return;
+
+  if (!window.fbq) {
+    const fbq = function () {
+      if (fbq.callMethod) fbq.callMethod.apply(fbq, arguments);
+      else fbq.queue.push(arguments);
+    };
+    Object.assign(fbq, { push: fbq, loaded: true, version: '2.0', queue: [] });
+    window.fbq = window._fbq = fbq;
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    document.head.append(script);
+  }
+
+  const pixelId = '1130430653088165';
+  window.fbq.disablePushState = true;
+  window.fbq('set', 'autoConfig', false, pixelId);
+  window.fbq('init', pixelId);
+  window.fbq('track', 'PageView');
+})();
+</script>
 </head>
 <body class="campaign-v2 consultation-v3 ritual-v4 report-v5 value-v6 report-v8 report-v9 report-v12" data-view="home">
+<noscript><img src="https://www.facebook.com/tr?id=1130430653088165&amp;ev=PageView&amp;noscript=1"
+  alt="" width="1" height="1" style="display:none" referrerpolicy="no-referrer"></noscript>
 <a class="sr-only skip-link" href="#app">跳至内容 / ข้ามไปเนื้อหา</a>
 <header class="site-header" id="site-header"></header>
 <main id="app" tabindex="-1"></main>
